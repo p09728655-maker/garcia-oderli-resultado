@@ -2,7 +2,7 @@
    Cache-first para o shell do app, permite abrir offline
    com os últimos dados sincronizados. */
 
-var CACHE_NAME = 'ppcp-dashboard-v1';
+var CACHE_NAME = 'ppcp-dashboard-v2';
 var URLS_TO_CACHE = [
   '/',
   '/manifest.json',
