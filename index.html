@@ -3,6 +3,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Dashboard — Capacidade &amp; Eficiência 2025/2026</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PPCP Capacidade">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <!--
   ╔══════════════════════════════════════════════════════════════╗
   ║  100% OFFLINE — ZERO dependências externas                  ║
@@ -15930,4 +15937,14 @@ function printAtiva(){
 <!-- ══ FIM MÓDULO v11 ══ -->
 
 
-<div id="ui-tip"></div></body></html>
+<div id="ui-tip"></div>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/sw.js').catch(function(err){
+      console.warn('SW falhou ao registrar (app continua funcionando normal):', err);
+    });
+  });
+}
+</script>
+</body></html>

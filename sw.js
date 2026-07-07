@@ -1,0 +1,57 @@
+/* Service Worker — PPCP Capacidade & Eficiência
+   Cache-first para o shell do app, permite abrir offline
+   com os últimos dados sincronizados. */
+
+var CACHE_NAME = 'ppcp-dashboard-v1';
+var URLS_TO_CACHE = [
+  '/',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
+];
+
+self.addEventListener('install', function(event){
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache){
+      return cache.addAll(URLS_TO_CACHE);
+    })
+  );
+});
+
+self.addEventListener('activate', function(event){
+  event.waitUntil(
+    caches.keys().then(function(keys){
+      return Promise.all(
+        keys.filter(function(k){ return k !== CACHE_NAME; })
+            .map(function(k){ return caches.delete(k); })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', function(event){
+  /* Network-first pro HTML principal (sempre tenta pegar versão nova),
+     cache-first pro resto (ícones, manifest) */
+  var url = new URL(event.request.url);
+
+  if (event.request.mode === 'navigate' || url.pathname === '/') {
+    event.respondWith(
+      fetch(event.request)
+        .then(function(resp){
+          var clone = resp.clone();
+          caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, clone); });
+          return resp;
+        })
+        .catch(function(){ return caches.match(event.request).then(function(r){ return r || caches.match('/'); }); })
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then(function(cached){
+      return cached || fetch(event.request);
+    })
+  );
+});
