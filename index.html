@@ -1753,16 +1753,23 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <!-- Botões de ação -->
   <div class="sBox">
     <div class="sTitle">▸ Ações</div>
-    <button class="sBtn" onclick="abrirNovo()">＋ Novo Mês</button>
-    <button class="sBtn" style="color:var(--green);border-color:rgba(76,175,80,.4);background:rgba(76,175,80,.05)" onclick="document.getElementById('inputXlsx').click()">⬆ Importar Excel</button>
-    <input type="file" id="inputXlsx" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
     <button class="sBtn" onclick="exportCSV()">⬇ Exportar CSV</button>
-    <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)" onclick="salvarJSON()">💾 Salvar JSON</button>
-    <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.03)" onclick="document.getElementById('inputJSON').click()">📂 Carregar JSON</button>
-    <input type="file" id="inputJSON" accept=".json" style="display:none" onchange="carregarJSON(this)">
     <button class="sBtn" onclick="printAtiva()">⎙ Imprimir</button>
     <button class="sBtn" style="color:var(--amber);border-color:rgba(255,152,0,.4);background:rgba(255,152,0,.05)" onclick="brfgImprimir()">🖨 Briefing</button>
-    <button class="sBtn" style="color:var(--red);border-color:rgba(244,67,54,.3)" onclick="resetDados()">↺ Resetar</button>
+
+    <div id="acoes-admin-toggle" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--b)">
+      <button class="sBtn" style="font-size:.62rem;color:var(--t3);border-color:var(--b);background:transparent;padding:5px 8px" onclick="document.getElementById('acoes-admin-box').style.display='flex';this.parentElement.style.display='none'">⚙ Modo edição (manutenção de dados)</button>
+    </div>
+
+    <div id="acoes-admin-box" style="display:none;flex-direction:column;gap:6px;margin-top:6px">
+      <button class="sBtn" onclick="abrirNovo()">＋ Novo Mês</button>
+      <button class="sBtn" style="color:var(--green);border-color:rgba(76,175,80,.4);background:rgba(76,175,80,.05)" onclick="document.getElementById('inputXlsx').click()">⬆ Importar Excel</button>
+      <input type="file" id="inputXlsx" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
+      <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)" onclick="salvarJSON()">💾 Salvar JSON</button>
+      <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.03)" onclick="document.getElementById('inputJSON').click()">📂 Carregar JSON</button>
+      <input type="file" id="inputJSON" accept=".json" style="display:none" onchange="carregarJSON(this)">
+      <button class="sBtn" style="color:var(--red);border-color:rgba(244,67,54,.3)" onclick="if(confirm('Isso apaga TODOS os dados. Tem certeza?'))resetDados()">↺ Resetar</button>
+    </div>
   </div>
 </aside>
 
