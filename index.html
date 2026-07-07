@@ -1793,10 +1793,10 @@ td[title]:hover{background:rgba(0,229,255,.04)!important}
   </button>
 <button class="pTab" id="pTab-ppcp" data-page="ppcp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"></path></svg>PPCP</button></nav>
 <!-- Sub-navegação: renderizada dinamicamente pelo módulo NAV4 -->
-<div id="sub-nav-bar" data-group="geral" data-label="Visão Geral" style="display: flex;"><button class="subTab on" data-page="visao" onclick="mudarSubPagina('visao',this)">📊 Visão Geral</button><button class="subTab" data-page="resumo" onclick="mudarSubPagina('resumo',this)">📋 Resumo Executivo</button></div>
+<div id="sub-nav-bar" data-group="geral" data-label="Visão Geral" style="display: flex;"><button class="subTab" data-page="visao" onclick="mudarSubPagina('visao',this)">📊 Visão Geral</button><button class="subTab on" data-page="resumo" onclick="mudarSubPagina('resumo',this)">📋 Resumo Executivo</button></div>
 
 <!-- ══ PÁGINA: VISÃO GERAL ══ -->
-<div class="page on" id="page-visao">
+<div class="page" id="page-visao">
 
   <!-- ══════════════════════════════════════════════
        NÍVEL 1 — STATUS PRINCIPAL DA FÁBRICA
@@ -2378,7 +2378,23 @@ td[title]:hover{background:rgba(0,229,255,.04)!important}
 </div><div class="page" id="page-ano-a-ano"><div class="aaa-hdr"><div class="aaa-hdr-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v2H3V3zm0 8h18v2H3v-2zm0 8h18v2H3v-2zm16-14l-4 4 4 4"></path></svg></div><div><div class="aaa-title">Comparação Ano a Ano</div><div class="aaa-sub">Evolução de cada mês comparado ao mesmo mês do ano anterior</div></div></div><div class="aaa-charts" style="display: grid;"><div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Produção por mês</div><canvas id="aaa-c-prod" height="160" width="300" style="width: 300px; height: 160px;"></canvas><div class="aaa-legend" id="aaa-lg-prod"><span class="aaa-li"><span class="aaa-ld" style="background:#00e5ff"></span>2025</span><span class="aaa-li"><span class="aaa-ld" style="background:#ffb300"></span>2026</span></div></div><div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Eficiência % por mês</div><canvas id="aaa-c-ef" height="160" width="300" style="width: 300px; height: 160px;"></canvas><div class="aaa-legend" id="aaa-lg-ef"><span class="aaa-li"><span class="aaa-ld" style="background:#00e5ff"></span>2025</span><span class="aaa-li"><span class="aaa-ld" style="background:#ffb300"></span>2026</span></div></div><div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Absenteísmo % por mês</div><canvas id="aaa-c-abs" height="160" width="300" style="width: 300px; height: 160px;"></canvas><div class="aaa-legend" id="aaa-lg-abs"><span class="aaa-li"><span class="aaa-ld" style="background:#00e5ff"></span>2025</span><span class="aaa-li"><span class="aaa-ld" style="background:#ffb300"></span>2026</span></div></div></div><div class="aaa-wrap" style="display: block;"><table class="aaa-table"><thead id="aaa-thead"><tr><th>Mês</th><th style="color:#00e5ff">2025 Prod</th><th style="color:#00e5ff">2025 Ef%</th><th style="color:#00e5ff">2025 Abs%</th><th class="aaa-sep" style="color:var(--t3)">Δ Prod%</th><th style="color:var(--t3)">Δ Ef pp</th><th style="color:#ffb300">2026 Prod</th><th style="color:#ffb300">2026 Ef%</th><th style="color:#ffb300">2026 Abs%</th></tr></thead><tbody id="aaa-tbody"><tr><td class="aaa-mes">JAN</td><td class="aaa-val">31.041</td><td class="aaa-val">90.0%</td><td class="aaa-val">11.5%</td><td class="aaa-var aaa-sep neg">-27.7%</td><td class="aaa-var neg">-1.9 pp</td><td class="aaa-val">22.437</td><td class="aaa-val">88.1%</td><td class="aaa-val">9.0%</td></tr><tr><td class="aaa-mes">FEV</td><td class="aaa-val">30.042</td><td class="aaa-val">76.8%</td><td class="aaa-val">17.2%</td><td class="aaa-var aaa-sep pos">+8.3%</td><td class="aaa-var pos">+10.1 pp</td><td class="aaa-val">32.547</td><td class="aaa-val">87.0%</td><td class="aaa-val">12.6%</td></tr><tr><td class="aaa-mes">MAR</td><td class="aaa-val">33.101</td><td class="aaa-val">81.1%</td><td class="aaa-val">9.8%</td><td class="aaa-var aaa-sep neg">-16.6%</td><td class="aaa-var pos">+20.0 pp</td><td class="aaa-val">27.600</td><td class="aaa-val">101.1%</td><td class="aaa-val">13.9%</td></tr><tr><td class="aaa-mes">ABR</td><td class="aaa-val">35.720</td><td class="aaa-val">79.7%</td><td class="aaa-val">9.9%</td><td class="aaa-var aaa-sep neg">-18.3%</td><td class="aaa-var pos">+12.6 pp</td><td class="aaa-val">29.195</td><td class="aaa-val">92.3%</td><td class="aaa-val">15.1%</td></tr><tr><td class="aaa-mes">MAI</td><td class="aaa-val">36.450</td><td class="aaa-val">80.1%</td><td class="aaa-val">9.9%</td><td class="aaa-var aaa-sep neg">-8.6%</td><td class="aaa-var pos">+7.7 pp</td><td class="aaa-val">33.330</td><td class="aaa-val">87.8%</td><td class="aaa-val">10.4%</td></tr><tr><td class="aaa-mes">JUN</td><td class="aaa-val">25.468</td><td class="aaa-val">84.0%</td><td class="aaa-val">11.3%</td><td class="aaa-var aaa-sep pos">+19.6%</td><td class="aaa-var pos">+7.4 pp</td><td class="aaa-val">30.451</td><td class="aaa-val">91.5%</td><td class="aaa-val">10.7%</td></tr><tr><td class="aaa-mes">JUL</td><td class="aaa-val">31.810</td><td class="aaa-val">95.9%</td><td class="aaa-val">11.8%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-95.9 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">AGO</td><td class="aaa-val">34.096</td><td class="aaa-val">92.0%</td><td class="aaa-val">11.8%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-92.0 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">SET</td><td class="aaa-val">36.145</td><td class="aaa-val">91.8%</td><td class="aaa-val">11.7%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-91.8 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">OUT</td><td class="aaa-val">33.123</td><td class="aaa-val">89.9%</td><td class="aaa-val">12.8%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-89.9 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">NOV</td><td class="aaa-val">23.332</td><td class="aaa-val">91.0%</td><td class="aaa-val">14.5%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-91.0 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">DEZ</td><td class="aaa-val">30.939</td><td class="aaa-val">79.6%</td><td class="aaa-val">14.6%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-79.6 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr></tbody></table></div><div class="aaa-empty" id="aaa-empty" style="display: none;">Sem dados suficientes — importe a planilha.</div></div>
 
 <!-- ══ PÁGINA: RESUMO EXECUTIVO ══ -->
-<div class="page" id="page-resumo">
+<div class="page on" id="page-resumo">
+
+<!-- VEREDITO EXECUTIVO — headline única, entendível em segundos -->
+<div id="exec-veredito" style="background:linear-gradient(135deg,var(--panel),rgba(255,23,68,.04));border:1px solid var(--b);border-left:5px solid #ff1744;border-radius:var(--r);padding:26px 30px;margin-bottom:18px">
+  <div style="font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--t2);margin-bottom:10px">▸ VEREDITO DO PERÍODO</div>
+  <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+    <span id="ev-status-txt" style="font-size:2.1rem;font-weight:800;letter-spacing:.02em;color:#ff1744">🔴 SOBRECARGA</span>
+    <span id="ev-gap-pct" style="font-size:1.3rem;font-family:var(--mono);font-weight:700;color:#ff1744">-16,3%</span>
+    <span style="font-size:.72rem;color:var(--t2)">gap capacidade × demanda</span>
+  </div>
+  <div id="ev-frase" style="font-size:.95rem;color:var(--t1);line-height:1.5;max-width:900px">
+    A fábrica produziu <b id="ev-prod-inline">472.441</b> peças contra uma demanda de <b id="ev-dem-inline">564.324</b> — déficit de <b id="ev-gap-inline">91.883</b> peças no período. Isso não se resolve apertando eficiência: é capacidade instalada abaixo da demanda.
+  </div>
+  <div id="ev-acao" style="margin-top:14px;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.8rem;color:var(--t2);border-left:2px solid rgba(255,23,68,.4)">
+    <b style="color:var(--t1)">Ação recomendada:</b> avaliar aumento de capacidade (turno, headcount ou hora extra estrutural) — ou renegociar prazos de entrega com o gap atual.
+  </div>
+</div>
 
 <!-- HEADER -->
 <div style="background:var(--panel);border:1px solid var(--b);border-top:3px solid var(--cyan);border-radius:var(--r);padding:22px 26px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -3963,7 +3979,7 @@ Fórmula: Faltas + Atrasos
 </div>
 
 <!-- ══ MODAL IMPORTAÇÃO ══ -->
-<div class="overlay on" id="modImport">
+<div class="overlay" id="modImport">
   <div class="modal" style="max-width:480px">
     <h2><em>▸</em> Resultado da Importação</h2>
     <div id="importResult" style="font-size:.82rem;line-height:1.8;color:var(--t1)"><p style="margin-top:10px"><span style="color:var(--cyan);font-weight:700">↻ 18 meses atualizados:</span><br><span style="color:var(--t2);font-family:var(--mono);font-size:.75rem">JAN/2026, FEV/2026, MAR/2026, ABR/2026, MAI/2026, JUN/2026, JAN/2025, FEV/2025, MAR/2025, ABR/2025, MAI/2025, JUN/2025, JUL/2025, AGO/2025, SET/2025, OUT/2025, NOV/2025, DEZ/2025</span></p><p style="margin-top:12px;font-size:.73rem;color:var(--t3)">ℹ️ Dados atualizados com os valores mais recentes da planilha.</p></div><div id="valid-painel" class="on"><div class="valid-ttl ok">✅ Validação aprovada</div><ul class="valid-list"><li class="valid-item ok"><span class="valid-item-ico">✓</span>Todos os 24 registros passaram na validação automática.</li></ul></div>
@@ -5723,7 +5739,7 @@ function importarExcel(input){
 
       html+='<p style="margin-top:12px;font-size:.73rem;color:var(--t3)">ℹ️ Dados atualizados com os valores mais recentes da planilha.</p>';
       document.getElementById('importResult').innerHTML=html;
-      document.getElementById('modImport').classList.add('on');
+      document.getElementById('modImport').classList.remove('on'); /* Desativado a pedido: sem pop-up de confirmação */
       /* Mostrar botão Salvar se houve dados importados */
       var btnSalvar = document.getElementById('btnSalvarAposImport');
       if (btnSalvar) {
@@ -5907,7 +5923,7 @@ function bindCardTooltips(dados){
 /* ════════════════════════════════════════════════════════════
    NAVEGAÇÃO POR ABAS
 ════════════════════════════════════════════════════════════ */
-var paginaAtiva='visao';
+var paginaAtiva='resumo';
 
 function mudarPagina(id, btn){
   paginaAtiva=id;
@@ -13854,6 +13870,7 @@ input:disabled, select:disabled {
   /* ── Verificar alertas ── */
   function verificarAlertas(dados) {
     limparBanner();
+    return; /* Alertas de topo desativados a pedido — visão executiva não usa pop-ups */
     if (!dados || !dados.length) return;
     var cfg = getCfg();
 
@@ -15938,6 +15955,61 @@ function printAtiva(){
 
 
 <div id="ui-tip"></div>
+<script>
+/* ══ VEREDITO EXECUTIVO — sincroniza com o Status da Fábrica já calculado ══ */
+(function(){
+  function atualizarVeredito(){
+    var statusEl = document.getElementById('mes-sf-status');
+    var gapPctEl = document.getElementById('mes-sf-gap-pct');
+    var demEl    = document.getElementById('mes-sf-dem');
+    var prodEl   = document.getElementById('mes-sf-prod');
+    var gapEl    = document.getElementById('mes-sf-gap');
+    if (!statusEl) return;
+
+    var statusTxt = statusEl.textContent.trim();
+    var cor = statusEl.style.color || '#ff1744';
+    var ev = document.getElementById('exec-veredito');
+    if (!ev) return;
+
+    document.getElementById('ev-status-txt').textContent = statusTxt;
+    document.getElementById('ev-status-txt').style.color = cor;
+    ev.style.borderLeftColor = cor;
+
+    if (gapPctEl) {
+      var gp = gapPctEl.textContent.trim();
+      document.getElementById('ev-gap-pct').textContent = gp;
+      document.getElementById('ev-gap-pct').style.color = cor;
+    }
+    if (demEl)  document.getElementById('ev-dem-inline').textContent  = demEl.textContent.trim();
+    if (prodEl) document.getElementById('ev-prod-inline').textContent = prodEl.textContent.trim();
+    if (gapEl)  document.getElementById('ev-gap-inline').textContent  = gapEl.textContent.trim().replace(/^[+-]/,'');
+
+    /* Frase e ação mudam conforme o status */
+    var fraseEl = document.getElementById('ev-frase');
+    var acaoEl  = document.getElementById('ev-acao');
+    if (statusTxt.indexOf('SOBRECARGA') > -1) {
+      fraseEl.innerHTML = 'A fábrica produziu <b id="ev-prod-inline">'+(prodEl?prodEl.textContent.trim():'—')+'</b> peças contra uma demanda de <b id="ev-dem-inline">'+(demEl?demEl.textContent.trim():'—')+'</b> — déficit de <b id="ev-gap-inline">'+(gapEl?gapEl.textContent.trim().replace(/^[+-]/,''):'—')+'</b> peças no período. Isso não se resolve apertando eficiência: é capacidade instalada abaixo da demanda.';
+      acaoEl.innerHTML = '<b style="color:var(--t1)">Ação recomendada:</b> avaliar aumento de capacidade (turno, headcount ou hora extra estrutural) — ou renegociar prazos de entrega com o gap atual.';
+    } else if (statusTxt.indexOf('ATENÇÃO') > -1) {
+      fraseEl.innerHTML = 'A capacidade está próxima do limite da demanda — margem estreita, risco de virar sobrecarga se a demanda subir ou a eficiência cair.';
+      acaoEl.innerHTML = '<b style="color:var(--t1)">Ação recomendada:</b> monitorar de perto; não há folga para absorver picos de demanda sem hora extra.';
+    } else {
+      fraseEl.innerHTML = 'Capacidade instalada atende a demanda do período com folga. Foco pode ir para eficiência e redução de custo, não para capacidade.';
+      acaoEl.innerHTML = '<b style="color:var(--t1)">Ação recomendada:</b> nenhuma ação urgente de capacidade — priorizar iniciativas de eficiência/custo.';
+    }
+  }
+
+  /* Observa mudanças no card de status (atualiza sempre que o filtro/dado mudar) */
+  var alvo = document.getElementById('mes-sf-status');
+  if (alvo) {
+    new MutationObserver(atualizarVeredito).observe(alvo, {childList:true, characterData:true, subtree:true});
+  }
+  if (window.DashBus) window.DashBus.on && window.DashBus.on('dados:salvos', function(){ setTimeout(atualizarVeredito, 150); });
+
+  window.addEventListener('load', function(){ setTimeout(atualizarVeredito, 400); });
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(atualizarVeredito, 200); });
+})();
+</script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
