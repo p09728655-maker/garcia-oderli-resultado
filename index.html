@@ -4009,7 +4009,7 @@ Fórmula: Faltas + Atrasos
 </div>
 
 <div id="tip" class="" style="left: 1606px; top: 180px;"><div class="tip-title">Percentual de Horas Extras</div><div class="tip-row"><span class="tip-lbl">% H. extras</span><span class="tip-val a">13,0 %</span></div><div class="tip-row"><span class="tip-lbl">H. extras</span><span class="tip-val">32.920 h</span></div><div class="tip-row"><span class="tip-lbl">H. totais</span><span class="tip-val">252.625 h</span></div><div class="tip-row"><span class="tip-lbl">Fórmula</span><span class="tip-val">H. Extras ÷ H. Totais × 100</span></div><div class="tip-row"><span class="tip-lbl">Meta sugerida</span><span class="tip-val">≤ 15%</span></div><div style="border-top:1px solid var(--b);margin:5px 0"></div><div style="font-size:.62rem;color:var(--t2);margin-bottom:3px">dos 15 meses no período:</div><div class="tip-row"><span class="tip-lbl">Meses acima 15% (ruim)</span><span class="tip-val r">6 de 15</span></div></div>
-<div id="toast" class="on wn">📋 Absenteísmo alto: 12.1% (limite: 10%)</div>
+<div id="toast" class="wn"></div>
 
 <script>
 /* ════════════════════════════════════════════════════════════
@@ -15956,58 +15956,79 @@ function printAtiva(){
 
 <div id="ui-tip"></div>
 <script>
-/* ══ VEREDITO EXECUTIVO — sincroniza com o Status da Fábrica já calculado ══ */
+/* ══ VEREDITO EXECUTIVO — calcula direto dos dados (independente de outras abas) ══ */
 (function(){
-  function atualizarVeredito(){
-    var statusEl = document.getElementById('mes-sf-status');
-    var gapPctEl = document.getElementById('mes-sf-gap-pct');
-    var demEl    = document.getElementById('mes-sf-dem');
-    var prodEl   = document.getElementById('mes-sf-prod');
-    var gapEl    = document.getElementById('mes-sf-gap');
-    if (!statusEl) return;
+  var HORAS_DIA = 528/60;
+  var _DIAS_FB = { JAN:20, FEV:20, MAR:21, ABR:19, MAI:21, JUN:19,
+                   JUL:23, AGO:21, SET:22, OUT:23, NOV:19, DEZ:15 };
+  function _dias(r)  { return r.diasTrabalhados > 0 ? r.diasTrabalhados : (_DIAS_FB[r.mes] || 22); }
+  function _fat(r)   { return r.qtdeFaturado  > 0  ? r.qtdeFaturado   : (r.producaoReal  || 0); }
+  function _prod(r)  { return r.prodSemExtras > 0  ? r.prodSemExtras  : (r.producaoReal  || 0); }
+  function fmtInt(n){ return Math.round(n).toLocaleString('pt-BR'); }
+  function fmtPct(n){ var s = n>=0?'+':''; return s + n.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%'; }
 
-    var statusTxt = statusEl.textContent.trim();
-    var cor = statusEl.style.color || '#F44336';
+  function atualizarVeredito(registros){
     var ev = document.getElementById('exec-veredito');
     if (!ev) return;
+    if (!registros || !registros.length) return;
+
+    var totFat=0, totProd=0, totDias=0, totColabs=0, n=registros.length;
+    registros.forEach(function(r){
+      totFat  += _fat(r);
+      totProd += _prod(r);
+      totDias += _dias(r);
+      totColabs += (r.colaboradores || 0);
+    });
+    if (totDias <= 0 || totFat <= 0) return;
+
+    var prodDia = totProd / totDias;
+    var demDia  = totFat  / totDias;
+    var prodHora = prodDia / HORAS_DIA;
+    var demandaHora = totFat / (totDias * HORAS_DIA);
+    var capacidadeHora = prodHora;
+    var gapMes = totFat - totProd;
+    var diferenca = capacidadeHora - demandaHora;
+    var pct = demandaHora > 0 ? (diferenca/demandaHora)*100 : 0;
+
+    var statusTxt, cor;
+    if (capacidadeHora >= demandaHora)      { statusTxt = '🟢 CAPACIDADE OK'; cor = '#4CAF50'; }
+    else if (pct > -10)                     { statusTxt = '🟡 ATENÇÃO';       cor = '#FF9800'; }
+    else                                     { statusTxt = '🔴 SOBRECARGA';    cor = '#F44336'; }
 
     document.getElementById('ev-status-txt').textContent = statusTxt;
     document.getElementById('ev-status-txt').style.color = cor;
+    document.getElementById('ev-gap-pct').textContent = fmtPct(pct);
+    document.getElementById('ev-gap-pct').style.color = cor;
     ev.style.borderLeftColor = cor;
 
-    if (gapPctEl) {
-      var gp = gapPctEl.textContent.trim();
-      document.getElementById('ev-gap-pct').textContent = gp;
-      document.getElementById('ev-gap-pct').style.color = cor;
-    }
-    if (demEl)  document.getElementById('ev-dem-inline').textContent  = demEl.textContent.trim();
-    if (prodEl) document.getElementById('ev-prod-inline').textContent = prodEl.textContent.trim();
-    if (gapEl)  document.getElementById('ev-gap-inline').textContent  = gapEl.textContent.trim().replace(/^[+-]/,'');
-
-    /* Frase e ação mudam conforme o status */
     var fraseEl = document.getElementById('ev-frase');
     var acaoEl  = document.getElementById('ev-acao');
+    var prodFmt = fmtInt(totProd), demFmt = fmtInt(totFat), gapFmt = fmtInt(Math.abs(gapMes));
+
     if (statusTxt.indexOf('SOBRECARGA') > -1) {
-      fraseEl.innerHTML = 'A fábrica produziu <b id="ev-prod-inline">'+(prodEl?prodEl.textContent.trim():'—')+'</b> peças contra uma demanda de <b id="ev-dem-inline">'+(demEl?demEl.textContent.trim():'—')+'</b> — déficit de <b id="ev-gap-inline">'+(gapEl?gapEl.textContent.trim().replace(/^[+-]/,''):'—')+'</b> peças no período. Isso não se resolve apertando eficiência: é capacidade instalada abaixo da demanda.';
+      fraseEl.innerHTML = 'A fábrica produziu <b>'+prodFmt+'</b> peças contra uma demanda de <b>'+demFmt+'</b> — déficit de <b>'+gapFmt+'</b> peças no período. Isso não se resolve apertando eficiência: é capacidade instalada abaixo da demanda.';
       acaoEl.innerHTML = '<b style="color:var(--t1)">Ação recomendada:</b> avaliar aumento de capacidade (turno, headcount ou hora extra estrutural) — ou renegociar prazos de entrega com o gap atual.';
     } else if (statusTxt.indexOf('ATENÇÃO') > -1) {
-      fraseEl.innerHTML = 'A capacidade está próxima do limite da demanda — margem estreita, risco de virar sobrecarga se a demanda subir ou a eficiência cair.';
-      acaoEl.innerHTML = '<b style="color:var(--t1)">Ação recomendada:</b> monitorar de perto; não há folga para absorver picos de demanda sem hora extra.';
+      fraseEl.innerHTML = 'A fábrica produziu <b>'+prodFmt+'</b> peças contra demanda de <b>'+demFmt+'</b> — capacidade próxima do limite, margem estreita para picos de demanda.';
+      acaoEl.innerHTML = '<b style="color:var(--t1)">Ação recomendada:</b> monitorar de perto; não há folga para absorver picos sem hora extra.';
     } else {
-      fraseEl.innerHTML = 'Capacidade instalada atende a demanda do período com folga. Foco pode ir para eficiência e redução de custo, não para capacidade.';
+      fraseEl.innerHTML = 'A fábrica produziu <b>'+prodFmt+'</b> peças contra demanda de <b>'+demFmt+'</b> — capacidade atende a demanda do período com folga.';
       acaoEl.innerHTML = '<b style="color:var(--t1)">Ação recomendada:</b> nenhuma ação urgente de capacidade — priorizar iniciativas de eficiência/custo.';
     }
   }
 
-  /* Observa mudanças no card de status (atualiza sempre que o filtro/dado mudar) */
-  var alvo = document.getElementById('mes-sf-status');
-  if (alvo) {
-    new MutationObserver(atualizarVeredito).observe(alvo, {childList:true, characterData:true, subtree:true});
+  if (window.DashBus) {
+    window.DashBus.on('render:feito', function(p){ atualizarVeredito(p.dados); });
   }
-  if (window.DashBus) window.DashBus.on && window.DashBus.on('dados:salvos', function(){ setTimeout(atualizarVeredito, 150); });
-
-  window.addEventListener('load', function(){ setTimeout(atualizarVeredito, 400); });
-  document.addEventListener('DOMContentLoaded', function(){ setTimeout(atualizarVeredito, 200); });
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      try {
+        if (typeof load === 'function' && typeof getDados === 'function') {
+          atualizarVeredito(getDados(load()));
+        }
+      } catch(e){}
+    }, 500);
+  });
 })();
 </script>
 <script>
