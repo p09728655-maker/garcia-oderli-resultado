@@ -4237,6 +4237,38 @@ function _syncStatus(estado){
   }
 }
 
+/* ── BUSCA AUTOMÁTICA DO SHEETS AO ABRIR (GET) — sobrescreve dados locais ──
+   Garante que qualquer computador que abra o dashboard veja os mesmos dados,
+   sem depender do que está salvo no localStorage daquela máquina. */
+var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFaltaAtraso',
+  'absenteismo','horasNormais','extra50','extra100','totalExtras','horasTotais',
+  'producaoReal','prodSemExtras','meta','eficiencia','eficienciaAdj','margem',
+  'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida'];
+
+function _carregarDoSheetsAoAbrir(){
+  if (!SHEETS_WEBAPP_URL) return;
+  fetch(SHEETS_WEBAPP_URL)
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if (!json || !json.ok || !json.dados || !json.dados.length) return;
+      var dados = json.dados.map(function(r){
+        var rec = Object.assign({id: uid()}, r);
+        CAMPOS_NUM.forEach(function(c){ rec[c] = Number(rec[c]) || 0; });
+        rec.mes = String(rec.mes || '').trim();
+        return rec;
+      });
+      localStorage.setItem(SK, JSON.stringify(dados));
+      _idbSave(dados);
+      if (typeof render === 'function') render();
+      if (window.DashBus) window.DashBus.emit('dados:salvos', dados);
+      console.info('Dados carregados do Google Sheets: ' + dados.length + ' registros.');
+    })
+    .catch(function(err){
+      console.warn('Não foi possível buscar dados do Sheets (usando dados locais):', err);
+    });
+}
+window.addEventListener('load', function(){ setTimeout(_carregarDoSheetsAoAbrir, 300); });
+
 /* ── SALVAR / CARREGAR JSON ── */
 function salvarJSON(){
   var d=load();
