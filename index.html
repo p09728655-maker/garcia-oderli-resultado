@@ -2292,6 +2292,11 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div class="kCard kc"><div class="kLbl">Meta Acumulada</div><div class="kVal" id="kv5-meta">539.517 pç</div><div class="kSub">Cap. teórica s/ extras</div></div>
     <div class="kCard ka" id="card5-var"><div class="kLbl">Atingimento Médio</div><div class="kVal" id="kv5-var" style="color: var(--amber);">87,6%</div><div class="kSub">Prod. s/ extras ÷ Meta</div></div>
   </div>
+  <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:12px">
+    <div class="kCard kp"><div class="kLbl">Previsão Total</div><div class="kVal" id="kv5-prev">—</div><div class="kSub" id="ks5-prev">Soma prevista (pç)</div></div>
+    <div class="kCard ka" id="card5-prevce"><div class="kLbl">Realizado c/ Extras vs Previsão</div><div class="kVal" id="kv5-prevce">—</div><div class="kSub">Produção real ÷ Previsão</div></div>
+    <div class="kCard ka" id="card5-prevse"><div class="kLbl">Realizado s/ Extras vs Previsão</div><div class="kVal" id="kv5-prevse">—</div><div class="kSub">Prod. s/ extras ÷ Previsão</div></div>
+  </div>
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
@@ -4243,7 +4248,7 @@ function _syncStatus(estado){
 var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFaltaAtraso',
   'absenteismo','horasNormais','extra50','extra100','totalExtras','horasTotais',
   'producaoReal','prodSemExtras','meta','eficiencia','eficienciaAdj','margem',
-  'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida'];
+  'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao'];
 
 function _carregarDoSheetsAoAbrir(){
   if (!SHEETS_WEBAPP_URL) return;
@@ -6045,6 +6050,32 @@ function renderKPIsExtras(d){
     if(c5){c5.className='kCard '+(at5>=90?'kg':at5>=80?'ka':'kr');}
   }
   s('ks5-best', bestMes);
+
+  // Previsão de Produção vs Realizado (com e sem extras)
+  var tPrev5=0, tProdCE5=0, tProdSE5=0, nPrev5=0;
+  d.forEach(function(r){
+    if((r.previsaoProducao||0)>0){
+      tPrev5+=r.previsaoProducao;
+      tProdCE5+=(r.producaoReal||0);
+      tProdSE5+=(r.prodSemExtras||0);
+      nPrev5++;
+    }
+  });
+  if(tPrev5>0){
+    s('kv5-prev', fi(tPrev5)+' pç');
+    s('ks5-prev', nPrev5+' mês(es) com previsão informada');
+    var pctCE=(tProdCE5/tPrev5)*100;
+    var pctSE=(tProdSE5/tPrev5)*100;
+    var elCE=document.getElementById('kv5-prevce');
+    if(elCE){elCE.textContent=f(pctCE)+'%'; elCE.style.color=pctCE>=100?'var(--green)':pctCE>=90?'var(--amber)':'var(--red)';}
+    var elSE=document.getElementById('kv5-prevse');
+    if(elSE){elSE.textContent=f(pctSE)+'%'; elSE.style.color=pctSE>=100?'var(--green)':pctSE>=90?'var(--amber)':'var(--red)';}
+    var cCE=document.getElementById('card5-prevce'); if(cCE)cCE.className='kCard '+(pctCE>=100?'kg':pctCE>=90?'ka':'kr');
+    var cSE=document.getElementById('card5-prevse'); if(cSE)cSE.className='kCard '+(pctSE>=100?'kg':pctSE>=90?'ka':'kr');
+  } else {
+    s('kv5-prev','—'); s('ks5-prev','Nenhum mês com previsão informada');
+    s('kv5-prevce','—'); s('kv5-prevse','—');
+  }
 }
 
 var META_ABS=3;
