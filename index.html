@@ -50,6 +50,8 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   background-size:40px 40px}
 #app{position:relative;z-index:1;width:96%;max-width:2200px;margin:0 auto;padding:16px 0 80px}
 .layout{display:flex;gap:16px;align-items:flex-start}
+.layout.sb-hidden .sidebar{display:none}
+#btnSidebar.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
 .sidebar{width:190px;flex-shrink:0;position:sticky;top:16px;display:flex;flex-direction:column;gap:12px}
 .main{flex:1;min-width:0}
 
@@ -1698,7 +1700,10 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       Novo Mês
     </button>
   </div>
-  <button id="btn-abrir-metas" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path></svg>Metas <span id="metas-badge-cnt" class="metas-badge inativa">padrão</span></button><button id="btn-abrir-alertas" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path></svg>Alertas <span id="alertas-badge" class="alertas-badge ativo">2 ativos</span></button><button class="btn btn-g" id="btnTV" onclick="toggleTVMode()" title="Modo Apresentação — TV 60&quot;+" style="padding:9px 11px;flex-shrink:0">
+  <button id="btn-abrir-metas" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path></svg>Metas <span id="metas-badge-cnt" class="metas-badge inativa">padrão</span></button><button id="btn-abrir-alertas" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path></svg>Alertas <span id="alertas-badge" class="alertas-badge ativo">2 ativos</span></button><button class="btn btn-g" id="btnSidebar" onclick="toggleSidebar()" title="Ocultar/mostrar painel lateral" style="padding:9px 11px;flex-shrink:0">
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1zm5 2H5v12h4V6zm2 0v12h9V6h-9z"></path></svg>
+  </button>
+  <button class="btn btn-g" id="btnTV" onclick="toggleTVMode()" title="Modo Apresentação — TV 60&quot;+" style="padding:9px 11px;flex-shrink:0">
     <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"></path></svg>
   </button>
   <button class="btn btn-g" id="btnTema" onclick="abrirTema()" title="Mudar cor do fundo" style="padding:9px 11px;flex-shrink:0">
@@ -8366,6 +8371,38 @@ function cfInicializar() {
 
 })();
 /* ══ FIM MODO TV ══ */
+
+/* ════════════════════════════════════════════════════════════════
+   MÓDULO — TOGGLE SIDEBAR (ocultar/mostrar painel lateral de filtros)
+════════════════════════════════════════════════════════════════ */
+(function () {
+  var SB_KEY = 'dash_sidebar_hidden';
+
+  function aplicarEstado(hidden) {
+    var layout = document.querySelector('.layout');
+    var btn = document.getElementById('btnSidebar');
+    if (layout) layout.classList.toggle('sb-hidden', hidden);
+    if (btn) btn.classList.toggle('on', hidden);
+    /* Redesenha gráficos — a largura do .main muda quando a sidebar some */
+    setTimeout(function () {
+      if (typeof drawAll === 'function' && typeof getDados === 'function' && typeof load === 'function') {
+        drawAll(getDados(load()));
+      }
+    }, 150);
+  }
+
+  window.toggleSidebar = function () {
+    var layout = document.querySelector('.layout');
+    var hidden = layout ? !layout.classList.contains('sb-hidden') : true;
+    localStorage.setItem(SB_KEY, hidden ? '1' : '0');
+    aplicarEstado(hidden);
+    if (typeof toast === 'function') toast(hidden ? '◀ Painel lateral oculto' : '▶ Painel lateral visível', 'ok');
+  };
+
+  /* Restaura estado salvo */
+  if (localStorage.getItem(SB_KEY) === '1') aplicarEstado(true);
+})();
+/* ══ FIM MÓDULO TOGGLE SIDEBAR ══ */
 
 /* ════════════════════════════════════════════════════════════════
    AJUSTE CAPACIDADE v3 — Corrige cálculo de Utilização da Fábrica
