@@ -1,8 +1,8 @@
 /* Service Worker — PPCP Capacidade & Eficiência
-   Cache-first para o shell do app, permite abrir offline
+   Network-first (sem cache HTTP) para o shell do app, permite abrir offline
    com os últimos dados sincronizados. */
 
-var CACHE_NAME = 'ppcp-dashboard-v2';
+var CACHE_NAME = 'ppcp-dashboard-v3';
 var URLS_TO_CACHE = [
   '/',
   '/manifest.json',
@@ -32,13 +32,14 @@ self.addEventListener('activate', function(event){
 });
 
 self.addEventListener('fetch', function(event){
-  /* Network-first pro HTML principal (sempre tenta pegar versão nova),
+  /* Network-first pro HTML principal (sempre busca versão nova, ignorando
+     cache HTTP do navegador — evita tela desatualizada após deploy),
      cache-first pro resto (ícones, manifest) */
   var url = new URL(event.request.url);
 
   if (event.request.mode === 'navigate' || url.pathname === '/') {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-store' })
         .then(function(resp){
           var clone = resp.clone();
           caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, clone); });
