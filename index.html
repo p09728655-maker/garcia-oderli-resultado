@@ -14363,16 +14363,17 @@ input:disabled, select:disabled {
   }
 
   /* ── Tabela mensal — Previsão x Realizado x Horas ── */
-  function buildTabelaPrevisao(dados) {
+  function buildTabelaPrevisaoProgramado(dados) {
     if (!dados || !dados.length) return '';
     var ORDEM = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-    var linhas = dados.filter(function(r){ return (r.previsaoProducao||0) > 0 || (r.horasCarga||0) > 0; });
-    if (!linhas.length) return '<div class="aviso">Nenhum m\u00eas com Previs\u00e3o de Produ\u00e7\u00e3o ou Horas Carga informado na planilha.</div>';
+    var linhas = dados.filter(function(r){ return (r.previsaoProducao||0) > 0 || (r.meta||0) > 0; });
+    if (!linhas.length) return '<div class="aviso">Nenhum m\u00eas com Previs\u00e3o ou Programado (Meta) informado na planilha.</div>';
     var sorted = linhas.slice().sort(function(a,b){
       if (a.ano !== b.ano) return b.ano - a.ano;
       return ORDEM.indexOf(a.mes) - ORDEM.indexOf(b.mes);
     });
     function fN(v,d){ return v||v===0 ? Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}) : '\u2014'; }
+    function cls(v){ if(v===null) return ''; return v>=100?'v':v>=90?'y':'r'; }
     var rows = sorted.map(function(r){
       var prev = r.previsaoProducao || 0;
       var atCE = prev > 0 ? (r.producaoReal / prev) * 100 : null;
@@ -14380,21 +14381,46 @@ input:disabled, select:disabled {
       var prog = r.meta || 0;
       var atProgCE = prog > 0 ? (r.producaoReal / prog) * 100 : null;
       var atProgSE = prog > 0 ? ((r.prodSemExtras || 0) / prog) * 100 : null;
-      var carga = r.horasCarga || 0;
-      var pctHN = carga > 0 ? (r.horasNormais / carga) * 100 : null;
-      var pctExt = carga > 0 ? (r.totalExtras / carga) * 100 : null;
-      function cls(v,inv){ if(v===null) return ''; if(!inv) return v>=100?'v':v>=90?'y':'r'; return v<=10?'v':v<=15?'y':'r'; }
       return '<tr>'
         + '<td>' + esc(r.mes) + '/' + r.ano + '</td>'
         + '<td class="num">' + (prev>0?fN(prev):'\u2014') + '</td>'
+        + '<td class="num">' + (prog>0?fN(prog):'\u2014') + '</td>'
         + '<td class="num">' + fN(r.producaoReal) + '</td>'
         + '<td class="num">' + fN(r.prodSemExtras) + '</td>'
         + '<td class="num ' + cls(atCE) + '">' + (atCE!==null?fN(atCE,1)+'%':'\u2014') + '</td>'
         + '<td class="num ' + cls(atSE) + '">' + (atSE!==null?fN(atSE,1)+'%':'\u2014') + '</td>'
-        + '<td class="num">' + (prog>0?fN(prog):'\u2014') + '</td>'
         + '<td class="num ' + cls(atProgCE) + '">' + (atProgCE!==null?fN(atProgCE,1)+'%':'\u2014') + '</td>'
         + '<td class="num ' + cls(atProgSE) + '">' + (atProgSE!==null?fN(atProgSE,1)+'%':'\u2014') + '</td>'
-        + '<td class="num">' + (carga>0?fN(carga):'\u2014') + '</td>'
+        + '</tr>';
+    }).join('');
+    return '<table class="dtable">'
+      + '<thead><tr>'
+      + '<th>M\u00eas</th><th class="num">Previs\u00e3o</th><th class="num">Programado</th>'
+      + '<th class="num">Real. c/Ex</th><th class="num">Real. s/Ex</th>'
+      + '<th class="num">Prev. c/Ex</th><th class="num">Prev. s/Ex</th>'
+      + '<th class="num">Prog. c/Ex</th><th class="num">Prog. s/Ex</th>'
+      + '</tr></thead>'
+      + '<tbody>' + rows + '</tbody></table>';
+  }
+
+  function buildTabelaHorasCapacidade(dados) {
+    if (!dados || !dados.length) return '';
+    var ORDEM = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    var linhas = dados.filter(function(r){ return (r.horasCarga||0) > 0; });
+    if (!linhas.length) return '<div class="aviso">Nenhum m\u00eas com Horas Carga informado na planilha.</div>';
+    var sorted = linhas.slice().sort(function(a,b){
+      if (a.ano !== b.ano) return b.ano - a.ano;
+      return ORDEM.indexOf(a.mes) - ORDEM.indexOf(b.mes);
+    });
+    function fN(v,d){ return v||v===0 ? Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}) : '\u2014'; }
+    var rows = sorted.map(function(r){
+      var carga = r.horasCarga || 0;
+      var pctHN = carga > 0 ? (r.horasNormais / carga) * 100 : null;
+      var pctExt = carga > 0 ? (r.totalExtras / carga) * 100 : null;
+      function cls(v,inv){ if(v===null) return ''; if(!inv) return v>=90?'v':v>=75?'y':'r'; return v<=10?'v':v<=15?'y':'r'; }
+      return '<tr>'
+        + '<td>' + esc(r.mes) + '/' + r.ano + '</td>'
+        + '<td class="num">' + fN(carga) + '</td>'
         + '<td class="num">' + fN(r.horasNormais) + '</td>'
         + '<td class="num">' + fN(r.totalExtras) + '</td>'
         + '<td class="num ' + cls(pctHN) + '">' + (pctHN!==null?fN(pctHN,1)+'%':'\u2014') + '</td>'
@@ -14403,10 +14429,7 @@ input:disabled, select:disabled {
     }).join('');
     return '<table class="dtable">'
       + '<thead><tr>'
-      + '<th>M\u00eas</th><th class="num">Previs\u00e3o</th><th class="num">Real. c/Extras</th><th class="num">Real. s/Extras</th>'
-      + '<th class="num">Ating. c/Extras</th><th class="num">Ating. s/Extras</th>'
-      + '<th class="num">Programado</th><th class="num">Ating.Prog. c/Ex</th><th class="num">Ating.Prog. s/Ex</th>'
-      + '<th class="num">H.Carga</th><th class="num">H.Normais</th><th class="num">H.Extras</th>'
+      + '<th>M\u00eas</th><th class="num">H.Carga</th><th class="num">H.Normais</th><th class="num">H.Extras</th>'
       + '<th class="num">%Norm/Carga</th><th class="num">%Extras/Carga</th>'
       + '</tr></thead>'
       + '<tbody>' + rows + '</tbody></table>';
@@ -14616,8 +14639,10 @@ input:disabled, select:disabled {
           {l:'H. Normais vs Carga',   v:txt('kv2-hnpct'),   cls:'v'},
           {l:'H. Extras vs Carga',    v:txt('kv2-extpct'),  cls:'y'}
         ],3)
-      + secHdr('Detalhamento por M\u00eas')
-      + buildTabelaPrevisao(dados)
+      + secHdr('Detalhamento por M\u00eas — Previs\u00e3o \u00d7 Programado')
+      + buildTabelaPrevisaoProgramado(dados)
+      + secHdr('Detalhamento por M\u00eas — Horas')
+      + buildTabelaHorasCapacidade(dados)
       + '<div class="aviso">Legenda: <span class="v">\u25cf Verde</span> = dentro/acima do esperado \u00b7 <span class="y">\u25cf Amarelo</span> = aten\u00e7\u00e3o \u00b7 <span class="r">\u25cf Vermelho</span> = cr\u00edtico</div>'
       + '<div class="footer"><span>Patrimar M\u00f3veis Ltda \u2014 PCP</span><span>Gerado em ' + dataGer + '</span></div>';
 
