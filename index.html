@@ -14319,6 +14319,49 @@ input:disabled, select:disabled {
       + '<tbody>' + rows + '</tbody></table>';
   }
 
+  /* ── Tabela mensal — Previsão x Realizado x Horas ── */
+  function buildTabelaPrevisao(dados) {
+    if (!dados || !dados.length) return '';
+    var ORDEM = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    var linhas = dados.filter(function(r){ return (r.previsaoProducao||0) > 0 || (r.horasCarga||0) > 0; });
+    if (!linhas.length) return '<div class="aviso">Nenhum m\u00eas com Previs\u00e3o de Produ\u00e7\u00e3o ou Horas Carga informado na planilha.</div>';
+    var sorted = linhas.slice().sort(function(a,b){
+      if (a.ano !== b.ano) return b.ano - a.ano;
+      return ORDEM.indexOf(a.mes) - ORDEM.indexOf(b.mes);
+    });
+    function fN(v,d){ return v||v===0 ? Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}) : '\u2014'; }
+    var rows = sorted.map(function(r){
+      var prev = r.previsaoProducao || 0;
+      var atCE = prev > 0 ? (r.producaoReal / prev) * 100 : null;
+      var atSE = prev > 0 ? ((r.prodSemExtras || 0) / prev) * 100 : null;
+      var carga = r.horasCarga || 0;
+      var pctHN = carga > 0 ? (r.horasNormais / carga) * 100 : null;
+      var pctExt = carga > 0 ? (r.totalExtras / carga) * 100 : null;
+      function cls(v,inv){ if(v===null) return ''; if(!inv) return v>=100?'v':v>=90?'y':'r'; return v<=10?'v':v<=15?'y':'r'; }
+      return '<tr>'
+        + '<td>' + esc(r.mes) + '/' + r.ano + '</td>'
+        + '<td class="num">' + (prev>0?fN(prev):'\u2014') + '</td>'
+        + '<td class="num">' + fN(r.producaoReal) + '</td>'
+        + '<td class="num">' + fN(r.prodSemExtras) + '</td>'
+        + '<td class="num ' + cls(atCE) + '">' + (atCE!==null?fN(atCE,1)+'%':'\u2014') + '</td>'
+        + '<td class="num ' + cls(atSE) + '">' + (atSE!==null?fN(atSE,1)+'%':'\u2014') + '</td>'
+        + '<td class="num">' + (carga>0?fN(carga):'\u2014') + '</td>'
+        + '<td class="num">' + fN(r.horasNormais) + '</td>'
+        + '<td class="num">' + fN(r.totalExtras) + '</td>'
+        + '<td class="num ' + cls(pctHN) + '">' + (pctHN!==null?fN(pctHN,1)+'%':'\u2014') + '</td>'
+        + '<td class="num ' + cls(pctExt,true) + '">' + (pctExt!==null?fN(pctExt,1)+'%':'\u2014') + '</td>'
+        + '</tr>';
+    }).join('');
+    return '<table class="dtable">'
+      + '<thead><tr>'
+      + '<th>M\u00eas</th><th class="num">Previs\u00e3o</th><th class="num">Real. c/Extras</th><th class="num">Real. s/Extras</th>'
+      + '<th class="num">Ating. c/Extras</th><th class="num">Ating. s/Extras</th>'
+      + '<th class="num">H.Carga</th><th class="num">H.Normais</th><th class="num">H.Extras</th>'
+      + '<th class="num">%Norm/Carga</th><th class="num">%Extras/Carga</th>'
+      + '</tr></thead>'
+      + '<tbody>' + rows + '</tbody></table>';
+  }
+
   /* ── CSS da janela de impressão ── */
   var _css = [
     '@page{size:A4 portrait;margin:14mm 16mm 16mm 16mm}',
@@ -14502,6 +14545,26 @@ input:disabled, select:disabled {
       + gg([['cMetaReal','Meta vs. Real'],['cProd2','Produ\u00e7\u00e3o Mensal'],['cTkt2','Ticket M\u00e9dio'],['cDeltaProd','Varia\u00e7\u00e3o Produ\u00e7\u00e3o']])
       + '<div class="footer"><span>Patrimar M\u00f3veis Ltda \u2014 PCP</span><span>Gerado em ' + dataGer + '</span></div>';
 
+    /* ══ PÁG 5B — PREVISÃO × CAPACIDADE ══ */
+    var p5b = pb()
+      + pgHdr('Previs\u00e3o \u00d7 Capacidade', 'Previs\u00e3o de Produ\u00e7\u00e3o vs Realizado (c/ e s/ extras) \u00b7 Horas Carga vs Normais vs Extras')
+      + secHdr('Previs\u00e3o de Produ\u00e7\u00e3o vs Realizado')
+      + kRow([
+          {l:'Previs\u00e3o Total',              v:txt('kv5-prev'),    cls:'b'},
+          {l:'Realizado c/Extras vs Previs\u00e3o', v:txt('kv5-prevce'), cls:'v'},
+          {l:'Realizado s/Extras vs Previs\u00e3o', v:txt('kv5-prevse'), cls:'v'}
+        ],3)
+      + secHdr('Horas Carga vs Normais vs Extras')
+      + kRow([
+          {l:'H. Carga Total',        v:txt('kv2-carga'),   cls:'b'},
+          {l:'H. Normais vs Carga',   v:txt('kv2-hnpct'),   cls:'v'},
+          {l:'H. Extras vs Carga',    v:txt('kv2-extpct'),  cls:'y'}
+        ],3)
+      + secHdr('Detalhamento por M\u00eas')
+      + buildTabelaPrevisao(dados)
+      + '<div class="aviso">Legenda: <span class="v">\u25cf Verde</span> = dentro/acima do esperado \u00b7 <span class="y">\u25cf Amarelo</span> = aten\u00e7\u00e3o \u00b7 <span class="r">\u25cf Vermelho</span> = cr\u00edtico</div>'
+      + '<div class="footer"><span>Patrimar M\u00f3veis Ltda \u2014 PCP</span><span>Gerado em ' + dataGer + '</span></div>';
+
     /* ══ PÁG 6 — RESUMO EXECUTIVO ══ */
     var p6 = pb()
       + pgHdr('Resumo Executivo', 'Vis\u00e3o consolidada para gest\u00e3o')
@@ -14574,7 +14637,7 @@ input:disabled, select:disabled {
     var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
       + '<title>Relat\u00f3rio \u2014 Capacidade &amp; Efici\u00eancia</title>'
       + '<style>' + _css + '</style></head><body>'
-      + capa + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10 + p11
+      + capa + p1 + p2 + p3 + p4 + p5 + p5b + p6 + p7 + p8 + p9 + p10 + p11
       + '</body></html>';
 
     var win = window.open('', '_blank', 'width=920,height=1100,scrollbars=yes');
