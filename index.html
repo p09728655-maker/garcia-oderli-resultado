@@ -2389,7 +2389,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     </div>
     <div>
       <div class="pageHdrTitle">Previsão × Capacidade</div>
-      <div class="pageHdrSub">Previsão de Produção vs Realizado (c/ e s/ horas extras) · Horas Carga vs Normais vs Extras</div>
+      <div class="pageHdrSub">Previsão vs Realizado · Programado vs Realizado · Horas Carga vs Normais vs Extras</div>
     </div>
   </div>
 
@@ -2398,6 +2398,13 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div class="kCard kp"><div class="kLbl">Previsão Total</div><div class="kVal" id="kv5-prev">—</div><div class="kSub" id="ks5-prev">Soma prevista (pç)</div></div>
     <div class="kCard ka" id="card5-prevce"><div class="kLbl">Realizado c/ Extras vs Previsão</div><div class="kVal" id="kv5-prevce">—</div><div class="kSub">Produção real ÷ Previsão</div></div>
     <div class="kCard ka" id="card5-prevse"><div class="kLbl">Realizado s/ Extras vs Previsão</div><div class="kVal" id="kv5-prevse">—</div><div class="kSub">Prod. s/ extras ÷ Previsão</div></div>
+  </div>
+
+  <div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:20px 0 10px;padding-left:2px">▸ Quantidade de Produtos: Programado vs Realizado</div>
+  <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+    <div class="kCard kp"><div class="kLbl">Programado Total</div><div class="kVal" id="kv5-prog">—</div><div class="kSub" id="ks5-prog">Soma da Meta (pç)</div></div>
+    <div class="kCard ka" id="card5-progce"><div class="kLbl">Realizado c/ Extras vs Programado</div><div class="kVal" id="kv5-progce">—</div><div class="kSub">Produção real ÷ Programado</div></div>
+    <div class="kCard ka" id="card5-progse"><div class="kLbl">Realizado s/ Extras vs Programado</div><div class="kVal" id="kv5-progse">—</div><div class="kSub">Prod. s/ extras ÷ Programado</div></div>
   </div>
 
   <div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:20px 0 10px;padding-left:2px">▸ Horas Carga vs Normais vs Extras</div>
@@ -2418,6 +2425,9 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
           <th style="text-align:right">Realizado s/ Extras</th>
           <th style="text-align:right">Atingim. c/ Extras</th>
           <th style="text-align:right">Atingim. s/ Extras</th>
+          <th style="text-align:right">Programado</th>
+          <th style="text-align:right">Ating.Prog. c/ Extras</th>
+          <th style="text-align:right">Ating.Prog. s/ Extras</th>
           <th style="text-align:right">H. Carga</th>
           <th style="text-align:right">H. Normais</th>
           <th style="text-align:right">H. Extras</th>
@@ -6032,7 +6042,8 @@ function renderKPIsExtras(d){
     ['kv2-cap','kv2-hn','kv2-ext','kv2-hfp','kv2-carga','kv2-hnpct','kv2-extpct',
      'kv3-ef','kv3-oee','kv3-acima','kv3-abaixo',
      'kv4-abs','kv4-fat','kv4-atr','kv4-acima',
-     'kv5-prod','kv5-med','kv5-tkt','kv5-best','kv5-meta','kv5-var'].forEach(function(id){s(id,'--')});
+     'kv5-prod','kv5-med','kv5-tkt','kv5-best','kv5-meta','kv5-var',
+     'kv5-prog','kv5-progce','kv5-progse'].forEach(function(id){s(id,'--')});
     return
   }
 
@@ -6130,6 +6141,32 @@ function renderKPIsExtras(d){
     s('kv5-prevce','—'); s('kv5-prevse','—');
   }
 
+  // Quantidade de Produtos: Programado (Meta) vs Realizado (com e sem extras)
+  var tProg5=0, tProgCE5=0, tProgSE5=0, nProg5=0;
+  d.forEach(function(r){
+    if((r.meta||0)>0){
+      tProg5+=r.meta;
+      tProgCE5+=(r.producaoReal||0);
+      tProgSE5+=(r.prodSemExtras||0);
+      nProg5++;
+    }
+  });
+  if(tProg5>0){
+    s('kv5-prog', fi(tProg5)+' pç');
+    s('ks5-prog', nProg5+' mês(es) com programação (meta) informada');
+    var pctProgCE=(tProgCE5/tProg5)*100;
+    var pctProgSE=(tProgSE5/tProg5)*100;
+    var elProgCE=document.getElementById('kv5-progce');
+    if(elProgCE){elProgCE.textContent=f(pctProgCE)+'%'; elProgCE.style.color=pctProgCE>=100?'var(--green)':pctProgCE>=90?'var(--amber)':'var(--red)';}
+    var elProgSE=document.getElementById('kv5-progse');
+    if(elProgSE){elProgSE.textContent=f(pctProgSE)+'%'; elProgSE.style.color=pctProgSE>=100?'var(--green)':pctProgSE>=90?'var(--amber)':'var(--red)';}
+    var cProgCE=document.getElementById('card5-progce'); if(cProgCE)cProgCE.className='kCard '+(pctProgCE>=100?'kg':pctProgCE>=90?'ka':'kr');
+    var cProgSE=document.getElementById('card5-progse'); if(cProgSE)cProgSE.className='kCard '+(pctProgSE>=100?'kg':pctProgSE>=90?'ka':'kr');
+  } else {
+    s('kv5-prog','—'); s('ks5-prog','Nenhum mês com programação informada');
+    s('kv5-progce','—'); s('kv5-progse','—');
+  }
+
   // Tabela mensal — Previsão x Realizado x Horas
   var ptbody = document.getElementById('previsao-tbody');
   if (ptbody) {
@@ -6145,6 +6182,9 @@ function renderKPIsExtras(d){
         var prev = r.previsaoProducao || 0;
         var atCE = prev > 0 ? (r.producaoReal / prev) * 100 : null;
         var atSE = prev > 0 ? ((r.prodSemExtras || 0) / prev) * 100 : null;
+        var prog = r.meta || 0;
+        var atProgCE = prog > 0 ? (r.producaoReal / prog) * 100 : null;
+        var atProgSE = prog > 0 ? ((r.prodSemExtras || 0) / prog) * 100 : null;
         var carga = r.horasCarga || 0;
         var pctHN = carga > 0 ? (r.horasNormais / carga) * 100 : null;
         var pctExt = carga > 0 ? (r.totalExtras / carga) * 100 : null;
@@ -6157,6 +6197,9 @@ function renderKPIsExtras(d){
           + '<td style="text-align:right">'+fi(r.prodSemExtras||0)+'</td>'
           + '<td style="text-align:right;'+corAt(atCE)+'">'+(atCE!==null?f(atCE)+'%':'—')+'</td>'
           + '<td style="text-align:right;'+corAt(atSE)+'">'+(atSE!==null?f(atSE)+'%':'—')+'</td>'
+          + '<td style="text-align:right">'+(prog>0?fi(prog):'—')+'</td>'
+          + '<td style="text-align:right;'+corAt(atProgCE)+'">'+(atProgCE!==null?f(atProgCE)+'%':'—')+'</td>'
+          + '<td style="text-align:right;'+corAt(atProgSE)+'">'+(atProgSE!==null?f(atProgSE)+'%':'—')+'</td>'
           + '<td style="text-align:right">'+(carga>0?fi(carga):'—')+'</td>'
           + '<td style="text-align:right">'+fi(r.horasNormais||0)+'</td>'
           + '<td style="text-align:right">'+fi(r.totalExtras||0)+'</td>'
@@ -14334,6 +14377,9 @@ input:disabled, select:disabled {
       var prev = r.previsaoProducao || 0;
       var atCE = prev > 0 ? (r.producaoReal / prev) * 100 : null;
       var atSE = prev > 0 ? ((r.prodSemExtras || 0) / prev) * 100 : null;
+      var prog = r.meta || 0;
+      var atProgCE = prog > 0 ? (r.producaoReal / prog) * 100 : null;
+      var atProgSE = prog > 0 ? ((r.prodSemExtras || 0) / prog) * 100 : null;
       var carga = r.horasCarga || 0;
       var pctHN = carga > 0 ? (r.horasNormais / carga) * 100 : null;
       var pctExt = carga > 0 ? (r.totalExtras / carga) * 100 : null;
@@ -14345,6 +14391,9 @@ input:disabled, select:disabled {
         + '<td class="num">' + fN(r.prodSemExtras) + '</td>'
         + '<td class="num ' + cls(atCE) + '">' + (atCE!==null?fN(atCE,1)+'%':'\u2014') + '</td>'
         + '<td class="num ' + cls(atSE) + '">' + (atSE!==null?fN(atSE,1)+'%':'\u2014') + '</td>'
+        + '<td class="num">' + (prog>0?fN(prog):'\u2014') + '</td>'
+        + '<td class="num ' + cls(atProgCE) + '">' + (atProgCE!==null?fN(atProgCE,1)+'%':'\u2014') + '</td>'
+        + '<td class="num ' + cls(atProgSE) + '">' + (atProgSE!==null?fN(atProgSE,1)+'%':'\u2014') + '</td>'
         + '<td class="num">' + (carga>0?fN(carga):'\u2014') + '</td>'
         + '<td class="num">' + fN(r.horasNormais) + '</td>'
         + '<td class="num">' + fN(r.totalExtras) + '</td>'
@@ -14356,6 +14405,7 @@ input:disabled, select:disabled {
       + '<thead><tr>'
       + '<th>M\u00eas</th><th class="num">Previs\u00e3o</th><th class="num">Real. c/Extras</th><th class="num">Real. s/Extras</th>'
       + '<th class="num">Ating. c/Extras</th><th class="num">Ating. s/Extras</th>'
+      + '<th class="num">Programado</th><th class="num">Ating.Prog. c/Ex</th><th class="num">Ating.Prog. s/Ex</th>'
       + '<th class="num">H.Carga</th><th class="num">H.Normais</th><th class="num">H.Extras</th>'
       + '<th class="num">%Norm/Carga</th><th class="num">%Extras/Carga</th>'
       + '</tr></thead>'
@@ -14547,12 +14597,18 @@ input:disabled, select:disabled {
 
     /* ══ PÁG 5B — PREVISÃO × CAPACIDADE ══ */
     var p5b = pb()
-      + pgHdr('Previs\u00e3o \u00d7 Capacidade', 'Previs\u00e3o de Produ\u00e7\u00e3o vs Realizado (c/ e s/ extras) \u00b7 Horas Carga vs Normais vs Extras')
+      + pgHdr('Previs\u00e3o \u00d7 Capacidade', 'Previs\u00e3o vs Realizado \u00b7 Programado vs Realizado \u00b7 Horas Carga vs Normais vs Extras')
       + secHdr('Previs\u00e3o de Produ\u00e7\u00e3o vs Realizado')
       + kRow([
           {l:'Previs\u00e3o Total',              v:txt('kv5-prev'),    cls:'b'},
           {l:'Realizado c/Extras vs Previs\u00e3o', v:txt('kv5-prevce'), cls:'v'},
           {l:'Realizado s/Extras vs Previs\u00e3o', v:txt('kv5-prevse'), cls:'v'}
+        ],3)
+      + secHdr('Quantidade de Produtos: Programado vs Realizado')
+      + kRow([
+          {l:'Programado Total',                v:txt('kv5-prog'),    cls:'b'},
+          {l:'Realizado c/Extras vs Programado', v:txt('kv5-progce'), cls:'v'},
+          {l:'Realizado s/Extras vs Programado', v:txt('kv5-progse'), cls:'v'}
         ],3)
       + secHdr('Horas Carga vs Normais vs Extras')
       + kRow([
