@@ -2160,6 +2160,11 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div class="kCard kp"><div class="kLbl">H. Extras Total</div><div class="kVal" id="kv2-ext">38.413 h</div><div class="kSub">50% + 100%</div></div>
     <div class="kCard kr"><div class="kLbl">H. Perdidas (F+A)</div><div class="kVal" id="kv2-hfp">32.000 h</div><div class="kSub" id="ks2-hfp">Acumulado período</div></div>
   </div>
+  <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:12px">
+    <div class="kCard kc"><div class="kLbl">H. Carga Total</div><div class="kVal" id="kv2-carga">—</div><div class="kSub">Capacidade teórica (ERP)</div></div>
+    <div class="kCard ka" id="card2-hnpct"><div class="kLbl">H. Normais vs Carga</div><div class="kVal" id="kv2-hnpct">—</div><div class="kSub">Normais ÷ Carga</div></div>
+    <div class="kCard ka" id="card2-extpct"><div class="kLbl">H. Extras vs Carga</div><div class="kVal" id="kv2-extpct">—</div><div class="kSub">Extras ÷ Carga</div></div>
+  </div>
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
@@ -5987,17 +5992,17 @@ function renderKPIsExtras(d){
   function s(id,v){var el=document.getElementById(id);if(el) countUp(el,v)}
 
   if(!d.length){
-    ['kv2-cap','kv2-hn','kv2-ext','kv2-hfp',
+    ['kv2-cap','kv2-hn','kv2-ext','kv2-hfp','kv2-carga','kv2-hnpct','kv2-extpct',
      'kv3-ef','kv3-oee','kv3-acima','kv3-abaixo',
      'kv4-abs','kv4-fat','kv4-atr','kv4-acima',
      'kv5-prod','kv5-med','kv5-tkt','kv5-best','kv5-meta','kv5-var'].forEach(function(id){s(id,'--')});
     return
   }
 
-  var tHT=0,tHN=0,tExt=0,tF=0,tA=0,tAbs=0,tOEE=0,tEfAdj=0,tProd=0,tTkt=0,nTkt=0;
+  var tHT=0,tHN=0,tExt=0,tF=0,tA=0,tAbs=0,tOEE=0,tEfAdj=0,tProd=0,tTkt=0,nTkt=0,tCarga2=0;
   var bestProd=0,bestMes='';
   d.forEach(function(r){
-    tHT+=r.horasTotais; tHN+=r.horasNormais; tExt+=r.totalExtras;
+    tHT+=r.horasTotais; tHN+=r.horasNormais; tExt+=r.totalExtras; tCarga2+=(r.horasCarga||0);
     tF+=r.faltas; tA+=r.atraso; tAbs+=r.absenteismo;
     tOEE+=r.eficiencia; tEfAdj+=r.eficienciaAdj;
     tProd+=r.producaoReal;
@@ -6015,6 +6020,17 @@ function renderKPIsExtras(d){
   s('kv2-cap', fi(tHT)+' h');
   s('kv2-hn',  fi(tHN)+' h');
   s('kv2-ext', fi(tExt)+' h');
+  // Carga x Normais x Extras
+  s('kv2-carga', tCarga2>0?fi(tCarga2)+' h':'—');
+  if(tCarga2>0){
+    var pctHN=(tHN/tCarga2)*100, pctExt=(tExt/tCarga2)*100;
+    var elHN=document.getElementById('kv2-hnpct');
+    if(elHN){elHN.textContent=f(pctHN)+'%'; elHN.style.color=pctHN>=90?'var(--green)':pctHN>=75?'var(--amber)':'var(--red)';}
+    var elExt=document.getElementById('kv2-extpct');
+    if(elExt){elExt.textContent=f(pctExt)+'%'; elExt.style.color=pctExt<=10?'var(--green)':pctExt<=15?'var(--amber)':'var(--red)';}
+  } else {
+    s('kv2-hnpct','—'); s('kv2-extpct','—');
+  }
   // H. Perdidas acumulado
   var tHFP2=0; d.forEach(function(r){var h=calcHFP(r);if(h!==null)tHFP2+=h});
   s('kv2-hfp', tHFP2>0?fi(tHFP2)+' h':'—');
