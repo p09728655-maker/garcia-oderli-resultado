@@ -16393,7 +16393,25 @@ function printAtiva(){
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('/sw.js').catch(function(err){
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      /* Força checar por versão nova toda vez que a página abre —
+         não espera o ciclo automático (~24h) do navegador. */
+      reg.update().catch(function(){});
+
+      /* Se já havia um SW controlando a página e um novo assume o controle,
+         recarrega sozinho uma vez pra garantir HTML/JS mais recentes. */
+      var jaRecarregou = sessionStorage.getItem('sw_reload_once');
+      navigator.serviceWorker.addEventListener('controllerchange', function(){
+        if (!jaRecarregou) {
+          sessionStorage.setItem('sw_reload_once', '1');
+          window.location.reload();
+        }
+      });
+
+      /* Repete a checagem periodicamente enquanto a aba fica aberta
+         (dashboards costumam ficar abertos o dia todo em TV/monitor). */
+      setInterval(function(){ reg.update().catch(function(){}); }, 5 * 60 * 1000);
+    }).catch(function(err){
       console.warn('SW falhou ao registrar (app continua funcionando normal):', err);
     });
   });
