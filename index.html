@@ -16142,6 +16142,34 @@ function printAtiva(){
       return '<li><span class="brfg-icon">'+p.icon+'</span><span class="brfg-badge '+p.badge+'">'+p.label+'</span>'+p.texto+'</li>';
     }).join('');
 
+    /* Previsão × Capacidade — mesmo mês de referência (a) */
+    var temPrevisao = (a.previsaoProducao||0) > 0;
+    var atCE = temPrevisao ? (a.producaoReal / a.previsaoProducao) * 100 : null;
+    var atSE = temPrevisao ? (a.prodSemExtras / a.previsaoProducao) * 100 : null;
+    var pctNormCarga = a.horasCarga>0 ? (a.horasNormais / a.horasCarga) * 100 : null;
+    var pctExtCarga  = a.horasCarga>0 ? (a.totalExtras  / a.horasCarga) * 100 : null;
+
+    var previsaoKpis = temPrevisao ? [
+      {label:'Previsão de Produção', value:bFmt(a.previsaoProducao)+' pçs', cls:'neu', delta:'Meta prevista do mês'},
+      {label:'Realizado c/ Extras',  value:bFmtPct(atCE), cls: atCE>=100?'ok':(atCE>=90?'warn':'bad'),
+       delta: atCE>=100?'<span class="brfg-up">✓ Bateu a previsão</span>':'<span class="brfg-down">✗ Abaixo da previsão</span>'},
+      {label:'Realizado s/ Extras',  value:bFmtPct(atSE), cls: atSE>=100?'ok':(atSE>=90?'warn':'bad'),
+       delta: atSE<atCE-5?'<span class="brfg-down">Dependeu de hora extra</span>':'Sem grande diferença c/ extras'},
+      {label:'Horas Carga',          value:bFmt(a.horasCarga)+' h', cls:'neu', delta:'Capacidade teórica (ERP)'},
+      {label:'% Normais / Carga',    value:pctNormCarga!=null?bFmtPct(pctNormCarga):'—', cls: pctNormCarga>=90?'ok':(pctNormCarga>=75?'warn':'bad'), delta:'Coberto sem hora extra'},
+      {label:'% Extras / Carga',     value:pctExtCarga!=null?bFmtPct(pctExtCarga):'—', cls: pctExtCarga<=10?'ok':(pctExtCarga<=15?'warn':'bad'), delta:'Da capacidade em hora extra'}
+    ] : null;
+
+    var previsaoSectionHTML = temPrevisao
+      ? '<div class="brfg-kpi-grid">'+previsaoKpis.map(function(k){
+          return '<div class="brfg-kpi-card '+k.cls+'">'
+            +'<div class="brfg-kpi-label">'+k.label+'</div>'
+            +'<div class="brfg-kpi-value">'+k.value+'</div>'
+            +'<div class="brfg-kpi-delta">'+k.delta+'</div>'
+          +'</div>';
+        }).join('')+'</div>'
+      : '<p style="font-size:12px;color:#718096;padding:8px 0">Previsão de Produção não informada na planilha para '+mesNome+'/'+a.ano+'.</p>';
+
     document.getElementById('brfg-content').innerHTML=
       '<div class="brfg-header">'
        +'<div class="brfg-label">PPCP — Planejamento e Controle da Produção</div>'
@@ -16157,7 +16185,7 @@ function printAtiva(){
        +'</div>'
       +'</div>'
       +'<div class="brfg-body">'
-        +'<div class="brfg-section">'
+        +'<div class="brfg-section" id="brfg-sec-kpis">'
           +'<div class="brfg-section-title">Indicadores-Chave — '+mesNome+'/'+a.ano+'</div>'
           +'<div class="brfg-kpi-grid">'+kpis.map(function(k){
             return '<div class="brfg-kpi-card '+k.cls+'">'
@@ -16167,7 +16195,11 @@ function printAtiva(){
             +'</div>';
           }).join('')+'</div>'
         +'</div>'
-        +'<div class="brfg-section">'
+        +'<div class="brfg-section" id="brfg-sec-previsao">'
+          +'<div class="brfg-section-title">Previsão × Capacidade — '+mesNome+'/'+a.ano+'</div>'
+          +previsaoSectionHTML
+        +'</div>'
+        +'<div class="brfg-section" id="brfg-sec-comparativo">'
           +'<div class="brfg-section-title">Comparativo Mensal</div>'
           +'<table><thead><tr>'
             +'<th>Indicador</th>'
@@ -16176,7 +16208,7 @@ function printAtiva(){
             +'<th>'+colRef2+'</th>'
           +'</tr></thead><tbody>'+tabela+'</tbody></table>'
         +'</div>'
-        +'<div class="brfg-section">'
+        +'<div class="brfg-section" id="brfg-sec-pauta">'
           +'<div class="brfg-section-title">Pontos para Pauta da Reunião</div>'
           +'<ul class="brfg-alert-list">'+pautaHTML+'</ul>'
         +'</div>'
@@ -16212,6 +16244,11 @@ function printAtiva(){
       '.brfg-section-title{font-size:7.5px;letter-spacing:1.8px;text-transform:uppercase;color:#e94560;font-weight:700;margin-bottom:6px;padding-bottom:4px;border-bottom:1.5px solid #f0f2f5;}' +
       /* KPI grid — auto-fill cobre 9 cards em 1-2 linhas */
       '.brfg-kpi-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;}' +
+      /* Previsão x Capacidade — banda compacta de 6 itens numa linha só */
+      '#brfg-print-previsao .brfg-kpi-grid{grid-template-columns:repeat(6,1fr);}' +
+      '#brfg-print-previsao .brfg-kpi-card{padding:5px 7px;}' +
+      '#brfg-print-previsao .brfg-kpi-value{font-size:10.5px;}' +
+      '#brfg-print-previsao .brfg-kpi-delta{font-size:6.8px;}' +
       '.brfg-kpi-card{background:#f8fafc;border-radius:5px;padding:7px 9px;border-left:3px solid #e2e8f0;}' +
       '.brfg-kpi-card.ok{border-left-color:#38a169;}.brfg-kpi-card.warn{border-left-color:#d69e2e;}.brfg-kpi-card.bad{border-left-color:#e53e3e;}.brfg-kpi-card.neu{border-left-color:#718096;}' +
       '.brfg-kpi-label{font-size:7px;letter-spacing:.6px;text-transform:uppercase;color:#718096;font-weight:600;margin-bottom:3px;}' +
@@ -16246,9 +16283,12 @@ function printAtiva(){
           '<div class="brfg-section-title">Indicadores-Chave</div>' +
           document.querySelector('.brfg-kpi-grid').outerHTML +
         '</div>' +
+        (document.getElementById('brfg-sec-previsao')
+          ? '<div class="brfg-section" id="brfg-print-previsao">' + document.getElementById('brfg-sec-previsao').innerHTML + '</div>'
+          : '') +
         '<div class="brfg-2col">' +
-          document.querySelectorAll('.brfg-section')[1].outerHTML +
-          document.querySelectorAll('.brfg-section')[2].outerHTML +
+          (document.getElementById('brfg-sec-comparativo') ? document.getElementById('brfg-sec-comparativo').outerHTML : '') +
+          (document.getElementById('brfg-sec-pauta') ? document.getElementById('brfg-sec-pauta').outerHTML : '') +
         '</div>' +
       '</div>' +
       document.querySelector('.brfg-footer').outerHTML +
