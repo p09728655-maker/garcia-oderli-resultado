@@ -9922,8 +9922,18 @@ function cfInicializar() {
     var wrap = pEl('ppcp-mes-wrap'); if (!wrap) return;
     if (!_ppcp_anoSel) return;
     var dados = pLoad().filter(function(r){return r.ano === _ppcp_anoSel;});
-    _ppcp_mesesSel = dados.map(function(r){return r.mes;});
-    wrap.querySelectorAll('.ppcp-mes-btn').forEach(function(btn){btn.classList.add('on');});
+    var todosMeses = dados.map(function(r){return r.mes;});
+    var jaTodosSelecionados = todosMeses.length > 0
+      && _ppcp_mesesSel.length === todosMeses.length
+      && todosMeses.every(function(m){ return _ppcp_mesesSel.indexOf(m) >= 0; });
+    if (jaTodosSelecionados) {
+      /* Já estava tudo marcado — clicar de novo desmarca tudo */
+      _ppcp_mesesSel = [];
+      wrap.querySelectorAll('.ppcp-mes-btn').forEach(function(btn){btn.classList.remove('on');});
+    } else {
+      _ppcp_mesesSel = todosMeses;
+      wrap.querySelectorAll('.ppcp-mes-btn').forEach(function(btn){btn.classList.add('on');});
+    }
     pRenderizarFiltro();
   };
 
