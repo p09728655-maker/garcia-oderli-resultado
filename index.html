@@ -10799,6 +10799,44 @@ function cfInicializar() {
       formula: 'Cap.Hora × 8,8h × DiasÚteis/Ano',
       corpo: 'Quantidade máxima de peças que a fábrica poderia produzir em um ano com a configuração atual.',
       interpretacao: 'Baseado na Cap. Nominal da Fábrica configurada no painel de parâmetros.'
+    },
+
+    /* ── Previsão × Capacidade ── */
+    'kv5-prev': {
+      titulo: 'Previsão Total',
+      formula: 'Σ Previsão de Produção (planilha) dos meses filtrados',
+      corpo: 'Soma da quantidade de produção prevista, informada manualmente na planilha para os meses selecionados.',
+      interpretacao: 'Só entra na soma o mês que tiver a previsão preenchida — mês em branco não conta nem a favor nem contra.'
+    },
+    'card5-prevce': {
+      titulo: 'Realizado c/ Extras vs Previsão',
+      formula: 'Produção Real ÷ Previsão × 100',
+      corpo: 'Quanto da previsão foi entregue somando toda a produção do período, incluindo peças feitas em hora extra.',
+      interpretacao: '<span class="uit-good">≥ 100%</span> bateu a previsão · <span class="uit-warn">90–99%</span> perto · <span class="uit-bad">&lt; 90%</span> abaixo'
+    },
+    'card5-prevse': {
+      titulo: 'Realizado s/ Extras vs Previsão',
+      formula: 'Produção s/ Extras ÷ Previsão × 100',
+      corpo: 'Quanto da previsão foi entregue só com horário normal, sem contar o que foi produzido em hora extra.',
+      interpretacao: 'Bem menor que o "c/ Extras" ao lado? A previsão só foi batida por causa da hora extra.'
+    },
+    'kv2-carga': {
+      titulo: 'H. Carga Total',
+      formula: 'Σ Horas Carga (ERP) dos meses filtrados',
+      corpo: 'Capacidade teórica de horas disponíveis para produção, conforme a jornada planejada no ERP.',
+      interpretacao: 'É o total contra o qual as Horas Normais e Extras abaixo são comparadas.'
+    },
+    'card2-hnpct': {
+      titulo: 'H. Normais vs Carga',
+      formula: 'Horas Normais ÷ H. Carga × 100',
+      corpo: 'Percentual da capacidade teórica coberto só com horário normal, sem precisar de hora extra.',
+      interpretacao: '<span class="uit-good">≥ 90%</span> boa cobertura · <span class="uit-warn">75–89%</span> atenção · <span class="uit-bad">&lt; 75%</span> crítico'
+    },
+    'card2-extpct': {
+      titulo: 'H. Extras vs Carga',
+      formula: 'H. Extras ÷ H. Carga × 100',
+      corpo: 'Percentual da capacidade teórica que precisou de hora extra para ser coberto.',
+      interpretacao: '<span class="uit-good">≤ 10%</span> saudável · <span class="uit-warn">10–15%</span> atenção · <span class="uit-bad">&gt; 15%</span> alto'
     }
   };
 
