@@ -9942,21 +9942,29 @@ function cfInicializar() {
   /* ═══════════════════════════════════════════════════════════════
      INICIALIZAÇÃO E INTEGRAÇÃO VIA DashBus
   ═══════════════════════════════════════════════════════════════ */
+  /* Seleciona só o ÚLTIMO mês com dado real do ano (não todos) — é o padrão
+     ao abrir a tela; o usuário clica "Todos os meses" se quiser o ano inteiro. */
+  function ppcpSelecionarUltimoMes() {
+    if (!_ppcp_anoSel) return;
+    var dadosAno = pLoad()
+      .filter(function(r){ return r.ano === _ppcp_anoSel; })
+      .sort(function(a,b){ return ORDEM_MES.indexOf(a.mes) - ORDEM_MES.indexOf(b.mes); });
+    var comDado = dadosAno.filter(function(r){ return (r.horasCarga||0) > 0 || (r.producaoReal||0) > 0; });
+    var alvo = comDado.length ? comDado[comDado.length-1] : (dadosAno.length ? dadosAno[dadosAno.length-1] : null);
+    if (!alvo) return;
+    _ppcp_mesesSel = [alvo.mes];
+    var wrap = document.getElementById('ppcp-mes-wrap');
+    if (wrap) {
+      wrap.querySelectorAll('.ppcp-mes-btn').forEach(function(btn){
+        btn.classList.toggle('on', btn.textContent.trim() === alvo.mes);
+      });
+    }
+  }
+
   function _ppcpAutoSelect() {
     ppcpPopularAnos();
     if (_ppcp_mesesSel.length === 0 && _ppcp_anoSel) {
-      var todosMeses = pLoad()
-        .filter(function(r){ return r.ano === _ppcp_anoSel; })
-        .map(function(r){ return r.mes; });
-      if (todosMeses.length > 0) {
-        _ppcp_mesesSel = todosMeses;
-        var wrap = document.getElementById('ppcp-mes-wrap');
-        if (wrap) {
-          wrap.querySelectorAll('.ppcp-mes-btn').forEach(function(btn){
-            if (todosMeses.indexOf(btn.textContent.trim()) >= 0) btn.classList.add('on');
-          });
-        }
-      }
+      ppcpSelecionarUltimoMes();
     }
     if (_ppcp_mesesSel.length > 0) pRenderizarFiltro();
   }
@@ -9971,7 +9979,8 @@ function cfInicializar() {
        usuário trocar o ano manualmente. Chama explicitamente aqui. */
     if (_ppcp_anoSel) {
       window.ppcpAtualizarMeses();
-      window.ppcpTodos();
+      ppcpSelecionarUltimoMes();
+      if (_ppcp_mesesSel.length > 0) pRenderizarFiltro();
       /* Re-dispara a renderização um pouco depois: módulos satélite (como o
          de comparação Real x Faltas x Férias) se registram no DashBus em seus
          próprios DOMContentLoaded, que podem rodar DEPOIS deste — sem isso,
