@@ -6303,23 +6303,33 @@ function init(){
   }
 
   /* Filtro padrão ao abrir: ano e mês atuais (data do sistema).
-     Se o mês corrente ainda não tiver dado sincronizado, cai pro ano
-     inteiro (ou "Todos" se nem o ano tiver dado) — evita tela vazia. */
+     Se o mês corrente ainda não tiver dado sincronizado, cai pro
+     ÚLTIMO mês que realmente tem dado (não pro ano inteiro) —
+     evita tela vazia e evita mostrar meses futuros em branco junto. */
   var _mesesAbrev = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   var _hoje = new Date();
   var _anoAtual = _hoje.getFullYear();
   var _mesAtual = _mesesAbrev[_hoje.getMonth()];
   var _temMesAtual = d.some(function(r){ return r.ano===_anoAtual && r.mes===_mesAtual; });
-  var _temAnoAtual = d.some(function(r){ return r.ano===_anoAtual; });
   if (_temMesAtual) {
     anoAtivo = _anoAtual;
     mesesAtivos = [_mesAtual];
-  } else if (_temAnoAtual) {
-    anoAtivo = _anoAtual;
-    mesesAtivos = [];
   } else {
-    anoAtivo = null;
-    mesesAtivos = [];
+    /* Acha o último mês com dado real (ano desc, depois mês desc) */
+    var _comDado = d.filter(function(r){
+      return (r.horasCarga||0) > 0 || (r.producaoReal||0) > 0;
+    });
+    if (_comDado.length) {
+      var _ultimo = _comDado.slice().sort(function(a,b){
+        if (a.ano !== b.ano) return b.ano - a.ano;
+        return _mesesAbrev.indexOf(b.mes) - _mesesAbrev.indexOf(a.mes);
+      })[0];
+      anoAtivo = _ultimo.ano;
+      mesesAtivos = [_ultimo.mes];
+    } else {
+      anoAtivo = null;
+      mesesAtivos = [];
+    }
   }
   render();
   setTimeout(bindZooms, 200)
