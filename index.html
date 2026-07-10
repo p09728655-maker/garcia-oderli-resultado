@@ -9962,6 +9962,14 @@ function cfInicializar() {
   function _ppcpInit() {
     pInjetarHTML();
     ppcpPopularAnos();
+    /* Corrige bug: na primeira carga da página, ppcpPopularAnos() já seta
+       _ppcp_anoSel e o <select>, mas isso não dispara 'onchange' — então os
+       botões de mês nunca eram criados nem os dados renderizados até o
+       usuário trocar o ano manualmente. Chama explicitamente aqui. */
+    if (_ppcp_anoSel) {
+      window.ppcpAtualizarMeses();
+      window.ppcpTodos();
+    }
     if (window.DashBus) {
       window.DashBus.on('dados:salvos', _ppcpAutoSelect);
       window.DashBus.on('pagina:mudou', function(p) {
