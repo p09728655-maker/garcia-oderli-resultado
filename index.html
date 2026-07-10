@@ -6302,8 +6302,25 @@ function init(){
     if(migrou) save(d);
   }
 
-  anoAtivo=null;
-  mesesAtivos=[];
+  /* Filtro padrão ao abrir: ano e mês atuais (data do sistema).
+     Se o mês corrente ainda não tiver dado sincronizado, cai pro ano
+     inteiro (ou "Todos" se nem o ano tiver dado) — evita tela vazia. */
+  var _mesesAbrev = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  var _hoje = new Date();
+  var _anoAtual = _hoje.getFullYear();
+  var _mesAtual = _mesesAbrev[_hoje.getMonth()];
+  var _temMesAtual = d.some(function(r){ return r.ano===_anoAtual && r.mes===_mesAtual; });
+  var _temAnoAtual = d.some(function(r){ return r.ano===_anoAtual; });
+  if (_temMesAtual) {
+    anoAtivo = _anoAtual;
+    mesesAtivos = [_mesAtual];
+  } else if (_temAnoAtual) {
+    anoAtivo = _anoAtual;
+    mesesAtivos = [];
+  } else {
+    anoAtivo = null;
+    mesesAtivos = [];
+  }
   render();
   setTimeout(bindZooms, 200)
 }
