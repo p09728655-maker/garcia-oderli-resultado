@@ -1039,12 +1039,12 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-tc-status{font-size:.73rem;font-family:Consolas,monospace;margin-top:9px;padding-top:9px;border-top:1px solid #2A2A2A;min-height:1.2em}
 .enh-fc{margin-bottom:16px}
 .enh-fc-ttl{font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:#4D4D4D;margin-bottom:8px}
-.enh-fc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-@media(max-width:800px){.enh-fc-grid{grid-template-columns:1fr}}
+.enh-fc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:1100px){.enh-fc-grid{grid-template-columns:1fr 1fr}}@media(max-width:640px){.enh-fc-grid{grid-template-columns:1fr}}
 .enh-fc-col{background:#080f1c;border:1px solid #2A2A2A;border-radius:6px;overflow:hidden}
 .enh-fc-hdr{padding:8px 12px;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;border-bottom:1px solid #2A2A2A}
 .enh-fc-col.fc-s .enh-fc-hdr{color:#F5A623;background:rgba(245,166,35,.04)}
-.enh-fc-col.fc-c .enh-fc-hdr{color:#FF9800;background:rgba(255,152,0,.04)}.enh-fc-col.fc-f .enh-fc-hdr{color:#4FC3F7;background:rgba(79,195,247,.04)}
+.enh-fc-col.fc-c .enh-fc-hdr{color:#FF9800;background:rgba(255,152,0,.04)}.enh-fc-col.fc-f .enh-fc-hdr{color:#4FC3F7;background:rgba(79,195,247,.04)}.enh-fc-col.fc-a .enh-fc-hdr{color:#AB47BC;background:rgba(171,71,188,.04)}
 .enh-row{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid rgba(26,45,69,.35)}
 .enh-row:last-child{border-bottom:none}
 .enh-row-lbl{font-size:.64rem;color:#4a7099}
@@ -3804,7 +3804,7 @@ Fórmula: Faltas + Atrasos
   </div>
 </div>
 <div id="ppcp-content" style="display: block; cursor: help;">
-<div id="ui-grupo-demanda-ppcp" class="ui-group-label" style="font-size: 0.55rem; letter-spacing: 0.13em; text-transform: uppercase; color: rgb(42, 74, 106); margin: 18px 0px 6px; padding-left: 2px; display: flex; align-items: center; gap: 7px;">📊  Demanda do Cliente<span style="flex:1;height:1px;background:#2A2A2A;display:inline-block"></span></div><div id="enh-wrap"><div class="enh-tb">  <label class="enh-lbl">    <input type="checkbox" id="enh-chk-faltas">    <span>Considerar horas de falta no cálculo</span>  </label>  <span class="enh-info">Calcula a Produção Potencial (o que a fábrica produziria sem as horas perdidas) — permite visualizar o impacto das ausências.</span></div><div class="ppcp-sec">▸ Takt Time: Faturado × Produção Atual</div><div class="enh-tc-grid">  <div class="enh-tc tc-d" style="cursor: help;">    <div class="enh-tc-lbl">Takt Faturado</div>    <div class="enh-tc-val" id="enh-td-val">42,40 seg/pç</div>    <div class="enh-tc-sub" id="enh-td-sub">528 ÷ 747 pç/dia × 60</div>    <div class="enh-tc-status" id="enh-td-status" style="color: rgb(255, 23, 68);">⚠ Fábrica 6,8 seg mais LENTA que a demanda</div>  </div>  <div class="enh-tc tc-p" style="cursor: help;">    <div class="enh-tc-lbl" id="enh-tp-lbl">Takt da Produção Atual</div>    <div class="enh-tc-val" id="enh-tp-val">49,22 seg/pç</div>    <div class="enh-tc-sub" id="enh-tp-sub">528 ÷ 644 pç/dia × 60</div>    <div class="enh-tc-status" id="enh-tp-info">Produção real: 155.115 pç</div>  </div></div><div class="enh-fc" id="enh-fc" style="display:none">  <div class="enh-fc-ttl">▸ Comparação: Real × Potencial (Sem Faltas) × Potencial (Sem Férias)</div>  <div class="enh-fc-grid">    <div class="enh-fc-col fc-s">      <div class="enh-fc-hdr">Produção Real</div>      <div id="enh-col-sem"></div>    </div>    <div class="enh-fc-col fc-c">      <div class="enh-fc-hdr">Potencial (Sem Faltas/Atraso)</div>      <div id="enh-col-com"></div>    </div>    <div class="enh-fc-col fc-f">      <div class="enh-fc-hdr">Potencial (Sem Férias)</div>      <div id="enh-col-ferias"></div>    </div>  </div></div></div><div class="ppcp-sec">▸ Gap de Produção vs Demanda</div>
+<div id="ui-grupo-demanda-ppcp" class="ui-group-label" style="font-size: 0.55rem; letter-spacing: 0.13em; text-transform: uppercase; color: rgb(42, 74, 106); margin: 18px 0px 6px; padding-left: 2px; display: flex; align-items: center; gap: 7px;">📊  Demanda do Cliente<span style="flex:1;height:1px;background:#2A2A2A;display:inline-block"></span></div><div id="enh-wrap"><div class="enh-tb">  <label class="enh-lbl">    <input type="checkbox" id="enh-chk-faltas">    <span>Considerar horas de falta no cálculo</span>  </label>  <span class="enh-info">Calcula a Produção Potencial (o que a fábrica produziria sem as horas perdidas) — permite visualizar o impacto das ausências.</span></div><div class="ppcp-sec">▸ Takt Time: Faturado × Produção Atual</div><div class="enh-tc-grid">  <div class="enh-tc tc-d" style="cursor: help;">    <div class="enh-tc-lbl">Takt Faturado</div>    <div class="enh-tc-val" id="enh-td-val">42,40 seg/pç</div>    <div class="enh-tc-sub" id="enh-td-sub">528 ÷ 747 pç/dia × 60</div>    <div class="enh-tc-status" id="enh-td-status" style="color: rgb(255, 23, 68);">⚠ Fábrica 6,8 seg mais LENTA que a demanda</div>  </div>  <div class="enh-tc tc-p" style="cursor: help;">    <div class="enh-tc-lbl" id="enh-tp-lbl">Takt da Produção Atual</div>    <div class="enh-tc-val" id="enh-tp-val">49,22 seg/pç</div>    <div class="enh-tc-sub" id="enh-tp-sub">528 ÷ 644 pç/dia × 60</div>    <div class="enh-tc-status" id="enh-tp-info">Produção real: 155.115 pç</div>  </div></div><div class="enh-fc" id="enh-fc" style="display:none">  <div class="enh-fc-ttl">▸ Comparação: Real × Sem Faltas × Sem Férias × Sem Faltas+Férias</div>  <div class="enh-fc-grid">    <div class="enh-fc-col fc-s">      <div class="enh-fc-hdr">Produção Real</div>      <div id="enh-col-sem"></div>    </div>    <div class="enh-fc-col fc-c">      <div class="enh-fc-hdr">Potencial (Sem Faltas/Atraso)</div>      <div id="enh-col-com"></div>    </div>    <div class="enh-fc-col fc-f">      <div class="enh-fc-hdr">Potencial (Sem Férias)</div>      <div id="enh-col-ferias"></div>    </div>    <div class="enh-fc-col fc-a">      <div class="enh-fc-hdr">Potencial (Sem Faltas+Férias)</div>      <div id="enh-col-ambos"></div>    </div>  </div></div></div><div class="ppcp-sec">▸ Gap de Produção vs Demanda</div>
 <div class="ppcp-gap-hero">
   <div class="ppcp-gap-card" style="cursor: help;">
     <div class="ppcp-gap-lbl">Gap Mensal (Acumulado)<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>
@@ -10035,6 +10035,12 @@ function cfInicializar() {
     var hFe = r.horasFerias || 0;
     return (hC > 0 && hFe > 0) ? hFe / hC : 0;
   }
+  /* Retorna fração de horas PERDIDAS por faltas + atraso + férias combinados */
+  function fatorFaltasEFerias(r) {
+    var hC    = r.horasCarga || 0;
+    var hPerd = (r.faltas || 0) + (r.atraso || 0) + (r.horasFerias || 0);
+    return (hC > 0 && hPerd > 0) ? hPerd / hC : 0;
+  }
   function fmtN(n, d) {
     if (n === undefined || n === null || !isFinite(n)) return '—';
     return n.toLocaleString('pt-BR', { minimumFractionDigits: d||1, maximumFractionDigits: d||1 });
@@ -10126,12 +10132,12 @@ function cfInicializar() {
       /* comparação faltas */
       '.enh-fc{margin-bottom:16px}',
       '.enh-fc-ttl{font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:#4D4D4D;margin-bottom:8px}',
-      '.enh-fc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}',
-      '@media(max-width:800px){.enh-fc-grid{grid-template-columns:1fr}}',
+      '.enh-fc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}',
+      '@media(max-width:1100px){.enh-fc-grid{grid-template-columns:1fr 1fr}}@media(max-width:640px){.enh-fc-grid{grid-template-columns:1fr}}',
       '.enh-fc-col{background:#080f1c;border:1px solid #2A2A2A;border-radius:6px;overflow:hidden}',
       '.enh-fc-hdr{padding:8px 12px;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;border-bottom:1px solid #2A2A2A}',
       '.enh-fc-col.fc-s .enh-fc-hdr{color:#F5A623;background:rgba(245,166,35,.04)}',
-      '.enh-fc-col.fc-c .enh-fc-hdr{color:#FF9800;background:rgba(255,152,0,.04)}.enh-fc-col.fc-f .enh-fc-hdr{color:#4FC3F7;background:rgba(79,195,247,.04)}',
+      '.enh-fc-col.fc-c .enh-fc-hdr{color:#FF9800;background:rgba(255,152,0,.04)}.enh-fc-col.fc-f .enh-fc-hdr{color:#4FC3F7;background:rgba(79,195,247,.04)}.enh-fc-col.fc-a .enh-fc-hdr{color:#AB47BC;background:rgba(171,71,188,.04)}',
       '.enh-row{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid rgba(26,45,69,.35)}',
       '.enh-row:last-child{border-bottom:none}',
       '.enh-row-lbl{font-size:.64rem;color:#4a7099}',
@@ -10176,7 +10182,7 @@ function cfInicializar() {
       '  </div>',
       '</div>',
       '<div class="enh-fc" id="enh-fc" style="display:none">',
-      '  <div class="enh-fc-ttl">▸ Comparação: Real × Potencial (Sem Faltas) × Potencial (Sem Férias)</div>',
+      '  <div class="enh-fc-ttl">▸ Comparação: Real × Sem Faltas × Sem Férias × Sem Faltas+Férias</div>',
       '  <div class="enh-fc-grid">',
       '    <div class="enh-fc-col fc-s">',
       '      <div class="enh-fc-hdr">Produção Real</div>',
@@ -10189,6 +10195,10 @@ function cfInicializar() {
       '    <div class="enh-fc-col fc-f">',
       '      <div class="enh-fc-hdr">Potencial (Sem Férias)</div>',
       '      <div id="enh-col-ferias"></div>',
+      '    </div>',
+      '    <div class="enh-fc-col fc-a">',
+      '      <div class="enh-fc-hdr">Potencial (Sem Faltas+Férias)</div>',
+      '      <div id="enh-col-ambos"></div>',
       '    </div>',
       '  </div>',
       '</div>',
@@ -10219,6 +10229,7 @@ function cfInicializar() {
     /* Comparação de 3 cenários — sempre calculada, independente do checkbox acima */
     var dAdjFaltas = calcPeriodo(regs, fatorFalta);
     var dAdjFerias = calcPeriodo(regs, fatorFerias);
+    var dAdjAmbos  = calcPeriodo(regs, fatorFaltasEFerias);
 
     /* ── Takt da Demanda ── */
     setText('enh-td-val', fmtN(d.tDem, 2) + ' seg/pç');
@@ -10258,6 +10269,7 @@ function cfInicializar() {
       var semEl    = $('enh-col-sem');
       var comEl    = $('enh-col-com');
       var feriasEl = $('enh-col-ferias');
+      var ambosEl  = $('enh-col-ambos');
       if (semEl) semEl.innerHTML = [
         row('Produção Total',    fmtI(d.totProd)     + ' pç'),
         row('Produção / Dia',    fmtI(d.pDia)        + ' pç/dia'),
@@ -10290,6 +10302,18 @@ function cfInicializar() {
         row('Gap Diário Pot.',   fmtS(dAdjFerias.gDiaAdj, 1), dAdjFerias.gDiaAdj > 0 ? 'cv-p' : dAdjFerias.gDiaAdj < 0 ? 'cv-n' : ''),
         row('Func. Nec. Pot.',   fmtN(dAdjFerias.fNecAdj, 1)),
         row('Gap Func. Pot.',    fmtS(dAdjFerias.gFuncAdj, 1), dAdjFerias.gFuncAdj > 0 ? 'cv-p' : dAdjFerias.gFuncAdj < 0 ? 'cv-n' : 'cv-ok'),
+      ].join('');
+      /* Coluna 4: potencial SEM FALTAS + FÉRIAS combinados */
+      var perdaAmbos = dAdjAmbos.totProdAdj - d.totProd;
+      if (ambosEl) ambosEl.innerHTML = [
+        row('Prod. Potencial',   fmtI(dAdjAmbos.totProdAdj) + ' pç',     'cv-ok'),
+        row('Perda Falt.+Fér.',  '+' + fmtI(perdaAmbos)     + ' pç',     'cv-p'),
+        row('Prod./Dia Pot.',    fmtI(dAdjAmbos.pDiaAdj)    + ' pç/dia'),
+        row('Takt Potencial',    fmtN(dAdjAmbos.tAdj, 2)    + ' seg/pç', 'cv-n'),
+        row('Gap Mensal Pot.',   fmtS(dAdjAmbos.gMesAdj),    dAdjAmbos.gMesAdj > 0 ? 'cv-p' : dAdjAmbos.gMesAdj < 0 ? 'cv-n' : ''),
+        row('Gap Diário Pot.',   fmtS(dAdjAmbos.gDiaAdj, 1), dAdjAmbos.gDiaAdj > 0 ? 'cv-p' : dAdjAmbos.gDiaAdj < 0 ? 'cv-n' : ''),
+        row('Func. Nec. Pot.',   fmtN(dAdjAmbos.fNecAdj, 1)),
+        row('Gap Func. Pot.',    fmtS(dAdjAmbos.gFuncAdj, 1), dAdjAmbos.gFuncAdj > 0 ? 'cv-p' : dAdjAmbos.gFuncAdj < 0 ? 'cv-n' : 'cv-ok'),
       ].join('');
     }
 
