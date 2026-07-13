@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b8</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b9</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -15738,6 +15738,12 @@ function printAtiva(){
        +'</div>'
       +'</div>'
       +'<div class="brfg-body">'
+        /* 1 · TL;DR — o que precisa de atenção (leitura de 5 segundos) */
+        +'<div class="brfg-section" id="brfg-sec-pauta">'
+          +'<div class="brfg-section-title">Resumo — Pontos de Atenção</div>'
+          +'<ul class="brfg-alert-list">'+pautaHTML+'</ul>'
+        +'</div>'
+        /* 2 · Indicadores-Chave (os números vitais) */
         +'<div class="brfg-section" id="brfg-sec-kpis">'
           +'<div class="brfg-section-title">Indicadores-Chave — '+mesNome+'/'+a.ano+'</div>'
           +'<div class="brfg-kpi-grid">'+kpis.map(function(k){
@@ -15748,10 +15754,17 @@ function printAtiva(){
             +'</div>';
           }).join('')+'</div>'
         +'</div>'
+        /* 3 · Achados (o que os números significam e o que fazer) */
+        +'<div class="brfg-section" id="brfg-sec-achados">'
+          +'<div class="brfg-section-title">Achados — Fato, Análise e Recomendação</div>'
+          +achadosHTML
+        +'</div>'
+        /* 4 · Previsão × Capacidade (detalhe de entrega) */
         +'<div class="brfg-section" id="brfg-sec-previsao">'
           +'<div class="brfg-section-title">Previsão × Capacidade — '+mesNome+'/'+a.ano+'</div>'
           +previsaoSectionHTML
         +'</div>'
+        /* 5 · Comparativo Mensal (tabela de apoio) */
         +'<div class="brfg-section" id="brfg-sec-comparativo">'
           +'<div class="brfg-section-title">Comparativo Mensal</div>'
           +'<table><thead><tr>'
@@ -15761,14 +15774,7 @@ function printAtiva(){
             +'<th>'+colRef2+'</th>'
           +'</tr></thead><tbody>'+tabela+'</tbody></table>'
         +'</div>'
-        +'<div class="brfg-section" id="brfg-sec-pauta">'
-          +'<div class="brfg-section-title">Pontos para Pauta da Reunião</div>'
-          +'<ul class="brfg-alert-list">'+pautaHTML+'</ul>'
-        +'</div>'
-        +'<div class="brfg-section" id="brfg-sec-achados">'
-          +'<div class="brfg-section-title">Achados — Fato, Análise e Recomendação</div>'
-          +achadosHTML
-        +'</div>'
+        /* 6 · SWOT (síntese estratégica) */
         +'<div class="brfg-section" id="brfg-sec-swot">'
           +'<div class="brfg-section-title">Análise SWOT — Produção '+mesNome+'/'+a.ano+'</div>'
           +swotHTML
@@ -15862,20 +15868,24 @@ function printAtiva(){
       '<div class="brfg-page">' +
       document.querySelector('.brfg-header').outerHTML +
       '<div class="brfg-body">' +
+        /* 1 · Resumo (TL;DR) */
+        (document.getElementById('brfg-sec-pauta') ? document.getElementById('brfg-sec-pauta').outerHTML : '') +
+        /* 2 · Indicadores-Chave */
         '<div class="brfg-section">' +
           '<div class="brfg-section-title">Indicadores-Chave</div>' +
           document.querySelector('.brfg-kpi-grid').outerHTML +
         '</div>' +
-        (document.getElementById('brfg-sec-previsao')
-          ? '<div class="brfg-section" id="brfg-print-previsao">' + document.getElementById('brfg-sec-previsao').innerHTML + '</div>'
-          : '') +
-        '<div class="brfg-2col">' +
-          (document.getElementById('brfg-sec-comparativo') ? document.getElementById('brfg-sec-comparativo').outerHTML : '') +
-          (document.getElementById('brfg-sec-pauta') ? document.getElementById('brfg-sec-pauta').outerHTML : '') +
-        '</div>' +
+        /* 3 · Achados */
         (document.getElementById('brfg-sec-achados')
           ? '<div class="brfg-section" id="brfg-print-achados">' + document.getElementById('brfg-sec-achados').innerHTML + '</div>'
           : '') +
+        /* 4 · Previsão × Capacidade */
+        (document.getElementById('brfg-sec-previsao')
+          ? '<div class="brfg-section" id="brfg-print-previsao">' + document.getElementById('brfg-sec-previsao').innerHTML + '</div>'
+          : '') +
+        /* 5 · Comparativo Mensal */
+        (document.getElementById('brfg-sec-comparativo') ? document.getElementById('brfg-sec-comparativo').outerHTML : '') +
+        /* 6 · SWOT */
         (document.getElementById('brfg-sec-swot') ? document.getElementById('brfg-sec-swot').outerHTML : '') +
       '</div>' +
       document.querySelector('.brfg-footer').outerHTML +
