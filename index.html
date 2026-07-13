@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b11</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b12</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -10771,7 +10771,8 @@ function cfInicializar() {
       cor:   DS.C.demanda,
       pages: [
         { id: 'ppcp',   label: 'PPCP',               icon: '⚙' },
-        { id: 'capfat', label: 'Cap × Faturamento',  icon: '📈' }
+        { id: 'capfat', label: 'Cap × Faturamento',  icon: '📈' },
+        { id: 'curva',  label: 'Curva ABC / Mix',    icon: '🔤' }
       ]
     },
     'producao-grp': {
@@ -15228,6 +15229,132 @@ function printAtiva(){
     setTimeout(init, 80);
   }
 
+})();
+</script>
+<!-- ══ PÁGINA: CURVA ABC / MIX ══ -->
+<div class="page" id="page-curva">
+  <div style="max-width:1280px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <div style="font-size:1rem;font-weight:800;color:var(--t1);letter-spacing:.02em">🔤 Curva ABC / Mix de Produtos</div>
+        <div style="font-size:.72rem;color:var(--t3)">Faturamento por produto por mês (Google Sheets) — explica o ticket médio</div>
+      </div>
+      <button id="curva-reload" class="btn btn-g" style="padding:8px 12px">↺ Recarregar curva</button>
+    </div>
+    <div id="curva-status" style="font-size:.78rem;color:var(--t2);margin-bottom:12px">—</div>
+    <div id="curva-content"></div>
+  </div>
+</div>
+<script>
+/* ══ MÓDULO CURVA ABC / MIX — lê abas mensais do Google Sheets via gviz JSONP ══
+   Sem Apps Script: usa <script> (JSONP) para contornar CORS. Requer a planilha
+   compartilhada como "Qualquer pessoa com o link — Leitor". */
+(function(){
+  'use strict';
+  var SPREADSHEET_ID = '1qCi0OirgHiE3qpVH67gsx7-sADJnqSU648jPgId4UVk';
+  var ABAS = ['JAN-26','FEV-26','MAR-26','ABR-26','MAI-26','JUN-26'];
+  var _cache = null, _loading = false;
+
+  function loadJSONP(aba){
+    return new Promise(function(resolve,reject){
+      var cb='__curvaCB_'+aba.replace(/[^A-Za-z0-9]/g,'')+'_'+Math.floor(performance.now());
+      var s=document.createElement('script');
+      var to=setTimeout(function(){ cleanup(); reject(new Error('timeout')); }, 15000);
+      function cleanup(){ clearTimeout(to); try{ delete window[cb]; }catch(e){ window[cb]=undefined; } if(s.parentNode) s.parentNode.removeChild(s); }
+      window[cb]=function(json){ cleanup(); resolve(json); };
+      s.onerror=function(){ cleanup(); reject(new Error('sem acesso (compartilhamento?)')); };
+      s.src='https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/gviz/tq?tqx=out:json;responseHandler:'+cb
+           +'&headers=1&sheet='+encodeURIComponent(aba)+'&_ts='+Date.now();
+      document.head.appendChild(s);
+    });
+  }
+  function parseTable(json){
+    var rows=(json&&json.table&&json.table.rows)||[];
+    return rows.map(function(r){
+      var c=r.c||[]; function v(i){ return c[i]?(c[i].v!=null?c[i].v:c[i].f):null; }
+      var cod=v(0),desc=v(1),valor=v(2),qtd=v(3);
+      if(typeof valor==='string') valor=parseFloat(valor.replace(/\./g,'').replace(',','.'))||0;
+      if(typeof qtd==='string')   qtd=parseFloat(qtd.replace(/\./g,'').replace(',','.'))||0;
+      return {cod:String(cod||'').trim(),desc:String(desc||'').trim(),valor:+valor||0,qtd:+qtd||0};
+    }).filter(function(x){ return x.cod && !/cod\.?\s*prod/i.test(x.cod); });
+  }
+  function fmtR(n){ return 'R$ '+(+n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmtI(n){ return (+n||0).toLocaleString('pt-BR'); }
+  function status(t){ var el=document.getElementById('curva-status'); if(el) el.innerHTML=t; }
+
+  function carregar(){
+    if(_loading) return Promise.resolve(_cache);
+    _loading=true; status('⏳ Carregando curva do Google Sheets…');
+    var mesLabel=['JAN','FEV','MAR','ABR','MAI','JUN'];
+    return Promise.all(ABAS.map(function(aba,i){
+      return loadJSONP(aba).then(function(json){
+        var itens=parseTable(json);
+        var totV=itens.reduce(function(s,x){return s+x.valor;},0);
+        var totQ=itens.reduce(function(s,x){return s+x.qtd;},0);
+        return {mes:mesLabel[i], itens:itens, totV:totV, totQ:totQ, ticket:totQ>0?totV/totQ:0};
+      }).catch(function(e){ return {mes:mesLabel[i], erro:String(e.message||e)}; });
+    })).then(function(res){ _loading=false; _cache=res; return res; });
+  }
+
+  function shareTop(m,n){ var s=m.itens.slice().sort(function(a,b){return b.valor-a.valor;}); var t=s.slice(0,n).reduce(function(x,y){return x+y.valor;},0); return m.totV>0?t/m.totV*100:0; }
+
+  function render(res){
+    var el=document.getElementById('curva-content'); if(!el) return;
+    var ok=(res||[]).filter(function(m){ return !m.erro && m.itens && m.itens.length; });
+    if(!ok.length){
+      status('⚠ Não consegui ler a curva. Confirme: (1) planilha compartilhada como <b>"Qualquer pessoa com o link — Leitor"</b>; (2) abas nomeadas <b>JAN-26 … JUN-26</b>. Detalhe: '+((res&&res[0]&&res[0].erro)||'sem dados'));
+      el.innerHTML=''; return;
+    }
+    status('✓ Curva carregada: '+ok.length+' de '+ABAS.length+' meses.');
+    var first=ok[0], last=ok[ok.length-1];
+    var dTicket=first.ticket>0?(last.ticket-first.ticket)/first.ticket*100:0;
+    var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem">'
+      +'<thead><tr>'
+      +'<th style="text-align:left;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Mês</th>'
+      +'<th style="text-align:right;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Faturamento</th>'
+      +'<th style="text-align:right;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Qtd</th>'
+      +'<th style="text-align:right;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Ticket</th>'
+      +'<th style="text-align:right;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Top10 %</th>'
+      +'<th style="text-align:left;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Produto que mais fatura</th>'
+      +'</tr></thead><tbody>';
+    ok.forEach(function(m){
+      var top=m.itens.slice().sort(function(a,b){return b.valor-a.valor;})[0];
+      html+='<tr style="border-top:1px solid var(--b)">'
+        +'<td style="padding:7px 10px;font-weight:800">'+m.mes+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtR(m.totV)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtI(m.totQ)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-weight:800;color:#00e5ff;font-variant-numeric:tabular-nums">'+fmtR(m.ticket)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-variant-numeric:tabular-nums">'+shareTop(m,10).toFixed(0)+'%</td>'
+        +'<td style="padding:7px 10px">'+(top?(top.desc||top.cod)+' <span style="color:var(--t3)">('+fmtR(top.valor)+')</span>':'—')+'</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div>';
+    var sobe = last.ticket>=first.ticket*0.98;
+    html+='<div style="margin-top:14px;padding:12px 14px;border-radius:8px;background:rgba(120,144,156,.08);border:1px solid var(--b);font-size:.85rem;line-height:1.65">'
+      +'<b>Leitura do ticket via mix:</b> ticket foi de '+fmtR(first.ticket)+' ('+first.mes+') para '+fmtR(last.ticket)+' ('+last.mes+'), '
+      +(dTicket>=0?'+':'')+dTicket.toFixed(1).replace('.',',')+'%. '
+      +(sobe
+        ? 'Mix estável/em recuperação — a participação do Top 10 no faturamento foi de '+shareTop(first,10).toFixed(0)+'% para '+shareTop(last,10).toFixed(0)+'%.'
+        : 'A queda do ticket vem de mix deslocado para itens de menor valor unitário. Participação do Top 10 no faturamento: '+shareTop(first,10).toFixed(0)+'% ('+first.mes+') → '+shareTop(last,10).toFixed(0)+'% ('+last.mes+').')
+      +'</div>';
+    el.innerHTML=html;
+  }
+
+  function abrir(){ if(_cache){ render(_cache); } else { carregar().then(render); } }
+
+  (function wireInit(){
+    function wire(){
+      if(typeof window.mudarPagina!=='function'){ setTimeout(wire,200); return; }
+      var _mp=window.mudarPagina;
+      window.mudarPagina=function(id){ var r=_mp.apply(this,arguments); if(id==='curva') setTimeout(abrir,60); return r; };
+      var btn=document.getElementById('curva-reload');
+      if(btn) btn.addEventListener('click',function(){ _cache=null; carregar().then(render); });
+    }
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ setTimeout(wire,300); });
+    else setTimeout(wire,300);
+  })();
+
+  window.CurvaABC={ carregar:carregar, get dados(){ return _cache; } };
 })();
 </script>
 <!-- ══ PÁGINA: BRIEFING MENSAL ══ -->
