@@ -15382,6 +15382,108 @@ function printAtiva(){
 
   function shareTop(m,n){ var s=m.itens.slice().sort(function(a,b){return b.valor-a.valor;}); var t=s.slice(0,n).reduce(function(x,y){return x+y.valor;},0); return m.totV>0?t/m.totV*100:0; }
 
+  /* ══ Curva cruzada ABC: classifica cada produto por FATURAMENTO e por QUANTIDADE ══
+     Acumula os últimos meses (por padrão 3) somando por código, roda a curva ABC
+     (A=80% / B=15% / C=5% do total) nas duas dimensões e cruza em uma matriz 3×3. */
+  function consolidaMeses(meses){
+    var map={};
+    meses.forEach(function(m){
+      (m.itens||[]).forEach(function(it){
+        var k=it.cod||it.desc; if(!k) return;
+        if(!map[k]) map[k]={cod:it.cod,desc:it.desc,valor:0,qtd:0};
+        map[k].valor+=(+it.valor||0); map[k].qtd+=(+it.qtd||0);
+        if(it.desc && !map[k].desc) map[k].desc=it.desc;
+      });
+    });
+    return Object.keys(map).map(function(k){ return map[k]; });
+  }
+  function classificaABC(arr,field,prop){
+    var s=arr.slice().sort(function(a,b){ return (+b[field]||0)-(+a[field]||0); });
+    var tot=s.reduce(function(t,x){ return t+(+x[field]||0); },0), acc=0;
+    s.forEach(function(x){ acc+=(+x[field]||0); var sh=tot>0?acc/tot:0; x[prop]=sh<=0.80?'A':(sh<=0.95?'B':'C'); });
+    return tot;
+  }
+  function crossABC(ok){
+    var N=Math.min(3, ok.length), slice=ok.slice(-N);
+    var prods=consolidaMeses(slice);
+    if(!prods.length) return '';
+    var totV=classificaABC(prods,'valor','clsV');
+    var totQ=classificaABC(prods,'qtd','clsQ');
+    var clsArr=['A','B','C'];
+    var cell={}; clsArr.forEach(function(v){ cell[v]={}; clsArr.forEach(function(q){ cell[v][q]={n:0,valor:0,qtd:0,prods:[]}; }); });
+    prods.forEach(function(p){ var c=cell[p.clsV][p.clsQ]; c.n++; c.valor+=p.valor; c.qtd+=p.qtd; c.prods.push(p); });
+    var maxCellV=0; clsArr.forEach(function(v){ clsArr.forEach(function(q){ if(cell[v][q].valor>maxCellV) maxCellV=cell[v][q].valor; }); });
+    var perLabel=slice[0].mes+(N>1?'–'+slice[slice.length-1].mes:'');
+    function unit(p){ return p.qtd>0?p.valor/p.qtd:0; }
+    var quad={ 'AA':{t:'Campeões',c:'#69f0ae'}, 'AC':{t:'Premium',c:'#00e5ff'}, 'CA':{t:'Giro barato',c:'#ff6e85'}, 'CC':{t:'Cauda longa',c:'var(--t3)'} };
+
+    /* ── matriz 3×3 ── */
+    var colDesc={A:'A · alto giro',B:'B · médio',C:'C · baixo giro'};
+    var rowDesc={A:'A · 80% do R$',B:'B · 15%',C:'C · 5%'};
+    function cellHTML(v,q){
+      var c=cell[v][q], key=v+q, mv=quad[key];
+      var shV=totV>0?c.valor/totV*100:0, shQ=totQ>0?c.qtd/totQ*100:0;
+      var a=maxCellV>0?(0.05+0.34*(c.valor/maxCellV)):0.05;
+      var tag=mv?'<div style="font-size:.56rem;font-weight:700;color:'+mv.c+';margin-top:3px;text-transform:uppercase;letter-spacing:.04em">'+mv.t+'</div>':'';
+      return '<td style="padding:9px 11px;border-radius:6px;border:1px solid var(--b);background:rgba(245,166,35,'+a.toFixed(3)+');vertical-align:top">'
+        +'<div style="font-weight:800;font-size:1.05rem;font-variant-numeric:tabular-nums">'+c.n+' <span style="font-size:.58rem;font-weight:600;color:var(--t2)">SKUs</span></div>'
+        +'<div style="font-size:.63rem;color:var(--t2);font-variant-numeric:tabular-nums">'+fN(shV,1)+'% fat · '+fN(shQ,1)+'% qtd</div>'
+        +tag+'</td>';
+    }
+    var mtx='<div style="overflow-x:auto"><table style="border-collapse:separate;border-spacing:6px;font-size:.78rem;min-width:520px">'
+      +'<tr><td></td><td colspan="3" style="text-align:center;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:700;padding-bottom:1px">Quantidade (giro) →</td></tr>'
+      +'<tr><th style="padding:4px 8px;text-align:right;color:var(--t3);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;white-space:nowrap">Faturamento ↓</th>';
+    clsArr.forEach(function(q){ mtx+='<th style="padding:4px 8px;text-align:center;color:var(--t2);font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700">'+colDesc[q]+'</th>'; });
+    mtx+='</tr>';
+    clsArr.forEach(function(v){
+      mtx+='<tr><th style="text-align:right;padding:4px 8px;color:var(--t2);font-size:.62rem;font-weight:700;white-space:nowrap">'+rowDesc[v]+'</th>';
+      clsArr.forEach(function(q){ mtx+=cellHTML(v,q); });
+      mtx+='</tr>';
+    });
+    mtx+='</table></div>';
+
+    /* ── leitura ── */
+    var aa=cell.A.A, cc=cell.C.C;
+    var resumo='<div style="margin-top:12px;padding:11px 13px;border-radius:8px;background:rgba(120,144,156,.08);border:1px solid var(--b);font-size:.82rem;line-height:1.65">'
+      +'<b>Leitura:</b> núcleo <b style="color:#69f0ae">AA</b> (alto R$ + alto giro) = '+aa.n+' SKUs = '+fN(totV>0?aa.valor/totV*100:0,0)+'% do faturamento. '
+      +'<b style="color:#00e5ff">AC</b> (premium) = '+cell.A.C.n+' SKUs sustentam o ticket; <b style="color:#ff6e85">CA</b> (giro barato) = '+cell.C.A.n+' SKUs puxam o ticket pra baixo. '
+      +'Cauda <b>CC</b> = '+cc.n+' SKUs para apenas '+fN(totV>0?cc.valor/totV*100:0,0)+'% do R$ — candidatos a revisão de mix.</div>';
+
+    /* ── quadrantes-chave ── */
+    function qRow(p){
+      var d=(p.desc||p.cod); d=d.length>34?d.slice(0,34)+'…':d;
+      return '<tr style="border-top:1px solid var(--b)">'
+        +'<td style="padding:5px 8px">'+d+'</td>'
+        +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fmtR(p.valor)+'</td>'
+        +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fmtI(p.qtd)+'</td>'
+        +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fmtR(unit(p))+'</td></tr>';
+    }
+    function qBloco(tit,cor,desc,list,sortField){
+      var s=list.slice().sort(function(a,b){ return (+b[sortField]||0)-(+a[sortField]||0); }).slice(0,6);
+      return '<div><div style="font-size:.68rem;font-weight:700;color:'+cor+';margin-bottom:2px">'+tit+' <span style="color:var(--t3);font-weight:600">('+list.length+' SKUs)</span></div>'
+        +'<div style="font-size:.6rem;color:var(--t3);margin-bottom:5px;line-height:1.4">'+desc+'</div>'
+        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.72rem">'
+        +'<thead><tr>'
+        +'<th style="text-align:left;padding:4px 8px;color:var(--t3);font-size:.56rem;text-transform:uppercase;letter-spacing:.06em">Produto</th>'
+        +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.56rem;text-transform:uppercase;letter-spacing:.06em">Fat.</th>'
+        +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.56rem;text-transform:uppercase;letter-spacing:.06em">Qtd</th>'
+        +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.56rem;text-transform:uppercase;letter-spacing:.06em">Preço un.</th></tr></thead><tbody>'
+        +(s.length?s.map(qRow).join(''):'<tr><td colspan="4" style="padding:6px 8px;color:var(--t3)">—</td></tr>')
+        +'</tbody></table></div></div>';
+    }
+    var listas='<div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
+      + qBloco('AC · Premium', '#00e5ff', 'Alto faturamento, baixo giro. Poucas unidades, muito R$ — sustentam o ticket.', cell.A.C.prods, 'valor')
+      + qBloco('CA · Giro barato', '#ff6e85', 'Muitas unidades, baixo faturamento. Puxam o ticket pra baixo — tráfego/isca.', cell.C.A.prods, 'qtd')
+      + qBloco('CC · Cauda longa', 'var(--t2)', 'Baixo em R$ e em giro. Candidatos a racionalização / corte de mix.', cell.C.C.prods, 'valor')
+      +'</div>';
+
+    return '<div style="margin-top:22px;border-top:1px solid var(--b2);padding-top:16px">'
+      +'<div style="font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:700">Curva cruzada ABC · faturamento × quantidade · '+perLabel+' (acumulado '+N+' '+(N>1?'meses':'mês')+')</div>'
+      +'<div style="font-size:.66rem;color:var(--t3);margin:4px 0 10px;line-height:1.5">Cada produto entra em duas curvas: por <b>faturamento</b> (linhas) e por <b>quantidade</b> (colunas). A = 80% do total · B = próximos 15% · C = últimos 5%. Intensidade da célula = participação no faturamento.</div>'
+      + mtx + resumo + listas
+      +'</div>';
+  }
+
   function render(res){ try { _render(res); } catch(e){ console.error('Curva render falhou:', e); status('⚠ Curva carregada, mas houve um erro ao montar a tabela: '+(e&&e.message||e)+'. Recarregue.'); } }
   function _render(res){
     var el=document.getElementById('curva-content'); if(!el) return;
@@ -15455,6 +15557,8 @@ function printAtiva(){
       + bloco('▲ Puxam o ticket pra CIMA (preço unit. &gt; ticket)', '#69f0ae', cima)
       +'</div>';
     html+='<div style="font-size:.66rem;color:var(--t3);margin-top:6px">Ordenado pelo impacto no ticket = participação no volume × (ticket − preço unitário). Quanto mais volume de item barato, mais o ticket cai.</div>';
+
+    html+=crossABC(ok);
 
     el.innerHTML=html;
   }
