@@ -2546,7 +2546,12 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       <input class="cap-param-input" id="cf-p-min" type="number" min="1" value="528" readonly="">
       <span class="cap-param-from">▸ fixo</span>
     </div>
-    <div class="cap-param-group"><span class="cap-param-label" style="color: rgb(255, 179, 0);">Demanda do Mercado (pc/h)</span><input class="cap-param-input" id="v11-dem" type="number" min="0" step="1" value="160"><span class="cap-param-from" style="" id="v11-dem-hint">▸ 564.324 pç ÷ 3.177 h</span><button type="button" class="v11-btn-auto dem">↺ Automático</button></div><div class="cap-param-group"><span class="cap-param-label" style="color:#FF9800">Capacidade Teórica (pc/h)</span><input class="cap-param-input" id="cf-p-caphora-final" type="number" min="1" step="1" value="160" style="border-color:#FF9800"><span class="cap-param-from" style="color: rgb(0, 229, 255);">▸ potencial máximo configurável</span><button type="button" class="v11-btn-auto cap">↺ Padrão (160)</button></div><div class="cap-param-group"><span class="cap-param-label" style="color: rgb(255, 179, 0);">Demanda do Mercado (pc/h)</span><input class="cap-param-input" id="v11-dem" type="number" min="0" step="1" value="160"><span class="cap-param-from" style="color:#FF9800" id="v11-dem-hint">▸ auto</span><button type="button" class="v11-btn-auto dem">↺ Automático</button></div><div class="cap-param-group"><span class="cap-param-label" style="color: rgb(255, 179, 0);">Demanda do Mercado (pc/h)</span><input class="cap-param-input" id="v11-dem" type="number" min="0" step="1" value="160"><span class="cap-param-from" style="color:#FF9800" id="v11-dem-hint">▸ auto</span><button type="button" class="v11-btn-auto dem">↺ Automático</button></div><div class="cap-param-group"><span class="cap-param-label" style="color: rgb(255, 179, 0);">Demanda do Mercado (pc/h)</span><input class="cap-param-input" id="v11-dem" type="number" min="0" step="1" value="160"><span class="cap-param-from" style="color:#FF9800" id="v11-dem-hint">▸ auto</span><button type="button" class="v11-btn-auto dem">↺ Automático</button></div><button class="cap-param-btn" onclick="cfRecalcular()">▶ Recalcular</button>
+    <div class="cap-param-group">
+      <span class="cap-param-label">Demanda do Mercado (pc/h)</span>
+      <input class="cap-param-input" id="cf-p-caphora" type="number" min="0" step="1" value="">
+      <span class="cap-param-from">▸ auto</span>
+    </div>
+    <button class="cap-param-btn" onclick="cfRecalcular()">▶ Recalcular</button>
   </div>
 
   <!-- Estado vazio -->
