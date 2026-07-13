@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b7</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b8</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -4301,7 +4301,7 @@ function drawDivBars(canvasId,emId,labels,values,posColor,negColor,H,suffix,inve
   var bW=Math.max(8,Math.min(42,(gW/n)*0.6));
 
   // Grid
-  ctx.font='8px Consolas,monospace'; ctx.fillStyle=C.txt;
+  ctx.font='10px Consolas,monospace'; ctx.fillStyle=C.txt;
   [-yMx,0,yMx].forEach(function(v){
     var yy=yP(v);
     ctx.beginPath();ctx.strokeStyle=v===0?'rgba(255,255,255,.18)':C.grid;
@@ -4324,13 +4324,13 @@ function drawDivBars(canvasId,emId,labels,values,posColor,negColor,H,suffix,inve
     ctx.shadowBlur=0;
     ctx.fillStyle=cor;
     ctx.fillRect(x,v>=0?barY:barY+barH-2,bW,2);
-    ctx.font='bold 8px Consolas,monospace';ctx.fillStyle=cor;
+    ctx.font='bold 10px Consolas,monospace';ctx.fillStyle=cor;
     ctx.textAlign='center';ctx.textBaseline=v>=0?'bottom':'top';
     var vStr=(v>0?'+':'')+f(v)+(suffix||'');
     ctx.fillText(vStr,xP(i),v>=0?barY-2:barY+barH+2)
   });
 
-  ctx.font='8px Consolas,monospace';ctx.fillStyle=C.txt;
+  ctx.font='10px Consolas,monospace';ctx.fillStyle=C.txt;
   ctx.textAlign='center';ctx.textBaseline='top';
   labels.forEach(function(l,i){ctx.fillText(l,xP(i),pad.t+gH+8)})
 }
@@ -4433,7 +4433,7 @@ function drawEfic(dados){
   function yP(v){return pad.t+gH-(v/yMax)*gH}
 
   // Grade
-  ctx.font='9px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
+  ctx.font='11px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
   for(var v=0;v<=yMax;v+=20){
     var yy=yP(v);
     ctx.beginPath(); ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.setLineDash([3,4]);
@@ -4483,7 +4483,7 @@ function drawEfic(dados){
     ctx.beginPath(); ctx.arc(x,y,5.5,0,Math.PI*2); ctx.fillStyle=cor+'28'; ctx.fill();
     ctx.beginPath(); ctx.arc(x,y,3.5,0,Math.PI*2);
     ctx.fillStyle=cor; ctx.strokeStyle=C.bg; ctx.lineWidth=1.2; ctx.fill(); ctx.stroke();
-    ctx.font='bold 8px Consolas,monospace'; ctx.fillStyle=cor;
+    ctx.font='bold 10px Consolas,monospace'; ctx.fillStyle=cor;
     ctx.textAlign='center'; ctx.textBaseline='bottom';
     ctx.fillText(f(v)+'%',x,y-7)
   });
@@ -4535,7 +4535,7 @@ function drawBars(canvasId,emId,dados,valFn,cor,H,labelFn){
   function yP(v){return pad.t+gH-(v/maxV)*gH}
 
   // Grade
-  ctx.font='9px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
+  ctx.font='11px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
   var step=Math.ceil(maxV/5/1000)*1000||Math.ceil(maxV/5/100)*100||1;
   for(var v=0;v<=maxV;v+=step){
     var yy=yP(v);
@@ -4555,7 +4555,7 @@ function drawBars(canvasId,emId,dados,valFn,cor,H,labelFn){
     g2.addColorStop(0,c2); g2.addColorStop(1,c2+'44');
     ctx.fillStyle=g2; ctx.fillRect(x,y,w,h);
     if(labelFn){
-      ctx.font='bold 8px Consolas,monospace'; ctx.fillStyle=c2;
+      ctx.font='bold 10px Consolas,monospace'; ctx.fillStyle=c2;
       ctx.textAlign='center'; ctx.textBaseline='bottom';
       ctx.fillText(labelFn(v),x+w/2,y-2)
     }
@@ -4599,7 +4599,7 @@ function drawEficSimples(dados,cvId,emId){
   function xP(i){return pad.l+(i+0.5)*(gW/n)}
   function yP(v){return pad.t+gH-(v/yMax)*gH}
   // Grade
-  ctx.font='9px Consolas,monospace';ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillStyle=C.txt;
+  ctx.font='11px Consolas,monospace';ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillStyle=C.txt;
   for(var v=0;v<=yMax;v+=20){
     var yy=yP(v);
     ctx.beginPath();ctx.strokeStyle=C.grid;ctx.lineWidth=1;ctx.setLineDash([3,4]);
@@ -4634,7 +4634,7 @@ function drawEficSimples(dados,cvId,emId){
     var x=xP(i),y=yP(v),cl=clEf(v);
     var cor=cl==='v'?C.green:cl==='y'?C.yellow:C.red;
     ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle=cor;ctx.fill();
-    ctx.font='bold 8px Consolas,monospace';ctx.fillStyle=cor;
+    ctx.font='bold 10px Consolas,monospace';ctx.fillStyle=cor;
     ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(f(v)+'%',x,y-6)
   });
   // Tooltip
@@ -4665,7 +4665,7 @@ function drawHoras(dados){
 
   function yP(v){return pad.t+gH-(v/maxV)*gH}
 
-  ctx.font='9px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
+  ctx.font='11px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
   var step=Math.ceil(maxV/5/1000)*1000||1;
   for(var v=0;v<=maxV;v+=step){
     var yy=yP(v);
@@ -4704,7 +4704,7 @@ function drawTkt(dados){
   function xP(i){return pad.l+(i+0.5)*(gW/n)}
   function yP(v){return pad.t+gH-(v/maxV)*gH}
 
-  ctx.font='9px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
+  ctx.font='11px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
   var step2=Math.ceil(maxV/4/50)*50||1;
   for(var v=0;v<=maxV;v+=step2){
     var yy=yP(v);
@@ -4729,7 +4729,7 @@ function drawTkt(dados){
   vals.forEach(function(v,i){
     ctx.beginPath(); ctx.arc(xP(i),yP(v),3.5,0,Math.PI*2);
     ctx.fillStyle=C.purple; ctx.strokeStyle=C.bg; ctx.lineWidth=1.2; ctx.fill(); ctx.stroke();
-    ctx.font='bold 8px Consolas,monospace'; ctx.fillStyle=C.purple;
+    ctx.font='bold 10px Consolas,monospace'; ctx.fillStyle=C.purple;
     ctx.textAlign='center'; ctx.textBaseline='bottom';
     ctx.fillText('R$'+f(v,0),xP(i),yP(v)-6)
   })
@@ -4754,7 +4754,7 @@ function drawMetaReal(dados){
   function barW(){return Math.max(6, Math.min(32, gW/n*0.38))}
 
   // Grid
-  ctx.font='9px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle';
+  ctx.font='11px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle';
   for(var v=0;v<=maxV;v+=step){
     var yy=yP(v);
     ctx.beginPath(); ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.setLineDash([3,4]);
@@ -4797,7 +4797,7 @@ function drawMetaReal(dados){
 
     // Variação %
     var var_pct=((r.prodSemExtras-r.meta)/r.meta*100);
-    ctx.font='bold 8px Consolas,monospace'; ctx.textAlign='center';
+    ctx.font='bold 10px Consolas,monospace'; ctx.textAlign='center';
     ctx.fillStyle=atingiu?C.green:C.red;
     var labelY=Math.min(yReal,yMeta)-12;
     ctx.fillText((atingiu?'+':'')+f(var_pct)+'%', x, labelY);
@@ -4819,7 +4819,7 @@ function drawAbs(dados){
   function bW(){return gW/n-4}
   function yP(v){return pad.t+gH-(v/maxV)*gH}
 
-  ctx.font='9px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
+  ctx.font='11px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=C.txt;
   [0,5,10,15,20].filter(function(v){return v<=maxV}).forEach(function(v){
     var yy=yP(v);
     ctx.beginPath(); ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.setLineDash([3,4]);
@@ -4831,7 +4831,7 @@ function drawAbs(dados){
   var ylim=yP(3);
   ctx.beginPath(); ctx.strokeStyle='rgba(244,67,54,.4)'; ctx.lineWidth=1.2; ctx.setLineDash([5,3]);
   ctx.moveTo(pad.l,ylim); ctx.lineTo(pad.l+gW,ylim); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle='rgba(244,67,54,.6)'; ctx.textAlign='left'; ctx.font='9px Consolas,monospace';
+  ctx.fillStyle='rgba(244,67,54,.6)'; ctx.textAlign='left'; ctx.font='11px Consolas,monospace';
   ctx.textBaseline='bottom'; ctx.fillText('3%',pad.l+gW+3,ylim);
 
   ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle=C.txt;
@@ -4841,7 +4841,7 @@ function drawAbs(dados){
     var x=xB(i), w=bW(), h2=gH-(yP(v)-pad.t), y=yP(v);
     var cor=v>6?C.red:v>3?C.amber:v>1.5?C.yellow:C.green;
     ctx.fillStyle=cor+'aa'; ctx.fillRect(x,y,w,h2);
-    ctx.font='bold 8px Consolas,monospace'; ctx.fillStyle=cor;
+    ctx.font='bold 10px Consolas,monospace'; ctx.fillStyle=cor;
     ctx.textAlign='center'; ctx.textBaseline='bottom';
     ctx.fillText(f(v)+'%',x+w/2,y-2)
   });
@@ -6600,7 +6600,7 @@ function prodDrawBarChart(canvasId, labels, values, color, suffix) {
   function yP(v) { return pad.t + gH - (v / maxV) * gH; }
 
   // Grade
-  ctx.font = '8px Consolas,monospace';
+  ctx.font='10px Consolas,monospace';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   var steps = 4;
@@ -6644,7 +6644,7 @@ function prodDrawBarChart(canvasId, labels, values, color, suffix) {
     ctx.fillRect(x, yTop, bW, 2);
 
     // Label valor
-    ctx.font = 'bold 7px Consolas,monospace';
+    ctx.font='bold 9px Consolas,monospace';
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
@@ -6653,14 +6653,14 @@ function prodDrawBarChart(canvasId, labels, values, color, suffix) {
   });
 
   // Labels eixo X
-  ctx.font = 'bold 8px Consolas,monospace';
+  ctx.font='bold 10px Consolas,monospace';
   ctx.fillStyle = DS.C.canvasLabel;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   labels.forEach(function(l, i) { ctx.fillText(l, xP(i), pad.t + gH + 7); });
 
   // Sufixo no topo
-  ctx.font = '7px Consolas,monospace';
+  ctx.font='9px Consolas,monospace';
   ctx.fillStyle = DS.C.canvasLabel2;
   ctx.textAlign = 'right';
   ctx.textBaseline = 'top';
@@ -6696,7 +6696,7 @@ function prodDrawDualBarChart(canvasId, labels, vals1, vals2, c1, c2, l1, l2) {
   function yP(v) { return pad.t + gH - (v / maxV) * gH; }
 
   // Grade
-  ctx.font = '8px Consolas,monospace';
+  ctx.font='10px Consolas,monospace';
   ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
   for (var s = 0; s <= 4; s++) {
     var val = maxV * s / 4;
@@ -6723,14 +6723,14 @@ function prodDrawDualBarChart(canvasId, labels, vals1, vals2, c1, c2, l1, l2) {
       ctx.fillStyle = c2;
       ctx.fillRect(x + 1, yP(v2), bW, 2);
     }
-    ctx.font = 'bold 8px Consolas,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.font='bold 10px Consolas,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     ctx.fillStyle = DS.C.canvasLabel;
     ctx.fillText(labels[i], x, pad.t + gH + 7);
   });
 
   // Legenda
   ctx.fillStyle = c1; ctx.fillRect(pad.l, 8, 10, 8);
-  ctx.fillStyle = DS.C.canvasLabel; ctx.font = '9px Segoe UI'; ctx.textAlign = 'left';
+  ctx.fillStyle = DS.C.canvasLabel; ctx.font='11px Segoe UI'; ctx.textAlign = 'left';
   ctx.fillText(l1, pad.l + 13, 16);
   ctx.fillStyle = c2; ctx.fillRect(pad.l + 80, 8, 10, 8);
   ctx.fillStyle = DS.C.canvasLabel; ctx.fillText(l2, pad.l + 93, 16);
@@ -7088,7 +7088,7 @@ function cfDrawBar(id, labels, values, color, suffix) {
   function yP(v){ return pad.t+gH-(v/maxV)*gH; }
 
   /* Grade */
-  ctx.font = '8px Consolas,monospace'; ctx.textAlign = 'right'; ctx.fillStyle = DS.C.canvasLabel;
+  ctx.font='10px Consolas,monospace'; ctx.textAlign = 'right'; ctx.fillStyle = DS.C.canvasLabel;
   for(var s=0;s<=4;s++){
     var val = maxV*s/4, yy = yP(val);
     ctx.beginPath(); ctx.strokeStyle=DS.C.canvasGrid; ctx.lineWidth=1; ctx.setLineDash([3,4]);
@@ -7109,17 +7109,17 @@ function cfDrawBar(id, labels, values, color, suffix) {
     else { ctx.fillRect(x,yT,bW,barH); }
     ctx.fillStyle = color; ctx.fillRect(x,yT,bW,2);
     /* Label */
-    ctx.font='bold 7px Consolas,monospace'; ctx.fillStyle=color;
+    ctx.font='bold 9px Consolas,monospace'; ctx.fillStyle=color;
     ctx.textAlign='center'; ctx.textBaseline='bottom';
     var vStr = v>=1000?(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+'k':(v<10?cfFmt(v,1):Math.round(v)+'');
     ctx.fillText(vStr, xP(i), yT-2);
   });
 
   /* Eixo X */
-  ctx.font='bold 8px Consolas,monospace'; ctx.fillStyle=DS.C.canvasLabel;
+  ctx.font='bold 10px Consolas,monospace'; ctx.fillStyle=DS.C.canvasLabel;
   ctx.textAlign='center'; ctx.textBaseline='top';
   labels.forEach(function(l,i){ ctx.fillText(l, xP(i), pad.t+gH+7); });
-  ctx.font='7px Consolas,monospace'; ctx.fillStyle=DS.C.canvasLabel2;
+  ctx.font='9px Consolas,monospace'; ctx.fillStyle=DS.C.canvasLabel2;
   ctx.textAlign='right'; ctx.textBaseline='top';
   ctx.fillText(suffix, W-pad.r, pad.t-14);
 }
@@ -7142,7 +7142,7 @@ function cfDrawUtil(id, labels, values) {
   function yP(v){ return pad.t+gH-(v/maxV)*gH; }
 
   /* Grade */
-  ctx.font='8px Consolas,monospace'; ctx.textAlign='right'; ctx.fillStyle=DS.C.canvasLabel;
+  ctx.font='10px Consolas,monospace'; ctx.textAlign='right'; ctx.fillStyle=DS.C.canvasLabel;
   [0,25,50,75,100].forEach(function(v){
     var yy=yP(v);
     ctx.beginPath(); ctx.strokeStyle=DS.C.canvasGrid; ctx.lineWidth=1; ctx.setLineDash([3,4]);
@@ -7154,21 +7154,21 @@ function cfDrawUtil(id, labels, values) {
   var y70 = yP(70);
   ctx.beginPath(); ctx.strokeStyle='rgba(90,134,176,.35)'; ctx.lineWidth=1; ctx.setLineDash([3,4]);
   ctx.moveTo(pad.l,y70); ctx.lineTo(pad.l+gW,y70); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle='rgba(90,134,176,.55)'; ctx.font='7px Consolas'; ctx.textAlign='left';
+  ctx.fillStyle='rgba(90,134,176,.55)'; ctx.font='9px Consolas'; ctx.textAlign='left';
   ctx.textBaseline='bottom'; ctx.fillText('70%', pad.l+gW+3, y70);
 
   /* Linha 95% — saudável/risco */
   var y95 = yP(95);
   ctx.beginPath(); ctx.strokeStyle='rgba(255,152,0,.4)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
   ctx.moveTo(pad.l,y95); ctx.lineTo(pad.l+gW,y95); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle='rgba(255,152,0,.65)'; ctx.font='7px Consolas'; ctx.textAlign='left';
+  ctx.fillStyle='rgba(255,152,0,.65)'; ctx.font='9px Consolas'; ctx.textAlign='left';
   ctx.textBaseline='bottom'; ctx.fillText('95%', pad.l+gW+3, y95);
 
   /* Linha 100% — limite máximo */
   var y100 = yP(100);
   ctx.beginPath(); ctx.strokeStyle='rgba(244,67,54,.5)'; ctx.lineWidth=1.3; ctx.setLineDash([5,3]);
   ctx.moveTo(pad.l,y100); ctx.lineTo(pad.l+gW,y100); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle='rgba(244,67,54,.7)'; ctx.font='7px Consolas'; ctx.textAlign='left';
+  ctx.fillStyle='rgba(244,67,54,.7)'; ctx.font='9px Consolas'; ctx.textAlign='left';
   ctx.textBaseline='bottom'; ctx.fillText('100%', pad.l+gW+3, y100);
 
   /* Barras coloridas por faixa: azul=ocioso, verde=saudável, ambar=risco, vermelho=sobrecarga */
@@ -7182,12 +7182,12 @@ function cfDrawUtil(id, labels, values) {
     if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,yT,bW,barH,[3,3,0,0]); ctx.fill(); }
     else ctx.fillRect(x,yT,bW,barH);
     ctx.fillStyle=color; ctx.fillRect(x,yT,bW,2);
-    ctx.font='bold 7px Consolas,monospace'; ctx.textAlign='center';
+    ctx.font='bold 9px Consolas,monospace'; ctx.textAlign='center';
     ctx.textBaseline='bottom'; ctx.fillStyle=color;
     ctx.fillText(Math.round(v)+'%', xP(i), yT-2);
   });
 
-  ctx.font='bold 8px Consolas,monospace'; ctx.fillStyle=DS.C.canvasLabel;
+  ctx.font='bold 10px Consolas,monospace'; ctx.fillStyle=DS.C.canvasLabel;
   ctx.textAlign='center'; ctx.textBaseline='top';
   labels.forEach(function(l,i){ ctx.fillText(l, xP(i), pad.t+gH+7); });
 }
@@ -9083,7 +9083,7 @@ function cfInicializar() {
     pDrawDual('ppcp-c-prod-fat', labels,
       calcs.map(function(c){return c.prod;}),
       calcs.map(function(c){return c.fat;}),
-      DS.C.destaque, DS.C.demanda, 'Produção', 'Faturado');
+      '#00E5FF', DS.C.demanda, 'Produção', 'Faturado');
     pDrawBarSigned('ppcp-c-gap-mes',  labels, calcs.map(function(c){return c.gapMes;}),   'pçs');
     pDrawDual('ppcp-c-takt',
       labels,
@@ -9121,7 +9121,7 @@ function cfInicializar() {
       var gy = pad.t + (gH/4)*g;
       ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l+gW, gy); ctx.stroke();
       var lv = maxV * (1 - g/4);
-      ctx.fillStyle = DS.C.canvasLabel; ctx.font = '9px Consolas';
+      ctx.fillStyle = DS.C.canvasLabel; ctx.font='11px Consolas';
       ctx.textAlign = 'right'; ctx.fillText((lv/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+'k', pad.l-4, gy+3);
     }
 
@@ -9133,13 +9133,13 @@ function cfInicializar() {
       ctx.fillRect(x - bW - 1, pad.t + gH - bH, bW, bH);
       ctx.fillStyle = c2 + '99';
       ctx.fillRect(x + 1, pad.t + gH - bH2, bW, bH2);
-      ctx.fillStyle = DS.C.canvasLabel; ctx.font = '9px Consolas'; ctx.textAlign = 'center';
+      ctx.fillStyle = DS.C.canvasLabel; ctx.font='11px Consolas'; ctx.textAlign = 'center';
       ctx.fillText(labels[i], x, H - pad.b + 14);
     });
 
     /* Legenda */
     ctx.fillStyle = c1; ctx.fillRect(pad.l, 8, 10, 8);
-    ctx.fillStyle = DS.C.canvasLabel; ctx.font = '9px Segoe UI'; ctx.textAlign = 'left';
+    ctx.fillStyle = DS.C.canvasLabel; ctx.font='11px Segoe UI'; ctx.textAlign = 'left';
     ctx.fillText(l1, pad.l+13, 16);
     ctx.fillStyle = c2; ctx.fillRect(pad.l+65, 8, 10, 8);
     ctx.fillStyle = DS.C.canvasLabel; ctx.fillText(l2, pad.l+78, 16);
@@ -9167,7 +9167,7 @@ function cfInicializar() {
     for (var g = 0; g <= 4; g++) {
       var gy = pad.t + (gH/4)*g;
       ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l+gW, gy); ctx.stroke();
-      ctx.fillStyle = DS.C.canvasLabel; ctx.font = '9px Consolas'; ctx.textAlign = 'right';
+      ctx.fillStyle = DS.C.canvasLabel; ctx.font='11px Consolas'; ctx.textAlign = 'right';
       ctx.fillText(Math.round(maxV*(1-g/4)), pad.l-4, gy+3);
     }
     values.forEach(function(v, i) {
@@ -9175,7 +9175,7 @@ function cfInicializar() {
       var bH  = Math.max(2, (v / maxV) * gH);
       ctx.fillStyle = color + 'bb';
       ctx.fillRect(x, pad.t + gH - bH, bW, bH);
-      ctx.fillStyle = DS.C.canvasLabel; ctx.font = '9px Consolas'; ctx.textAlign = 'center';
+      ctx.fillStyle = DS.C.canvasLabel; ctx.font='11px Consolas'; ctx.textAlign = 'center';
       ctx.fillText(labels[i], x + bW/2, H - pad.b + 14);
     });
   }
@@ -9211,10 +9211,10 @@ function cfInicializar() {
       var gy = pad.t + gH*f;
       ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l+gW, gy); ctx.stroke();
       var lv = maxV * (0.5 - f);
-      ctx.fillStyle = DS.C.canvasLabel; ctx.font = '9px Consolas'; ctx.textAlign = 'right';
+      ctx.fillStyle = DS.C.canvasLabel; ctx.font='11px Consolas'; ctx.textAlign = 'right';
       ctx.fillText(Math.round(lv), pad.l-4, gy+3);
     });
-    ctx.fillStyle = DS.C.canvasLabel; ctx.font = '9px Consolas'; ctx.textAlign = 'right';
+    ctx.fillStyle = DS.C.canvasLabel; ctx.font='11px Consolas'; ctx.textAlign = 'right';
     ctx.fillText('0', pad.l-4, midY+3);
 
     values.forEach(function(v, i) {
@@ -9229,7 +9229,7 @@ function cfInicializar() {
         ctx.fillStyle = color + 'bb';
         ctx.fillRect(x, midY, bW, bH);
       }
-      ctx.fillStyle = DS.C.canvasLabel; ctx.font = '9px Consolas'; ctx.textAlign = 'center';
+      ctx.fillStyle = DS.C.canvasLabel; ctx.font='11px Consolas'; ctx.textAlign = 'center';
       ctx.fillText(labels[i], x + bW/2, H - pad.b + 14);
     });
   }
@@ -13117,12 +13117,12 @@ input:disabled, select:disabled {
       var y = pad.t + gH * t;
       ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + gW, y); ctx.stroke();
       var v = mx - (mx - mn) * t;
-      ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = '8px Consolas,monospace';
+      ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font='10px Consolas,monospace';
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       ctx.fillText((v >= 0 ? '' : '-') + Math.abs(v).toFixed(sufixo === '%' ? 1 : 0) + sufixo, pad.l - 4, y);
     });
     /* Eixo X */
-    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = '8px Consolas,monospace';
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font='10px Consolas,monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     meses.forEach(function(m, i) {
       var x = pad.l + (i / (meses.length - 1 || 1)) * gW;
