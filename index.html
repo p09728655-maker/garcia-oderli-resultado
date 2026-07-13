@@ -5051,7 +5051,31 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')fecharModal(
 ['fCarga','fFaltas','fAtraso','fE50','fE100','fProd','fMeta','fColabs']
   .forEach(function(id){document.getElementById(id).addEventListener('input',calcPrev)});
 var rsz;
-window.addEventListener('resize',function(){clearTimeout(rsz);rsz=setTimeout(function(){drawAll(getDados(load()))},200)});
+/* Redesenha a página ativa por completo (evita canvas esticado/borrado ao mudar de largura) */
+function _redesenharPaginaAtiva(){
+  try {
+    if (typeof mudarPagina === 'function' && paginaAtiva) mudarPagina(paginaAtiva);
+    else drawAll(getDados(load()));
+  } catch(e) {}
+}
+window.addEventListener('resize',function(){clearTimeout(rsz);rsz=setTimeout(_redesenharPaginaAtiva,180)});
+/* Nitidez dos gráficos: redesenha quando a largura útil muda por qualquer motivo
+   (maximizar janela, recolher/abrir sidebar, modo TV), não só no resize da janela.
+   Sem isto o canvas mantém o bitmap antigo e o CSS o estica → borrado. */
+(function(){
+  if (typeof ResizeObserver === 'undefined') return;
+  var alvo = document.querySelector('.page');
+  alvo = alvo ? alvo.parentElement : document.querySelector('main');
+  if (!alvo) return;
+  var lastW = 0, tmr;
+  new ResizeObserver(function(entries){
+    var w = Math.round(entries[0].contentRect.width);
+    if (w === lastW) return;   // só reage a mudança de largura
+    lastW = w;
+    clearTimeout(tmr);
+    tmr = setTimeout(_redesenharPaginaAtiva, 160);
+  }).observe(alvo);
+})();
 
 /* ════════════════════════════════════════════════════════════
    IMPORTAR EXCEL (.xlsx)
