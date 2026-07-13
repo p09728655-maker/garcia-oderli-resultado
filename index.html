@@ -3308,7 +3308,7 @@ Fórmula: Faltas + Atrasos
 </table>
 </div>
 <div id="ind-industrial-panel" style="cursor: help;"><div class="ind-sec">▸ Indicadores Industriais — Capacidade &amp; Eficiência</div><div class="ind-grid"><div class="ind-card ic-amber">  <div class="ind-lbl">Demanda / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-dem-hora">84,9</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-dem-hora">180.080 ÷ (241d × 8,8h)</div></div><div class="ind-card ic-cyan">  <div class="ind-lbl">Capacidade / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-hora">73,1</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-cap-hora">50 func × 1,48 pç/func/h</div></div><div class="ind-card ic-red">  <div class="ind-lbl">GAP de Produção / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-gap-hora" style="color: rgb(255, 23, 68);">+11,8</div>  <div class="ind-unit" id="ind-u-gap-hora">⚠ Sobrecarga · dem 84,9 − prod 73,1 pç/h</div>  <div class="ind-form" id="ind-f-gap-hora">84,9 − 73,1 pç/h</div></div><div class="ind-card ic-purple">  <div class="ind-lbl">Capacidade Perdida<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-perd">794.694</div>  <div class="ind-unit" id="ind-u-cap-perd">10.865h perdidas × 73,1 pç/h</div>  <div class="ind-form" id="ind-f-cap-perd">H.Perd 10.865h × Prod/h 73,1</div></div><div class="ind-card ic-green">  <div class="ind-lbl">Eficiência de Produção<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-ef-prod" style="color: rgb(0, 230, 118);">91,1%</div>  <div class="ind-unit">produção real ÷ cap. teórica</div>  <div class="ind-form" id="ind-f-ef-prod">155.115 ÷ 170.236 (meta col S)</div></div></div></div></div></div><div class="page" id="page-curva">
-  <div style="max-width:1280px;margin:0 auto">
+  <div style="max-width:1600px;margin:0 auto">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
       <div>
         <div style="font-size:1rem;font-weight:800;color:var(--t1);letter-spacing:.02em">🔤 Curva ABC / Mix de Produtos</div>
@@ -15481,7 +15481,7 @@ function printAtiva(){
       + qBloco('CC · Cauda longa', 'var(--t2)', 'Baixo em R$ e em giro. Candidatos a racionalização / corte de mix.', cell.C.C.prods, 'valor')
       +'</div>';
 
-    return '<div style="margin-top:22px;border-top:1px solid var(--b2);padding-top:16px">'
+    return '<div style="margin-top:18px;border-top:1px solid var(--b2);padding-top:14px">'
       +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:3px">'
         +'<span style="font-size:.86rem;letter-spacing:.05em;text-transform:uppercase;color:var(--t1);font-weight:800">Curva cruzada ABC · faturamento × quantidade</span>'
         + mesBadge(meses,'#00e5ff')
@@ -15594,46 +15594,44 @@ function printAtiva(){
     function shareTopN(n){ return totV>0?prods.slice(0,n).reduce(function(s,x){return s+x.valor;},0)/totV*100:0; }
     var top1=shareTopN(1), top5=shareTopN(5), top10=shareTopN(10);
     var pctCat=nTot>0?n80/nTot*100:0;
-    var W=560,H=190,padL=40,padR=14,padT=14,padB=28, plotW=W-padL-padR, plotH=H-padT-padB;
+    var W=1200,H=250,padL=50,padR=18,padT=16,padB=34, plotW=W-padL-padR, plotH=H-padT-padB;
     function X(i){ return padL+(nTot>1?i/(nTot-1):0)*plotW; }
     function Y(c){ return padT+(1-c)*plotH; }
     var pts=cum.map(function(c,i){ return X(i).toFixed(1)+','+Y(c).toFixed(1); });
     var line='M '+pts.join(' L ');
     var area='M '+X(0).toFixed(1)+','+(padT+plotH).toFixed(1)+' L '+pts.join(' L ')+' L '+X(nTot-1).toFixed(1)+','+(padT+plotH).toFixed(1)+' Z';
     var y80=Y(0.80), xN=X(n80-1), grid='';
-    [0,0.5,1].forEach(function(g){ var y=Y(g); grid+='<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+y.toFixed(1)+'" stroke="#2A2A2A" stroke-width="1"/>'
-      +'<text x="'+(padL-7)+'" y="'+(y+4).toFixed(1)+'" text-anchor="end" font-size="11" fill="#888888">'+(g*100)+'%</text>'; });
-    var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">'
+    [0,0.25,0.5,0.75,1].forEach(function(g){ var y=Y(g); grid+='<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+y.toFixed(1)+'" stroke="#2A2A2A" stroke-width="1"/>'
+      +'<text x="'+(padL-8)+'" y="'+(y+4).toFixed(1)+'" text-anchor="end" font-size="12" fill="#888888">'+(g*100)+'%</text>'; });
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block">'
       +grid
-      +'<path d="'+area+'" fill="rgba(245,166,35,.10)"/>'
-      +'<line x1="'+padL+'" y1="'+y80.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+y80.toFixed(1)+'" stroke="#4D4D4D" stroke-width="1" stroke-dasharray="3,3"/>'
-      +'<text x="'+(W-padR)+'" y="'+(y80-5).toFixed(1)+'" text-anchor="end" font-size="11" fill="#888888">80% do faturamento</text>'
-      +'<line x1="'+xN.toFixed(1)+'" y1="'+padT+'" x2="'+xN.toFixed(1)+'" y2="'+(padT+plotH).toFixed(1)+'" stroke="#00e5ff" stroke-width="1.5" stroke-dasharray="2,3"/>'
-      +'<circle cx="'+xN.toFixed(1)+'" cy="'+y80.toFixed(1)+'" r="4" fill="#00e5ff"/>'
-      +'<path d="'+line+'" fill="none" stroke="#F5A623" stroke-width="2.5" stroke-linejoin="round"/>'
-      +'<text x="'+padL+'" y="'+(H-8)+'" font-size="11" fill="#888888">1º</text>'
-      +'<text x="'+(W-padR)+'" y="'+(H-8)+'" text-anchor="end" font-size="11" fill="#888888">'+nTot+' SKUs (ranqueados por faturamento →)</text>'
+      +'<path d="'+area+'" fill="rgba(245,166,35,.12)"/>'
+      +'<line x1="'+padL+'" y1="'+y80.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+y80.toFixed(1)+'" stroke="#4D4D4D" stroke-width="1" stroke-dasharray="4,4"/>'
+      +'<text x="'+(W-padR)+'" y="'+(y80-6).toFixed(1)+'" text-anchor="end" font-size="12" fill="#aaaaaa">80% do faturamento</text>'
+      +'<line x1="'+xN.toFixed(1)+'" y1="'+padT+'" x2="'+xN.toFixed(1)+'" y2="'+(padT+plotH).toFixed(1)+'" stroke="#00e5ff" stroke-width="1.5" stroke-dasharray="3,3"/>'
+      +'<circle cx="'+xN.toFixed(1)+'" cy="'+y80.toFixed(1)+'" r="5" fill="#00e5ff"/>'
+      +'<text x="'+(xN+8).toFixed(1)+'" y="'+(padT+14).toFixed(1)+'" font-size="12" fill="#00e5ff" font-weight="700">'+n80+' SKUs</text>'
+      +'<path d="'+line+'" fill="none" stroke="#F5A623" stroke-width="3" stroke-linejoin="round"/>'
+      +'<text x="'+padL+'" y="'+(H-8)+'" font-size="12" fill="#888888">1º</text>'
+      +'<text x="'+(W-padR)+'" y="'+(H-8)+'" text-anchor="end" font-size="12" fill="#888888">'+nTot+' SKUs (ranqueados por faturamento →)</text>'
       +'</svg>';
-    function chip(lbl,val){ return '<div style="background:var(--panel);border:1px solid var(--b);border-radius:8px;padding:10px 14px;min-width:104px;flex:1 1 104px">'
-      +'<div style="font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);font-weight:700">'+lbl+'</div>'
-      +'<div style="font-size:1.3rem;font-weight:800;color:#F5A623;font-variant-numeric:tabular-nums">'+val+'</div></div>'; }
+    function chip(lbl,val){ return '<div style="background:var(--panel);border:1px solid var(--b);border-radius:8px;padding:12px 16px;flex:1 1 150px;min-width:140px">'
+      +'<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);font-weight:700">'+lbl+'</div>'
+      +'<div style="font-size:1.55rem;font-weight:800;color:#F5A623;font-variant-numeric:tabular-nums">'+val+'</div></div>'; }
     var grau=pctCat<=20?'Concentração alta':(pctCat<=40?'Concentração moderada':'Faturamento pulverizado');
     var grautxt=pctCat<=20?'poucos itens sustentam a receita — foco de gestão mais simples, mas risco se um item-chave cair.':(pctCat<=40?'a receita depende de um grupo médio de itens.':'a receita vem espalhada por muitos itens — menos risco de concentração, gestão de mix mais complexa.');
-    var right='<div style="display:flex;gap:10px;flex-wrap:wrap">'
-        + chip('80% do R$ em', n80+' SKUs') + chip('Top 1', fN(top1,0)+'%') + chip('Top 5', fN(top5,0)+'%') + chip('Top 10', fN(top10,0)+'%')
-      +'</div>'
-      +'<div style="margin-top:12px;font-size:.92rem;line-height:1.6;color:var(--t2)"><b style="color:var(--t1)">'+grau+':</b> '+grautxt+'</div>';
-    return '<div style="margin-top:22px;border-top:1px solid var(--b2);padding-top:16px">'
+    return '<div style="margin-top:20px;border-top:1px solid var(--b2);padding-top:14px">'
       +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:3px">'
         +'<span style="font-size:.86rem;letter-spacing:.05em;text-transform:uppercase;color:var(--t1);font-weight:800">Concentração · curva de Pareto</span>'
         + mesBadge(meses,'#F5A623')
         +'<span style="font-size:.72rem;color:var(--t3)">acumulado de '+N+' '+(N>1?'meses':'mês')+'</span>'
       +'</div>'
-      +'<div style="font-size:.78rem;color:var(--t3);margin:0 0 12px;line-height:1.5"><b style="color:#00e5ff">'+n80+' SKUs</b> ('+fN(pctCat,0)+'% do catálogo de '+nTot+' itens) já fazem <b>80% do faturamento</b>.</div>'
-      +'<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:center">'
-        +'<div style="flex:2 1 360px;min-width:0">'+svg+'</div>'
-        +'<div style="flex:1 1 260px;min-width:0">'+right+'</div>'
+      +'<div style="font-size:.82rem;color:var(--t3);margin:0 0 10px;line-height:1.5"><b style="color:#00e5ff">'+n80+' SKUs</b> ('+fN(pctCat,0)+'% do catálogo de '+nTot+' itens) já fazem <b>80% do faturamento</b>.</div>'
+      + svg
+      +'<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px">'
+        + chip('80% do R$ em', n80+' SKUs') + chip('Top 1', fN(top1,0)+'%') + chip('Top 5', fN(top5,0)+'%') + chip('Top 10', fN(top10,0)+'%')
       +'</div>'
+      +'<div style="margin-top:12px;font-size:.95rem;line-height:1.6;color:var(--t2)"><b style="color:var(--t1)">'+grau+':</b> '+grautxt+'</div>'
       +'</div>';
   }
 
@@ -15677,7 +15675,7 @@ function printAtiva(){
         +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'+head
         +'<tbody>'+(s.length?s.map(rowFn).join(''):'<tr><td colspan="'+cols+'" style="padding:7px 10px;color:var(--t3)">—</td></tr>')+'</tbody></table></div></div>';
     }
-    return '<div style="margin-top:22px;border-top:1px solid var(--b2);padding-top:16px">'
+    return '<div style="margin-top:18px;border-top:1px solid var(--b2);padding-top:14px">'
       +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:3px">'
         +'<span style="font-size:.86rem;letter-spacing:.05em;text-transform:uppercase;color:var(--t1);font-weight:800">Evolução por produto</span>'
         + mesBadge(mesesR,'#69f0ae')
