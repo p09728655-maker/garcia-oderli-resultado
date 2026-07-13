@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b14</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b15</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -15363,6 +15363,7 @@ function printAtiva(){
   }
   function fmtR(n){ return 'R$ '+(+n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function fmtI(n){ return (+n||0).toLocaleString('pt-BR'); }
+  function fN(n,d){ d=d||0; return (+n||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
   function status(t){ var el=document.getElementById('curva-status'); if(el) el.innerHTML=t; }
 
   function carregar(){
@@ -15381,7 +15382,8 @@ function printAtiva(){
 
   function shareTop(m,n){ var s=m.itens.slice().sort(function(a,b){return b.valor-a.valor;}); var t=s.slice(0,n).reduce(function(x,y){return x+y.valor;},0); return m.totV>0?t/m.totV*100:0; }
 
-  function render(res){
+  function render(res){ try { _render(res); } catch(e){ console.error('Curva render falhou:', e); status('⚠ Curva carregada, mas houve um erro ao montar a tabela: '+(e&&e.message||e)+'. Recarregue.'); } }
+  function _render(res){
     var el=document.getElementById('curva-content'); if(!el) return;
     var ok=(res||[]).filter(function(m){ return !m.erro && m.itens && m.itens.length; });
     if(!ok.length){
@@ -15434,7 +15436,7 @@ function printAtiva(){
       return '<tr style="border-top:1px solid var(--b)">'
         +'<td style="padding:5px 8px">'+d+'</td>'
         +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fmtR(x.unit)+'</td>'
-        +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fI(x.qtd)+'</td>'
+        +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fmtI(x.qtd)+'</td>'
         +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fN(x.share*100,1)+'%</td></tr>';
     }
     function bloco(tit,cor,lista){
