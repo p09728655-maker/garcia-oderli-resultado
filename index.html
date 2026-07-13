@@ -15895,6 +15895,20 @@ function printAtiva(){
     var ant=reais.find(function(d){return d.mes===ma.mes&&d.ano===ma.ano;})||null;
     var anoAnt=dados.find(function(d){return d.mes===a.mes&&d.ano===a.ano-1&&d.colaboradores>0;})||null;
 
+    /* Acumulado no ano — meses reais do mesmo ano de "a", até o mês de referência */
+    var idxRef=ORDEM_MES.indexOf(a.mes);
+    var mesesAno=reais.filter(function(d){return d.ano===a.ano&&ORDEM_MES.indexOf(d.mes)<=idxRef;});
+    var producaoAc=0,faturadaAc=0,vendidaAc=0;
+    mesesAno.forEach(function(d){
+      producaoAc+=(d.producaoReal||0);
+      faturadaAc+=(d.qtdeFaturado||0);
+      vendidaAc+=(d.qtdeVendida||0);
+    });
+    var saldoCarteira=vendidaAc-faturadaAc;
+    var pctCarteira=faturadaAc>0?(saldoCarteira/faturadaAc)*100:0;
+    var nMeses=mesesAno.length;
+    var mesIni=nMeses?( (MESES_NOME[mesesAno[0].mes]||mesesAno[0].mes).substring(0,3) ):'—';
+
     var mesNome=MESES_NOME[a.mes]||a.mes;
     var colRef1=ant?ant.mes+'/'+String(ant.ano).slice(2):'—';
     var colRef2=anoAnt?a.mes+'/'+String(anoAnt.ano).slice(2):'—';
@@ -16009,6 +16023,28 @@ function printAtiva(){
         }).join('')+'</div>'
       : '<p style="font-size:12px;color:#718096;padding:8px 0">Previsão de Produção não informada na planilha para '+mesNome+'/'+a.ano+'.</p>';
 
+    /* Acumulado no Ano — cards + frase de contexto para a ameaça mensal */
+    var acumKpis=[
+      {label:'Produção Acum.',           value:bFmt(producaoAc)+' pçs', cls:'neu', delta:nMeses+' meses no ano'},
+      {label:'Faturado Acum.',           value:bFmt(faturadaAc)+' pçs', cls:'neu', delta:'Qtde faturada no período'},
+      {label:'Vendido Acum. (carteira)', value:bFmt(vendidaAc)+' pçs',  cls:'neu', delta:'Qtde vendida no período'},
+      {label:'Carteira − Faturado',      value:(saldoCarteira>=0?'+':'')+bFmt(saldoCarteira)+' pçs', cls:saldoCarteira>0?'warn':'neu',
+       delta:(pctCarteira>=0?'+':'')+bFmt(pctCarteira,1)+'% vendido '+(saldoCarteira>=0?'acima':'abaixo')+' do faturado'}
+    ];
+    var acumSectionHTML='<div class="brfg-kpi-grid">'+acumKpis.map(function(k){
+        return '<div class="brfg-kpi-card '+k.cls+'">'
+          +'<div class="brfg-kpi-label">'+k.label+'</div>'
+          +'<div class="brfg-kpi-value">'+k.value+'</div>'
+          +'<div class="brfg-kpi-delta">'+k.delta+'</div>'
+        +'</div>';
+      }).join('')+'</div>';
+    var acumFrase = saldoCarteira>0
+      ? 'No acumulado do ano a carteira vendida está '+bFmt(pctCarteira,1)+'% acima do faturado ('+bFmt(saldoCarteira)+' pçs) — a pressão vista em '+mesNome.substring(0,3)+'/'+a.ano+' se confirma no período, não é isolada.'
+      : (saldoCarteira<0
+        ? 'No acumulado do ano o faturado supera a carteira vendida em '+bFmt(-saldoCarteira)+' pçs ('+bFmt(-pctCarteira,1)+'%) — a pressão de carteira do mês não se sustenta no período.'
+        : 'No acumulado do ano a carteira vendida e o faturado estão equilibrados no período.');
+    var acumFraseHTML='<p style="font-size:12px;color:#718096;padding:4px 0">'+acumFrase+'</p>';
+
     document.getElementById('brfg-content').innerHTML=
       '<div class="brfg-header">'
        +'<div class="brfg-label">PPCP — Planejamento e Controle da Produção</div>'
@@ -16039,6 +16075,12 @@ function printAtiva(){
               +'<div class="brfg-kpi-delta">'+k.delta+'</div>'
             +'</div>';
           }).join('')+'</div>'
+        +'</div>'
+        /* 2b · Acumulado no Ano — Carteira × Faturamento (contexto da ameaça mensal) */
+        +'<div class="brfg-section" id="brfg-sec-acum">'
+          +'<div class="brfg-section-title">Acumulado no Ano — Carteira × Faturamento ('+mesIni+'–'+mesNome.substring(0,3)+'/'+a.ano+' · '+nMeses+' meses)</div>'
+          +acumFraseHTML
+          +acumSectionHTML
         +'</div>'
         /* 3 · Achados (o que os números significam e o que fazer) */
         +'<div class="brfg-section" id="brfg-sec-achados">'
@@ -16161,6 +16203,10 @@ function printAtiva(){
           '<div class="brfg-section-title">Indicadores-Chave</div>' +
           document.querySelector('.brfg-kpi-grid').outerHTML +
         '</div>' +
+        /* 2b · Acumulado no Ano */
+        (document.getElementById('brfg-sec-acum')
+          ? '<div class="brfg-section" id="brfg-print-acum">' + document.getElementById('brfg-sec-acum').innerHTML + '</div>'
+          : '') +
         /* 3 · Achados */
         (document.getElementById('brfg-sec-achados')
           ? '<div class="brfg-section" id="brfg-print-achados">' + document.getElementById('brfg-sec-achados').innerHTML + '</div>'
