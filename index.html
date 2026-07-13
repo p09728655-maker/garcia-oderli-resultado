@@ -15484,6 +15484,91 @@ function printAtiva(){
       +'</div>';
   }
 
+  /* ══ Ponte do ticket: decompõe a variação em EFEITO PREÇO × EFEITO MIX ══
+     Ticket = Σ(preço_i × peso_i), peso_i = qtd_i/qtd_total. Comparando dois
+     períodos: preço = Σ(p1−p0)·w0 ; mix = Σ p0·(w1−w0) ; interação = Σ(p1−p0)(w1−w0).
+     Os três somam exatamente ΔTicket. Entradas/saídas de SKU caem no mix. */
+  function mapaPreco(m){
+    var map={}, totQ=m.totQ||m.itens.reduce(function(s,x){return s+x.qtd;},0);
+    m.itens.forEach(function(it){
+      if(!map[it.cod]) map[it.cod]={desc:it.desc,valor:0,qtd:0};
+      map[it.cod].valor+=(+it.valor||0); map[it.cod].qtd+=(+it.qtd||0);
+      if(it.desc && !map[it.cod].desc) map[it.cod].desc=it.desc;
+    });
+    Object.keys(map).forEach(function(k){ var o=map[k]; o.p=o.qtd>0?o.valor/o.qtd:0; o.w=totQ>0?o.qtd/totQ:0; });
+    return map;
+  }
+  function bridgePrecoMix(m0,m1){
+    var A=mapaPreco(m0), B=mapaPreco(m1), keys={};
+    Object.keys(A).forEach(function(k){ keys[k]=1; }); Object.keys(B).forEach(function(k){ keys[k]=1; });
+    var rows=[], tPrice=0, tMix=0, tInter=0;
+    Object.keys(keys).forEach(function(k){
+      var a=A[k], b=B[k];
+      var w0=a?a.w:0, w1=b?b.w:0;
+      var p0=(a&&a.qtd>0)?a.p:((b&&b.qtd>0)?b.p:0);
+      var p1=(b&&b.qtd>0)?b.p:((a&&a.qtd>0)?a.p:0);
+      var price=(p1-p0)*w0, mix=p0*(w1-w0), inter=(p1-p0)*(w1-w0);
+      tPrice+=price; tMix+=mix; tInter+=inter;
+      rows.push({desc:(b&&b.desc)||(a&&a.desc)||k, price:price, mix:mix, inter:inter});
+    });
+    var t0=m0.ticket, t1=m1.ticket, dT=t1-t0;
+    var maxEff=Math.max(Math.abs(tPrice),Math.abs(tMix),Math.abs(tInter),1e-9);
+    function barra(val,cor){
+      var w=Math.abs(val)/maxEff*50;
+      var pos=val>=0?('left:50%;'):('right:50%;');
+      return '<div style="position:relative;height:15px;background:rgba(120,144,156,.10);border-radius:4px">'
+        +'<div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--b2)"></div>'
+        +'<div style="position:absolute;top:2px;bottom:2px;'+pos+'width:'+w.toFixed(1)+'%;background:'+cor+';border-radius:3px"></div></div>';
+    }
+    function linha(rot,val,cor){
+      var pct=Math.abs(dT)>1e-9?(val/dT*100):0;
+      return '<div style="display:grid;grid-template-columns:120px 1fr 132px;align-items:center;gap:10px;margin:6px 0">'
+        +'<div style="font-size:.74rem;color:var(--t2);font-weight:600">'+rot+'</div>'
+        +barra(val,cor)
+        +'<div style="text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums;color:'+cor+';font-weight:700">'+(val>=0?'+':'−')+fmtR(Math.abs(val)).replace('R$ ','R$ ')+' <span style="color:var(--t3);font-weight:600">('+(pct>=0?'+':'')+fN(pct,0)+'%)</span></div></div>';
+    }
+    var COR_P='#00e5ff', COR_M='#F5A623', COR_I='var(--t2)';
+    var domMix=Math.abs(tMix)>=Math.abs(tPrice);
+    var domNome=domMix?'MIX':'PREÇO', domVal=domMix?tMix:tPrice;
+    var explica = domMix
+      ? (tMix<0?'deslocamento do mix para itens de menor valor unitário (mais volume de item barato).':'deslocamento do mix para itens de maior valor unitário.')
+      : (tPrice<0?'queda no preço unitário dos itens (desconto/negociação).':'aumento no preço unitário dos itens.');
+
+    /* drill: quem mais impactou por mix e por preço */
+    function drill(tit,cor,field){
+      var s=rows.slice().filter(function(r){ return Math.abs(r[field])>1e-9; })
+        .sort(function(a,b){ return Math.abs(b[field])-Math.abs(a[field]); }).slice(0,5);
+      var body=s.length?s.map(function(r){
+        var d=(r.desc||'').length>30?r.desc.slice(0,30)+'…':r.desc;
+        var v=r[field];
+        return '<tr style="border-top:1px solid var(--b)"><td style="padding:4px 8px">'+d+'</td>'
+          +'<td style="padding:4px 8px;text-align:right;font-variant-numeric:tabular-nums;color:'+(v>=0?'#69f0ae':'#ff6e85')+'">'+(v>=0?'+':'−')+fmtR(Math.abs(v))+'</td></tr>';
+      }).join(''):'<tr><td colspan="2" style="padding:6px 8px;color:var(--t3)">—</td></tr>';
+      return '<div><div style="font-size:.66rem;font-weight:700;color:'+cor+';margin-bottom:4px">'+tit+'</div>'
+        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.72rem">'
+        +'<thead><tr><th style="text-align:left;padding:4px 8px;color:var(--t3);font-size:.56rem;text-transform:uppercase;letter-spacing:.06em">Produto</th>'
+        +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.56rem;text-transform:uppercase;letter-spacing:.06em">Impacto no ticket</th></tr></thead><tbody>'
+        +body+'</tbody></table></div></div>';
+    }
+
+    return '<div style="margin-top:16px;padding:14px 16px;border-radius:8px;background:var(--panel);border:1px solid var(--b)">'
+      +'<div style="font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:700;margin-bottom:2px">Ponte do ticket · preço × mix · '+m0.mes+' → '+m1.mes+'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap">'
+        +'<div style="font-size:.82rem;color:var(--t2)">Ticket '+m0.mes+': <b style="color:var(--t1)">'+fmtR(t0)+'</b> → '+m1.mes+': <b style="color:#00e5ff">'+fmtR(t1)+'</b></div>'
+        +'<div style="font-size:.82rem;font-weight:800;color:'+(dT>=0?'#69f0ae':'#ff6e85')+';font-variant-numeric:tabular-nums">Δ '+(dT>=0?'+':'−')+fmtR(Math.abs(dT))+' ('+(dT>=0?'+':'')+fN(t0>0?dT/t0*100:0,1)+'%)</div>'
+      +'</div>'
+      + linha('Efeito preço', tPrice, COR_P)
+      + linha('Efeito mix', tMix, COR_M)
+      + linha('Interação', tInter, COR_I)
+      +'<div style="margin-top:10px;font-size:.82rem;line-height:1.6"><b>Leitura:</b> a variação do ticket veio principalmente de <b style="color:'+(domMix?COR_M:COR_P)+'">'+domNome+'</b> ('+(domVal>=0?'+':'−')+fmtR(Math.abs(domVal))+') — '+explica+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">'
+        + drill('▸ Quem mais moveu por MIX', COR_M, 'mix')
+        + drill('▸ Quem mais moveu por PREÇO', COR_P, 'price')
+      +'</div>'
+      +'<div style="font-size:.62rem;color:var(--t3);margin-top:8px;line-height:1.45">Preço = mesmos itens a preço unitário diferente. Mix = mudança na composição do que se vendeu (entra/sai SKU, muda o peso). Interação = efeito combinado. Os três somam a variação total do ticket.</div>'
+      +'</div>';
+  }
+
   function render(res){ try { _render(res); } catch(e){ console.error('Curva render falhou:', e); status('⚠ Curva carregada, mas houve um erro ao montar a tabela: '+(e&&e.message||e)+'. Recarregue.'); } }
   function _render(res){
     var el=document.getElementById('curva-content'); if(!el) return;
@@ -15524,6 +15609,8 @@ function printAtiva(){
         ? 'Mix estável/em recuperação — a participação do Top 10 no faturamento foi de '+shareTop(first,10).toFixed(0)+'% para '+shareTop(last,10).toFixed(0)+'%.'
         : 'A queda do ticket vem de mix deslocado para itens de menor valor unitário. Participação do Top 10 no faturamento: '+shareTop(first,10).toFixed(0)+'% ('+first.mes+') → '+shareTop(last,10).toFixed(0)+'% ('+last.mes+').')
       +'</div>';
+
+    if(first!==last) html+=bridgePrecoMix(first,last);
 
     /* ── Quem puxa o ticket (mês mais recente): preço unitário vs ticket, ponderado por volume ── */
     var tk=last.ticket;
