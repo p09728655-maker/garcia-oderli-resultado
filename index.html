@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b10</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b11</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -15517,6 +15517,42 @@ function printAtiva(){
   }
 
   /* ── SWOT derivada dos indicadores do mês ── */
+  /* ── Achado de Ticket Médio: tendência de TODOS os meses (sem quebra por família) ── */
+  function gerarAchadoTicket(reais) {
+    var rs = (reais||[]).filter(function(r){ return r.ticketMedio > 0; });
+    if (rs.length < 2) return null;
+    var first = rs[0], last = rs[rs.length-1];
+    var delta = (last.ticketMedio - first.ticketMedio) / first.ticketMedio * 100;
+    var minR = rs.reduce(function(x,y){ return y.ticketMedio < x.ticketMedio ? y : x; });
+    var volF = first.qtdeFaturado || 0, volL = last.qtdeFaturado || 0;
+    var volDelta = volF > 0 ? (volL - volF) / volF * 100 : 0;
+    var ref = function(r){ return r.mes + '/' + String(r.ano).slice(2); };
+    var caindo = delta < -2;
+    var status = caindo ? 'warn' : (delta > 2 ? 'ok' : 'info');
+    var titulo = caindo ? 'Ticket médio em queda no período'
+              : (delta > 2 ? 'Ticket médio em recuperação no período' : 'Ticket médio estável no período');
+    var fato = 'Ticket médio foi de ' + bFmtR(first.ticketMedio) + ' (' + ref(first) + ') para '
+             + bFmtR(last.ticketMedio) + ' (' + ref(last) + '), ' + (delta>=0?'+':'') + bFmt(delta,1)
+             + '% no período. Menor valor: ' + bFmtR(minR.ticketMedio) + ' em ' + ref(minR) + '.';
+    var analise;
+    if (caindo && volDelta > 5)
+      analise = 'A queda do ticket acompanha o aumento do volume faturado (' + (volDelta>=0?'+':'') + bFmt(volDelta,0)
+              + '% de peças). Isso aponta para mix de produtos de menor valor e/ou desconto para girar volume — não um problema isolado de um mês.';
+    else if (caindo)
+      analise = 'A queda do ticket não é explicada por aumento de volume (' + (volDelta>=0?'+':'') + bFmt(volDelta,0)
+              + '% de peças). Provável pressão de preço ou mudança de mix — revisar política comercial.';
+    else
+      analise = 'Ticket médio relativamente estável/em recuperação; volume faturado ' + (volDelta>=0?'+':'') + bFmt(volDelta,0) + '% no período.';
+    var recomendacao = 'Acompanhar ticket médio × volume × margem mês a mês. Para cravar a causa exata, seria preciso o faturamento por produto/família (não disponível hoje na base).';
+    return {
+      status: status, titulo: titulo, fato: fato, analise: analise, recomendacao: recomendacao,
+      calculos: [
+        { label: 'Variação do ticket no período', formula: bFmtR(last.ticketMedio) + ' vs ' + bFmtR(first.ticketMedio), resultado: (delta>=0?'+':'') + bFmt(delta,1) + '%' },
+        { label: 'Variação do volume faturado',   formula: bFmt(volL) + ' vs ' + bFmt(volF) + ' pç',                    resultado: (volDelta>=0?'+':'') + bFmt(volDelta,0) + '%' }
+      ]
+    };
+  }
+
   function gerarSWOT(a,ant,anoAnt) {
     var s={forcas:[],fraquezas:[],oportunidades:[],ameacas:[]};
     var depExtra=a.horasCarga>0&&(a.totalExtras/a.horasCarga)>0.10;
@@ -15664,6 +15700,7 @@ function printAtiva(){
     /* Achados estruturados (FATO / ANÁLISE / RECOMENDAÇÃO) */
     var ACH_META={ok:{ico:'🟢',rot:'Positivo'},warn:{ico:'🟡',rot:'Atenção'},bad:{ico:'🔴',rot:'Crítico'},info:{ico:'🔵',rot:'Informativo'}};
     var achados=gerarAchados(a,ant,anoAnt);
+    var achTicket=gerarAchadoTicket(reais); if(achTicket) achados.push(achTicket);
     var achadosHTML=achados.map(function(ac){
       var m=ACH_META[ac.status]||ACH_META.info;
       var calc=(ac.calculos&&ac.calculos.length)
