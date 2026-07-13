@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b16</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b17</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -3307,7 +3307,20 @@ Fórmula: Faltas + Atrasos
 <tfoot id="ppcp-tfoot"><tr><td style="color:#FF9800">TOTAL/MÉD</td><td>155.115</td><td>180.080</td><td>241</td><td>644</td><td>747</td><td>73,1</td><td>0,707</td><td style="color:#F44336">49,22</td><td style="color:#4CAF50">36,05</td><td class="ppcp-pos">+24.965</td><td class="ppcp-pos">+103,6</td><td>58,1</td><td class="ppcp-pos">+8,1</td></tr></tfoot>
 </table>
 </div>
-<div id="ind-industrial-panel" style="cursor: help;"><div class="ind-sec">▸ Indicadores Industriais — Capacidade &amp; Eficiência</div><div class="ind-grid"><div class="ind-card ic-amber">  <div class="ind-lbl">Demanda / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-dem-hora">84,9</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-dem-hora">180.080 ÷ (241d × 8,8h)</div></div><div class="ind-card ic-cyan">  <div class="ind-lbl">Capacidade / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-hora">73,1</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-cap-hora">50 func × 1,48 pç/func/h</div></div><div class="ind-card ic-red">  <div class="ind-lbl">GAP de Produção / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-gap-hora" style="color: rgb(255, 23, 68);">+11,8</div>  <div class="ind-unit" id="ind-u-gap-hora">⚠ Sobrecarga · dem 84,9 − prod 73,1 pç/h</div>  <div class="ind-form" id="ind-f-gap-hora">84,9 − 73,1 pç/h</div></div><div class="ind-card ic-purple">  <div class="ind-lbl">Capacidade Perdida<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-perd">794.694</div>  <div class="ind-unit" id="ind-u-cap-perd">10.865h perdidas × 73,1 pç/h</div>  <div class="ind-form" id="ind-f-cap-perd">H.Perd 10.865h × Prod/h 73,1</div></div><div class="ind-card ic-green">  <div class="ind-lbl">Eficiência de Produção<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-ef-prod" style="color: rgb(0, 230, 118);">91,1%</div>  <div class="ind-unit">produção real ÷ cap. teórica</div>  <div class="ind-form" id="ind-f-ef-prod">155.115 ÷ 170.236 (meta col S)</div></div></div></div></div></div></div><!-- /main -->
+<div id="ind-industrial-panel" style="cursor: help;"><div class="ind-sec">▸ Indicadores Industriais — Capacidade &amp; Eficiência</div><div class="ind-grid"><div class="ind-card ic-amber">  <div class="ind-lbl">Demanda / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-dem-hora">84,9</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-dem-hora">180.080 ÷ (241d × 8,8h)</div></div><div class="ind-card ic-cyan">  <div class="ind-lbl">Capacidade / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-hora">73,1</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-cap-hora">50 func × 1,48 pç/func/h</div></div><div class="ind-card ic-red">  <div class="ind-lbl">GAP de Produção / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-gap-hora" style="color: rgb(255, 23, 68);">+11,8</div>  <div class="ind-unit" id="ind-u-gap-hora">⚠ Sobrecarga · dem 84,9 − prod 73,1 pç/h</div>  <div class="ind-form" id="ind-f-gap-hora">84,9 − 73,1 pç/h</div></div><div class="ind-card ic-purple">  <div class="ind-lbl">Capacidade Perdida<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-perd">794.694</div>  <div class="ind-unit" id="ind-u-cap-perd">10.865h perdidas × 73,1 pç/h</div>  <div class="ind-form" id="ind-f-cap-perd">H.Perd 10.865h × Prod/h 73,1</div></div><div class="ind-card ic-green">  <div class="ind-lbl">Eficiência de Produção<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-ef-prod" style="color: rgb(0, 230, 118);">91,1%</div>  <div class="ind-unit">produção real ÷ cap. teórica</div>  <div class="ind-form" id="ind-f-ef-prod">155.115 ÷ 170.236 (meta col S)</div></div></div></div></div></div><div class="page" id="page-curva">
+  <div style="max-width:1280px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <div style="font-size:1rem;font-weight:800;color:var(--t1);letter-spacing:.02em">🔤 Curva ABC / Mix de Produtos</div>
+        <div style="font-size:.72rem;color:var(--t3)">Faturamento por produto por mês (Google Sheets) — explica o ticket médio</div>
+      </div>
+      <button id="curva-reload" class="btn btn-g" style="padding:8px 12px">↺ Recarregar curva</button>
+    </div>
+    <div id="curva-status" style="font-size:.78rem;color:var(--t2);margin-bottom:12px">—</div>
+    <div id="curva-content"></div>
+  </div>
+</div>
+</div><!-- /main -->
 </div><!-- /layout -->
 
 </div><!-- /app -->
@@ -15315,19 +15328,6 @@ function printAtiva(){
 })();
 </script>
 <!-- ══ PÁGINA: CURVA ABC / MIX ══ -->
-<div class="page" id="page-curva">
-  <div style="max-width:1280px;margin:0 auto">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-      <div>
-        <div style="font-size:1rem;font-weight:800;color:var(--t1);letter-spacing:.02em">🔤 Curva ABC / Mix de Produtos</div>
-        <div style="font-size:.72rem;color:var(--t3)">Faturamento por produto por mês (Google Sheets) — explica o ticket médio</div>
-      </div>
-      <button id="curva-reload" class="btn btn-g" style="padding:8px 12px">↺ Recarregar curva</button>
-    </div>
-    <div id="curva-status" style="font-size:.78rem;color:var(--t2);margin-bottom:12px">—</div>
-    <div id="curva-content"></div>
-  </div>
-</div>
 <script>
 /* ══ MÓDULO CURVA ABC / MIX — lê abas mensais do Google Sheets via gviz JSONP ══
    Sem Apps Script: usa <script> (JSONP) para contornar CORS. Requer a planilha
