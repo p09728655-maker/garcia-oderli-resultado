@@ -1506,7 +1506,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div class="charts1" style="margin-top:20px">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Evolução Geral — Eficiência, OEE &amp; Absenteísmo (%)</span>
+        <span class="cTtl">▸ Evolução Geral — Eficiência, Ef. Ajustada &amp; Absenteísmo (%)</span>
         <div class="lgnd">
           <span class="li"><span class="ld" style="background:var(--cyan)"></span>Eficiência</span>
           <span class="li"><span class="ld" style="background:var(--amber)"></span>Ef. Ajust.</span>
@@ -1593,7 +1593,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Evolução Eficiência &amp; OEE (%)</span>
+        <span class="cTtl">▸ Evolução Eficiência &amp; Ef. Ajustada (%)</span>
         <div class="lgnd">
           <span class="li"><span class="ld" style="background:var(--cyan)"></span>Eficiência</span>
           <span class="li"><span class="ld" style="background:var(--amber)"></span>Ef. Ajust.</span>
@@ -4299,13 +4299,13 @@ function calcDeltas(dados){
   var deltas=[];
   for(var i=1;i<dados.length;i++){
     var cur=dados[i], prv=dados[i-1];
-    var efCur=cur.horasTotais>0?(cur.horasNormais/cur.horasTotais)*100:0;
-    var efPrv=prv.horasTotais>0?(prv.horasNormais/prv.horasTotais)*100:0;
+    var efCur=cur.eficiencia;
+    var efPrv=prv.eficiencia;
     deltas.push({
       label: prv.mes+'/'+prv.ano+' → '+cur.mes+'/'+cur.ano,
       mes: cur.mes+'/'+cur.ano,
       dEf:   parseFloat((efCur-efPrv).toFixed(2)),
-      dOEE:  parseFloat((cur.eficiencia-prv.eficiencia).toFixed(2)),
+      dOEE:  parseFloat((cur.eficienciaAdj-prv.eficienciaAdj).toFixed(2)),
       dAbs:  parseFloat((cur.absenteismo-prv.absenteismo).toFixed(2)),
       dHT:   cur.horasTotais-prv.horasTotais,
       dExt:  cur.totalExtras-prv.totalExtras,
@@ -4444,7 +4444,7 @@ function setupCanvas(id,H){
   return {ctx:ctx,W:W,H:useH}
 }
 
-/* Gráfico de linhas: Eficiência, OEE, Absenteísmo, HFP% */
+/* Gráfico de linhas: Eficiência, Ef. Ajustada, Absenteísmo, HFP% */
 function drawEfic(dados){
   var cv=document.getElementById('cEfic'), em=document.getElementById('emEfic');
   if(!dados.length){cv.style.display='none';em.style.display='block';return}
@@ -4453,8 +4453,8 @@ function drawEfic(dados){
   var pad={t:20,r:42,b:44,l:50};
   var gW=W-pad.l-pad.r, gH=H-pad.t-pad.b, n=dados.length;
 
-  var efics  = dados.map(function(r){return r.horasTotais>0?(r.horasNormais/r.horasTotais)*100:0});
-  var oees   = dados.map(function(r){return r.eficiencia});
+  var efics  = dados.map(function(r){return r.eficiencia});
+  var oees   = dados.map(function(r){return r.eficienciaAdj});
   var absens = dados.map(function(r){return r.absenteismo});
   var hfpPcts= dados.map(function(r){
     var h=calcHFP(r); if(h===null||!r.horasCarga)return null;
@@ -4522,7 +4522,7 @@ function drawEfic(dados){
     ctx.fillText(f(v)+'%',x,y-7)
   });
 
-  // Pontos OEE
+  // Pontos Ef. Ajustada
   oees.forEach(function(v,i){
     ctx.beginPath(); ctx.arc(xP(i),yP(v),2.5,0,Math.PI*2); ctx.fillStyle=C.amber; ctx.fill()
   });
@@ -4618,7 +4618,7 @@ function corEf(r){
 }
 
 /* Gráfico barras agrupadas: Horas Totais / Normais / Extras */
-/* Gráfico eficiência simplificado (só efic + OEE) para página Eficiência */
+/* Gráfico eficiência simplificado (só Eficiência + Ef. Ajustada) para página Eficiência */
 function drawEficSimples(dados,cvId,emId){
   var cv=document.getElementById(cvId), em=document.getElementById(emId);
   if(!cv)return;
@@ -4627,8 +4627,8 @@ function drawEficSimples(dados,cvId,emId){
   var o=setupCanvas(cvId,240), ctx=o.ctx, W=o.W, H=o.H;
   var pad={t:20,r:42,b:44,l:50};
   var gW=W-pad.l-pad.r, gH=H-pad.t-pad.b, n=dados.length;
-  var efics=dados.map(function(r){return r.horasTotais>0?(r.horasNormais/r.horasTotais)*100:0});
-  var oees=dados.map(function(r){return r.eficiencia});
+  var efics=dados.map(function(r){return r.eficiencia});
+  var oees=dados.map(function(r){return r.eficienciaAdj});
   var yMax=105;
   function xP(i){return pad.l+(i+0.5)*(gW/n)}
   function yP(v){return pad.t+gH-(v/yMax)*gH}
@@ -5055,15 +5055,14 @@ function excluirReg(id){
 function exportCSV(){
   var dados=getDados(load());
   if(!dados.length){toast('Sem dados para exportar.','wn');return}
-  var hdr='Mes;Ano;Colaboradores;H.Carga;Faltas(h);Atraso(h);TotalFaltaAtraso;Absenteismo(%);H.Normais;Extra50;Extra100;TotalExtras;H.Totais;ProducaoReal;Meta;Atingimento(%);Eficiencia(%);OEE(%);HFaltaProd(h);TicketMedio(R$);CustoCapNaoAprov(R$)';
+  var hdr='Mes;Ano;Colaboradores;H.Carga;Faltas(h);Atraso(h);TotalFaltaAtraso;Absenteismo(%);H.Normais;Extra50;Extra100;TotalExtras;H.Totais;ProducaoReal;Meta;Atingimento(%);Eficiencia(%);EficienciaAjustada(%);HFaltaProd(h);TicketMedio(R$);CustoCapNaoAprov(R$)';
   var rows=dados.map(function(r){
-    var ef=r.horasTotais>0?(r.horasNormais/r.horasTotais)*100:0;
     var at=r.meta>0?(r.producaoReal/r.meta)*100:0;
     var h=calcHFP(r);
     return [r.mes,r.ano,r.colaboradores,r.horasCarga,r.faltas,r.atraso,
       r.totalFaltaAtraso,r.absenteismo.toFixed(2),r.horasNormais,
       r.extra50,r.extra100,r.totalExtras,r.horasTotais,r.producaoReal,
-      r.meta||0,at.toFixed(2),ef.toFixed(2),r.eficiencia,
+      r.meta||0,at.toFixed(2),r.eficiencia,r.eficienciaAdj,
       h!==null?h.toFixed(0):0,r.ticketMedio.toFixed(2),r.custoCap.toFixed(2)
     ].join(';')
   });
