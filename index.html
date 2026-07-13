@@ -15528,16 +15528,16 @@ function printAtiva(){
     function barra(val,cor){
       var w=Math.abs(val)/maxEff*50;
       var pos=val>=0?('left:50%;'):('right:50%;');
-      return '<div style="position:relative;height:15px;background:rgba(120,144,156,.10);border-radius:4px">'
+      return '<div style="position:relative;height:18px;background:rgba(120,144,156,.10);border-radius:4px">'
         +'<div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--b2)"></div>'
         +'<div style="position:absolute;top:2px;bottom:2px;'+pos+'width:'+w.toFixed(1)+'%;background:'+cor+';border-radius:3px"></div></div>';
     }
     function linha(rot,val,cor){
       var pct=Math.abs(dT)>1e-9?(val/dT*100):0;
-      return '<div style="display:grid;grid-template-columns:120px 1fr 132px;align-items:center;gap:10px;margin:6px 0">'
-        +'<div style="font-size:.74rem;color:var(--t2);font-weight:600">'+rot+'</div>'
+      return '<div style="display:grid;grid-template-columns:140px 1fr 160px;align-items:center;gap:12px;margin:8px 0">'
+        +'<div style="font-size:.86rem;color:var(--t2);font-weight:600">'+rot+'</div>'
         +barra(val,cor)
-        +'<div style="text-align:right;font-size:.78rem;font-variant-numeric:tabular-nums;color:'+cor+';font-weight:700">'+(val>=0?'+':'−')+fmtR(Math.abs(val)).replace('R$ ','R$ ')+' <span style="color:var(--t3);font-weight:600">('+(pct>=0?'+':'')+fN(pct,0)+'%)</span></div></div>';
+        +'<div style="text-align:right;font-size:.9rem;font-variant-numeric:tabular-nums;color:'+cor+';font-weight:700">'+(val>=0?'+':'−')+fmtR(Math.abs(val)).replace('R$ ','R$ ')+' <span style="color:var(--t3);font-weight:600">('+(pct>=0?'+':'')+fN(pct,0)+'%)</span></div></div>';
     }
     var COR_P='#00e5ff', COR_M='#F5A623', COR_I='var(--t2)';
     var domMix=Math.abs(tMix)>=Math.abs(tPrice);
@@ -15553,31 +15553,31 @@ function printAtiva(){
       var body=s.length?s.map(function(r){
         var d=(r.desc||'').length>30?r.desc.slice(0,30)+'…':r.desc;
         var v=r[field];
-        return '<tr style="border-top:1px solid var(--b)"><td style="padding:4px 8px">'+d+'</td>'
-          +'<td style="padding:4px 8px;text-align:right;font-variant-numeric:tabular-nums;color:'+(v>=0?'#69f0ae':'#ff6e85')+'">'+(v>=0?'+':'−')+fmtR(Math.abs(v))+'</td></tr>';
-      }).join(''):'<tr><td colspan="2" style="padding:6px 8px;color:var(--t3)">—</td></tr>';
-      return '<div><div style="font-size:.66rem;font-weight:700;color:'+cor+';margin-bottom:4px">'+tit+'</div>'
-        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.72rem">'
-        +'<thead><tr><th style="text-align:left;padding:4px 8px;color:var(--t3);font-size:.56rem;text-transform:uppercase;letter-spacing:.06em">Produto</th>'
-        +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.56rem;text-transform:uppercase;letter-spacing:.06em">Impacto no ticket</th></tr></thead><tbody>'
+        return '<tr style="border-top:1px solid var(--b)"><td style="padding:5px 10px">'+d+'</td>'
+          +'<td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;color:'+(v>=0?'#69f0ae':'#ff6e85')+'">'+(v>=0?'+':'−')+fmtR(Math.abs(v))+'</td></tr>';
+      }).join(''):'<tr><td colspan="2" style="padding:7px 10px;color:var(--t3)">—</td></tr>';
+      return '<div><div style="font-size:.8rem;font-weight:700;color:'+cor+';margin-bottom:5px">'+tit+'</div>'
+        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'
+        +'<thead><tr><th style="text-align:left;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Produto</th>'
+        +'<th style="text-align:right;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Impacto no ticket</th></tr></thead><tbody>'
         +body+'</tbody></table></div></div>';
     }
 
     return '<div style="margin-top:16px;padding:14px 16px;border-radius:8px;background:var(--panel);border:1px solid var(--b)">'
-      +'<div style="font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:700;margin-bottom:2px">Ponte do ticket · preço × mix · '+m0.mes+' → '+m1.mes+'</div>'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px"><span style="font-size:.86rem;letter-spacing:.05em;text-transform:uppercase;color:var(--t1);font-weight:800">Ponte do ticket · preço × mix</span>'+mesBadge([m0.mes+' → '+m1.mes],'#00e5ff')+'</div>'
       +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap">'
-        +'<div style="font-size:.82rem;color:var(--t2)">Ticket '+m0.mes+': <b style="color:var(--t1)">'+fmtR(t0)+'</b> → '+m1.mes+': <b style="color:#00e5ff">'+fmtR(t1)+'</b></div>'
-        +'<div style="font-size:.82rem;font-weight:800;color:'+(dT>=0?'#69f0ae':'#ff6e85')+';font-variant-numeric:tabular-nums">Δ '+(dT>=0?'+':'−')+fmtR(Math.abs(dT))+' ('+(dT>=0?'+':'')+fN(t0>0?dT/t0*100:0,1)+'%)</div>'
+        +'<div style="font-size:.94rem;color:var(--t2)">Ticket '+m0.mes+': <b style="color:var(--t1)">'+fmtR(t0)+'</b> → '+m1.mes+': <b style="color:#00e5ff">'+fmtR(t1)+'</b></div>'
+        +'<div style="font-size:.94rem;font-weight:800;color:'+(dT>=0?'#69f0ae':'#ff6e85')+';font-variant-numeric:tabular-nums">Δ '+(dT>=0?'+':'−')+fmtR(Math.abs(dT))+' ('+(dT>=0?'+':'')+fN(t0>0?dT/t0*100:0,1)+'%)</div>'
       +'</div>'
       + linha('Efeito preço', tPrice, COR_P)
       + linha('Efeito mix', tMix, COR_M)
       + linha('Interação', tInter, COR_I)
-      +'<div style="margin-top:10px;font-size:.82rem;line-height:1.6"><b>Leitura:</b> a variação do ticket veio principalmente de <b style="color:'+(domMix?COR_M:COR_P)+'">'+domNome+'</b> ('+(domVal>=0?'+':'−')+fmtR(Math.abs(domVal))+') — '+explica+'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">'
+      +'<div style="margin-top:12px;font-size:.92rem;line-height:1.65"><b>Leitura:</b> a variação do ticket veio principalmente de <b style="color:'+(domMix?COR_M:COR_P)+'">'+domNome+'</b> ('+(domVal>=0?'+':'−')+fmtR(Math.abs(domVal))+') — '+explica+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px">'
         + drill('▸ Quem mais moveu por MIX', COR_M, 'mix')
         + drill('▸ Quem mais moveu por PREÇO', COR_P, 'price')
       +'</div>'
-      +'<div style="font-size:.62rem;color:var(--t3);margin-top:8px;line-height:1.45">Preço = mesmos itens a preço unitário diferente. Mix = mudança na composição do que se vendeu (entra/sai SKU, muda o peso). Interação = efeito combinado. Os três somam a variação total do ticket.</div>'
+      +'<div style="font-size:.72rem;color:var(--t3);margin-top:8px;line-height:1.5">Preço = mesmos itens a preço unitário diferente. Mix = mudança na composição do que se vendeu (entra/sai SKU, muda o peso). Interação = efeito combinado. Os três somam a variação total do ticket.</div>'
       +'</div>';
   }
 
@@ -15705,14 +15705,14 @@ function printAtiva(){
     status('✓ Curva carregada: '+ok.length+' de '+ABAS.length+' meses.');
     var first=ok[0], last=ok[ok.length-1];
     var dTicket=first.ticket>0?(last.ticket-first.ticket)/first.ticket*100:0;
-    var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem">'
+    var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.92rem">'
       +'<thead><tr>'
-      +'<th style="text-align:left;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Mês</th>'
-      +'<th style="text-align:right;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Faturamento</th>'
-      +'<th style="text-align:right;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Qtd</th>'
-      +'<th style="text-align:right;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Ticket</th>'
-      +'<th style="text-align:right;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Top10 %</th>'
-      +'<th style="text-align:left;padding:7px 10px;color:var(--t3);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em">Produto que mais fatura</th>'
+      +'<th style="text-align:left;padding:8px 11px;color:var(--t3);text-transform:uppercase;font-size:.7rem;letter-spacing:.08em">Mês</th>'
+      +'<th style="text-align:right;padding:8px 11px;color:var(--t3);text-transform:uppercase;font-size:.7rem;letter-spacing:.08em">Faturamento</th>'
+      +'<th style="text-align:right;padding:8px 11px;color:var(--t3);text-transform:uppercase;font-size:.7rem;letter-spacing:.08em">Qtd</th>'
+      +'<th style="text-align:right;padding:8px 11px;color:var(--t3);text-transform:uppercase;font-size:.7rem;letter-spacing:.08em">Ticket</th>'
+      +'<th style="text-align:right;padding:8px 11px;color:var(--t3);text-transform:uppercase;font-size:.7rem;letter-spacing:.08em">Top10 %</th>'
+      +'<th style="text-align:left;padding:8px 11px;color:var(--t3);text-transform:uppercase;font-size:.7rem;letter-spacing:.08em">Produto que mais fatura</th>'
       +'</tr></thead><tbody>';
     ok.forEach(function(m){
       var top=m.itens.slice().sort(function(a,b){return b.valor-a.valor;})[0];
@@ -15727,7 +15727,7 @@ function printAtiva(){
     });
     html+='</tbody></table></div>';
     var sobe = last.ticket>=first.ticket*0.98;
-    html+='<div style="margin-top:14px;padding:12px 14px;border-radius:8px;background:rgba(120,144,156,.08);border:1px solid var(--b);font-size:.85rem;line-height:1.65">'
+    html+='<div style="margin-top:14px;padding:13px 15px;border-radius:8px;background:rgba(120,144,156,.08);border:1px solid var(--b);font-size:.95rem;line-height:1.7">'
       +'<b>Leitura do ticket via mix:</b> ticket foi de '+fmtR(first.ticket)+' ('+first.mes+') para '+fmtR(last.ticket)+' ('+last.mes+'), '
       +(dTicket>=0?'+':'')+dTicket.toFixed(1).replace('.',',')+'%. '
       +(sobe
@@ -15748,27 +15748,27 @@ function printAtiva(){
     function linP(x){
       var d=x.desc.length>30?x.desc.slice(0,30)+'…':x.desc;
       return '<tr style="border-top:1px solid var(--b)">'
-        +'<td style="padding:5px 8px">'+d+'</td>'
-        +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fmtR(x.unit)+'</td>'
-        +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fmtI(x.qtd)+'</td>'
-        +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fN(x.share*100,1)+'%</td></tr>';
+        +'<td style="padding:6px 10px">'+d+'</td>'
+        +'<td style="padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtR(x.unit)+'</td>'
+        +'<td style="padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtI(x.qtd)+'</td>'
+        +'<td style="padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fN(x.share*100,1)+'%</td></tr>';
     }
     function bloco(tit,cor,lista){
-      var cab='<div><div style="font-size:.68rem;font-weight:700;color:'+cor+';margin-bottom:5px">'+tit+'</div>'
-        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.74rem">'
+      var cab='<div><div style="font-size:.82rem;font-weight:700;color:'+cor+';margin-bottom:6px">'+tit+'</div>'
+        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'
         +'<thead><tr>'
-        +'<th style="text-align:left;padding:4px 8px;color:var(--t3);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em">Produto</th>'
-        +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em">Preço unit.</th>'
-        +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em">Qtd</th>'
-        +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em">Part.</th></tr></thead><tbody>';
-      return cab + (lista.length?lista.map(linP).join(''):'<tr><td style="padding:6px 8px;color:var(--t3)" colspan="4">—</td></tr>') + '</tbody></table></div></div>';
+        +'<th style="text-align:left;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Produto</th>'
+        +'<th style="text-align:right;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Preço unit.</th>'
+        +'<th style="text-align:right;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Qtd</th>'
+        +'<th style="text-align:right;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Part.</th></tr></thead><tbody>';
+      return cab + (lista.length?lista.map(linP).join(''):'<tr><td style="padding:7px 10px;color:var(--t3)" colspan="4">—</td></tr>') + '</tbody></table></div></div>';
     }
-    html+='<div style="margin-top:16px;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:700">Quem move o ticket em '+last.mes+' · ticket do mês = '+fmtR(tk)+' (preço unitário médio)</div>';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">'
+    html+='<div style="margin-top:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:.86rem;letter-spacing:.05em;text-transform:uppercase;color:var(--t1);font-weight:800">Quem move o ticket</span>'+mesBadge([last.mes],'#00e5ff')+'<span style="font-size:.8rem;color:var(--t3)">ticket do mês = '+fmtR(tk)+' (preço unitário médio)</span></div>';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
       + bloco('▼ Puxam o ticket pra BAIXO (preço unit. &lt; ticket, muito volume)', '#ff6e85', baixo)
       + bloco('▲ Puxam o ticket pra CIMA (preço unit. &gt; ticket)', '#69f0ae', cima)
       +'</div>';
-    html+='<div style="font-size:.66rem;color:var(--t3);margin-top:6px">Ordenado pelo impacto no ticket = participação no volume × (ticket − preço unitário). Quanto mais volume de item barato, mais o ticket cai.</div>';
+    html+='<div style="font-size:.72rem;color:var(--t3);margin-top:8px">Ordenado pelo impacto no ticket = participação no volume × (ticket − preço unitário). Quanto mais volume de item barato, mais o ticket cai.</div>';
 
     html+=crossABC(ok);
     html+=paretoBlock(ok);
