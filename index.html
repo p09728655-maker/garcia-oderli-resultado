@@ -1272,17 +1272,21 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     NÍVEL 2 · RITMO PRODUTIVO
   </div>
 
-  <!-- ─── BLOCO A: FATURADO × PRODUÇÃO ─── -->
-  <div class="mes-takt-bloco-label primeiro">
-    <span>📦</span> FATURADO × PRODUÇÃO
+  <!-- ─── ENTREGA × PRODUÇÃO (toggle Faturado/Vendido) ─── -->
+  <div class="mes-takt-bloco-label primeiro" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span><span id="mes-bl-ico">📦</span> <span id="mes-bl-label">FATURADO × PRODUÇÃO</span></span>
+    <span style="display:inline-flex;gap:5px;margin-left:auto">
+      <button type="button" id="mes-bl-tgl-fat" onclick="mesSetBacklogMode('fat')" style="border:1px solid rgba(255,179,0,.45);border-radius:6px;padding:5px 11px;font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;font-family:inherit;background:rgba(255,179,0,.18);color:#ffb300;font-weight:700">📦 Faturado</button>
+      <button type="button" id="mes-bl-tgl-vend" onclick="mesSetBacklogMode('vend')" style="border:1px solid var(--b);border-radius:6px;padding:5px 11px;font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;font-family:inherit;background:transparent;color:var(--t3);font-weight:600">🛒 Vendido</button>
+    </span>
   </div>
   <div class="mes-lvl2-grid">
     <div class="mes-card mes-card-takt-d">
-      <div class="mes-card-badge mes-badge-amber">TAKT FATURADO</div>
-      <div class="mes-card-title">Takt Faturado</div>
+      <div class="mes-card-badge mes-badge-amber" id="mes-takt-dem-badge">TAKT FATURADO</div>
+      <div class="mes-card-title" id="mes-takt-dem-title">Takt Faturado</div>
       <div class="mes-card-value mes-val-amber" id="mes-takt-dem" style="color: rgb(255, 179, 0);">20,27</div>
       <div class="mes-card-unit">seg / peça</div>
-      <div class="mes-card-sub">Ritmo exigido pelo faturamento</div>
+      <div class="mes-card-sub" id="mes-takt-dem-sub">Ritmo exigido pelo faturamento</div>
     </div>
     <div class="mes-card mes-card-takt-p">
       <div class="mes-card-badge mes-badge-cyan">TAKT PRODUÇÃO</div>
@@ -1313,50 +1317,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       <div class="mes-card-sub" id="mes-gap-mes-sub">564.324 fat − 472.441 prod</div>
       <div id="mes-dias-backlog" style="margin-top: 12px; padding: 11px 14px; border-radius: 10px; background: rgba(255, 23, 68, 0.14); border: 2px solid rgba(255, 23, 68, 0.45); font-size: 0.85rem; font-weight: 700; text-align: center; letter-spacing: 0.03em; line-height: 1.7; color: rgb(255, 23, 68); cursor: help;"><span style="font-size:1.35rem;font-weight:800;display:block;margin-bottom:1px">🔴 71 dias →</span><span style="font-size:.8rem;font-weight:700;opacity:.95;display:block">++0,19 dia/dia (⅕ dia)</span><span style="font-size:.62rem;font-weight:500;opacity:.65;display:block;text-transform:uppercase;letter-spacing:.1em">backlog aumentando</span></div>
     </div>
-  </div><!-- /bloco A -->
-
-  <!-- ─── BLOCO B: VENDAS × PRODUÇÃO ─── -->
-  <div class="mes-takt-bloco-label">
-    <span>🛒</span> VENDAS × PRODUÇÃO
-  </div>
-  <div class="mes-lvl2-grid">
-    <div class="mes-card" style="border-top:3px solid var(--ds-bom)">
-      <div class="mes-card-badge" style="background:rgba(76,175,80,.15);color:var(--ds-bom)">TAKT VENDAS</div>
-      <div class="mes-card-title">Takt Vendas</div>
-      <div class="mes-card-value" id="mes-takt-vend" style="color: rgb(0, 230, 118);">18,69</div>
-      <div class="mes-card-unit">seg / peça</div>
-      <div class="mes-card-sub">Ritmo exigido pelas vendas</div>
-    </div>
-    <div class="mes-card mes-card-takt-p">
-      <div class="mes-card-badge mes-badge-cyan">TAKT PRODUÇÃO</div>
-      <div class="mes-card-title">Takt Produção</div>
-      <div class="mes-card-value mes-val-cyan" id="mes-takt-prod-b" style="color: rgb(0, 229, 255);">24,21</div>
-      <div class="mes-card-unit">seg / peça</div>
-      <div class="mes-card-sub">Cadência real da fábrica</div>
-    </div>
-    <div class="mes-card mes-card-takt-gap">
-      <div class="mes-card-badge mes-badge-status" id="mes-takt-status-v-badge">TAKT STATUS</div>
-      <div class="mes-card-title">Diferença Takt</div>
-      <div class="mes-card-value" id="mes-takt-diff-v" style="color: rgb(255, 23, 68);">+5,52</div>
-      <div class="mes-card-unit">seg / peça</div>
-      <div class="mes-card-sub" id="mes-takt-status-v-txt">⏳ Produção mais lenta que vendas — risco de backlog</div>
-    </div>
-    <div class="mes-card mes-card-gap-dia">
-      <div class="mes-card-badge mes-badge-pink">GAP DO DIA</div>
-      <div class="mes-card-title">GAP / Dia</div>
-      <div class="mes-card-value" id="mes-gap-dia-v" style="color: rgb(255, 23, 68);">+387</div>
-      <div class="mes-card-unit">peças / dia</div>
-      <div class="mes-card-sub" id="mes-gap-dia-v-sub">Vend 1.695 − Prod 1.309 pç/dia</div>
-    </div>
-    <div class="mes-card mes-card-gap-mes">
-      <div class="mes-card-badge mes-badge-pink">GAP DO MÊS</div>
-      <div class="mes-card-title">GAP / Mês</div>
-      <div class="mes-card-value" id="mes-gap-mes-v" style="color: rgb(255, 23, 68);">+139.578</div>
-      <div class="mes-card-unit">peças</div>
-      <div class="mes-card-sub" id="mes-gap-mes-v-sub">612.019 vend − 472.441 prod</div>
-      <div id="mes-dias-backlog-v" style="margin-top: 12px; padding: 11px 14px; border-radius: 10px; background: rgba(255, 23, 68, 0.14); border: 2px solid rgba(255, 23, 68, 0.45); font-size: 0.85rem; font-weight: 700; text-align: center; letter-spacing: 0.03em; line-height: 1.7; color: rgb(255, 23, 68); cursor: help;"><span style="font-size:1.35rem;font-weight:800;display:block;margin-bottom:1px">🔴 107 dias ⬆️</span><span style="font-size:.8rem;font-weight:700;opacity:.95;display:block">++0,30 dia/dia</span><span style="font-size:.62rem;font-weight:500;opacity:.65;display:block;text-transform:uppercase;letter-spacing:.1em">backlog aumentando</span></div>
-    </div>
-  </div><!-- /bloco B -->
+  </div><!-- /bloco unificado (Faturado/Vendido via toggle) -->
 
   <!-- ══════════════════════════════════════════════
        NÍVEL 3 — ANÁLISE OPERACIONAL
@@ -12626,12 +12587,23 @@ input:disabled, select:disabled {
   }
 
   /* ══ RENDER COMPLETO — todos os cards MES ══ */
+  var _mesBacklogMode = 'fat', _ultReg = null;
+  function _mesBlToggleUI() {
+    var f = document.getElementById('mes-bl-tgl-fat'), v = document.getElementById('mes-bl-tgl-vend');
+    if (!f || !v) return;
+    var base = 'border-radius:6px;padding:5px 11px;font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;font-family:inherit;border:1px solid ';
+    f.style.cssText = base + (_mesBacklogMode === 'fat'  ? 'rgba(255,179,0,.45);background:rgba(255,179,0,.18);color:#ffb300;font-weight:700' : 'var(--b);background:transparent;color:var(--t3);font-weight:600');
+    v.style.cssText = base + (_mesBacklogMode === 'vend' ? 'rgba(0,230,118,.45);background:rgba(0,230,118,.18);color:#00e676;font-weight:700' : 'var(--b);background:transparent;color:var(--t3);font-weight:600');
+  }
+  window.mesSetBacklogMode = function(m) { _mesBacklogMode = (m === 'vend' ? 'vend' : 'fat'); _mesBlToggleUI(); if (_ultReg) render(_ultReg); };
+
   function render(registros) {
+    _ultReg = registros;
     if (!registros || !registros.length) {
       set('mes-sf-status', '— sem dados —', DS.C.neutro);
       set('mes-sf-sub', 'Carregue uma planilha para visualizar');
       ['mes-sf-dem','mes-sf-prod','mes-sf-gap','mes-sf-gap-pct',
-       'mes-takt-dem','mes-takt-prod','mes-takt-vend','mes-takt-diff',
+       'mes-takt-dem','mes-takt-prod','mes-takt-diff',
        'mes-gap-dia','mes-gap-mes',
        'mes-prod-total','mes-prod-dia','mes-prod-hora',
        'mes-colabs','mes-func-nec','mes-gap-func','mes-hfp','mes-oee',
@@ -12720,126 +12692,83 @@ input:disabled, select:disabled {
       gapBadgeEl.textContent = (totProd - totFat) >= 0 ? 'GAP ANO ▲' : 'GAP ANO ▼';
     }
 
-    /* ══ NÍVEL 2 — BLOCO A: FATURADO × PRODUÇÃO ══ */
-    set('mes-takt-dem',  taktDemSeg  > 0 ? fN(taktDemSeg,  2) : '—', DS.C.demanda);
-    set('mes-takt-prod', taktProdSeg > 0 ? fN(taktProdSeg, 2) : '—', DS.C.destaque);
+    /* ══ NÍVEL 2 — ENTREGA × PRODUÇÃO (Faturado/Vendido via toggle) ══ */
+    _mesBlToggleUI();
+    (function fillBacklog() {
+      var isVend  = _mesBacklogMode === 'vend';
+      var srcTot  = isVend ? totVendida    : totFat;
+      var srcDia  = isVend ? vendaDia      : demDia;
+      var srcTakt = isVend ? taktVendasSeg : taktDemSeg;
+      var srcCor  = isVend ? DS.C.bom      : DS.C.demanda;
+      var trendGap = isVend ? function(r){ return (r.qtdeVendida||0) - _prod(r); }
+                            : function(r){ return _fat(r) - _prod(r); };
+      var palAbrev = isVend ? 'vend' : 'fat';
+      var palDem   = isVend ? 'Vend' : 'Dem';
+      var tipTitle = isVend ? 'Velocidade do Backlog · Vendas' : 'Velocidade do Backlog · Faturado';
+      var palEquil = isVend ? 'Produção e vendas em equilíbrio' : 'Produção e demanda em equilíbrio';
+      var palCobre = isVend ? '✅ Produção cobre as vendas' : '✅ Produção cobre a demanda';
 
-    var tDiffCor = taktDiff > 0 ? DS.C.ruim : (taktDiff < 0 ? DS.C.bom : DS.C.neutro);
-    set('mes-takt-diff', taktDiff !== 0 ? fSign(taktDiff, 2) : '0,00', tDiffCor);
-    set('mes-takt-status-txt',
-      taktDiff > 5  ? 'Cadência acima do exigido — possível ociosidade' :
-      taktDiff < -5 ? 'Cadência abaixo do exigido — dentro da meta' :
-                      'Cadência próxima da demanda');
+      /* rótulos do 1º card + cabeçalho do bloco */
+      var ico = document.getElementById('mes-bl-ico');   if (ico) ico.textContent = isVend ? '🛒' : '📦';
+      var lbl = document.getElementById('mes-bl-label'); if (lbl) lbl.textContent = isVend ? 'VENDAS × PRODUÇÃO' : 'FATURADO × PRODUÇÃO';
+      var bEl = document.getElementById('mes-takt-dem-badge'); if (bEl) { bEl.textContent = isVend ? 'TAKT VENDAS' : 'TAKT FATURADO'; bEl.style.color = srcCor; }
+      var tEl = document.getElementById('mes-takt-dem-title'); if (tEl) tEl.textContent = isVend ? 'Takt Vendas' : 'Takt Faturado';
+      var sEl = document.getElementById('mes-takt-dem-sub');   if (sEl) sEl.textContent = isVend ? 'Ritmo exigido pelas vendas' : 'Ritmo exigido pelo faturamento';
 
-    var gDiaCor = gapDia > 0 ? DS.C.ruim : (gapDia < 0 ? DS.C.destaque : DS.C.neutro);
-    set('mes-gap-dia', gapDia !== 0 ? fSign(gapDia, 0) : '0', gDiaCor);
-    set('mes-gap-dia-sub', 'Dem ' + fI(demDia) + ' − Prod ' + fI(prodDia) + ' pç/dia');
+      set('mes-takt-prod', taktProdSeg > 0 ? fN(taktProdSeg, 2) : '—', DS.C.destaque);
 
-    var gMesCor = gapMes > 0 ? DS.C.ruim : (gapMes < 0 ? DS.C.destaque : DS.C.neutro);
-    set('mes-gap-mes', gapMes !== 0 ? fSign(gapMes, 0) : '0', gMesCor);
-    set('mes-gap-mes-sub', fI(totFat) + ' fat − ' + fI(totProd) + ' prod');
-    (function() {
-      var el = document.getElementById('mes-dias-backlog');
-      if (!el) return;
-      if (gapMes <= 0) {
-        el.innerHTML = '✅ Produção cobre a demanda';
-        el.style.color = DS.C.bom;
-        el.style.background = 'rgba(76,175,80,.1)';
-        el.style.borderColor = 'rgba(76,175,80,.35)';
+      /* Sem dados de vendas: mantém o card mas zera o comparativo */
+      if (isVend && srcTakt <= 0) {
+        set('mes-takt-dem', '—', DS.C.neutro);
+        set('mes-takt-diff', '—', DS.C.neutro);
+        set('mes-takt-status-txt', 'Sem dados de vendas no período');
+        set('mes-gap-dia', '—', DS.C.neutro); set('mes-gap-dia-sub', '');
+        set('mes-gap-mes', '—', DS.C.neutro); set('mes-gap-mes-sub', '');
+        var elN = document.getElementById('mes-dias-backlog');
+        if (elN) { elN.textContent = '—'; elN.style.color = 'var(--t3)'; elN.style.background = 'rgba(255,255,255,.04)'; elN.style.borderColor = 'rgba(255,255,255,.1)'; }
         return;
       }
-      if (prodDia <= 0) {
-        el.innerHTML = '—'; el.style.color = 'var(--t3)';
-        el.style.background = 'rgba(255,255,255,.04)';
-        el.style.borderColor = 'rgba(255,255,255,.1)';
-        return;
-      }
-      var dias = Math.ceil(gapMes / prodDia);
-      var circulo = '⏳', seta = '', subtxt = 'para zerar o backlog';
-      if (n >= 2) {
-        var rA = registros[n-2], rB = registros[n-1];
-        var pA = _dias(rA) > 0 ? _prod(rA) / _dias(rA) : 0;
-        var pB = _dias(rB) > 0 ? _prod(rB) / _dias(rB) : 0;
-        var gA = _fat(rA) - _prod(rA), gB = _fat(rB) - _prod(rB);
-        var dA = pA > 0 && gA > 0 ? Math.ceil(gA / pA) : 0;
-        var dB = pB > 0 && gB > 0 ? Math.ceil(gB / pB) : 0;
-        var delta = dB - dA;
-        var limiar = Math.max(2, Math.round((dA || dB) * 0.05));
-        if (delta > limiar)        { seta = ' ⬆️'; subtxt = 'backlog piorando'; }
-        else if (delta < -limiar)  { seta = ' ⬇️'; subtxt = 'backlog melhorando'; }
-        else                       { seta = ' →';  subtxt = 'backlog estável'; }
-      }
-      var vel = calcularVelocidadeBacklog(prodDia, demDia);
-      if (vel && vel.valor > 0.01)       circulo = '🔴';
-      else if (vel && vel.valor < -0.01) circulo = dias <= 3 ? '🟢' : dias <= 7 ? '🟡' : '🔴';
-      else                               circulo = dias <= 7 ? '🟡' : '🔴';
-      if (vel) subtxt = vel.valor > 0.01 ? 'backlog aumentando' : vel.valor < -0.01 ? 'reduzindo backlog' : 'backlog estável';
-      var velHtml = vel ? '<span style="font-size:.8rem;font-weight:700;opacity:.95;display:block">' + (vel.valor > 0 ? '+' : '') + vel.texto + (vel.fracao ? ' (' + vel.fracao + ')' : '') + '</span>' : '';
-      el.innerHTML =
-        '<span style="font-size:1.35rem;font-weight:800;display:block;margin-bottom:1px">' + circulo + ' ' + dias + ' dias' + seta + '</span>' +
-        velHtml +
-        '<span style="font-size:.62rem;font-weight:500;opacity:.65;display:block;text-transform:uppercase;letter-spacing:.1em">' + subtxt + '</span>';
-      el.style.color = DS.C.ruim;
-      el.style.background = 'rgba(244,67,54,.14)';
-      el.style.borderColor = 'rgba(244,67,54,.45)';
-      _blTipBind(el, (function(v, d, dem, prod) { return function() {
-        var abs  = Math.abs(v).toFixed(2).replace('.',',');
-        var frac = _fraçãoVel(v);
-        var corpo = v > 0.01
-          ? 'A cada dia trabalhado o backlog <span class="uit-bad">cresce ' + abs + ' dia</span>' + (frac ? ' (' + frac + ')' : '') + '.<br>Em 7 dias terá <strong>' + (Math.round(v*7*10)/10).toFixed(1).replace('.',',') + ' dias</strong> a mais.'
-          : v < -0.01
-            ? 'A cada dia trabalhado o backlog <span class="uit-good">reduz ' + abs + ' dia</span>' + (frac ? ' (' + frac + ')' : '') + '.<br>Tendência de normalização.'
-            : 'Produção e demanda em equilíbrio — backlog <span class="uit-warn">estável</span>.';
-        return '<div class="uit-title">Velocidade do Backlog · Faturado</div>' +
-          '<div class="uit-formula">(' + Math.round(dem) + ' − ' + Math.round(prod) + ') ÷ ' + Math.round(prod) + ' = ' + (v > 0 ? '+' : '') + abs + ' dia/dia</div>' +
-          '<div class="uit-body">' + corpo + '</div>';
-      }; })(vel ? vel.valor : 0, dias, demDia, prodDia));
-    })();
 
-    /* ══ NÍVEL 2 — BLOCO B: VENDAS × PRODUÇÃO ══ */
-    var taktDiffVend = taktProdSeg - taktVendasSeg;
-    var gapDiaVend   = vendaDia - prodDia;
-    var gapMesVend   = totVendida - totProd;
+      var taktDiffX = taktProdSeg - srcTakt;
+      var gapDiaX   = srcDia - prodDia;
+      var gapMesX   = srcTot - totProd;
 
-    set('mes-takt-prod-b', taktProdSeg   > 0 ? fN(taktProdSeg,   2) : '—', DS.C.destaque);
-    set('mes-takt-vend',   taktVendasSeg > 0 ? fN(taktVendasSeg, 2) : '—', DS.C.bom);
+      set('mes-takt-dem', srcTakt > 0 ? fN(srcTakt, 2) : '—', srcCor);
+      var tDiffCor = taktDiffX > 0 ? DS.C.ruim : (taktDiffX < 0 ? DS.C.bom : DS.C.neutro);
+      set('mes-takt-diff', taktDiffX !== 0 ? fSign(taktDiffX, 2) : '0,00', tDiffCor);
+      set('mes-takt-status-txt',
+        taktDiffX > 5  ? 'Cadência acima do exigido — possível ociosidade' :
+        taktDiffX < -5 ? (isVend ? 'Produção mais lenta que vendas — risco de backlog' : 'Cadência abaixo do exigido — dentro da meta') :
+                         (isVend ? 'Cadência alinhada com as vendas' : 'Cadência próxima da demanda'));
 
-    if (taktVendasSeg > 0) {
-      var tDVCor = taktDiffVend > 0 ? DS.C.ruim : (taktDiffVend < 0 ? DS.C.bom : DS.C.neutro);
-      set('mes-takt-diff-v', taktDiffVend !== 0 ? fSign(taktDiffVend, 2) : '0,00', tDVCor);
-      set('mes-takt-status-v-txt',
-        taktDiffVend > 5  ? '⏳ Produção mais lenta que vendas — risco de backlog' :
-        taktDiffVend < -5 ? 'Produção mais rápida que vendas — estoque em alta' :
-                            'Cadência alinhada com as vendas');
-      var gDVCor = gapDiaVend > 0 ? DS.C.ruim : (gapDiaVend < 0 ? DS.C.destaque : DS.C.neutro);
-      set('mes-gap-dia-v', gapDiaVend !== 0 ? fSign(gapDiaVend, 0) : '0', gDVCor);
-      set('mes-gap-dia-v-sub', 'Vend ' + fI(vendaDia) + ' − Prod ' + fI(prodDia) + ' pç/dia');
-      var gMVCor = gapMesVend > 0 ? DS.C.ruim : (gapMesVend < 0 ? DS.C.destaque : DS.C.neutro);
-      set('mes-gap-mes-v', gapMesVend !== 0 ? fSign(gapMesVend, 0) : '0', gMVCor);
-      set('mes-gap-mes-v-sub', fI(totVendida) + ' vend − ' + fI(totProd) + ' prod');
+      var gDiaCor = gapDiaX > 0 ? DS.C.ruim : (gapDiaX < 0 ? DS.C.destaque : DS.C.neutro);
+      set('mes-gap-dia', gapDiaX !== 0 ? fSign(gapDiaX, 0) : '0', gDiaCor);
+      set('mes-gap-dia-sub', palDem + ' ' + fI(srcDia) + ' − Prod ' + fI(prodDia) + ' pç/dia');
+
+      var gMesCor = gapMesX > 0 ? DS.C.ruim : (gapMesX < 0 ? DS.C.destaque : DS.C.neutro);
+      set('mes-gap-mes', gapMesX !== 0 ? fSign(gapMesX, 0) : '0', gMesCor);
+      set('mes-gap-mes-sub', fI(srcTot) + ' ' + palAbrev + ' − ' + fI(totProd) + ' prod');
+
       (function() {
-        var el = document.getElementById('mes-dias-backlog-v');
+        var el = document.getElementById('mes-dias-backlog');
         if (!el) return;
-        if (gapMesVend <= 0) {
-          el.innerHTML = '✅ Produção cobre as vendas';
-          el.style.color = DS.C.bom;
-          el.style.background = 'rgba(76,175,80,.1)';
-          el.style.borderColor = 'rgba(76,175,80,.35)';
+        if (gapMesX <= 0) {
+          el.innerHTML = palCobre;
+          el.style.color = DS.C.bom; el.style.background = 'rgba(76,175,80,.1)'; el.style.borderColor = 'rgba(76,175,80,.35)';
           return;
         }
         if (prodDia <= 0) {
           el.innerHTML = '—'; el.style.color = 'var(--t3)';
-          el.style.background = 'rgba(255,255,255,.04)';
-          el.style.borderColor = 'rgba(255,255,255,.1)';
+          el.style.background = 'rgba(255,255,255,.04)'; el.style.borderColor = 'rgba(255,255,255,.1)';
           return;
         }
-        var dias = Math.ceil(gapMesVend / prodDia);
+        var dias = Math.ceil(gapMesX / prodDia);
         var circulo = '⏳', seta = '', subtxt = 'para zerar o backlog';
         if (n >= 2) {
           var rA = registros[n-2], rB = registros[n-1];
           var pA = _dias(rA) > 0 ? _prod(rA) / _dias(rA) : 0;
           var pB = _dias(rB) > 0 ? _prod(rB) / _dias(rB) : 0;
-          var gA = (rA.qtdeVendida||0) - _prod(rA), gB = (rB.qtdeVendida||0) - _prod(rB);
+          var gA = trendGap(rA), gB = trendGap(rB);
           var dA = pA > 0 && gA > 0 ? Math.ceil(gA / pA) : 0;
           var dB = pB > 0 && gB > 0 ? Math.ceil(gB / pB) : 0;
           var delta = dB - dA;
@@ -12848,7 +12777,7 @@ input:disabled, select:disabled {
           else if (delta < -limiar)  { seta = ' ⬇️'; subtxt = 'backlog melhorando'; }
           else                       { seta = ' →';  subtxt = 'backlog estável'; }
         }
-        var vel = calcularVelocidadeBacklog(prodDia, vendaDia);
+        var vel = calcularVelocidadeBacklog(prodDia, srcDia);
         if (vel && vel.valor > 0.01)       circulo = '🔴';
         else if (vel && vel.valor < -0.01) circulo = dias <= 3 ? '🟢' : dias <= 7 ? '🟡' : '🔴';
         else                               circulo = dias <= 7 ? '🟡' : '🔴';
@@ -12858,32 +12787,21 @@ input:disabled, select:disabled {
           '<span style="font-size:1.35rem;font-weight:800;display:block;margin-bottom:1px">' + circulo + ' ' + dias + ' dias' + seta + '</span>' +
           velHtml +
           '<span style="font-size:.62rem;font-weight:500;opacity:.65;display:block;text-transform:uppercase;letter-spacing:.1em">' + subtxt + '</span>';
-        el.style.color = DS.C.ruim;
-        el.style.background = 'rgba(244,67,54,.14)';
-        el.style.borderColor = 'rgba(244,67,54,.45)';
-        _blTipBind(el, (function(v, d, venda, prod) { return function() {
+        el.style.color = DS.C.ruim; el.style.background = 'rgba(244,67,54,.14)'; el.style.borderColor = 'rgba(244,67,54,.45)';
+        _blTipBind(el, (function(v, orig, prod) { return function() {
           var abs  = Math.abs(v).toFixed(2).replace('.',',');
           var frac = _fraçãoVel(v);
           var corpo = v > 0.01
             ? 'A cada dia trabalhado o backlog <span class="uit-bad">cresce ' + abs + ' dia</span>' + (frac ? ' (' + frac + ')' : '') + '.<br>Em 7 dias terá <strong>' + (Math.round(v*7*10)/10).toFixed(1).replace('.',',') + ' dias</strong> a mais.'
             : v < -0.01
               ? 'A cada dia trabalhado o backlog <span class="uit-good">reduz ' + abs + ' dia</span>' + (frac ? ' (' + frac + ')' : '') + '.<br>Tendência de normalização.'
-              : 'Produção e vendas em equilíbrio — backlog <span class="uit-warn">estável</span>.';
-          return '<div class="uit-title">Velocidade do Backlog · Vendas</div>' +
-            '<div class="uit-formula">(' + Math.round(venda) + ' − ' + Math.round(prod) + ') ÷ ' + Math.round(prod) + ' = ' + (v > 0 ? '+' : '') + abs + ' dia/dia</div>' +
+              : palEquil + ' — backlog <span class="uit-warn">estável</span>.';
+          return '<div class="uit-title">' + tipTitle + '</div>' +
+            '<div class="uit-formula">(' + Math.round(orig) + ' − ' + Math.round(prod) + ') ÷ ' + Math.round(prod) + ' = ' + (v > 0 ? '+' : '') + abs + ' dia/dia</div>' +
             '<div class="uit-body">' + corpo + '</div>';
-        }; })(vel ? vel.valor : 0, dias, vendaDia, prodDia));
+        }; })(vel ? vel.valor : 0, srcDia, prodDia));
       })();
-    } else {
-      set('mes-takt-diff-v',       '—', DS.C.neutro);
-      set('mes-takt-status-v-txt', 'Sem dados de vendas no período');
-      set('mes-gap-dia-v',         '—', DS.C.neutro);
-      set('mes-gap-mes-v',         '—', DS.C.neutro);
-      set('mes-gap-dia-v-sub',     '');
-      set('mes-gap-mes-v-sub',     '');
-      var elV = document.getElementById('mes-dias-backlog-v');
-      if (elV) { elV.textContent = '—'; elV.style.color = 'var(--t3)'; }
-    }
+    })();
 
     /* ══ ANÁLISE DO MÊS — narrativa automática ══ */
     (function() {
@@ -12930,6 +12848,7 @@ input:disabled, select:disabled {
 
       /* Vendas vs produção */
       if (taktVendasSeg > 0) {
+        var gapMesVend = totVendida - totProd;
         bullets.push({ t: gapMesVend > 0 ? 'warn' : 'good',
           txt: gapMesVend > 0
             ? '⏳ Vendas superam produção em ' + fI(gapMesVend) + ' pçs — monitorar backlog'
