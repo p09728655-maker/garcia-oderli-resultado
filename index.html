@@ -16514,7 +16514,7 @@ function printAtiva(){
       'html,body{width:100%;height:100%;}' +
       'body{font-family:"Segoe UI",Arial,sans-serif;font-size:8.5pt;color:#1a1a2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
       /* wrapper — pagina naturalmente (Achados/SWOT podem exceder 1 folha) */
-      '.brfg-page{display:flex;flex-direction:column;min-height:100vh;}' +
+      '.brfg-page{display:block;}' +
       /* header */
       '.brfg-header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%);color:#fff;padding:10px 20px 8px;flex-shrink:0;}' +
       '.brfg-label{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#e94560;font-weight:700;margin-bottom:4px;}' +
@@ -16524,7 +16524,7 @@ function printAtiva(){
       '.brfg-meta-item{background:rgba(255,255,255,.08);border-radius:5px;padding:5px 10px;font-size:8px;color:#cbd5e0;min-width:75px;}' +
       '.brfg-meta-item span{display:block;font-size:12px;font-weight:700;color:#fff;margin-bottom:1px;}' +
       /* body */
-      '.brfg-body{padding:8px 20px 6px;flex:1;display:flex;flex-direction:column;}' +
+      '.brfg-body{padding:8px 20px 6px;}' +
       '.brfg-section{margin-bottom:7px;}' +
       '.brfg-section-title{font-size:7.5px;letter-spacing:1.8px;text-transform:uppercase;color:#e94560;font-weight:700;margin-bottom:6px;padding-bottom:4px;border-bottom:1.5px solid #f0f2f5;}' +
       /* KPI grid — auto-fill cobre 9 cards em 1-2 linhas */
@@ -16541,7 +16541,7 @@ function printAtiva(){
       '.brfg-kpi-delta{font-size:7.5px;margin-top:2px;color:#718096;line-height:1.35;}' +
       '.brfg-up{color:#38a169;font-weight:600;}.brfg-down{color:#e53e3e;font-weight:600;}' +
       /* 2 colunas: tabela (55%) e pauta (45%) */
-      '.brfg-2col{display:grid;grid-template-columns:55% 44%;gap:14px;flex:1;}' +
+      '.brfg-2col{display:grid;grid-template-columns:55% 44%;gap:14px;}' +
       /* tabela */
       'table{width:100%;border-collapse:collapse;font-size:8pt;}' +
       'thead tr{background:#1a1a2e;color:#fff;}' +
@@ -16581,7 +16581,7 @@ function printAtiva(){
       '.brfg-swot-box ul{margin:0;padding-left:14px;}' +
       '.brfg-swot-box li{font-size:8pt;line-height:1.4;color:#2d3748;margin-bottom:2px;}' +
       /* footer */
-      '.brfg-footer{background:#f8fafc;border-top:1px solid #edf2f7;padding:5px 20px;font-size:7.5px;color:#a0aec0;display:flex;justify-content:space-between;flex-shrink:0;}' +
+      '.brfg-footer{background:#f8fafc;border-top:1px solid #edf2f7;padding:5px 20px;font-size:7.5px;color:#a0aec0;display:flex;justify-content:space-between;margin-top:10px;break-inside:avoid;}' +
       '</style></head><body>' +
       '<div class="brfg-page">' +
       document.querySelector('.brfg-header').outerHTML +
