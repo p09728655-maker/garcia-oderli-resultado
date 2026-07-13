@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b15</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b16</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -5687,7 +5687,7 @@ function init(){
   var _hoje = new Date();
   var _anoAtual = _hoje.getFullYear();
   var _mesAtual = _mesesAbrev[_hoje.getMonth()];
-  var _temMesAtual = d.some(function(r){ return r.ano===_anoAtual && r.mes===_mesAtual; });
+  var _temMesAtual = d.some(function(r){ return r.ano===_anoAtual && r.mes===_mesAtual && ((r.horasCarga||0) > 0 || (r.producaoReal||0) > 0); });
   if (_temMesAtual) {
     anoAtivo = _anoAtual;
     mesesAtivos = [_mesAtual];
@@ -15440,14 +15440,14 @@ function printAtiva(){
         +'<td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">'+fN(x.share*100,1)+'%</td></tr>';
     }
     function bloco(tit,cor,lista){
-      var cab='<div style="font-size:.68rem;font-weight:700;color:'+cor+';margin-bottom:5px">'+tit+'</div>'
+      var cab='<div><div style="font-size:.68rem;font-weight:700;color:'+cor+';margin-bottom:5px">'+tit+'</div>'
         +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.74rem">'
         +'<thead><tr>'
         +'<th style="text-align:left;padding:4px 8px;color:var(--t3);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em">Produto</th>'
         +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em">Preço unit.</th>'
         +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em">Qtd</th>'
         +'<th style="text-align:right;padding:4px 8px;color:var(--t3);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em">Part.</th></tr></thead><tbody>';
-      return cab + (lista.length?lista.map(linP).join(''):'<tr><td style="padding:6px 8px;color:var(--t3)" colspan="4">—</td></tr>') + '</tbody></table></div>';
+      return cab + (lista.length?lista.map(linP).join(''):'<tr><td style="padding:6px 8px;color:var(--t3)" colspan="4">—</td></tr>') + '</tbody></table></div></div>';
     }
     html+='<div style="margin-top:16px;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:700">Quem move o ticket em '+last.mes+' · ticket do mês = '+fmtR(tk)+' (preço unitário médio)</div>';
     html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">'
