@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b12</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b13</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -15229,6 +15229,89 @@ function printAtiva(){
     setTimeout(init, 80);
   }
 
+})();
+</script>
+<script>
+/* ══ CARD "TICKET MÉDIO — TENDÊNCIA" na Visão Geral (todos os meses) ══
+   Lê load() (dados completos, ignora filtro de mês) e mostra tendência +
+   diagnóstico (queda × volume). Sparkline em CSS (sem canvas). */
+(function(){
+  'use strict';
+  var ORDEM=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  function fR(n){ return 'R$ '+(+n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fN(n,d){ d=d||0; return (+n||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+  function fI(n){ return (+n||0).toLocaleString('pt-BR'); }
+
+  function serie(){
+    var d = (typeof load==='function') ? load() : [];
+    var rs = d.filter(function(r){ return r.ticketMedio>0 && r.producaoReal>0; })
+              .sort(function(a,b){ return (a.ano-b.ano)||(ORDEM.indexOf(a.mes)-ORDEM.indexOf(b.mes)); });
+    return rs;
+  }
+
+  function montar(){
+    var host=document.getElementById('page-visao'); if(!host) return;
+    if(document.getElementById('ticket-trend-card')) return; /* já montado */
+    var card=document.createElement('section');
+    card.id='ticket-trend-card';
+    card.style.cssText='background:var(--panel,#1C1C1C);border:1px solid var(--b,#2A2A2A);border-top:3px solid #00E5FF;border-radius:var(--r,10px);margin:14px 0;padding:14px 16px';
+    host.appendChild(card);
+    /* posiciona logo após o NÍVEL 1, se existir */
+    var anchor=document.getElementById('mes-lvl1-grid');
+    if(anchor && anchor.parentNode===host) host.insertBefore(card, anchor.nextSibling);
+    return card;
+  }
+
+  function render(){
+    var card=document.getElementById('ticket-trend-card')||montar(); if(!card) return;
+    var rs=serie();
+    if(rs.length<2){ card.innerHTML='<div style="font-size:.72rem;color:var(--t3)">Ticket Médio — sem meses suficientes para tendência.</div>'; return; }
+    var first=rs[0], last=rs[rs.length-1];
+    var delta=(last.ticketMedio-first.ticketMedio)/first.ticketMedio*100;
+    var minR=rs.reduce(function(x,y){return y.ticketMedio<x.ticketMedio?y:x;});
+    var volF=first.qtdeFaturado||0, volL=last.qtdeFaturado||0;
+    var volDelta=volF>0?(volL-volF)/volF*100:0;
+    var caindo=delta<-2;
+    var cor=caindo?'#F44336':(delta>2?'#4CAF50':'#888');
+    var diag = caindo && volDelta>5
+      ? 'Queda acompanha alta de volume ('+(volDelta>=0?'+':'')+fN(volDelta,0)+'% peças) → provável mix de menor valor / desconto.'
+      : (caindo ? 'Queda sem alta de volume ('+(volDelta>=0?'+':'')+fN(volDelta,0)+'%) → provável pressão de preço/mix.'
+                : 'Ticket estável/em recuperação; volume '+(volDelta>=0?'+':'')+fN(volDelta,0)+'%.');
+    /* sparkline CSS: barras proporcionais ao ticket */
+    var vals=rs.map(function(r){return r.ticketMedio;});
+    var mx=Math.max.apply(null,vals), mn=Math.min.apply(null,vals);
+    var spark=rs.map(function(r){
+      var h=mx>mn?8+((r.ticketMedio-mn)/(mx-mn))*40:24;
+      var isLast=r===last, isMin=r===minR;
+      var c=isMin?'#F44336':(isLast?'#00E5FF':'rgba(120,144,156,.55)');
+      return '<div title="'+r.mes+': '+fR(r.ticketMedio)+'" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">'
+        +'<div style="width:70%;height:'+h.toFixed(0)+'px;background:'+c+';border-radius:3px 3px 0 0"></div>'
+        +'<div style="font-size:.55rem;color:var(--t3)">'+r.mes+'</div></div>';
+    }).join('');
+    card.innerHTML=
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px">'
+        +'<div>'
+          +'<div style="font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:#00E5FF;font-weight:700">Ticket Médio — Tendência (todos os meses)</div>'
+          +'<div style="display:flex;align-items:baseline;gap:10px;margin-top:4px">'
+            +'<div style="font-size:1.5rem;font-weight:800;font-family:var(--mono);color:var(--t1)">'+fR(last.ticketMedio)+'</div>'
+            +'<div style="font-size:.85rem;font-weight:700;color:'+cor+'">'+(delta>=0?'▲ +':'▼ ')+fN(delta,1)+'% no período</div>'
+          +'</div>'
+          +'<div style="font-size:.68rem;color:var(--t3);margin-top:2px">'+first.mes+' '+fR(first.ticketMedio)+' → '+last.mes+' '+fR(last.ticketMedio)+' · menor '+fR(minR.ticketMedio)+' ('+minR.mes+')</div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:flex-end;gap:4px;height:56px;min-width:180px;flex:1;max-width:320px">'+spark+'</div>'
+      +'</div>'
+      +'<div style="font-size:.75rem;line-height:1.55;color:var(--t2);padding:8px 10px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.18);border-radius:6px">'
+        +'<b>Leitura:</b> '+diag+' <span style="color:var(--t3)">Detalhe por produto na aba Curva ABC / Mix.</span></div>';
+  }
+
+  (function wire(){
+    function go(){
+      montar(); render();
+      if(window.DashBus && window.DashBus.on){ window.DashBus.on('render:feito', render); window.DashBus.on('dados:salvos', render); }
+      if(typeof window.mudarPagina==='function'){ var _mp=window.mudarPagina; window.mudarPagina=function(id){ var r=_mp.apply(this,arguments); if(id==='visao') setTimeout(render,60); return r; }; }
+    }
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(go,400);}); else setTimeout(go,400);
+  })();
 })();
 </script>
 <!-- ══ PÁGINA: CURVA ABC / MIX ══ -->
