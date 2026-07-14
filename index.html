@@ -15455,11 +15455,11 @@ function printAtiva(){
 
     /* ── quadrantes-chave ── */
     function qRow(p){
-      var d=(p.desc||p.cod); d=d.length>34?d.slice(0,34)+'…':d;
+      var d=(p.desc||p.cod); d=d.length>40?d.slice(0,40)+'…':d;
       return '<tr style="border-top:1px solid var(--b)">'
         +'<td style="padding:6px 10px">'+d+'</td>'
-        +'<td style="padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtR(p.valor)+'</td>'
-        +'<td style="padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtI(p.qtd)+'</td>'
+        +'<td style="padding:6px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">'+fmtR(p.valor)+'</td>'
+        +'<td style="padding:6px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">'+fmtI(p.qtd)+'</td>'
         +'<td style="padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtR(unit(p))+'</td></tr>';
     }
     function qBloco(tit,cor,desc,list,sortField){
@@ -15468,7 +15468,7 @@ function printAtiva(){
       var hint=list.length>8?'<div style="font-size:.64rem;color:var(--t3);margin-top:4px">↕ role para ver todos os '+list.length+'</div>':'';
       return '<div><div style="font-size:.82rem;font-weight:700;color:'+cor+';margin-bottom:2px">'+tit+' <span style="color:var(--t3);font-weight:600">('+list.length+' SKUs)</span></div>'
         +'<div style="font-size:.72rem;color:var(--t3);margin-bottom:6px;line-height:1.45">'+desc+'</div>'
-        +'<div style="max-height:320px;overflow:auto;background:var(--panel);border:1px solid var(--b);border-radius:6px"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'
+        +'<div style="max-height:340px;overflow-y:auto;overflow-x:hidden;background:var(--panel);border:1px solid var(--b);border-radius:6px"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'
         +'<thead><tr>'
         +'<th style="text-align:left;'+th+'">Produto</th>'
         +'<th style="text-align:right;'+th+'">Fat.</th>'
@@ -15661,13 +15661,13 @@ function printAtiva(){
     var recorrRev=recentAll.filter(function(p){return recorrSet[p.cod];}).reduce(function(s,x){return s+x.valor;},0);
     var recorrShare=recentTot>0?recorrRev/recentTot*100:0;
     var mesesR=recentM.map(function(m){return m.mes;}), mesesO=olderM.map(function(m){return m.mes;});
-    function nm(x){ return (x.desc||'').length>28?x.desc.slice(0,28)+'…':(x.desc||''); }
+    function nm(x){ return (x.desc||'').length>46?x.desc.slice(0,46)+'…':(x.desc||''); }
     function rowDelta(x){ var cor=x.d>=0?'#69f0ae':'#ff6e85';
       return '<tr style="border-top:1px solid var(--b)"><td style="padding:5px 10px">'+nm(x)+'</td>'
-        +'<td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;color:'+cor+'">'+(x.d>=0?'+':'−')+fmtR(Math.abs(x.d))+'</td>'
-        +'<td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;color:var(--t3)">'+(x.pct>=0?'+':'')+fN(x.pct,0)+'%</td></tr>'; }
+        +'<td style="padding:5px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:'+cor+'">'+(x.d>=0?'+':'−')+fmtR(Math.abs(x.d))+'</td>'
+        +'<td style="padding:5px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--t3)">'+(x.pct>=0?'+':'')+fN(x.pct,0)+'%</td></tr>'; }
     function rowVal(x,cor,sign){ return '<tr style="border-top:1px solid var(--b)"><td style="padding:5px 10px">'+nm(x)+'</td>'
-        +'<td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;color:'+cor+'">'+sign+fmtR(x.valor)+'</td></tr>'; }
+        +'<td style="padding:5px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:'+cor+'">'+sign+fmtR(x.valor)+'</td></tr>'; }
     function head3(a,b){ var th='padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;position:sticky;top:0;background:var(--panel)';
       return '<thead><tr><th style="text-align:left;'+th+'">Produto</th>'
       +'<th style="text-align:right;'+th+'">'+a+'</th>'
@@ -15675,7 +15675,7 @@ function printAtiva(){
     function bloco(tit,cor,lista,rowFn,head,cols){
       var hint=lista.length>8?'<div style="font-size:.64rem;color:var(--t3);margin-top:4px">↕ role para ver todos os '+lista.length+'</div>':'';
       return '<div><div style="font-size:.82rem;font-weight:700;color:'+cor+';margin-bottom:6px">'+tit+' <span style="color:var(--t3);font-weight:600">('+lista.length+')</span></div>'
-        +'<div style="max-height:320px;overflow:auto;background:var(--panel);border:1px solid var(--b);border-radius:6px"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'+head
+        +'<div style="max-height:360px;overflow-y:auto;overflow-x:hidden;background:var(--panel);border:1px solid var(--b);border-radius:6px"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'+head
         +'<tbody>'+(lista.length?lista.map(rowFn).join(''):'<tr><td colspan="'+cols+'" style="padding:7px 10px;color:var(--t3)">—</td></tr>')+'</tbody></table></div>'+hint+'</div>';
     }
     return '<div style="margin-top:18px;border-top:1px solid var(--b2);padding-top:14px">'
@@ -15686,7 +15686,7 @@ function printAtiva(){
         + mesBadge(mesesO,'#ff6e85')
       +'</div>'
       +'<div style="font-size:.78rem;color:var(--t3);margin:0 0 12px;line-height:1.5">Compara o faturamento por produto entre os '+recentM.length+' meses recentes ('+mesesR.join(' · ')+') e os '+olderM.length+' anteriores ('+mesesO.join(' · ')+'). Base recorrente (presente nos '+ok.length+' meses): <b style="color:var(--t1)">'+recorr.length+' SKUs</b> = '+fN(recorrShare,0)+'% do faturamento recente.</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(560px,1fr));gap:16px">'
         + bloco('▲ Subiram', '#69f0ae', subiram, rowDelta, head3('Δ Fat.','Δ%'), 3)
         + bloco('▼ Caíram', '#ff6e85', cairam, rowDelta, head3('Δ Fat.','Δ%'), 3)
         + bloco('✚ Entraram (novos)', '#00e5ff', entraram, function(x){return rowVal(x,'#00e5ff','+');}, head3('Faturamento',''), 2)
