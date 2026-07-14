@@ -3308,6 +3308,33 @@ Fórmula: Faltas + Atrasos
 </table>
 </div>
 <div id="ind-industrial-panel" style="cursor: help;"><div class="ind-sec">▸ Indicadores Industriais — Capacidade &amp; Eficiência</div><div class="ind-grid"><div class="ind-card ic-amber">  <div class="ind-lbl">Demanda / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-dem-hora">84,9</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-dem-hora">180.080 ÷ (241d × 8,8h)</div></div><div class="ind-card ic-cyan">  <div class="ind-lbl">Capacidade / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-hora">73,1</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-cap-hora">50 func × 1,48 pç/func/h</div></div><div class="ind-card ic-red">  <div class="ind-lbl">GAP de Produção / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-gap-hora" style="color: rgb(255, 23, 68);">+11,8</div>  <div class="ind-unit" id="ind-u-gap-hora">⚠ Sobrecarga · dem 84,9 − prod 73,1 pç/h</div>  <div class="ind-form" id="ind-f-gap-hora">84,9 − 73,1 pç/h</div></div><div class="ind-card ic-purple">  <div class="ind-lbl">Capacidade Perdida<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-perd">794.694</div>  <div class="ind-unit" id="ind-u-cap-perd">10.865h perdidas × 73,1 pç/h</div>  <div class="ind-form" id="ind-f-cap-perd">H.Perd 10.865h × Prod/h 73,1</div></div><div class="ind-card ic-green">  <div class="ind-lbl">Eficiência de Produção<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-ef-prod" style="color: rgb(0, 230, 118);">91,1%</div>  <div class="ind-unit">produção real ÷ cap. teórica</div>  <div class="ind-form" id="ind-f-ef-prod">155.115 ÷ 170.236 (meta col S)</div></div></div></div></div></div><div class="page" id="page-curva">
+  <style>
+  @media print{
+    /* ===== Curva ABC · impressão nativa em preto e branco ===== */
+    #page-curva{max-width:none!important}
+    #curva-reload,#curva-status{display:none!important}
+    /* texto preto sobre branco, sem caixas/fundos escuros */
+    #page-curva, #page-curva *{
+      color:#000!important;background:transparent!important;background-color:transparent!important;
+      box-shadow:none!important;text-shadow:none!important;border-color:#aaa!important;
+    }
+    /* empilha em coluna única para caber no A4 retrato */
+    #page-curva div[style*="grid-template-columns"]{grid-template-columns:1fr!important}
+    /* expande as listas roláveis: imprime TODOS os itens */
+    #page-curva div[style*="max-height"]{max-height:none!important;overflow:visible!important}
+    /* cabeçalho das tabelas */
+    #page-curva thead th{background:#fff!important;border-bottom:1px solid #000!important}
+    #page-curva th[style*="sticky"]{position:static!important}
+    /* gráfico de Pareto em preto e branco */
+    #page-curva svg text{fill:#000!important}
+    #page-curva svg path[fill="none"]{stroke:#000!important}
+    #page-curva svg path[fill^="rgba"]{fill:#eee!important}
+    #page-curva svg line{stroke:#bbb!important}
+    #page-curva svg circle{fill:#000!important}
+    /* não cortar tabelas/gráficos no meio da página */
+    #page-curva table,#page-curva svg{break-inside:avoid}
+  }
+  </style>
   <div style="max-width:1600px;margin:0 auto">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
       <div>
