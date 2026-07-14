@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.13 · b17</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.14 · b18</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -3312,7 +3312,7 @@ Fórmula: Faltas + Atrasos
   @media print{
     /* ===== Curva ABC · impressão nativa em preto e branco ===== */
     #page-curva{max-width:none!important}
-    #curva-reload,#curva-status{display:none!important}
+    #curva-reload,#curva-status,#app-version,#page-curva .curva-scrollhint{display:none!important}
     /* texto preto sobre branco, sem caixas/fundos escuros */
     #page-curva, #page-curva *{
       color:#000!important;background:transparent!important;background-color:transparent!important;
@@ -15492,7 +15492,7 @@ function printAtiva(){
     function qBloco(tit,cor,desc,list,sortField){
       var s=list.slice().sort(function(a,b){ return (+b[sortField]||0)-(+a[sortField]||0); });
       var th='padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;position:sticky;top:0;background:var(--panel)';
-      var hint=list.length>8?'<div style="font-size:.64rem;color:var(--t3);margin-top:4px">↕ role para ver todos os '+list.length+'</div>':'';
+      var hint=list.length>8?'<div class="curva-scrollhint" style="font-size:.64rem;color:var(--t3);margin-top:4px">↕ role para ver todos os '+list.length+'</div>':'';
       return '<div><div style="font-size:.82rem;font-weight:700;color:'+cor+';margin-bottom:2px">'+tit+' <span style="color:var(--t3);font-weight:600">('+list.length+' SKUs)</span></div>'
         +'<div style="font-size:.72rem;color:var(--t3);margin-bottom:6px;line-height:1.45">'+desc+'</div>'
         +'<div style="max-height:340px;overflow-y:auto;overflow-x:hidden;background:var(--panel);border:1px solid var(--b);border-radius:6px"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'
@@ -15700,7 +15700,7 @@ function printAtiva(){
       +'<th style="text-align:right;'+th+'">'+a+'</th>'
       +(b?'<th style="text-align:right;'+th+'">'+b+'</th>':'')+'</tr></thead>'; }
     function bloco(tit,cor,lista,rowFn,head,cols){
-      var hint=lista.length>8?'<div style="font-size:.64rem;color:var(--t3);margin-top:4px">↕ role para ver todos os '+lista.length+'</div>':'';
+      var hint=lista.length>8?'<div class="curva-scrollhint" style="font-size:.64rem;color:var(--t3);margin-top:4px">↕ role para ver todos os '+lista.length+'</div>':'';
       return '<div><div style="font-size:.82rem;font-weight:700;color:'+cor+';margin-bottom:6px">'+tit+' <span style="color:var(--t3);font-weight:600">('+lista.length+')</span></div>'
         +'<div style="max-height:360px;overflow-y:auto;overflow-x:hidden;background:var(--panel);border:1px solid var(--b);border-radius:6px"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'+head
         +'<tbody>'+(lista.length?lista.map(rowFn).join(''):'<tr><td colspan="'+cols+'" style="padding:7px 10px;color:var(--t3)">—</td></tr>')+'</tbody></table></div>'+hint+'</div>';
