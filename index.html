@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.14 · b18</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.14 · b19</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -3313,10 +3313,13 @@ Fórmula: Faltas + Atrasos
     /* ===== Curva ABC · impressão nativa em preto e branco ===== */
     #page-curva{max-width:none!important}
     #curva-reload,#curva-status,#app-version,#page-curva .curva-scrollhint{display:none!important}
-    /* texto preto sobre branco, sem caixas/fundos escuros */
+    /* clareia a árvore inteira: sem nenhum fundo escuro atrás do conteúdo */
+    html,body,#app{background:#fff!important;background-image:none!important}
+    body::before{display:none!important}
+    /* conteúdo em BRANCO SÓLIDO (não transparente) — não deixa vazar escuro de trás */
     #page-curva, #page-curva *{
-      color:#000!important;background:transparent!important;background-color:transparent!important;
-      box-shadow:none!important;text-shadow:none!important;border-color:#aaa!important;
+      color:#000!important;background:#fff!important;background-color:#fff!important;background-image:none!important;
+      box-shadow:none!important;text-shadow:none!important;border-color:#bbb!important;
     }
     /* empilha em coluna única para caber no A4 retrato */
     #page-curva div[style*="grid-template-columns"]{grid-template-columns:1fr!important}
