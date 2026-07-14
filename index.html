@@ -1053,7 +1053,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
 #tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style></head>
-<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.14 · b19</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
+<body><div id="app-version" title="Versão publicada — muda a cada atualização" style="position:fixed;left:8px;bottom:6px;z-index:99999;font:600 10px/1.2 Consolas,monospace;color:#7aa0c0;background:rgba(0,0,0,.5);border:1px solid rgba(120,144,156,.3);border-radius:5px;padding:3px 7px;pointer-events:none;letter-spacing:.04em">v2026.07.14 · b20</div><div id="alertas-banner" style="display: none;"><div class="alerta-bar warn"><span class="ab-ico">📋</span><span class="ab-txt">Absenteísmo acima do limite (10%)</span><span class="ab-val">12.1%</span><button class="ab-close" onclick="this.parentElement.remove();var b=document.getElementById('alertas-banner');if(!b.children.length)b.style.display='none'">✕</button></div></div>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -3312,7 +3312,8 @@ Fórmula: Faltas + Atrasos
   @media print{
     /* ===== Curva ABC · impressão nativa em preto e branco ===== */
     #page-curva{max-width:none!important}
-    #curva-reload,#curva-status,#app-version,#page-curva .curva-scrollhint{display:none!important}
+    #curva-reload,#curva-status,#app-version,#page-curva .curva-scrollhint,
+    #main-nav,#sub-nav-bar{display:none!important}
     /* clareia a árvore inteira: sem nenhum fundo escuro atrás do conteúdo */
     html,body,#app{background:#fff!important;background-image:none!important}
     body::before{display:none!important}
@@ -3323,8 +3324,15 @@ Fórmula: Faltas + Atrasos
     }
     /* empilha em coluna única para caber no A4 retrato */
     #page-curva div[style*="grid-template-columns"]{grid-template-columns:1fr!important}
-    /* expande as listas roláveis: imprime TODOS os itens */
+    /* RELATÓRIO (não dump da tela): listas longas viram lista curta com os principais */
     #page-curva div[style*="max-height"]{max-height:none!important;overflow:visible!important}
+    #page-curva div[style*="max-height"] tbody tr:nth-child(n+11){display:none!important}
+    /* nota de topo explicando que a impressão é um resumo */
+    #curva-content::before{
+      content:"Relatório resumido da Curva ABC · as listas mostram os 10 principais de cada grupo (o total de cada lista está no seu título). Para a lista completa, use Exportar CSV.";
+      display:block!important;font-size:11px;color:#000!important;background:#f4f4f4!important;
+      border:1px solid #bbb;padding:9px 13px;margin-bottom:14px;border-radius:6px;line-height:1.45;
+    }
     /* cabeçalho das tabelas */
     #page-curva thead th{background:#fff!important;border-bottom:1px solid #000!important}
     #page-curva th[style*="sticky"]{position:static!important}
