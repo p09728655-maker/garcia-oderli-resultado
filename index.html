@@ -15463,17 +15463,19 @@ function printAtiva(){
         +'<td style="padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtR(unit(p))+'</td></tr>';
     }
     function qBloco(tit,cor,desc,list,sortField){
-      var s=list.slice().sort(function(a,b){ return (+b[sortField]||0)-(+a[sortField]||0); }).slice(0,6);
+      var s=list.slice().sort(function(a,b){ return (+b[sortField]||0)-(+a[sortField]||0); });
+      var th='padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;position:sticky;top:0;background:var(--panel)';
+      var hint=list.length>8?'<div style="font-size:.64rem;color:var(--t3);margin-top:4px">↕ role para ver todos os '+list.length+'</div>':'';
       return '<div><div style="font-size:.82rem;font-weight:700;color:'+cor+';margin-bottom:2px">'+tit+' <span style="color:var(--t3);font-weight:600">('+list.length+' SKUs)</span></div>'
         +'<div style="font-size:.72rem;color:var(--t3);margin-bottom:6px;line-height:1.45">'+desc+'</div>'
-        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'
+        +'<div style="max-height:320px;overflow:auto;background:var(--panel);border:1px solid var(--b);border-radius:6px"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'
         +'<thead><tr>'
-        +'<th style="text-align:left;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Produto</th>'
-        +'<th style="text-align:right;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Fat.</th>'
-        +'<th style="text-align:right;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Qtd</th>'
-        +'<th style="text-align:right;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Preço un.</th></tr></thead><tbody>'
+        +'<th style="text-align:left;'+th+'">Produto</th>'
+        +'<th style="text-align:right;'+th+'">Fat.</th>'
+        +'<th style="text-align:right;'+th+'">Qtd</th>'
+        +'<th style="text-align:right;'+th+'">Preço un.</th></tr></thead><tbody>'
         +(s.length?s.map(qRow).join(''):'<tr><td colspan="4" style="padding:7px 10px;color:var(--t3)">—</td></tr>')
-        +'</tbody></table></div></div>';
+        +'</tbody></table></div>'+hint+'</div>';
     }
     var listas='<div style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">'
       + qBloco('AC · Premium', '#00e5ff', 'Alto faturamento, baixo giro. Poucas unidades, muito R$ — sustentam o ticket.', cell.A.C.prods, 'valor')
@@ -15666,14 +15668,15 @@ function printAtiva(){
         +'<td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;color:var(--t3)">'+(x.pct>=0?'+':'')+fN(x.pct,0)+'%</td></tr>'; }
     function rowVal(x,cor,sign){ return '<tr style="border-top:1px solid var(--b)"><td style="padding:5px 10px">'+nm(x)+'</td>'
         +'<td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;color:'+cor+'">'+sign+fmtR(x.valor)+'</td></tr>'; }
-    function head3(a,b){ return '<thead><tr><th style="text-align:left;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">Produto</th>'
-      +'<th style="text-align:right;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">'+a+'</th>'
-      +(b?'<th style="text-align:right;padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em">'+b+'</th>':'')+'</tr></thead>'; }
+    function head3(a,b){ var th='padding:5px 10px;color:var(--t3);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;position:sticky;top:0;background:var(--panel)';
+      return '<thead><tr><th style="text-align:left;'+th+'">Produto</th>'
+      +'<th style="text-align:right;'+th+'">'+a+'</th>'
+      +(b?'<th style="text-align:right;'+th+'">'+b+'</th>':'')+'</tr></thead>'; }
     function bloco(tit,cor,lista,rowFn,head,cols){
-      var s=lista.slice(0,6);
+      var hint=lista.length>8?'<div style="font-size:.64rem;color:var(--t3);margin-top:4px">↕ role para ver todos os '+lista.length+'</div>':'';
       return '<div><div style="font-size:.82rem;font-weight:700;color:'+cor+';margin-bottom:6px">'+tit+' <span style="color:var(--t3);font-weight:600">('+lista.length+')</span></div>'
-        +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'+head
-        +'<tbody>'+(s.length?s.map(rowFn).join(''):'<tr><td colspan="'+cols+'" style="padding:7px 10px;color:var(--t3)">—</td></tr>')+'</tbody></table></div></div>';
+        +'<div style="max-height:320px;overflow:auto;background:var(--panel);border:1px solid var(--b);border-radius:6px"><table style="width:100%;border-collapse:collapse;font-size:.84rem">'+head
+        +'<tbody>'+(lista.length?lista.map(rowFn).join(''):'<tr><td colspan="'+cols+'" style="padding:7px 10px;color:var(--t3)">—</td></tr>')+'</tbody></table></div>'+hint+'</div>';
     }
     return '<div style="margin-top:18px;border-top:1px solid var(--b2);padding-top:14px">'
       +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:3px">'
