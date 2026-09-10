@@ -1843,6 +1843,13 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       <span style="font-size:.63rem;color:var(--t2)" id="rex-tkt-meta">Meta: R$ 250</span>
       <span id="rex-tkt-diff" style="font-family: var(--mono); font-size: 0.72rem; color: rgb(255, 23, 68);">- R$ 4</span>
     </div>
+    <!-- Ticket que cobriria a MESMA receita produzindo só na jornada normal:
+         ticket ÷ (1 − dependência de HE). É decisão comercial de mix, não de
+         PPCP — por isso fica aqui e não na Reunião. -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px">
+      <span style="font-size:.63rem;color:var(--t2)">Cobriria a receita sem HE</span>
+      <span id="rex-tkt-semhe" style="font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--t2)">—</span>
+    </div>
     <div id="rex-tkt-status" style="position: absolute; top: 12px; right: 12px; width: 9px; height: 9px; border-radius: 50%; background: rgb(255, 23, 68); box-shadow: rgb(255, 23, 68) 0px 0px 6px;"></div>
   </div>
 
@@ -7549,6 +7556,10 @@ function renderResumoExecutivo(dados) {
   e=el('rex-ef-val');    if(e) e.textContent = fmtP(efM).replace(' ','');
   e=el('rex-abs-val');   if(e) e.textContent = fmtP(absM).replace(' ','');
   e=el('rex-tkt-val');   if(e) e.textContent = nTkt>0 ? 'R$ '+tktM.toFixed(0) : '--';
+  /* ticket ÷ (1 − dep. de HE): o ticket que entregaria a mesma receita com
+     as peças da jornada normal. Só faz sentido com hora extra > 0. */
+  var tktSemHE = (nTkt>0 && depHE>0 && depHE<100) ? tktM/(1-depHE/100) : null;
+  e=el('rex-tkt-semhe'); if(e) e.textContent = tktSemHE!==null ? ('R$ '+tktSemHE.toFixed(0)+' (+'+((tktSemHE/tktM-1)*100).toFixed(1).replace('.',',')+'%)') : (nTkt>0?'sem HE no período':'—');
   e=el('rex-ht-val');    if(e) e.textContent = fmt(tHT)+' h';
   e=el('rex-ht-ext');    if(e) e.textContent = fmt(tExt)+' h extras';
 
@@ -7781,6 +7792,10 @@ function renderResumoExecutivo(dados) {
     tipRow('Meta', 'R$ '+META_TICKET.toFixed(2).replace('.',','))+
     tipRow('Diferença', (tkD>=0?'+ R$ ':'- R$ ')+Math.abs(tkD).toFixed(0), tkD>=0?'g':'r')+
     tipRow('Fórmula', 'Receita ÷ peças faturadas (ponderado)')+
+    '<div style="border-top:1px solid var(--b);margin:5px 0"></div>'+
+    tipRow('Cobriria a receita sem HE', tktSemHE!==null?('R$ '+tktSemHE.toFixed(2).replace('.',',')):'—')+
+    tipRow('Fórmula', 'Ticket ÷ (1 − dependência de HE '+depHE.toFixed(1).replace('.',',')+'%)')+
+    '<div style="font-size:.62rem;color:var(--t2);margin:3px 0 5px;line-height:1.4">Ticket que entregaria a MESMA receita produzindo só na jornada normal. Decisão comercial de mix: ticket não reduz hora extra sozinho.</div>'+
     '<div style="border-top:1px solid var(--b);margin:5px 0"></div>'+
     '<div style="font-size:.62rem;color:var(--t2);margin-bottom:3px">dos '+n+' meses no período:</div>'+
     tipRow('Meses c/ meta (≥R$'+META_TICKET+')', dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=META_TICKET;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=META_TICKET;}).length===n?'g':dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=META_TICKET;}).length===0?'r':'a')
@@ -19562,6 +19577,8 @@ function printAtiva(){
         +'<td class="reu-noprint" style="white-space:nowrap">'
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar">✎</button> '
           +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button> ':'')
+          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\')" title="Enviar por WhatsApp para o responsável">💬</button> '
+          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\')" title="Enviar por e-mail para o responsável">✉</button> '
           +'<button type="button" class="btn btn-r btn-sm" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)">🗑</button>'
         +'</td></tr>';
     }).join('');
@@ -19596,6 +19613,10 @@ function printAtiva(){
         +'<button type="button" class="btn btn-a btn-sm" onclick="reuAcaoNova()">+ Nova ação</button>'
         +'<label style="font-size:.66rem;color:var(--t3);display:inline-flex;align-items:center;gap:5px;cursor:pointer">'
           +'<input type="checkbox" '+(mostrarFechadas?'checked':'')+' onchange="reuAcaoMostrar(this.checked)" style="width:auto">mostrar concluídas e canceladas</label>'
+        +'<span style="font-size:.66rem;color:var(--t3)">Plano em aberto:</span>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'zap\')" title="Todas as ações em aberto numa mensagem de WhatsApp">💬 WhatsApp</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Todas as ações em aberto num e-mail (Gmail)">✉ E-mail</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'copiar\')" title="Copiar o plano em aberto como texto">📋 Copiar</button>'
         +'<span style="margin-left:auto;font-size:.62rem;color:var(--t3)">aba ACOES da planilha · cópia local para abrir offline</span>'
       +'</div>'
       +form
@@ -20050,6 +20071,42 @@ function printAtiva(){
     if(typeof toast==='function') toast('Ação excluída.','ok');
   };
   window.reuAcaoMostrar=function(on){ mostrarFechadas=!!on; render(); };
+
+  /* ── Enviar ao responsável ──
+     Não guardamos telefone nem e-mail: o painel abre o WhatsApp (ou o Gmail)
+     já com o texto pronto e a pessoa escolhe o contato. Uma ação (id) ou o
+     plano em aberto inteiro (id null). Texto puro, sem formatação: é o que
+     chega igual no celular, no e-mail e na impressão. */
+  function textoAcao(a){
+    return '• ['+(a.prioridade||'—')+'] '+(a.kpi||'—')+(a.desvio?(' — '+a.desvio):'')
+      +'\n  Ação: '+(a.acao||'—')
+      +(a.causa?('\n  Causa: '+a.causa):'')
+      +'\n  Responsável: '+(a.responsavel||'—')+' · Prazo: '+fData(a.prazo)+' · '+(a.status||'Aberta');
+  }
+  function textoPlano(id){
+    var per=(document.getElementById('reu-per-lbl')||{}).textContent||'';
+    var lista=Acoes.lista().filter(function(a){ return a.status!=='Excluída'; });
+    var sel = id ? lista.filter(function(a){ return a.id===id; })
+                 : ordenarAcoes(lista).filter(function(a){ return !(a.status==='Concluída'||a.status==='Cancelada'); });
+    if(!sel.length) return null;
+    var titulo = id ? ('Ação da Reunião do Mês — '+per) : ('Plano de ação em aberto — Reunião do Mês '+per);
+    return { titulo: titulo,
+             corpo: 'PATRIMAR MÓVEIS · PPCP\n'+titulo+'\n\n'+sel.map(textoAcao).join('\n\n')
+                    +'\n\nRegra: nenhum indicador vermelho sem causa, ação, responsável e prazo.' };
+  }
+  window.reuAcaoEnviar=function(id, via){
+    var t=textoPlano(id);
+    if(!t){ if(typeof toast==='function') toast('Nenhuma ação em aberto para enviar.','wn'); return; }
+    if(via==='zap'){
+      window.open('https://wa.me/?text='+encodeURIComponent(t.corpo), '_blank');
+    } else if(via==='email'){
+      window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(t.titulo)+'&body='+encodeURIComponent(t.corpo), '_blank');
+    } else {
+      var ok=function(){ if(typeof toast==='function') toast('Plano copiado. Cole no e-mail, no WhatsApp ou onde precisar.','ok'); };
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t.corpo).then(ok, function(){ prompt('Copie o texto:', t.corpo); });
+      else prompt('Copie o texto:', t.corpo);
+    }
+  };
 
   /* A classe no body liga o CSS que faz a barra lateral rolar por dentro —
      só nesta tela, para não mexer no comportamento das outras. */
