@@ -4374,6 +4374,7 @@ body.pg-reuniao aside.sidebar::-webkit-scrollbar-thumb { background: var(--b); b
 #page-reuniao .reu-link { transition: border-color .15s, transform .15s; }
 #page-reuniao .reu-link:hover { border-color: var(--cyan); transform: translateY(-2px); }
 #page-reuniao .reu-link:hover .reu-lbl::after { content: ' ↗'; color: var(--cyan); }
+@media (max-width: 1100px) { #page-reuniao .reu-row3 { grid-template-columns: 1fr !important; } }
 </style>
 <div class="page" id="page-reuniao">
   <div class="pageHdr">
@@ -9526,11 +9527,12 @@ function cfInicializar() {
 
     /* Reunião do Mês — a tela projetada; números maiores e respiro menor,
        para os cinco blocos caberem sem rolagem no telão */
-    '.tv-mode #page-reuniao .reu-val { font-size: 1.9rem !important; }',
-    '.tv-mode #page-reuniao .reu-big .reu-val { font-size: 2.5rem !important; }',
-    '.tv-mode #page-reuniao .reu-lbl { font-size: .74rem !important; }',
-    '.tv-mode #page-reuniao .reu-sub { font-size: .8rem !important; }',
-    '.tv-mode #page-reuniao .reu-sec { font-size: .7rem !important; margin: 10px 0 6px !important; }',
+    '.tv-mode #page-reuniao .reu-val { font-size: 2.1rem !important; }',
+    '.tv-mode #page-reuniao .reu-big .reu-val { font-size: 2.8rem !important; }',
+    '.tv-mode #page-reuniao .reu-lbl { font-size: .84rem !important; }',
+    '.tv-mode #page-reuniao .reu-sub { font-size: 1.05rem !important; line-height: 1.4 !important; }',
+    '.tv-mode #page-reuniao .reu-sec { margin: 12px 0 7px !important; }',
+    '.tv-mode #page-reuniao .reu-sec-n, .tv-mode #page-reuniao .reu-sec-q, .tv-mode #page-reuniao .reu-sec-r { font-size: 1.05rem !important; }',
     '.tv-mode #page-reuniao .reu-manchete { font-size: 1.8rem !important; }',
     '.tv-mode #page-reuniao .reu-frase { font-size: 1rem !important; }',
     '.tv-mode #page-reuniao .reu-grid { gap: 10px !important; }',
@@ -19347,13 +19349,24 @@ function printAtiva(){
     return '<div class="reu-card'+(grande?' reu-big':'')+(ir?' reu-link':'')+'"'+nav
       +'background:var(--panel);border:1px solid var(--b);border-top:3px solid '+cor+';'
       +'border-radius:var(--r);padding:'+(grande?'11px 15px':'9px 13px')+'">'
-      +'<div class="reu-lbl" style="font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:4px">'+lbl+'</div>'
-      +'<div class="reu-val" style="font-family:var(--mono);font-size:'+(grande?'1.85rem':'1.3rem')+';font-weight:800;line-height:1.05;color:'+cor+'">'+val+'</div>'
-      +'<div class="reu-sub" style="font-size:.64rem;color:var(--t3);margin-top:3px;line-height:1.35">'+sub+'</div></div>';
+      +'<div class="reu-lbl" style="font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--t2);margin-bottom:5px">'+lbl+'</div>'
+      +'<div class="reu-val" style="font-family:var(--mono);font-size:'+(grande?'2rem':'1.4rem')+';font-weight:800;line-height:1.05;color:'+cor+'">'+val+'</div>'
+      /* Apoio legível de longe: era .64rem em cinza escuro — na TV sumia.
+         Cada card passa uma ou duas linhas curtas, separadas por <br>. */
+      +'<div class="reu-sub" style="font-size:.82rem;color:var(--t1);opacity:.85;margin-top:6px;line-height:1.4">'+sub+'</div></div>';
   }
-  function faixa(titulo,cards,extra){
-    return '<div class="reu-sec" style="font-size:.55rem;letter-spacing:.13em;text-transform:uppercase;color:var(--t3);margin:11px 0 6px;padding-left:2px">▸ '+titulo+'</div>'
-      +'<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:8px">'+cards+'</div>'
+  /* A faixa é a narrativa: uma pergunta numerada e a resposta calculada ao
+     lado, na cor do veredito. Antes o título era .55rem cinza — o texto menos
+     legível da tela era justamente o que dizia por que os cards estavam ali.
+     Dentro da faixa, o card que responde a pergunta é o grande; os outros
+     explicam. */
+  function faixa(num,pergunta,resposta,corResp,cards,extra){
+    return '<div class="reu-sec" style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:13px 0 7px;padding-left:2px">'
+      +'<span class="reu-sec-n" style="font-family:var(--mono);font-size:.8rem;font-weight:800;color:#F5A623">'+num+'</span>'
+      +'<span class="reu-sec-q" style="font-size:.82rem;font-weight:700;color:var(--t1);letter-spacing:.02em">'+pergunta+'</span>'
+      +(resposta?'<span class="reu-sec-r" style="font-size:.82rem;font-weight:700;color:'+(corResp||'var(--t2)')+'">→ '+resposta+'</span>':'')
+      +'</div>'
+      +(cards?'<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:8px">'+cards+'</div>':'')
       +(extra||'');
   }
 
@@ -19534,8 +19547,7 @@ function printAtiva(){
         +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoFechar()">Cancelar</button>'
         +'<span id="ac-erro" style="font-size:.68rem;color:#F44336"></span>'
       +'</div></div>';
-    return '<div class="reu-sec" style="font-size:.55rem;letter-spacing:.13em;text-transform:uppercase;color:var(--t3);margin:11px 0 6px;padding-left:2px">▸ Plano de ação — regra da reunião: nenhum indicador vermelho sem causa, ação, responsável e prazo</div>'
-      +'<div id="reu-acoes" class="reu-acoes" style="background:var(--panel);border:1px solid var(--b);border-radius:var(--r);padding:10px 13px">'
+    return '<div id="reu-acoes" class="reu-acoes" style="background:var(--panel);border:1px solid var(--b);border-radius:var(--r);padding:10px 13px;min-width:0">'
       +'<div class="reu-noprint" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'
         +'<button type="button" class="btn btn-a btn-sm" onclick="reuAcaoNova()">+ Nova ação</button>'
         +'<label style="font-size:.66rem;color:var(--t3);display:inline-flex;align-items:center;gap:5px;cursor:pointer">'
@@ -19696,21 +19708,21 @@ function printAtiva(){
     var corRit = folga===null?'#00E5FF':(folga>=0?'#4CAF50':(folga>-5?'#FF9800':'#F44336'));
     var subRit = (ritExg!==null?('exigido '+fi(ritExg)+' pç/dia'):'sem plano no mês')
       +(!anoTodo&&pm&&pm.ano===ano?(' · no ano '+fi(pm.ritmoDem)+' vs '+fi(pm.ritmoExig)):'')
-      +(pm&&pm.ano===ano&&pm.planoAberto>0?(' · falta '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'):'');
+      +(pm&&pm.ano===ano&&pm.planoAberto>0?('<br>falta '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'):'');
 
-    var b2=card('Aderência ao plano de '+(anoTodo?ano:mes)+' · jornada normal', aderSE!==null?(fd(aderSE,1)+'%'):'—',
-                aderSE!==null ? ('com hora extra '+fd(ader,1)+'% · previsto '+fi(planoRef)+' pç')
+    var b2=card('Aderência ao plano de '+(anoTodo?ano:mes)+' · s/ HE', aderSE!==null?(fd(aderSE,1)+'%'):'—',
+                aderSE!==null ? ('com hora extra '+fd(ader,1)+'%<br>previsto '+fi(planoRef)+' pç')
                               : 'sem previsão lançada no Plano Mestre',
                 aderSE===null?'#00E5FF':corMeta(aderSE,100), true, 'mestre')
       +card('Ritmo demonstrado'+(anoTodo?' no ano':' em '+mes), ritDem!==null?(fi(ritDem)+' pç/dia'):'—',
-                subRit, corRit, true, 'mestre')
+                subRit, corRit, false, 'mestre')
       +card('Dependência de hora extra', fd(A.depHE,1)+'%',
-             fi(A.deHE)+' pç de '+fi(A.he)+' h extras · '+fd(A.pctHE,1)+'% das horas'
+             fi(A.deHE)+' pç de '+fi(A.he)+' h extras<br>'+fd(A.pctHE,1)+'% das horas'
              +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%')),
-             A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), true, 'eficiencia')
+             A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), false, 'eficiencia')
       +card('Absenteísmo', fd(A.absMed,1)+'%',
-             (anoTodo?'':('ano '+fd(Y.absMed,1)+'% · '))+'faltas+atrasos ÷ h. normais · meta '+META_ABS_+'%',
-             corMeta(A.absMed,META_ABS_,true), true, 'pessoas');
+             (anoTodo?'':('ano '+fd(Y.absMed,1)+'% · '))+'meta '+META_ABS_+'%<br>faltas + atrasos ÷ horas normais',
+             corMeta(A.absMed,META_ABS_,true), false, 'pessoas');
 
     /* ── 3 · entrega e carteira ──
        Produção é volume, não veredito: cor da marca, e o "% do plano com hora
@@ -19724,41 +19736,63 @@ function printAtiva(){
        então é a VARIAÇÃO da carteira, não o saldo absoluto do ERP. */
     var b3=card('Produção de '+(anoTodo?ano:mes), fi(A.prod)+' pç',
                 fi(A.normal)+' normais + '+fi(A.deHE)+' em hora extra'
-                +(ader!==null?(' · '+fd(ader,1)+'% do plano com hora extra'):'')
-                +(anoTodo?'':(' · acumulado do ano '+fi(Y.prod)+' pç')),
+                +(ader!==null?('<br>'+fd(ader,1)+'% do plano com hora extra'):'')
+                +(anoTodo?'':(' · ano '+fi(Y.prod)+' pç')),
                 '#F5A623', true, 'mestre');
     var CT = DashUtils.carteira(todos, ano, mes);
+    var diasCart=null;
     if(CT.meses > 0){
       var prodDiaN = Y.dias>0 ? Y.normal/Y.dias : 0;
-      var diasCart = prodDiaN>0 ? CT.saldo/prodDiaN : null;
+      diasCart = prodDiaN>0 ? CT.saldo/prodDiaN : null;
       var corCart  = diasCart===null ? '#00E5FF'
                    : diasCart <= 0.5*DUTEIS_ ? '#4CAF50'
                    : diasCart <= 1.5*DUTEIS_ ? '#FF9800' : '#F44336';
       var h=CT.hist||[], tCurta=null, nCurta=Math.min(2,h.length-1);
       if(nCurta>=1) tCurta=(h[h.length-1].saldo-h[h.length-1-nCurta].saldo)/nCurta;
       var tend = CT.tendMes===null ? 'tendência: histórico curto'
-               : ('tendência 6 m '+(CT.tendMes>=0?'+':'')+fi(CT.tendMes)+' pç/mês');
-      if(tCurta!==null) tend+=' · últimos '+nCurta+' m '+(tCurta>=0?'+':'')+fi(tCurta)+' pç/mês · '
-                              +(tCurta>0?'a fila está crescendo':'a fábrica está consumindo a fila');
+               : ('6 meses '+(CT.tendMes>=0?'+':'')+fi(CT.tendMes)+' pç/mês');
+      if(tCurta!==null) tend+=' · '+nCurta+' meses '+(tCurta>=0?'+':'')+fi(tCurta)+' pç/mês · '
+                              +(tCurta>0?'fila crescendo':'fila caindo');
       var saldoTxt=(CT.saldo>=0?'':'-')+fi(Math.abs(CT.saldo))+' pç';
       b3+=card('Carteira a faturar',
                diasCart!==null ? ((diasCart<0?'-':'')+fi(Math.abs(diasCart))+' dias úteis') : saldoTxt,
-               (diasCart!==null ? (saldoTxt+' ao ritmo de '+fi(prodDiaN)+' pç/dia útil normal · ') : '')+tend,
+               (diasCart!==null ? (saldoTxt+' · '+fi(prodDiaN)+' pç/dia útil normal<br>') : '')+tend,
                corCart, true, 'mestre');
     }
 
     /* ── 4 · ações críticas ── crítica = aberta E (Vermelho OU prazo vencido) */
     var R = DashUtils.acoesResumo(Acoes.lista(), hojeISO());
-    b3+=card('Ações críticas', String(R.criticas),
-             R.abertas+' em aberto · '+R.vencidas+' com prazo vencido · '+R.concluidas+' concluída'+(R.concluidas===1?'':'s'),
-             R.criticas>0?'#F44336':(R.abertas>0?'#FF9800':'#4CAF50'), true, '#reu-acoes');
+    /* Vermelho na tela sem ação registrada é o pior estado desta faixa — a
+       regra da reunião existe para isso. "0 críticas" em verde com quatro
+       cards vermelhos acima seria a tela se contradizendo de novo. */
+    var vermelhos=((b2+b3).match(/border-top:3px solid #F44336/g)||[]).length;
+    var semDono = vermelhos>0 && R.abertas===0;
+    var corAc = R.criticas>0?'#F44336':(semDono?'#F44336':(R.abertas>0?'#FF9800':'#4CAF50'));
+    var b4=card('Ações críticas', String(R.criticas),
+             R.abertas+' em aberto · '+R.vencidas+' com prazo vencido<br>'
+             +(semDono?(vermelhos+' indicador'+(vermelhos===1?'':'es')+' vermelho'+(vermelhos===1?'':'s')+' sem ação'):(R.concluidas+' concluída'+(R.concluidas===1?'':'s'))),
+             corAc, true, '#reu-acoes');
+
+    /* Respostas das faixas — a história em três frases, na cor do veredito. */
+    var r1 = aderSE===null ? 'sem plano lançado'
+           : (aderSE>=100?'Sim':'Não')+': '+fd(aderSE,1)+'% do plano em jornada normal'
+             +(folga!==null?(' · ritmo '+pct(folga)):'');
+    var c1 = aderSE===null?'var(--t2)':corMeta(aderSE,100);
+    var r2 = fi(A.prod)+' pç entregues'+(ader!==null?(', '+fd(ader,1)+'% do plano com hora extra'):'')
+           +(diasCart!==null?(' · carteira de '+fi(diasCart)+' dias úteis'):'');
+    var c2 = diasCart===null?'var(--t2)':(diasCart<=0.5*DUTEIS_?'#4CAF50':(diasCart<=1.5*DUTEIS_?'#FF9800':'#F44336'));
+    var r3 = R.abertas+' em aberto · '+R.criticas+' crítica'+(R.criticas===1?'':'s')
+           +(semDono?(' · '+vermelhos+' indicador'+(vermelhos===1?'':'es')+' vermelho'+(vermelhos===1?'':'s')+' sem ação registrada'):'');
+    var c3 = corAc;
 
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
     corpo.innerHTML=manchete
-      +faixa('O plano cabe sem hora extra? — base: jornada normal, a mesma da manchete', b2)
-      +faixa('Entrega e carteira — o que saiu pela porta e o que falta faturar', b3)
-      +blocoAcoes(mes+'/'+ano);
+      +faixa('1','O plano cabe sem hora extra?', r1, c1, b2)
+      +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
+      +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
+             '<div class="reu-row3" style="display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:8px;align-items:start">'
+             +b4+blocoAcoes(mes+'/'+ano)+'</div>');
   }
 
   /* Relatório de uma página, para circular antes da reunião. */
@@ -19781,8 +19815,10 @@ function printAtiva(){
       +'.hd .lb{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#F5A623;font-weight:700}'
       +'.hd h1{font-size:16px;margin:3px 0 2px}.hd .sb{font-size:9px;color:#a0aec0}'
       +'.bd{padding:12px 22px}'
-      +'.reu-sec{font-size:8px!important;letter-spacing:1.6px;text-transform:uppercase;color:#3E4C59!important;'
-        +'font-weight:700;margin:12px 0 6px!important;padding:0 0 3px!important;border-bottom:1.5px solid #edf2f7}'
+      +'.reu-sec{margin:12px 0 6px!important;padding:0 0 3px!important;border-bottom:1.5px solid #edf2f7}'
+      +'.reu-sec-n{color:#1F2933!important;font-size:10pt!important}.reu-sec-q{color:#1F2933!important;font-size:10pt!important}'
+      +'.reu-sec-r{color:#3E4C59!important;font-size:9pt!important;font-weight:600!important}'
+      +'.reu-row3{display:block!important}.reu-row3 .reu-card{margin-bottom:6px}'
       +'.reu-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;gap:7px!important}'
       +'.reu-noprint{display:none!important}'
       +'.reu-acoes{background:#fff!important;border:1px solid #D3D8DE!important;border-radius:5px!important;padding:6px 8px!important}'
@@ -20218,7 +20254,9 @@ var APP_HISTORICO = [
     'Uma pergunta por faixa, na mesma base. Faixa 1, "O plano cabe sem hora extra?": aderencia em jornada normal (96,4%, ambar), ritmo, dependencia de HE e absenteismo. O 105,1% foi para o card de producao, escrito como "% do plano com hora extra".',
     'Ritmo demonstrado passa a ser o do mes mostrado (1.414 vs 1.467 em AGO/26), com o do ano na linha de apoio. Antes mostrava so o do ano (1.300) sob o rotulo do mes.',
     'Tendencia da carteira em duas janelas: 6 meses e os 2 ultimos. Em AGO/26 a de 6 meses dizia "fila crescendo" com a carteira 7.136 pc menor que em junho.',
-    'Nao dava para registrar acao: o formulario sumia com o texto a cada re-render da tela — e a carga da planilha chega segundos depois de abrir o painel, bem na hora de digitar. O formulario agora sobrevive ao re-render, com valores e foco.'
+    'Nao dava para registrar acao: o formulario sumia com o texto a cada re-render da tela — e a carga da planilha chega segundos depois de abrir o painel, bem na hora de digitar. O formulario agora sobrevive ao re-render, com valores e foco.',
+    'Linha de apoio dos cards legivel na TV: era .64rem em cinza escuro. Agora .82rem em branco, ate duas linhas curtas por card, e 1.05rem no Modo TV.',
+    'Hierarquia conta a historia: tres faixas numeradas como perguntas — o plano cabe sem hora extra? o que entregamos e o que falta faturar? o que vamos fazer sobre o vermelho? — cada uma com a resposta calculada ao lado, na cor do veredito. O card que responde e o grande; os outros explicam. Acoes criticas fica ao lado da tabela do plano.'
   ]},
   { v:'b68', data:'10/09/2026', itens:[
     'Reuniao do Mes com sete indicadores em vez de dezoito. Sairam do nivel 1: ticket medio, vendido e faturado no ano, o bloco de mix (volumes, fator de embalagem, peso, familia lider, pecas por hora) e a Independencia de HE — que e o mesmo sinal da dependencia de hora extra (r = -0,993) escrito de forma que ninguem explica em reuniao. Tudo continua nas abas de origem, a um clique.',
