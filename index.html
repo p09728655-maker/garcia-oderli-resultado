@@ -1645,6 +1645,11 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div class="kCard ka"><div class="kLbl">Absenteísmo</div><div class="kVal" id="kv4-abs">12,1%</div><div class="kSub">faltas + atrasos ÷ h. normais do período</div></div>
     <div class="kCard ka"><div class="kLbl">Total Faltas (h)</div><div class="kVal" id="kv4-fat">28.499 h</div><div class="kSub">Acumulado</div></div>
     <div class="kCard ka"><div class="kLbl">Total Atrasos (h)</div><div class="kVal" id="kv4-atr">3.501 h</div><div class="kSub">Acumulado</div></div>
+    <!-- O que a falta e o atraso custaram: as horas perdidas ao ritmo da jornada
+         normal do próprio período. Mesma conta do card Absenteísmo da Reunião
+         (DashUtils.periodo → pecasPerdidas), que desce para esta aba. -->
+    <div class="kCard kr" id="card4-perd"><div class="kLbl">Peças que não saíram</div><div class="kVal" id="kv4-perd">—</div><div class="kSub" id="ks4-perd">h de falta e atraso × ritmo da jornada normal</div></div>
+    <div class="kCard kr" id="card4-dias"><div class="kLbl">Dias de fábrica perdidos</div><div class="kVal" id="kv4-dias">—</div><div class="kSub" id="ks4-dias">ao ritmo normal do período</div></div>
     <div class="kCard kr"><div class="kLbl">Meses acima 3%</div><div class="kVal" id="kv4-acima">18/18</div><div class="kSub">Acima do limite</div></div>
   </div>
   <div class="charts1">
@@ -1692,6 +1697,11 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div class="kCard kg" id="card5-best"><div class="kLbl">Melhor Mês</div><div class="kVal" id="kv5-best">36.450 pç</div><div class="kSub" id="ks5-best">MAI/2025</div></div>
     <div class="kCard kc"><div class="kLbl">Previsto (Plano Mestre)</div><div class="kVal" id="kv5-meta">—</div><div class="kSub">Σ previsão dos meses com plano</div></div>
     <div class="kCard ka" id="card5-var"><div class="kLbl">Aderência ao plano · c/ HE</div><div class="kVal" id="kv5-var">—</div><div class="kSub">produção entregue ÷ previsto</div></div>
+    <!-- Carteira a faturar em dias úteis de produção normal: a mesma conta do
+         card da Reunião (DashUtils.carteira), que desce para esta aba. É a
+         VARIAÇÃO acumulada vendido − faturado desde o início da série, não o
+         saldo absoluto do ERP. -->
+    <div class="kCard kc" id="card5-cart" style="display:none"><div class="kLbl">Carteira a faturar</div><div class="kVal" id="kv5-cart">—</div><div class="kSub" id="ks5-cart">vendido − faturado acumulado, em dias úteis normais</div></div>
   </div>
   <div class="charts1">
     <div class="cBox">
@@ -7022,8 +7032,8 @@ function renderKPIsExtras(d){
   if(!d.length){
     ['kv2-cap','kv2-hn','kv2-ext','kv2-hfp','kv2-carga','kv2-hnpct','kv2-extpct',
      'kv3-oee','kv3-acima','kv3-abaixo',
-     'kv4-abs','kv4-fat','kv4-atr','kv4-acima',
-     'kv5-prod','kv5-med','kv5-tkt','kv5-best','kv5-meta','kv5-var'].forEach(function(id){s(id,'--')});
+     'kv4-abs','kv4-fat','kv4-atr','kv4-perd','kv4-dias','kv4-acima',
+     'kv5-prod','kv5-med','kv5-tkt','kv5-best','kv5-meta','kv5-var','kv5-cart'].forEach(function(id){s(id,'--')});
     return
   }
 
@@ -7096,6 +7106,23 @@ function renderKPIsExtras(d){
   s('kv4-fat',   fi(tF)+' h');
   s('kv4-atr',   fi(tA)+' h');
   s('kv4-acima', acimaAbs+'/'+d.length);
+  /* Peças e dias de fábrica que a falta e o atraso custaram — o que a
+     Reunião promete ao descer para cá. Cor pela mesma régua do Resumo:
+     ≤ 5% da produção normal ok, ≤ 10% atenção, acima crítico. */
+  (function(){
+    var perd=_P3.pecasPerdidas, pct=_P3.pctPerdidas, dias=(perd!==null&&_P3.prodDia>0)?perd/_P3.prodDia:null;
+    var cor = pct===null?'':(pct<=5?'var(--green)':(pct<=10?'var(--amber)':'var(--red)'));
+    s('kv4-perd', perd===null?'—':fi(perd)+' pç');
+    s('kv4-dias', dias===null?'—':(dias.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' dia'+(dias>=1.95?'s':'')));
+    var e1=document.getElementById('kv4-perd'), e2=document.getElementById('kv4-dias');
+    if(e1) e1.style.color=cor; if(e2) e2.style.color=cor;
+    var s1=document.getElementById('ks4-perd'), s2=document.getElementById('ks4-dias');
+    if(s1) s1.textContent = perd===null ? 'sem horas normais lançadas no período'
+      : (fi(_P3.hPerdidas)+' h × '+_P3.ritmoNormal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' pç/h da jornada normal'
+         +(pct!==null?(' · '+pct.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'% da produção normal'):''));
+    if(s2) s2.textContent = dias===null ? 'ao ritmo normal do período'
+      : ('ao ritmo normal de '+fi(_P3.prodDia)+' pç/dia em '+fi(_P3.dias)+' dias');
+  })();
 
   // Produção — com 1 mês só, Média e Melhor Mês repetem o Total: esconde
   s('kv5-prod', fi(tProd)+' pç');
@@ -7106,6 +7133,36 @@ function renderKPIsExtras(d){
   var _c5med=document.getElementById('card5-med'), _c5best=document.getElementById('card5-best');
   if(_c5med)  _c5med.style.display  = d.length>1?'':'none';
   if(_c5best) _c5best.style.display = d.length>1?'':'none';
+
+  /* Carteira a faturar — corte no último mês do filtro, ritmo normal do ano
+     até esse mês, limiares em dias (0,5 e 1,5 mês × DUTEIS). Idêntico ao
+     card da Reunião; se um dia divergirem, a conta errada é a daqui. */
+  (function(){
+    var card=document.getElementById('card5-cart'); if(!card) return;
+    var OM=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    var todos=(typeof load==='function')?load():[];
+    var fech=d.filter(function(r){ return (r.producaoReal||0)>0; }).sort(function(a,b){ return a.ano!==b.ano?a.ano-b.ano:OM.indexOf(a.mes)-OM.indexOf(b.mes); });
+    var ult=fech[fech.length-1];
+    if(!ult){ card.style.display='none'; return; }
+    var CT=DashUtils.carteira(todos, ult.ano, ult.mes);
+    if(!CT.meses){ card.style.display='none'; return; }
+    var ateAqui=todos.filter(function(r){ return r.ano===ult.ano&&(r.producaoReal||0)>0&&OM.indexOf(r.mes)<=OM.indexOf(ult.mes); });
+    var Y=DashUtils.periodo(ateAqui);
+    var prodDiaN=(Y&&Y.dias>0)?(Y.semExtras/Y.dias):0;
+    var dias=prodDiaN>0?CT.saldo/prodDiaN:null;
+    var DU=(typeof DUTEIS!=='undefined')?DUTEIS:22;
+    var cor=dias===null?'':(dias<=0.5*DU?'var(--green)':(dias<=1.5*DU?'var(--amber)':'var(--red)'));
+    var saldoTxt=(CT.saldo<0?'-':'')+fi(Math.abs(CT.saldo))+' pç';
+    var h=CT.hist||[], nC=Math.min(2,h.length-1), tC=null;
+    if(nC>=1) tC=(h[h.length-1].saldo-h[h.length-1-nC].saldo)/nC;
+    var tend=(CT.tendMes===null?'tendência: histórico curto':('6 meses '+(CT.tendMes>=0?'+':'')+fi(CT.tendMes)+' pç/mês'))
+      +(tC!==null?(' · '+nC+' meses '+(tC>=0?'+':'')+fi(tC)+' pç/mês · '+(tC>0?'fila crescendo':'fila caindo')):'');
+    card.style.display='';
+    s('kv5-cart', dias!==null?((dias<0?'-':'')+fi(Math.abs(dias))+' dias úteis'):saldoTxt);
+    var v=document.getElementById('kv5-cart'); if(v) v.style.color=cor;
+    var k=document.getElementById('ks5-cart');
+    if(k) k.textContent='até '+ult.mes+'/'+String(ult.ano).slice(2)+' · '+saldoTxt+(dias!==null?(' · '+fi(prodDiaN)+' pç/dia útil normal'):'')+' · '+tend;
+  })();
 
   // Previsto (Plano Mestre) e aderência ao plano — era "Meta Acumulada" (Σ meta
   // derivada do realizado) e "Atingimento" contra ela: verde por construção.
@@ -19773,7 +19830,7 @@ function printAtiva(){
                 fi(A.normal)+' normais + '+fi(A.deHE)+' em hora extra'
                 +(ader!==null?('<br>'+fd(ader,1)+'% do plano com hora extra'):'')
                 +(anoTodo?'':(' · ano '+fi(Y.prod)+' pç')),
-                '#F5A623', true, 'mestre');
+                '#F5A623', true, 'producao');
     var CT = DashUtils.carteira(todos, ano, mes);
     var diasCart=null;
     if(CT.meses > 0){
@@ -19792,7 +19849,7 @@ function printAtiva(){
       b3+=card('Carteira a faturar',
                diasCart!==null ? ((diasCart<0?'-':'')+fi(Math.abs(diasCart))+' dias úteis') : saldoTxt,
                (diasCart!==null ? (saldoTxt+' · '+fi(prodDiaN)+' pç/dia útil normal<br>') : '')+tend,
-               corCart, true, 'mestre');
+               corCart, true, 'producao');
     }
 
     /* ── 4 · ações críticas ── crítica = aberta E (Vermelho OU prazo vencido) */
@@ -19835,9 +19892,7 @@ function printAtiva(){
           +(perdPc!==null?(' = '+fi(perdPc)+' pç que não saíram'+(perdDias!==null?(' = '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de fábrica'):'')):''),
       cAbs: corMeta(A.absMed,META_ABS_,true),
       r2:r2, c2:c2,
-      r3:r3, c3:c3,
-      fim: 'Pauta fechada: '+R.abertas+(R.abertas===1?' ação':' ações')+' em aberto para o próximo mês. Circule o Briefing.',
-      cFim: corAc
+      r3:r3, c3:c3
     };
     if(_trilhaOn) _trilhaPintar();
 
@@ -19996,7 +20051,8 @@ function printAtiva(){
 
   /* ── TRILHA DE APRESENTAÇÃO ───────────────────────────────────────────────
      A reunião tem uma ordem: abrir pela manchete, responder as três perguntas
-     descendo só nas abas que apuram cada uma, fechar registrando ações. Sem
+     descendo só nas abas que apuram cada uma, fechar registrando ações. O
+     Briefing não é passo: circula impresso ANTES da reunião. Sem
      trilha, quem apresenta procura aba, abre a errada e lê card em vez de
      resposta. Aqui a ordem é fixa, a resposta de cada passo vem calculada da
      mesma base dos cards (_falas) e o teclado avança: ← → avançam, ESC sai.
@@ -20014,9 +20070,7 @@ function printAtiva(){
     { id:'producao',   n:'Pergunta 2', t:'O que entregamos e o que falta faturar?', fala:'r2',       cor:'c2',
       dica:'Vendido, produzido e faturado no mês. A carteira em dias úteis diz se a fila cabe no ritmo normal.' },
     { id:'reuniao',    n:'Pergunta 3', t:'O que vamos fazer sobre o vermelho?',     fala:'r3',       cor:'c3', foco:'#reu-acoes',
-      dica:'Todo indicador vermelho sai daqui com dono e prazo. Registre na hora — o plano é a ata.' },
-    { id:'briefing',   n:'Fechamento', t:'O Briefing para levar',                    fala:'fim',      cor:'cFim',
-      dica:'Imprima e circule: pauta, achado do mês e a tabela. É o que a diretoria leva da sala.' }
+      dica:'Fechamento: todo indicador vermelho sai daqui com dono e prazo. Registre na hora — o plano é a ata. O Briefing já circulou antes da reunião; não se apresenta.' }
   ];
   var ABAS_NOME={reuniao:'Reunião do Mês',mestre:'Planejamento Mestre',eficiencia:'Eficiência & Horas',
                  pessoas:'Pessoas',producao:'Produção & Vendas',briefing:'Briefing Mensal'};
@@ -20466,11 +20520,15 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b78';
+var APP_VERSAO = 'b79';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b79', data:'10/09/2026', itens:[
+    'Aba Producao & Vendas ganha o card Carteira a faturar em dias uteis (mesma conta da Reuniao). Os cards Producao e Carteira da Reuniao passam a descer para essa aba — antes desciam para o Plano Mestre, que nao mostra carteira em dias.',
+    'Aba Pessoas responde o que a falta e o atraso custaram: dois cards novos, Pecas que nao sairam (horas perdidas x ritmo da jornada normal) e Dias de fabrica perdidos — a mesma conta do card Absenteismo da Reuniao, que desce para esta aba. A trilha dizia isso na barra e a tela nao provava.'
+  ]},
   { v:'b78', data:'10/09/2026', itens:[
-    'Trilha de apresentacao na aba Reuniao (botao Apresentar): sete passos na ordem da pauta — abertura pela manchete, Plano Mestre, Eficiencia & Horas, Pessoas, Producao & Vendas, plano de acao e Briefing. A barra de baixo traz a resposta calculada de cada passo, na mesma base dos cards; setas do teclado avancam, ESC sai.',
+    'Trilha de apresentacao na aba Reuniao (botao Apresentar): seis passos na ordem da pauta — abertura pela manchete, Plano Mestre, Eficiencia & Horas, Pessoas, Producao & Vendas e plano de acao. O Briefing circula antes da reuniao, nao entra na trilha. A barra de baixo traz a resposta calculada de cada passo, na mesma base dos cards; setas do teclado avancam, ESC sai.',
     'O relatorio impresso da Reuniao ganhou o roteiro no rodape, com a fala de cada passo.',
     'Plano Mestre: dias uteis dos meses abertos corrigidos — SET 21, OUT 21, NOV 19, DEZ 15 (feriados e recesso). Eram 22/22/21/23, dias corridos de segunda a sexta, e o plano da planilha foi feito com os liquidos (1.658 pc/dia x 21/21/19/15). Dezembro aparecia com ritmo necessario de 1.081 pc/dia; o certo e 1.658. Mes aberto com dias lancados na planilha passa a usar os da planilha.',
     'Barra lateral igual em todas as abas: na Reuniao ela era cortada com rolagem propria (Metas oficiais e Modo edicao ficavam escondidos), nas outras nao.',
