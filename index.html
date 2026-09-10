@@ -3555,7 +3555,11 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
     var colRef2=anoAnt?a.mes+'/'+String(anoAnt.ano).slice(2):'—';
 
     var titulo='Briefing PPCP — '+mesNome+'/'+a.ano;
-    document.getElementById('brfg-btn-gmail').href='https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(titulo);
+    /* Guarda: se o bloco de configuração não tiver rodado, o link ainda abre
+       o Gmail na conta logada em vez de quebrar a renderização do briefing. */
+    document.getElementById('brfg-btn-gmail').href = (typeof gmailCompor==='function')
+      ? gmailCompor(titulo)
+      : 'https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(titulo);
     document.getElementById('brfg-fonte-label').textContent='Dados: '+mesNome+'/'+a.ano+' · Gerado em '+new Date().toLocaleDateString('pt-BR');
 
     var kpis=[
@@ -4782,6 +4786,32 @@ function save(d){
    local normalmente. */
 var SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbytH9MEe_Xwan0X0gQ_TlolZgsMC3-xhT0jwGSRQK15DEyTqp37tRmckKGG-kaJdnc6/exec';
 var SHEETS_SECRET      = 'TROQUE_ESTA_SENHA_2026';
+
+/* ── CAIXA QUE ENVIA OS E-MAILS DO PAINEL ────────────────────────────────
+   Todo e-mail que sai daqui — briefing, plano de ação, cobrança de uma ação
+   — abre o Gmail nesta conta (parâmetro `authuser`). O que estava em jogo:
+   saindo da conta pessoal de quem clica, o "responder a todos" volta para
+   essa pessoa e o setor fica sem o histórico da cobrança. Quem coordena
+   muda; a caixa do PPCP não.
+
+   O destinatário continua em branco — o painel não guarda e-mail de
+   ninguém, quem clica escolhe na hora.
+
+   ROLLBACK: string vazia ('') volta ao comportamento anterior (abre na
+   conta logada), sem mexer em mais nada.
+
+   LIMITE: `authuser` escolhe a CONTA, não o remetente. Se ppcp@ for grupo
+   ou caixa compartilhada sem login próprio, o Gmail cai no seletor de
+   contas — nesse caso zere aqui e use o alias "Enviar como". */
+var MAIL_CONTA_PPCP = 'ppcp@patrimarmoveis.com.br';
+
+/* Link de composição do Gmail já na caixa do PPCP. `corpo` é opcional. */
+function gmailCompor(assunto, corpo){
+  return 'https://mail.google.com/mail/?'
+    + (MAIL_CONTA_PPCP ? 'authuser=' + encodeURIComponent(MAIL_CONTA_PPCP) + '&' : '')
+    + 'view=cm&fs=1&su=' + encodeURIComponent(assunto || '')
+    + (corpo ? '&body=' + encodeURIComponent(corpo) : '');
+}
 var _syncTimer = null;
 
 function _syncSheetsDebounced(d){
@@ -19622,7 +19652,7 @@ function printAtiva(){
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar">✎</button> '
           +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button> ':'')
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\')" title="Enviar por WhatsApp para o responsável">💬</button> '
-          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\')" title="Enviar por e-mail para o responsável (pela conta do PPCP)">✉</button> '
+          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\')" title="Enviar por e-mail para o responsável (sai pela caixa do PPCP)">✉</button> '
           +'<button type="button" class="btn btn-r btn-sm" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)">🗑</button>'
         +'</td></tr>';
     }).join('');
@@ -19659,7 +19689,7 @@ function printAtiva(){
           +'<input type="checkbox" '+(mostrarFechadas?'checked':'')+' onchange="reuAcaoMostrar(this.checked)" style="width:auto">mostrar concluídas e canceladas</label>'
         +'<span style="font-size:.66rem;color:var(--t3)">Plano em aberto:</span>'
         +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'zap\')" title="Todas as ações em aberto numa mensagem de WhatsApp">💬 WhatsApp</button>'
-        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Todas as ações em aberto num e-mail (Gmail)">✉ E-mail</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Todas as ações em aberto num e-mail (sai pela caixa do PPCP)">✉ E-mail</button>'
         +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'copiar\')" title="Copiar o plano em aberto como texto">📋 Copiar</button>'
         +'<span style="margin-left:auto;font-size:.62rem;color:var(--t3)">aba ACOES da planilha · cópia local para abrir offline</span>'
       +'</div>'
@@ -20266,24 +20296,6 @@ function printAtiva(){
      plano em aberto inteiro (id null). Texto puro, sem formatação: é o que
      chega igual no celular, no e-mail e na impressão. */
 
-  /* Conta que envia (Gmail `authuser`). A cobrança de uma ação sai da caixa
-     do setor, não da conta pessoal de quem clicou: quem responder, responde
-     para o PPCP, e a conversa fica onde o setor consegue achar depois.
-     O destinatário continua em branco — é quem clica que escolhe o
-     responsável, porque o painel não guarda e-mail de ninguém.
-     '' = abre na conta que estiver logada (comportamento anterior).
-     Exige que ppcp@ seja uma CONTA Google logada no navegador. Se for grupo
-     ou caixa compartilhada sem login próprio, o Gmail cai no seletor de
-     contas — nesse caso deixe '' aqui e use o alias "Enviar como". */
-  var MAIL_CONTA_PPCP = 'ppcp@patrimarmoveis.com.br';
-
-  /* Monta o link de composição do Gmail. `conta` vazia = conta logada. */
-  function gmailURL(titulo, corpo, conta){
-    return 'https://mail.google.com/mail/?'
-      + (conta ? 'authuser=' + encodeURIComponent(conta) + '&' : '')
-      + 'view=cm&fs=1&su=' + encodeURIComponent(titulo)
-      + '&body=' + encodeURIComponent(corpo);
-  }
   function textoAcao(a){
     return '• ['+(a.prioridade||'—')+'] '+(a.kpi||'—')+(a.desvio?(' — '+a.desvio):'')
       +'\n  Ação: '+(a.acao||'—')
@@ -20307,10 +20319,9 @@ function printAtiva(){
     if(via==='zap'){
       window.open('https://wa.me/?text='+encodeURIComponent(t.corpo), '_blank');
     } else if(via==='email'){
-      /* Ação individual sai pela conta do PPCP; o plano inteiro continua na
-         conta logada (é leitura do grupo, não cobrança de uma pessoa). Para
-         mandar o plano pela mesma caixa, passe MAIL_CONTA_PPCP aqui também. */
-      window.open(gmailURL(t.titulo, t.corpo, id ? MAIL_CONTA_PPCP : ''), '_blank');
+      /* Uma ação ou o plano inteiro: os dois saem pela caixa do PPCP
+         (MAIL_CONTA_PPCP, no bloco de configuração). */
+      window.open(gmailCompor(t.titulo, t.corpo), '_blank');
     } else {
       var ok=function(){ if(typeof toast==='function') toast('Plano copiado. Cole no e-mail, no WhatsApp ou onde precisar.','ok'); };
       if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t.corpo).then(ok, function(){ prompt('Copie o texto:', t.corpo); });
@@ -20582,9 +20593,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b82';
+var APP_VERSAO = 'b83';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b83', data:'10/09/2026', itens:[
+    'Todo e-mail do painel passa a abrir na caixa ppcp@patrimarmoveis.com.br: briefing, plano de acao em aberto e cobranca de uma acao. Saindo da conta pessoal de quem clicava, o "responder a todos" voltava para essa pessoa e o setor ficava sem o historico da cobranca. A conta fica em MAIL_CONTA_PPCP, num lugar so; string vazia volta ao comportamento anterior.'
+  ]},
   { v:'b82', data:'10/09/2026', itens:[
     'Cobranca de acao da Reuniao sai pela caixa do setor: o botao de e-mail de uma acao abre o Gmail ja na conta ppcp@patrimarmoveis.com.br. Quem responder responde para o PPCP, nao para a conta pessoal de quem clicou. O destinatario continua em branco (o painel nao guarda e-mail de ninguem) e o plano inteiro segue na conta logada.'
   ]},
