@@ -1076,7 +1076,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 <!-- ══ ENTRADA DO APP ══
      A mesma entrada do RitmoPatrimar Embalagem: logo (PNG transparente, sem
      caixa branca), nome em Barlow Condensed, a batida traçada uma vez e a
-     frase. Sai sozinha em ~1,4 s ou no clique; só na primeira abertura da
+     frase. Sai sozinha em ~2,8 s ou no clique; só na primeira abertura da
      sessão. Não bloqueia nada: o painel carrega por baixo. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=Inter:wght@700&display=swap" rel="stylesheet">
@@ -1118,7 +1118,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   var el=document.getElementById('splash'); if(!el) return;
   var vez=false; try{ vez=!sessionStorage.getItem('rp_splash'); sessionStorage.setItem('rp_splash','1'); }catch(e){ vez=true; }
   if(!vez){ el.parentNode.removeChild(el); return; }
-  setTimeout(function(){ el.classList.add('off'); }, 1400);
+  setTimeout(function(){ el.classList.add('off'); }, 2800);
   el.addEventListener('transitionend', function(){ if(el.classList.contains('off')&&el.parentNode) el.parentNode.removeChild(el); });
 })();
 </script>
@@ -4137,6 +4137,16 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
 #page-reuniao .reu-link:hover { border-color: var(--cyan); transform: translateY(-2px); }
 #page-reuniao .reu-link:hover .reu-lbl::after { content: ' ↗'; color: var(--cyan); }
 @media (max-width: 1100px) { #page-reuniao .reu-row3 { grid-template-columns: 1fr !important; } }
+/* Cabeçalho em duas linhas: título e ações em cima, filtro de período
+   embaixo, com a largura inteira. Sem isto o filtro herdava a sobra de
+   largura do cabeçalho e os meses viravam uma coluna. */
+#page-reuniao .pageHdr { flex-wrap: wrap; }
+#page-reuniao #reu-filtro { flex: 1 0 100%; order: 9; }
+/* Na projeção, chip de mês com o tamanho de quem lê a 5 m da tela.
+   !important porque pintarFiltro() escreve font-size e padding no style
+   inline de cada botão — sem isto a regra não pega. */
+body.tv-mode #page-reuniao #reu-filtro { gap: 7px !important; }
+body.tv-mode #page-reuniao #reu-filtro button { font-size: .8rem !important; padding: 7px 12px !important; }
 /* Barra da trilha de apresentação: fixa embaixo, em qualquer aba, enquanto
    a reunião segue o roteiro. Quem apresenta lê a barra, não o card. */
 #reu-trilha { position:fixed; left:50%; transform:translateX(-50%); bottom:14px; z-index:9000;
@@ -4172,15 +4182,11 @@ body.tv-mode #reu-trilha .rt-btn { width:54px; height:54px; font-size:1.6rem; }
     <div class="pageHdrIcon" style="background:#F5A623">
       <svg viewBox="0 0 24 24" fill="var(--bg)"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"></path></svg>
     </div>
-    <div>
+    <div style="min-width:0">
       <div class="pageHdrTitle">Reunião do Mês</div>
       <div class="pageHdrSub">Nível 1 da pirâmide — diretoria, mensal · clique num indicador para descer ao detalhe · <b>Apresentar</b> segue a trilha da reunião</div>
     </div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:14px">
-      <!-- Filtro próprio da aba. Antes o período vinha só da barra lateral,
-           que fica escondida no modo TV e em tela de reunião — trocar de mês
-           no meio da apresentação exigia sair da tela. -->
-      <div id="reu-filtro" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end"></div>
       <span id="reu-per-lbl" style="font-family:var(--mono);font-size:1rem;font-weight:800;letter-spacing:.06em;
         color:#F5A623;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.45);
         border-radius:8px;padding:7px 16px;white-space:nowrap">—</span>
@@ -4200,6 +4206,14 @@ body.tv-mode #reu-trilha .rt-btn { width:54px; height:54px; font-size:1.6rem; }
         Relatório
       </button>
     </div>
+    <!-- Filtro próprio da aba. Antes o período vinha só da barra lateral,
+         que fica escondida no modo TV e em tela de reunião — trocar de mês
+         no meio da apresentação exigia sair da tela.
+         Linha própria: dentro do grupo da direita os doze meses eram
+         espremidos entre o rótulo do período e os dois botões (todos
+         nowrap) e empilhavam um sobre o outro — pior no Modo TV, que
+         aumenta a fonte. Ocupando a largura inteira, cabem lado a lado. -->
+    <div id="reu-filtro" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end"></div>
   </div>
   <div id="reu-corpo"></div>
 </div>
@@ -20560,9 +20574,14 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b81';
+var APP_VERSAO = 'b82';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b82', data:'10/09/2026', itens:[
+    'Filtro de periodo da Reuniao ganhou linha propria no cabecalho. Espremido entre o rotulo do periodo e os botoes Apresentar/Relatorio (todos nowrap), sobrava pouca largura e os doze meses empilhavam um sobre o outro — em janela de 1000 px cada mes ficava numa linha (15 linhas de chips); no Modo TV a 1366 px, duas linhas. Agora ocupa a largura inteira: uma linha so ate 1366 px, duas no maximo em janela estreita.',
+    'Modo TV: chip de mes maior (0,8 rem, 7x12 px) — o tamanho anterior nao se le a distancia de reuniao.',
+    'Entrada do app passa de 1,4 s para 2,8 s. Com a batida animando ate 0,9 s, sobrava meio segundo para ler a tela. Continua saindo no clique e so aparece na primeira abertura da sessao.'
+  ]},
   { v:'b81', data:'10/09/2026', itens:[
     'Trilha: os passos 3 e 4 (Eficiencia & Horas, Pessoas) apareciam rotulados como Pergunta 1, igual ao passo 2. Agora sao Causa 1 (hora extra) e Causa 2 (absenteismo).'
   ]},
