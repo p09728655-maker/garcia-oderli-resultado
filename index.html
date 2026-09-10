@@ -4787,22 +4787,18 @@ function save(d){
 var SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbytH9MEe_Xwan0X0gQ_TlolZgsMC3-xhT0jwGSRQK15DEyTqp37tRmckKGG-kaJdnc6/exec';
 var SHEETS_SECRET      = 'TROQUE_ESTA_SENHA_2026';
 
-/* ── CAIXA QUE ENVIA OS E-MAILS DO PAINEL ────────────────────────────────
-   Todo e-mail que sai daqui — briefing, plano de ação, cobrança de uma ação
-   — abre o Gmail nesta conta (parâmetro `authuser`). O que estava em jogo:
-   saindo da conta pessoal de quem clica, o "responder a todos" volta para
-   essa pessoa e o setor fica sem o histórico da cobrança. Quem coordena
-   muda; a caixa do PPCP não.
+/* ── CAIXA DO PPCP NO COMPOSE DO GMAIL ───────────────────────────────────
+   Usado só pelo BRIEFING, que é um documento montado no navegador: o botão
+   abre o Gmail já nesta conta (parâmetro `authuser`) e a pessoa cola o
+   conteúdo e escolhe para quem manda.
 
-   O destinatário continua em branco — o painel não guarda e-mail de
-   ninguém, quem clica escolhe na hora.
+   O plano de ação NÃO passa por aqui — ele é enviado pelo Apps Script, que
+   fixa o remetente de verdade (Code.gs › REMETENTE). A diferença importa:
+   `authuser` escolhe a CONTA que abre, não quem assina. Se outra pessoa
+   abrir o painel logada na conta dela, o briefing sai no nome dela; o plano
+   de ação, não.
 
-   ROLLBACK: string vazia ('') volta ao comportamento anterior (abre na
-   conta logada), sem mexer em mais nada.
-
-   LIMITE: `authuser` escolhe a CONTA, não o remetente. Se ppcp@ for grupo
-   ou caixa compartilhada sem login próprio, o Gmail cai no seletor de
-   contas — nesse caso zere aqui e use o alias "Enviar como". */
+   ROLLBACK: string vazia ('') faz o briefing abrir na conta logada. */
 var MAIL_CONTA_PPCP = 'ppcp@patrimarmoveis.com.br';
 
 /* Link de composição do Gmail já na caixa do PPCP. `corpo` é opcional. */
@@ -4966,6 +4962,9 @@ function _carregarDoSheetsAoAbrir(){
       if (json.acoes && window.Acoes) { try { window.Acoes.mesclar(json.acoes); } catch (e) { console.warn('ACOES:', e); } }
       /* Metas oficiais (aba METAS): sobrescrevem as constantes antes do render. */
       if (json.metas) { try { aplicarMetas(json.metas, true); } catch (e) { console.warn('METAS:', e); } }
+      /* Lista de distribuição (aba EMAIL) — o painel só a exibe na confirmação
+         de envio; quem manda de verdade é a planilha, no momento do envio. */
+      if (json.destinatarios) window.MAIL_DESTINATARIOS = json.destinatarios;
       if (typeof render === 'function') render();
       if (window.DashBus) window.DashBus.emit('dados:salvos', dados);
       console.info('Dados carregados do Google Sheets: ' + dados.length + ' registros.');
@@ -19595,6 +19594,21 @@ function printAtiva(){
       if(pend.length) this._enviar(pend);
       if(window.DashBus) window.DashBus.emit('acoes:mudou', out);
     },
+    /* Carimbo local do envio. Não chama _enviar: quem gravou enviadoEm na
+       planilha foi o próprio Apps Script, no mesmo POST que mandou o e-mail.
+       Devolver isso para lá seria escrever o que já está escrito. */
+    marcarEnviadas: function(ids, quando, para){
+      if(!ids || !ids.length) return;
+      var alvo={}; ids.forEach(function(i){ if(i) alvo[String(i)]=true; });
+      var l=this.lista(), n=0;
+      l.forEach(function(a){
+        if(!a || !alvo[String(a.id)]) return;
+        a.enviadoEm=quando; a.enviadoPara=para; n++;
+      });
+      if(!n) return;
+      this._grava(l);
+      if(window.DashBus) window.DashBus.emit('acoes:mudou', l);
+    },
     _enviar: function(itens){
       if(typeof SHEETS_WEBAPP_URL==='undefined' || !SHEETS_WEBAPP_URL || !itens.length) return;
       try{
@@ -19647,12 +19661,13 @@ function printAtiva(){
         +'<td>'+esc(a.acao||'—')+'</td>'
         +'<td>'+esc(a.responsavel||'—')+'</td>'
         +'<td style="white-space:nowrap;'+(venc?'color:#F44336;font-weight:700':'')+'">'+fData(a.prazo)+(venc?' · vencido':'')+'</td>'
-        +'<td style="white-space:nowrap">'+esc(a.status||'Aberta')+'</td>'
+        +'<td style="white-space:nowrap">'+esc(a.status||'Aberta')
+          +(a.enviadoEm?'<div style="color:var(--t3);font-size:.62rem">cobrada '+fData(a.enviadoEm)+'</div>':'')+'</td>'
         +'<td class="reu-noprint" style="white-space:nowrap">'
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar">✎</button> '
           +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button> ':'')
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\')" title="Enviar por WhatsApp para o responsável">💬</button> '
-          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\')" title="Enviar por e-mail para o responsável (sai pela caixa do PPCP)">✉</button> '
+          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\')" title="Enviar esta ação agora, pela caixa do PPCP, para a lista da aba EMAIL">✉</button> '
           +'<button type="button" class="btn btn-r btn-sm" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)">🗑</button>'
         +'</td></tr>';
     }).join('');
@@ -19689,7 +19704,7 @@ function printAtiva(){
           +'<input type="checkbox" '+(mostrarFechadas?'checked':'')+' onchange="reuAcaoMostrar(this.checked)" style="width:auto">mostrar concluídas e canceladas</label>'
         +'<span style="font-size:.66rem;color:var(--t3)">Plano em aberto:</span>'
         +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'zap\')" title="Todas as ações em aberto numa mensagem de WhatsApp">💬 WhatsApp</button>'
-        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Todas as ações em aberto num e-mail (sai pela caixa do PPCP)">✉ E-mail</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Enviar todas as ações em aberto agora, pela caixa do PPCP, para a lista da aba EMAIL">✉ E-mail</button>'
         +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'copiar\')" title="Copiar o plano em aberto como texto">📋 Copiar</button>'
         +'<span style="margin-left:auto;font-size:.62rem;color:var(--t3)">aba ACOES da planilha · cópia local para abrir offline</span>'
       +'</div>'
@@ -20290,11 +20305,13 @@ function printAtiva(){
   };
   window.reuAcaoMostrar=function(on){ mostrarFechadas=!!on; render(); };
 
-  /* ── Enviar ao responsável ──
-     Não guardamos telefone nem e-mail: o painel abre o WhatsApp (ou o Gmail)
-     já com o texto pronto e a pessoa escolhe o contato. Uma ação (id) ou o
-     plano em aberto inteiro (id null). Texto puro, sem formatação: é o que
-     chega igual no celular, no e-mail e na impressão. */
+  /* ── Enviar o plano de ação ──
+     WhatsApp e Copiar abrem com o texto pronto e a pessoa escolhe o contato:
+     não guardamos telefone de ninguém. E-mail é diferente — sai pelo Apps
+     Script, pela caixa do PPCP, para a lista da aba EMAIL (ver
+     enviarPeloPPCP abaixo). Uma ação (id) ou o plano em aberto inteiro
+     (id null). Texto puro, sem formatação: é o que chega igual no celular,
+     no e-mail e na impressão. */
 
   function textoAcao(a){
     return '• ['+(a.prioridade||'—')+'] '+(a.kpi||'—')+(a.desvio?(' — '+a.desvio):'')
@@ -20309,19 +20326,70 @@ function printAtiva(){
                  : ordenarAcoes(lista).filter(function(a){ return !(a.status==='Concluída'||a.status==='Cancelada'); });
     if(!sel.length) return null;
     var titulo = id ? ('Ação da Reunião do Mês — '+per) : ('Plano de ação em aberto — Reunião do Mês '+per);
+    /* `ids` sai da mesma seleção do corpo: o carimbo de "cobrada em" cai
+       exatamente nas ações que foram para o e-mail, sem segunda regra. */
     return { titulo: titulo,
+             ids: sel.map(function(a){ return a.id; }),
              corpo: 'PATRIMAR MÓVEIS · PPCP\n'+titulo+'\n\n'+sel.map(textoAcao).join('\n\n')
                     +'\n\nRegra: nenhum indicador vermelho sem causa, ação, responsável e prazo.' };
   }
+  /* ── Envio pela caixa do PPCP ──────────────────────────────────────────
+     O painel não abre mais o Gmail da máquina. O Apps Script manda pela
+     conta do setor (REMETENTE, no Code.gs), para a lista da aba EMAIL, e
+     carimba enviadoEm na ação. Duas coisas mudam de natureza: o remetente
+     deixa de depender de quem clicou, e passa a existir registro de QUANDO
+     a ação foi cobrada — antes isso não existia em lugar nenhum.
+
+     Sem revisão antes de sair, por decisão de quem usa. O confirm() abaixo
+     não é revisão: é a última chance de ver para quantas pessoas vai, porque
+     e-mail enviado não volta. */
+  var _enviandoEmail = false;
+  function enviarPeloPPCP(t){
+    if(typeof SHEETS_WEBAPP_URL==='undefined' || !SHEETS_WEBAPP_URL){
+      alert('Envio não configurado: falta a URL do Web App do Apps Script.');
+      return;
+    }
+    if(_enviandoEmail){ if(typeof toast==='function') toast('Envio em andamento.','wn'); return; }
+    var lista = window.MAIL_DESTINATARIOS || [];
+    var quem = lista.length
+      ? lista.length+' pessoa'+(lista.length>1?'s':'')+':\n· '+lista.join('\n· ')
+      : 'a lista da aba EMAIL da planilha';
+    if(!confirm('Enviar agora pela caixa do PPCP?\n\n'+t.titulo+'\n\nPara '+quem
+                +'\n\nSai direto, sem tela de revisão.')) return;
+
+    _enviandoEmail = true;
+    if(typeof toast==='function') toast('Enviando…','wn');
+    fetch(SHEETS_WEBAPP_URL, { method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ secret: SHEETS_SECRET,
+          email: { assunto: t.titulo, corpo: t.corpo, acoes: t.ids } }) })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(!j || !j.ok) throw new Error((j && j.erro) || 'resposta inesperada do Web App.');
+        var n = (j.enviadoPara||[]).length;
+        if(typeof toast==='function')
+          toast('Enviado por '+(j.remetente||'PPCP')+' para '+n+' destinatário'+(n===1?'':'s')+'.','ok');
+        Acoes.marcarEnviadas(t.ids, j.enviadoEm, (j.enviadoPara||[]).join(', '));
+        render();
+      })
+      .catch(function(err){
+        /* Falha de rede não prova que o e-mail não saiu — a resposta pode ter
+           se perdido depois do envio. Reenviar às cegas duplicaria a cobrança
+           na caixa de sete pessoas, então aqui manda conferir, não repetir. */
+        alert('Não deu para confirmar o envio.\n\nMotivo: '+((err && err.message) || err)
+          +'\n\nConfira os Enviados da caixa do PPCP ANTES de clicar de novo: '
+          +'se o e-mail já saiu, reenviar duplica a cobrança.');
+      })
+      .then(function(){ _enviandoEmail = false; });
+  }
+
   window.reuAcaoEnviar=function(id, via){
     var t=textoPlano(id);
     if(!t){ if(typeof toast==='function') toast('Nenhuma ação em aberto para enviar.','wn'); return; }
     if(via==='zap'){
       window.open('https://wa.me/?text='+encodeURIComponent(t.corpo), '_blank');
     } else if(via==='email'){
-      /* Uma ação ou o plano inteiro: os dois saem pela caixa do PPCP
-         (MAIL_CONTA_PPCP, no bloco de configuração). */
-      window.open(gmailCompor(t.titulo, t.corpo), '_blank');
+      enviarPeloPPCP(t);
     } else {
       var ok=function(){ if(typeof toast==='function') toast('Plano copiado. Cole no e-mail, no WhatsApp ou onde precisar.','ok'); };
       if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t.corpo).then(ok, function(){ prompt('Copie o texto:', t.corpo); });
@@ -20593,9 +20661,15 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b83';
+var APP_VERSAO = 'b84';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b84', data:'10/09/2026', itens:[
+    'Plano de acao passa a ser ENVIADO pelo Apps Script, pela caixa ppcp@patrimarmoveis.com.br, e nao mais aberto no Gmail da maquina. O remetente vira regra do sistema: nao depende de quem clicou nem de qual navegador. Se a conta dona da planilha nao tiver ppcp@ liberado como \"Enviar e-mail como\", o envio e RECUSADO com o motivo — mandar em nome errado seria pior que nao mandar.',
+    'Destinatarios saem da aba EMAIL da planilha (email | nome | ativo | observacao): tirar alguem da lista e apagar um S, nao mexer em codigo. Rode criarAbaEmail() e testeEnvio() no Apps Script antes de usar. Republicar o Web App.',
+    'Cada acao enviada recebe enviadoEm e enviadoPara na planilha, e a tabela mostra \"cobrada dd/mm\" embaixo do status. Passa a existir resposta para: essa acao foi cobrada quando? Antes nao existia em lugar nenhum.',
+    'Briefing continua abrindo o compose do Gmail na conta do PPCP — e um documento montado no navegador, nao passa pelo servidor.'
+  ]},
   { v:'b83', data:'10/09/2026', itens:[
     'Todo e-mail do painel passa a abrir na caixa ppcp@patrimarmoveis.com.br: briefing, plano de acao em aberto e cobranca de uma acao. Saindo da conta pessoal de quem clicava, o "responder a todos" voltava para essa pessoa e o setor ficava sem o historico da cobranca. A conta fica em MAIL_CONTA_PPCP, num lugar so; string vazia volta ao comportamento anterior.'
   ]},

@@ -32,6 +32,13 @@
  *   e casa cada item pelo `id`. Quem tem `atualizadoEm` mais novo vence: dois
  *   navegadores editando a mesma ação não se sobrescrevem às cegas. A aba é
  *   criada na primeira gravação, com o cabeçalho de ACOES_CAMPOS.
+ *
+ * EMAIL — lista de distribuição do plano de ação (email | nome | ativo |
+ *   observacao). doPost aceita { secret, email:{ assunto, corpo, acoes:[id] } }
+ *   e manda pela conta do PPCP (REMETENTE), carimbando enviadoEm/enviadoPara
+ *   nas ações citadas. O painel não abre mais o Gmail da máquina: o remetente
+ *   é regra do sistema, não configuração de quem clicou. Rode criarAbaEmail()
+ *   uma vez e testeEnvio() para conferir alias, lista e cota antes de usar.
  */
 
 /* Aba com uma linha por mês (a que alimenta o dashboard). */
@@ -61,7 +68,32 @@ var METAS_PADRAO = [
   ['DUTEIS',      22,  'dias','2026-01', 'PPCP',      'Dias úteis de referência por mês (capacidade teórica e carteira em dias)']
 ];
 var ACOES_CAMPOS = ['id','tipo','prioridade','kpi','desvio','causa','acao',
-  'responsavel','prazo','status','mesRef','criadoEm','atualizadoEm'];
+  'responsavel','prazo','status','mesRef','criadoEm','atualizadoEm',
+  'enviadoEm','enviadoPara'];
+
+/* ══ ENVIO DE E-MAIL ══
+   O painel abria o Gmail do navegador, então a cobrança saía na conta de
+   quem clicou — e, com outra pessoa no painel, saía em outro nome. Aqui o
+   remetente é regra do sistema, não configuração de máquina.
+
+   REMETENTE precisa ser a própria conta dona deste script OU um alias
+   verificado nela (Gmail › Ver todas as configurações › Contas › Enviar
+   e-mail como). Se não for nenhum dos dois, o envio é RECUSADO com o motivo
+   — mandar em nome errado seria pior que não mandar. */
+var REMETENTE = 'ppcp@patrimarmoveis.com.br';
+var REMETENTE_NOME = 'PPCP · Patrimar Móveis';
+
+/* Aba com a lista de distribuição do plano de ação. Uma linha por pessoa.
+   Tirar alguém da lista é apagar um "S", não mexer em código. */
+var ABA_EMAIL = 'EMAIL';
+var EMAIL_PADRAO = [
+  ['email', 'nome', 'ativo', 'observacao'],
+  ['', '', 'S', 'Uma linha por destinatário do plano de ação da Reunião do Mês. ativo = S recebe, N não recebe. Linha sem e-mail é ignorada.']
+];
+
+/* Teto de segurança: o plano de ação vai para a liderança, não para a
+   fábrica inteira. Lista maior que isto é engano de digitação — recusa. */
+var EMAIL_MAX_DESTINATARIOS = 30;
 
 var MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
@@ -87,6 +119,8 @@ function doGet() {
               producaoItens: lerReporteVolumes(ss),
               acoes: lerAcoes(ss),
               metas: lerMetas(ss),
+              /* Para o painel dizer PARA QUEM vai enviar antes de enviar. */
+              destinatarios: lerDestinatarios(ss),
               geradoEm: new Date().toISOString() };
   } catch (e) {
     saida = { ok: false, erro: String(e && e.message || e) };
@@ -111,10 +145,11 @@ function doPost(e) {
     var recebidos = corpo.dados;
     var acoes = corpo.acoes;
     var metas = corpo.metas;
+    var email = corpo.email;
     var temDados = recebidos && recebidos.length;
     var temAcoes = acoes && acoes.length;
     var temMetas = metas && metas.length;
-    if (!temDados && !temAcoes && !temMetas) throw new Error('Nada para gravar.');
+    if (!temDados && !temAcoes && !temMetas && !email) throw new Error('Nada para gravar.');
 
     saida = { ok: true };
     if (temDados) {
@@ -129,6 +164,15 @@ function doPost(e) {
     if (temMetas) {
       var rm = gravarMetas(ss, metas);
       saida.metasAtualizadas = rm.atualizadas; saida.metasRecusadas = rm.recusadas;
+    }
+    /* Envio por último: se algo acima falhar, o e-mail não sai. O contrário
+       (mandar e depois falhar ao gravar) deixaria cobrança sem registro. */
+    if (email) {
+      var re = enviarPlanoAcao(ss, email);
+      saida.enviadoPara = re.destinatarios;
+      saida.enviadoEm = re.quando;
+      saida.remetente = re.remetente;
+      saida.acoesMarcadas = re.marcadas;
     }
   } catch (err) {
     saida = { ok: false, erro: String(err && err.message || err) };
@@ -559,6 +603,150 @@ function gravarAcoes(ss, recebidas) {
     rng.setValues(bloco);
   }
   return { atualizados: atualizados, incluidas: incluidas, ignoradas: ignoradas };
+}
+
+/* ══ ENVIO DO PLANO DE AÇÃO ══
+   Recebe { assunto, corpo, acoes:[id,...] } do painel, envia para a lista da
+   aba EMAIL e carimba a data de envio nas ações citadas. A partir daí existe
+   resposta para "essa ação foi cobrada quando?" — que antes não existia em
+   lugar nenhum.
+
+   Texto puro, sem HTML: é o mesmo corpo que o painel mostra na tela, no
+   WhatsApp e na impressão. Uma versão só, sem divergir. */
+function enviarPlanoAcao(ss, pedido) {
+  var assunto = txt(pedido && pedido.assunto);
+  var corpo   = String((pedido && pedido.corpo) || '');
+  if (!assunto) throw new Error('E-mail sem assunto.');
+  if (!corpo.trim()) throw new Error('E-mail sem corpo.');
+
+  var dest = lerDestinatarios(ss);
+  if (!dest.length) {
+    throw new Error('Nenhum destinatário ativo na aba ' + ABA_EMAIL + '. '
+      + 'Rode criarAbaEmail() e preencha a lista. Nada foi enviado.');
+  }
+  if (dest.length > EMAIL_MAX_DESTINATARIOS) {
+    throw new Error('A aba ' + ABA_EMAIL + ' tem ' + dest.length + ' destinatários ativos, '
+      + 'acima do limite de ' + EMAIL_MAX_DESTINATARIOS + '. Confira a lista. Nada foi enviado.');
+  }
+
+  var opcoes = { name: REMETENTE_NOME };
+  var eu = '';
+  try { eu = Session.getEffectiveUser().getEmail() || ''; } catch (e) {}
+  if (REMETENTE && REMETENTE.toLowerCase() !== String(eu).toLowerCase()) {
+    var aliases = [];
+    try { aliases = GmailApp.getAliases() || []; } catch (e) {}
+    var temAlias = aliases.some(function (a) {
+      return String(a).toLowerCase() === REMETENTE.toLowerCase();
+    });
+    /* Sem o alias, o Gmail mandaria em nome da conta dona do script — que é
+       exatamente o problema que este envio existe para resolver. Recusa. */
+    if (!temAlias) {
+      throw new Error('O remetente ' + REMETENTE + ' não está liberado nesta conta'
+        + (eu ? ' (' + eu + ')' : '') + '. Libere em Gmail › Ver todas as configurações › '
+        + 'Contas e importação › Enviar e-mail como, ou mova a planilha para a conta '
+        + REMETENTE + '. Nada foi enviado.');
+    }
+    opcoes.from = REMETENTE;
+  }
+
+  GmailApp.sendEmail(dest.join(','), assunto, corpo, opcoes);
+
+  var quando = new Date().toISOString();
+  var marcadas = marcarEnviadas(ss, (pedido && pedido.acoes) || [], quando, dest);
+  return { destinatarios: dest, quando: quando, marcadas: marcadas,
+           remetente: opcoes.from || eu };
+}
+
+/* Lista de distribuição. Aba ausente ou vazia devolve [] — e o envio é
+   recusado antes de sair, com o motivo. */
+function lerDestinatarios(ss) {
+  var aba = ss.getSheetByName(ABA_EMAIL);
+  if (!aba || aba.getLastRow() < 2) return [];
+  var linhas = aba.getDataRange().getValues();
+  var cab = linhas[0].map(function (c) { return normaliza(c); });
+  var iMail = cab.indexOf('email'), iAtivo = cab.indexOf('ativo');
+  if (iMail < 0) return [];
+  var out = [], visto = {};
+  for (var r = 1; r < linhas.length; r++) {
+    var e = txt(linhas[r][iMail]).toLowerCase();
+    if (!e || e.indexOf('@') < 1) continue;
+    if (iAtivo >= 0 && normaliza(linhas[r][iAtivo]).charAt(0) === 'n') continue;
+    if (visto[e]) continue;          /* linha duplicada não vira e-mail duplicado */
+    visto[e] = true;
+    out.push(e);
+  }
+  return out;
+}
+
+/* Carimba enviadoEm/enviadoPara nas ações citadas. Escreve célula a célula
+   nas linhas afetadas — não reescreve a aba inteira, para não competir com
+   uma gravação vinda do painel no mesmo instante. */
+function marcarEnviadas(ss, ids, quando, dest) {
+  if (!ids || !ids.length) return 0;
+  var aba = ss.getSheetByName(ABA_ACOES);
+  if (!aba || aba.getLastRow() < 2) return 0;
+  var linhas = aba.getDataRange().getValues();
+  var cab = linhas[0].map(function (c) { return txt(c); });
+  var col = {}; cab.forEach(function (n, i) { if (n && col[n] === undefined) col[n] = i; });
+  if (col.id === undefined) return 0;
+
+  var largura = cab.length;
+  ['enviadoEm', 'enviadoPara'].forEach(function (nome) {
+    if (col[nome] === undefined) {
+      largura++;
+      aba.getRange(1, largura).setValue(nome);
+      col[nome] = largura - 1;
+    }
+  });
+
+  var alvo = {};
+  ids.forEach(function (id) { if (id) alvo[String(id)] = true; });
+  var n = 0;
+  for (var r = 1; r < linhas.length; r++) {
+    var id = acaoTxt(linhas[r][col.id]);
+    if (!id || !alvo[id]) continue;
+    aba.getRange(r + 1, col.enviadoEm + 1).setNumberFormat('@').setValue(quando);
+    aba.getRange(r + 1, col.enviadoPara + 1).setNumberFormat('@').setValue(dest.join(', '));
+    n++;
+  }
+  return n;
+}
+
+/* Cria a aba EMAIL vazia, com o cabeçalho certo. Rode uma vez
+   (Executar › criarAbaEmail) e preencha os destinatários. */
+function criarAbaEmail() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(ABA_EMAIL)) {
+    try { SpreadsheetApp.getUi().alert('Aba ' + ABA_EMAIL + ' já existe — nada foi alterado.'); } catch (e) {}
+    return;
+  }
+  var aba = ss.insertSheet(ABA_EMAIL);
+  aba.getRange(1, 1, EMAIL_PADRAO.length, EMAIL_PADRAO[0].length).setValues(EMAIL_PADRAO);
+  aba.setFrozenRows(1);
+  aba.getRange(1, 1, 1, EMAIL_PADRAO[0].length).setFontWeight('bold');
+  aba.setColumnWidth(1, 260); aba.setColumnWidth(4, 520);
+  try { SpreadsheetApp.getUi().alert('Aba ' + ABA_EMAIL + ' criada. Preencha uma linha por destinatário do plano de ação.'); } catch (e) {}
+}
+
+/* Confere a configuração de envio SEM mandar nada. Rode no editor
+   (Executar › testeEnvio) e leia o Registro de execução. */
+function testeEnvio() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var eu = '';
+  try { eu = Session.getEffectiveUser().getEmail() || '(desconhecida)'; } catch (e) { eu = '(sem permissão ainda)'; }
+  var aliases = [];
+  try { aliases = GmailApp.getAliases() || []; } catch (e) {}
+  var dest = lerDestinatarios(ss);
+  var podeRemetente = REMETENTE.toLowerCase() === String(eu).toLowerCase()
+    || aliases.some(function (a) { return String(a).toLowerCase() === REMETENTE.toLowerCase(); });
+
+  Logger.log('Conta dona do script: ' + eu);
+  Logger.log('Aliases disponíveis: ' + (aliases.length ? aliases.join(', ') : '(nenhum)'));
+  Logger.log('Remetente exigido: ' + REMETENTE);
+  Logger.log(podeRemetente ? '>> OK: o envio vai sair como ' + REMETENTE
+                           : '>> BLOQUEADO: libere ' + REMETENTE + ' em Enviar e-mail como, ou mova a planilha para essa conta.');
+  Logger.log('Destinatários ativos (' + dest.length + '): ' + (dest.length ? dest.join(', ') : '(nenhum — preencha a aba ' + ABA_EMAIL + ')'));
+  Logger.log('Cota de e-mails restante hoje: ' + MailApp.getRemainingDailyQuota());
 }
 
 /* Célula da ACOES → texto. Data vira ISO (AAAA-MM-DD). */
