@@ -51,7 +51,19 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 #app{position:relative;z-index:1;width:96%;max-width:2200px;margin:0 auto;padding:16px 0 80px}
 .layout{display:flex;gap:16px;align-items:flex-start}
 .layout.sb-hidden .sidebar{display:none}
-#btnSidebar.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+/* Botão ativo = painel oculto. Usava var(--accent), que não existe: sem fundo
+   e com o ícone na cor do fundo, o botão sumia e só aparecia no hover. */
+#btnSidebar.on{background:rgba(245,166,35,.14)!important;color:var(--cyan)!important;border-color:var(--cyan)!important}
+/* Alça na borda esquerda enquanto o painel está oculto: reabre sem procurar
+   o botão no cabeçalho (em reunião quem está no mouse nem sempre sabe onde é). */
+#sb-handle{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:8000;display:none;
+  align-items:center;gap:6px;padding:12px 7px 12px 5px;border:1px solid var(--cyan);border-left:0;
+  border-radius:0 10px 10px 0;background:rgba(28,28,28,.96);color:var(--cyan);cursor:pointer;
+  font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  writing-mode:vertical-rl;text-orientation:mixed;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+#sb-handle.on{display:flex}
+#sb-handle:hover{background:rgba(245,166,35,.16)}
+@media print{#sb-handle{display:none!important}}
 .sidebar{width:190px;flex-shrink:0;position:sticky;top:16px;display:flex;flex-direction:column;gap:12px}
 .main{flex:1;min-width:0}
 
@@ -9629,13 +9641,27 @@ function cfInicializar() {
     var layout = document.querySelector('.layout');
     var btn = document.getElementById('btnSidebar');
     if (layout) layout.classList.toggle('sb-hidden', hidden);
-    if (btn) btn.classList.toggle('on', hidden);
+    if (btn) { btn.classList.toggle('on', hidden); btn.title = hidden ? 'Mostrar painel lateral (filtros)' : 'Ocultar painel lateral'; }
+    alca().classList.toggle('on', hidden);
     /* Redesenha gráficos — a largura do .main muda quando a sidebar some */
     setTimeout(function () {
       if (typeof drawAll === 'function' && typeof getDados === 'function' && typeof load === 'function') {
         drawAll(getDados(load()));
       }
     }, 150);
+  }
+
+  function alca() {
+    var h = document.getElementById('sb-handle');
+    if (h) return h;
+    h = document.createElement('button');
+    h.id = 'sb-handle';
+    h.type = 'button';
+    h.title = 'Mostrar painel lateral (filtros)';
+    h.innerHTML = '<span style="writing-mode:horizontal-tb;font-size:.9rem;line-height:1">&#9654;</span><span>Filtros</span>';
+    h.onclick = function () { window.toggleSidebar(); };
+    (document.body || document.documentElement).appendChild(h);
+    return h;
   }
 
   window.toggleSidebar = function () {
@@ -19866,11 +19892,25 @@ function printAtiva(){
              corAc, true, '#reu-acoes');
 
     /* Respostas das faixas — a história em três frases, na cor do veredito. */
+    /* A pergunta precisa de resposta, não só de diagnóstico: faltou quanto, o
+       absenteísmo custou quanto, e se ele estivesse na meta o plano caberia?
+       Recuperável = peças perdidas × (abs − meta) ÷ abs — a parcela das horas
+       perdidas acima da meta, ao ritmo da jornada normal. Se cobre o que
+       faltou, é absenteísmo; se não cobre, é capacidade. */
+    var gapSE = (aderSE===null) ? null : (anoTodo ? (A.plano - A.normal) : (planoMes - DashUtils.getProd(rMes)));
+    var recup = (perdPc>0 && A.absMed>META_ABS_) ? perdPc*(A.absMed-META_ABS_)/A.absMed : 0;
+    var vered = '';
+    if(gapSE!==null && gapSE>0 && perdPc>0){
+      vered = recup>=gapSE
+        ? ' → com absenteísmo na meta de '+META_ABS_+'% recuperaria '+fi(recup)+' pç: caberia sem hora extra'
+        : ' → mesmo com absenteísmo na meta de '+META_ABS_+'% (recupera '+fi(recup)+' pç) faltariam '+fi(gapSE-recup)+' pç: é capacidade';
+    }
     var r1 = aderSE===null ? 'sem plano lançado'
            : (aderSE>=100?'Sim':'Não')+': '+fd(aderSE,1)+'% do plano em jornada normal'
-             +(folga!==null?(' · ritmo '+pct(folga)):'')
-             +(perdPc>0?(' · '+fi(perdPc)+' pç perdidas por falta e atraso'
-                          +(perdDias!==null?(' = '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de fábrica'):'')):'');
+             +(gapSE!==null?(gapSE>0?(' · faltaram '+fi(gapSE)+' pç'):(' · sobraram '+fi(-gapSE)+' pç')):'')
+             +(perdPc>0?(' · falta e atraso custaram '+fi(perdPc)+' pç'
+                          +(perdDias!==null?(' = '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de fábrica'):'')):'')
+             +vered;
     var c1 = aderSE===null?'var(--t2)':corMeta(aderSE,100);
     var r2 = fi(A.prod)+' pç entregues'+(ader!==null?(', '+fd(ader,1)+'% do plano com hora extra'):'')
            +(diasCart!==null?(' · carteira de '+fi(diasCart)+' dias úteis'):'');
@@ -20520,9 +20560,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b79';
+var APP_VERSAO = 'b80';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b80', data:'10/09/2026', itens:[
+    'Pergunta 1 da Reuniao passa a responder: quanto faltou para o plano em jornada normal, quanto a falta e o atraso custaram, e se com o absenteismo na meta o plano caberia sem hora extra (ou se e capacidade). O "ritmo -x%" saiu da frase: era a aderencia dita de outro jeito.',
+    'Botao Ocultar/mostrar painel lateral ficava invisivel quando o painel estava oculto (o estilo do estado ativo usava uma variavel de cor inexistente; o icone ficava na cor do fundo e so aparecia no hover). Agora fica ambar. Alem disso, com o painel oculto aparece uma alca fixa na borda esquerda (Filtros) que reabre o painel.'
+  ]},
   { v:'b79', data:'10/09/2026', itens:[
     'Aba Producao & Vendas ganha o card Carteira a faturar em dias uteis (mesma conta da Reuniao). Os cards Producao e Carteira da Reuniao passam a descer para essa aba — antes desciam para o Plano Mestre, que nao mostra carteira em dias.',
     'Aba Pessoas responde o que a falta e o atraso custaram: dois cards novos, Pecas que nao sairam (horas perdidas x ritmo da jornada normal) e Dias de fabrica perdidos — a mesma conta do card Absenteismo da Reuniao, que desce para esta aba. A trilha dizia isso na barra e a tela nao provava.'
