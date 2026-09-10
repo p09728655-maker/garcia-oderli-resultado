@@ -4105,20 +4105,45 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
      rolagem — cabe em 1080p e escala no Modo TV. Não calcula nada: consome
      window.pmApurado() (plano) e window.pcApurado() (mix/volumes). -->
 <style>
-/* Na tela de reunião quem estourava a altura era a barra lateral (900px de
-   filtros), não o conteúdo (490px). Aqui ela rola por dentro em vez de
-   esticar a página — os filtros continuam à mão e a tela cabe em 1080p. */
-body.pg-reuniao aside.sidebar { max-height: calc(100vh - 225px); overflow-y: auto; }
-/* no Modo TV o cabeçalho e as abas crescem — a barra cede o resto */
-body.pg-reuniao.tv-mode aside.sidebar { max-height: calc(100vh - 265px); }
-body.pg-reuniao aside.sidebar::-webkit-scrollbar { width: 6px; }
-body.pg-reuniao aside.sidebar::-webkit-scrollbar-thumb { background: var(--b); border-radius: 3px; }
+/* A barra lateral se comporta igual em todas as abas. Houve uma versão em
+   que só na Reunião ela era cortada em (100vh - 225px) com rolagem interna,
+   para a tela caber em 1080p; com as três faixas e o plano de ação a página
+   rola de qualquer jeito, e a barra "encolhendo" só nesta aba parecia bug. */
 /* card que desce um nível da pirâmide: só sinaliza no hover, para não poluir
    a tela projetada com afordância que ninguém usa durante a fala */
 #page-reuniao .reu-link { transition: border-color .15s, transform .15s; }
 #page-reuniao .reu-link:hover { border-color: var(--cyan); transform: translateY(-2px); }
 #page-reuniao .reu-link:hover .reu-lbl::after { content: ' ↗'; color: var(--cyan); }
 @media (max-width: 1100px) { #page-reuniao .reu-row3 { grid-template-columns: 1fr !important; } }
+/* Barra da trilha de apresentação: fixa embaixo, em qualquer aba, enquanto
+   a reunião segue o roteiro. Quem apresenta lê a barra, não o card. */
+#reu-trilha { position:fixed; left:50%; transform:translateX(-50%); bottom:14px; z-index:9000;
+  display:none; align-items:center; gap:12px; width:min(1180px,calc(100vw - 32px));
+  padding:10px 14px; border-radius:12px; background:rgba(20,24,32,.96); border:1px solid #F5A623;
+  box-shadow:0 10px 32px rgba(0,0,0,.6); backdrop-filter:blur(6px); color:var(--t1); }
+#reu-trilha.on { display:flex; }
+#reu-trilha .rt-btn { flex:none; width:44px; height:44px; border-radius:10px; border:1px solid rgba(245,166,35,.5);
+  background:rgba(245,166,35,.12); color:#F5A623; font-size:1.3rem; font-weight:800; cursor:pointer; line-height:1; }
+#reu-trilha .rt-btn:disabled { opacity:.3; cursor:default; }
+#reu-trilha .rt-mid { flex:1; min-width:0; }
+#reu-trilha .rt-top { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+#reu-trilha .rt-n { font-family:var(--mono); font-size:.72rem; font-weight:700; letter-spacing:.08em; color:#F5A623; text-transform:uppercase; white-space:nowrap; }
+#reu-trilha .rt-t { font-size:1.02rem; font-weight:800; color:#fff; }
+#reu-trilha .rt-fala { font-size:.9rem; font-weight:600; line-height:1.35; margin-top:2px; }
+#reu-trilha .rt-dica { font-size:.72rem; color:var(--t3); margin-top:2px; }
+#reu-trilha .rt-dots { display:flex; gap:5px; flex:none; }
+#reu-trilha .rt-dot { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer; border:0; padding:0; }
+#reu-trilha .rt-dot.on { background:#F5A623; }
+#reu-trilha .rt-dot.feito { background:rgba(245,166,35,.5); }
+#reu-trilha .rt-x { flex:none; border:1px solid var(--b); background:transparent; color:var(--t3); border-radius:8px;
+  padding:6px 9px; font-size:.7rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+#reu-trilha .rt-x:hover { color:#fff; border-color:#fff; }
+body.tv-mode #reu-trilha .rt-t { font-size:1.3rem; }
+body.tv-mode #reu-trilha .rt-fala { font-size:1.12rem; }
+body.tv-mode #reu-trilha .rt-dica { font-size:.85rem; }
+body.tv-mode #reu-trilha .rt-btn { width:54px; height:54px; font-size:1.6rem; }
+@media (max-width: 760px) { #reu-trilha .rt-dots, #reu-trilha .rt-dica { display:none; } }
+@media print { #reu-trilha { display:none !important; } }
 </style>
 <div class="page on" id="page-reuniao">
   <div class="pageHdr">
@@ -4127,7 +4152,7 @@ body.pg-reuniao aside.sidebar::-webkit-scrollbar-thumb { background: var(--b); b
     </div>
     <div>
       <div class="pageHdrTitle">Reunião do Mês</div>
-      <div class="pageHdrSub">Nível 1 da pirâmide — diretoria, mensal · clique num indicador para descer ao detalhe</div>
+      <div class="pageHdrSub">Nível 1 da pirâmide — diretoria, mensal · clique num indicador para descer ao detalhe · <b>Apresentar</b> segue a trilha da reunião</div>
     </div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:14px">
       <!-- Filtro próprio da aba. Antes o período vinha só da barra lateral,
@@ -4137,6 +4162,14 @@ body.pg-reuniao aside.sidebar::-webkit-scrollbar-thumb { background: var(--b); b
       <span id="reu-per-lbl" style="font-family:var(--mono);font-size:1rem;font-weight:800;letter-spacing:.06em;
         color:#F5A623;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.45);
         border-radius:8px;padding:7px 16px;white-space:nowrap">—</span>
+      <button onclick="reuApresentar()" id="reu-btn-apres"
+        title="Trilha da reunião: abre as abas na ordem da pauta, com a resposta de cada pergunta na barra de baixo. Setas ← → avançam, ESC sai."
+        style="display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border:1px solid #F5A623;
+        border-radius:6px;background:#F5A623;color:#1a1a2e;font-size:.76rem;font-weight:800;
+        text-transform:uppercase;letter-spacing:.05em;cursor:pointer;white-space:nowrap">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"></path></svg>
+        Apresentar
+      </button>
       <button onclick="reuImprimir()" title="Uma página com estes indicadores, para circular antes da reunião"
         style="display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border:1px solid #F5A623;
         border-radius:6px;background:rgba(245,166,35,.08);color:#F5A623;font-size:.76rem;font-weight:700;
@@ -17301,9 +17334,21 @@ function printAtiva(){
    prodSemExtras, diasTrabalhados), então acompanha o sync do Sheets. */
 (function(){
   var ORDEM_M=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-  /* Dias úteis planejados (Planejamento Mestre 2026). Mês já fechado usa os
-     dias efetivamente trabalhados que vêm da planilha. */
-  var DIAS_PLAN={JAN:17,FEV:20,MAR:22,ABR:20,MAI:20,JUN:21,JUL:23,AGO:21,SET:22,OUT:22,NOV:21,DEZ:23};
+  /* Dias úteis planejados (Planejamento Mestre 2026), líquidos de feriado e
+     de recesso: SET 21 (dia 7), OUT 21 (dia 12), NOV 19 (dias 2 e 20), DEZ 15
+     (recesso coletivo). Eram 22/22/21/23 — dias corridos de segunda a sexta —
+     e o plano da planilha NÃO foi feito assim: 34.810, 34.810, 31.495 e
+     24.864 são 1.658 pç/dia × 21, 21, 19 e 15. Com 23 dias em dezembro o
+     ritmo necessário saía 1.081 pç/dia, um dezembro "leve" que não existe.
+     Mês já fechado usa os dias efetivamente trabalhados da planilha; mês
+     aberto com dias lançados na planilha também usa os da planilha
+     (diasPlanejados) — a tabela é só o fallback. */
+  var DIAS_PLAN={JAN:17,FEV:20,MAR:22,ABR:20,MAI:20,JUN:21,JUL:23,AGO:21,SET:21,OUT:21,NOV:19,DEZ:15};
+  function diasPlanejados(r){
+    if(r._simulado&&DIAS_SIM[r.mes]) return diasSim(r.mes);
+    if((r.producaoReal||0)<=0&&(r.diasTrabalhados||0)>0) return r.diasTrabalhados;
+    return DIAS_PLAN[r.mes]||22;
+  }
   var _ult = null;   /* último apurado, usado pela impressão executiva */
   var _ponte = null; /* comparativo com o ano anterior, idem */
 
@@ -17317,12 +17362,9 @@ function printAtiva(){
      demonstrado, que é a régua contra a qual o cenário está sendo medido. */
   var _cenario = null;   /* null = plano da planilha */
 
-  /* Dias úteis líquidos de feriado e de recesso. O DIAS_PLAN acima é genérico e
-     não desconta nenhum dos dois: em 2026 outubro tem 21 úteis e não 22 (dia 12,
-     Aparecida) e dezembro roda 15 e não 23, por causa do recesso coletivo. Numa
-     simulação a diferença pesa — os 2 dias a mais de outubro valeriam ~3.300
-     peças de plano que não existem. */
-  var DIAS_SIM = { SET:21, OUT:21, NOV:19, DEZ:15 };
+  /* Dias úteis dos meses simuláveis — os mesmos do DIAS_PLAN; dezembro é
+     editável no modo CAPACIDADE (diasSim). */
+  var DIAS_SIM = { SET:DIAS_PLAN.SET, OUT:DIAS_PLAN.OUT, NOV:DIAS_PLAN.NOV, DEZ:DIAS_PLAN.DEZ };
 
   /* Alavancas do modo CAPACIDADE. Dezembro fica editável porque o recesso é a
      premissa mais frágil do plano — 3 dias valem ~5.000 peças. */
@@ -17511,7 +17553,7 @@ function printAtiva(){
       /* Mês simulado usa os dias do cenário: o plano dele nasceu de ritmo × esses
          dias, então dividir por outro denominador devolveria um ritmo necessário
          que não é o do cenário. */
-      var diasP=(r._simulado&&DIAS_SIM[r.mes])?diasSim(r.mes):(DIAS_PLAN[r.mes]||22);
+      var diasP=diasPlanejados(r);
       var dias=(fechado&&(r.diasTrabalhados||0)>0)?r.diasTrabalhados:diasP;
       planoAno+=plano;
       if(plano>0) diasPlanoAno+=diasP; else if(!fechado) semPlano.push(r.mes);
@@ -17908,7 +17950,7 @@ function printAtiva(){
       if((r.previsaoProducao||0)>0&&pv<=0&&!fechado) semVol.push(r.mes);
       if(pv>0){
         planoVol+=pv;
-        if(!fechado){ abertoVol+=pv; diasAbertos+=(r._simulado&&DIAS_SIM[r.mes])?diasSim(r.mes):(DIAS_PLAN[r.mes]||22); }
+        if(!fechado){ abertoVol+=pv; diasAbertos+=diasPlanejados(r); }
         else planoVolFech+=pv;
       }
       if(fechado){
@@ -19470,6 +19512,9 @@ function printAtiva(){
     return m?(m[3]+'/'+m[2]+'/'+m[1].slice(2)):esc(iso);
   }
   var mostrarFechadas=false;
+  /* Frases calculadas da última renderização — a barra da trilha e o roteiro
+     impresso leem daqui, para dizer o mesmo que os cards. */
+  var _falas={};
 
   function blocoAcoes(mesRef){
     var hoje=hojeISO();
@@ -19777,6 +19822,25 @@ function printAtiva(){
            +(semDono?(' · '+vermelhos+' indicador'+(vermelhos===1?'':'es')+' vermelho'+(vermelhos===1?'':'s')+' sem ação registrada'):'');
     var c3 = corAc;
 
+    _falas = {
+      abertura: (pm&&pm.ano===ano&&pm.titulo)
+        ? (pm.titulo+' · ritmo '+pct(pm.pctFolga)+' contra o exigido pelo plano do ano')
+        : r1,
+      cAbertura: (pm&&pm.ano===ano&&pm.cor)?pm.cor:c1,
+      r1:r1, c1:c1,
+      he: 'Dependência de HE '+fd(A.depHE,1)+'% (meta ≤ '+META_DEP_HE_+'%) · '+fi(A.deHE)+' pç saíram em '+fi(A.he)+' h extras'
+          +(anoTodo?'':(' · no ano '+fd(Y.depHE,1)+'%')),
+      cHe: A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'),
+      abs: 'Absenteísmo '+fd(A.absMed,1)+'% (meta '+META_ABS_+'%)'
+          +(perdPc!==null?(' = '+fi(perdPc)+' pç que não saíram'+(perdDias!==null?(' = '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de fábrica'):'')):''),
+      cAbs: corMeta(A.absMed,META_ABS_,true),
+      r2:r2, c2:c2,
+      r3:r3, c3:c3,
+      fim: 'Pauta fechada: '+R.abertas+(R.abertas===1?' ação':' ações')+' em aberto para o próximo mês. Circule o Briefing.',
+      cFim: corAc
+    };
+    if(_trilhaOn) _trilhaPintar();
+
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
     corpo.innerHTML=manchete
@@ -19828,6 +19892,10 @@ function printAtiva(){
       +'.reu-sub{font-size:7pt!important;color:#52606D!important}'
       +'.reu-manchete{font-size:14pt!important}'
       +'.reu-frase{color:#2d3748!important;font-size:9pt!important}'
+      +'.reu-rot{margin-top:12px;border-top:1.5px solid #edf2f7;padding-top:6px;page-break-inside:avoid}'
+      +'.reu-rot h2{font-size:10pt;color:#1F2933;margin-bottom:4px}'
+      +'.reu-rot ol{padding-left:16px}.reu-rot li{font-size:8pt;color:#1F2933;margin:2px 0;line-height:1.35}'
+      +'.reu-rot li b{color:#1F2933}.reu-rot .rt-aba{color:#52606D;font-size:7pt}'
       +'.ft{display:flex;justify-content:space-between;font-size:7pt;color:#a0aec0;'
         +'padding:8px 22px;border-top:1px solid #edf2f7;margin-top:10px}'
       +'</style></head><body>'
@@ -19835,7 +19903,7 @@ function printAtiva(){
       +'<div class="lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
       +'<h1>Reunião do Mês — '+per+'</h1>'
       +'<div class="sb">Plano · entrega · capacidade · carteira · plano de ação</div></div></div></div>'
-      +'<div class="bd">'+corpo.innerHTML+'</div>'
+      +'<div class="bd">'+corpo.innerHTML+_roteiroHTML()+'</div>'
       +'<div class="ft"><span>RitmoPatrimar Resultado — PPCP</span><span>Gerado em: '+hoje+'</span></div>'
       +'</body></html>');
     w.document.close();
@@ -19879,6 +19947,7 @@ function printAtiva(){
 
   function _mostrarPilula(ligado){
     var el = _pilula();
+    if (ligado && _trilhaOn) ligado = false;   /* a barra da trilha já é o caminho de volta */
     el.style.display = ligado ? 'inline-flex' : 'none';
   }
 
@@ -19924,6 +19993,115 @@ function printAtiva(){
     _mostrarPilula(true);
     try { history.pushState({ reuVolta: 1 }, '', location.href); } catch(e){}
   };
+
+  /* ── TRILHA DE APRESENTAÇÃO ───────────────────────────────────────────────
+     A reunião tem uma ordem: abrir pela manchete, responder as três perguntas
+     descendo só nas abas que apuram cada uma, fechar registrando ações. Sem
+     trilha, quem apresenta procura aba, abre a errada e lê card em vez de
+     resposta. Aqui a ordem é fixa, a resposta de cada passo vem calculada da
+     mesma base dos cards (_falas) e o teclado avança: ← → avançam, ESC sai.
+     A pílula "Voltar" fica escondida enquanto a trilha manda — seriam dois
+     botões flutuantes dizendo coisas diferentes. */
+  var TRILHA = [
+    { id:'reuniao',    n:'Abertura',   t:'A manchete e as três perguntas',           fala:'abertura', cor:'cAbertura',
+      dica:'Leia a manchete e as três respostas. Não leia os cards — eles são a prova, não a fala.' },
+    { id:'mestre',     n:'Pergunta 1', t:'O plano cabe sem hora extra?',             fala:'r1',       cor:'c1',
+      dica:'Ritmo exigido × demonstrado, o que falta do plano do ano e em quantos dias úteis.' },
+    { id:'eficiencia', n:'Pergunta 1', t:'Quanto da entrega veio de hora extra?',    fala:'he',       cor:'cHe',
+      dica:'Dependência de HE contra a meta e a evolução mês a mês. Custo da HE vira decisão: turno, headcount ou nada.' },
+    { id:'pessoas',    n:'Pergunta 1', t:'O que falta e atraso custaram?',           fala:'abs',      cor:'cAbs',
+      dica:'Absenteísmo traduzido em peças e dias de fábrica — é a causa da hora extra, não um indicador de RH.' },
+    { id:'producao',   n:'Pergunta 2', t:'O que entregamos e o que falta faturar?', fala:'r2',       cor:'c2',
+      dica:'Vendido, produzido e faturado no mês. A carteira em dias úteis diz se a fila cabe no ritmo normal.' },
+    { id:'reuniao',    n:'Pergunta 3', t:'O que vamos fazer sobre o vermelho?',     fala:'r3',       cor:'c3', foco:'#reu-acoes',
+      dica:'Todo indicador vermelho sai daqui com dono e prazo. Registre na hora — o plano é a ata.' },
+    { id:'briefing',   n:'Fechamento', t:'O Briefing para levar',                    fala:'fim',      cor:'cFim',
+      dica:'Imprima e circule: pauta, achado do mês e a tabela. É o que a diretoria leva da sala.' }
+  ];
+  var ABAS_NOME={reuniao:'Reunião do Mês',mestre:'Planejamento Mestre',eficiencia:'Eficiência & Horas',
+                 pessoas:'Pessoas',producao:'Produção & Vendas',briefing:'Briefing Mensal'};
+  var _trilhaOn=false, _trilhaIdx=-1;
+
+  function _trilhaBarra(){
+    var el=document.getElementById('reu-trilha');
+    if(el) return el;
+    el=document.createElement('div');
+    el.id='reu-trilha';
+    el.setAttribute('role','region'); el.setAttribute('aria-label','Trilha da reunião');
+    el.innerHTML='<button class="rt-btn" id="rt-prev" onclick="reuTrilha(-1)" title="Passo anterior (←)">&#8592;</button>'
+      +'<div class="rt-mid"><div class="rt-top"><span class="rt-n" id="rt-n"></span><span class="rt-t" id="rt-t"></span></div>'
+      +'<div class="rt-fala" id="rt-fala"></div><div class="rt-dica" id="rt-dica"></div></div>'
+      +'<div class="rt-dots" id="rt-dots"></div>'
+      +'<button class="rt-btn" id="rt-next" onclick="reuTrilha(1)" title="Próximo passo (→)">&#8594;</button>'
+      +'<button class="rt-x" onclick="reuTrilhaFechar()" title="Sair da trilha (ESC)">&#10005; sair <small style="opacity:.7">ESC</small></button>';
+    document.body.appendChild(el);
+    var dots=el.querySelector('#rt-dots');
+    TRILHA.forEach(function(p,i){
+      var d=document.createElement('button'); d.className='rt-dot'; d.title=(i+1)+' · '+p.t;
+      d.onclick=function(){ reuTrilha(0,i); }; dots.appendChild(d);
+    });
+    return el;
+  }
+  function _trilhaPintar(){
+    var el=_trilhaBarra(); if(_trilhaIdx<0) return;
+    var p=TRILHA[_trilhaIdx];
+    el.querySelector('#rt-n').textContent=(_trilhaIdx+1)+'/'+TRILHA.length+' · '+p.n+' · '+(ABAS_NOME[p.id]||p.id);
+    el.querySelector('#rt-t').textContent=p.t;
+    var f=el.querySelector('#rt-fala');
+    f.innerHTML=_falas[p.fala]||'Aguardando os dados do mês…';
+    f.style.color=_falas[p.cor]||'var(--t1)';
+    el.querySelector('#rt-dica').textContent=p.dica;
+    el.querySelector('#rt-prev').disabled=(_trilhaIdx===0);
+    el.querySelector('#rt-next').disabled=(_trilhaIdx===TRILHA.length-1);
+    el.querySelectorAll('.rt-dot').forEach(function(d,i){
+      d.classList.toggle('on',i===_trilhaIdx); d.classList.toggle('feito',i<_trilhaIdx);
+    });
+  }
+  function _roteiroHTML(){
+    return '<div class="reu-rot"><h2>Roteiro da apresentação</h2><ol>'
+      +TRILHA.map(function(p){
+        return '<li><b>'+p.n+' · '+p.t+'</b> <span class="rt-aba">('+(ABAS_NOME[p.id]||p.id)+')</span><br>'
+          +(_falas[p.fala]||'—')+'</li>';
+      }).join('')+'</ol></div>';
+  }
+  window.reuApresentar=function(){
+    var corpo=document.getElementById('reu-corpo');
+    if(!corpo||!corpo.innerHTML){ if(typeof toast==='function') toast('Aguarde os dados do mês para apresentar.','wn'); return; }
+    _trilhaIdx=-1;
+    reuTrilha(1);
+  };
+  window.reuTrilha=function(delta, abs){
+    var i=(abs!==undefined&&abs!==null)?abs:_trilhaIdx+delta;
+    if(i<0) i=0; if(i>=TRILHA.length) i=TRILHA.length-1;
+    _trilhaIdx=i; _trilhaOn=true;
+    var p=TRILHA[i];
+    if(p.id==='reuniao'){ _voltar(); }
+    else {
+      _descendo=true;
+      try{ if(typeof mudarPagina==='function') mudarPagina(p.id); }catch(e){}
+      _descendo=false;
+    }
+    _mostrarPilula(false);
+    try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
+    if(p.foco) setTimeout(function(){ reuFoco(p.foco); },200);
+    _trilhaBarra().classList.add('on');
+    _trilhaPintar();
+  };
+  window.reuTrilhaFechar=function(){
+    _trilhaOn=false; _trilhaIdx=-1;
+    var el=document.getElementById('reu-trilha'); if(el) el.classList.remove('on');
+    if(typeof paginaAtiva!=='undefined'&&paginaAtiva!=='reuniao') _voltar();
+  };
+  document.addEventListener('keydown', function(e){
+    if(!_trilhaOn) return;
+    var t=e.target, tag=(t&&t.tagName||'').toLowerCase();
+    if(tag==='input'||tag==='textarea'||tag==='select'||(t&&t.isContentEditable)) return;
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){ e.preventDefault(); reuTrilha(1); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); reuTrilha(-1); }
+    else if(e.key==='Home'){ e.preventDefault(); reuTrilha(0,0); }
+    else if(e.key==='End'){ e.preventDefault(); reuTrilha(0,TRILHA.length-1); }
+    else if(e.key==='Escape'){ e.preventDefault(); reuTrilhaFechar(); }
+  });
 
   /* ── handlers do plano de ação ── */
   window.reuFoco=function(sel){
@@ -20038,8 +20216,13 @@ function printAtiva(){
     if (typeof mudarPagina === 'function' && !mudarPagina._reuVoltaHook){
       var _orig = mudarPagina;
       mudarPagina = function(id, btn){
+        /* Redesenho da MESMA página não é navegação: o resize/ResizeObserver
+           chama mudarPagina(paginaAtiva) quando a largura muda — e ela muda
+           justamente ao descer de nível, quando a barra de rolagem aparece.
+           A pílula sumia um instante depois de nascer. */
+        var antes = (typeof paginaAtiva !== 'undefined') ? paginaAtiva : null;
         var r = _orig.apply(this, arguments);
-        if (!_descendo && id !== 'reuniao') _mostrarPilula(false);
+        if (!_descendo && id !== 'reuniao' && id !== antes) _mostrarPilula(false);
         if (id === 'reuniao') _mostrarPilula(false);
         return r;
       };
@@ -20283,9 +20466,16 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b77';
+var APP_VERSAO = 'b78';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b78', data:'10/09/2026', itens:[
+    'Trilha de apresentacao na aba Reuniao (botao Apresentar): sete passos na ordem da pauta — abertura pela manchete, Plano Mestre, Eficiencia & Horas, Pessoas, Producao & Vendas, plano de acao e Briefing. A barra de baixo traz a resposta calculada de cada passo, na mesma base dos cards; setas do teclado avancam, ESC sai.',
+    'O relatorio impresso da Reuniao ganhou o roteiro no rodape, com a fala de cada passo.',
+    'Plano Mestre: dias uteis dos meses abertos corrigidos — SET 21, OUT 21, NOV 19, DEZ 15 (feriados e recesso). Eram 22/22/21/23, dias corridos de segunda a sexta, e o plano da planilha foi feito com os liquidos (1.658 pc/dia x 21/21/19/15). Dezembro aparecia com ritmo necessario de 1.081 pc/dia; o certo e 1.658. Mes aberto com dias lancados na planilha passa a usar os da planilha.',
+    'Barra lateral igual em todas as abas: na Reuniao ela era cortada com rolagem propria (Metas oficiais e Modo edicao ficavam escondidos), nas outras nao.',
+    'Corrigido: o botao "Voltar para a Reuniao" sumia logo depois de descer a um detalhe. O redesenho da pagina (barra de rolagem aparecendo, janela redimensionada, modo TV) era tratado como navegacao manual e escondia a pilula.'
+  ]},
   { v:'b77', data:'10/09/2026', itens:[
     'Independencia de HE aposentada. Era o mesmo fato da Dependencia de HE (pecas de hora extra ÷ entregues) invertido, contra uma meta derivada do proprio realizado, com outra meta (90%) — JUN/26 saia verde numa tela e vermelho na outra. Fica um indicador so, com uma meta so: Dependencia de HE ≤ 8% do volume (aba METAS).',
     'Onde a dependencia ja aparecia na mesma tela, o card antigo nao foi convertido, foi trocado pelo que faltava na historia: no Resumo virou Pecas Perdidas por falta e atraso; na aba Eficiencia o card saiu (a Dependencia ja estava la); no Briefing sairam Independencia e Margem de Melhoria, e o cabecalho diz quanto veio de hora extra.',
