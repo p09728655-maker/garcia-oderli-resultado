@@ -19586,8 +19586,36 @@ function printAtiva(){
     });
   }
 
+  /* O formulário do plano de ação vive dentro de #reu-corpo, que é refeito
+     a cada render — e render dispara quando a planilha termina de carregar
+     (segundos depois de abrir), quando a sidebar é clicada e quando uma
+     ação é salva. Sem isto, a pessoa clicava em "Nova ação", começava a
+     digitar e o formulário sumia com o texto. */
+  var AC_CAMPOS=['ac-id','ac-tipo','ac-prioridade','ac-kpi','ac-responsavel','ac-prazo','ac-status','ac-desvio','ac-causa','ac-acao'];
+  function _acSnapshot(){
+    var f=document.getElementById('reu-ac-form');
+    if(!f || f.style.display==='none') return null;
+    var v={}; AC_CAMPOS.forEach(function(id){ var el=document.getElementById(id); v[id]=el?el.value:''; });
+    v._foco=(document.activeElement&&document.activeElement.id)||'';
+    v._erro=(document.getElementById('ac-erro')||{}).textContent||'';
+    return v;
+  }
+  function _acRestore(v){
+    if(!v) return;
+    var f=document.getElementById('reu-ac-form'); if(!f) return;
+    AC_CAMPOS.forEach(function(id){ var el=document.getElementById(id); if(el) el.value=v[id]||''; });
+    var e=document.getElementById('ac-erro'); if(e) e.textContent=v._erro||'';
+    f.style.display='block';
+    if(v._foco){ var el=document.getElementById(v._foco); if(el&&el.focus){ try{ el.focus(); }catch(x){} } }
+  }
+
   function render(){
     var corpo=document.getElementById('reu-corpo'); if(!corpo) return;
+    var snap=_acSnapshot();
+    try { _render(corpo); } finally { _acRestore(snap); }
+  }
+
+  function _render(corpo){
     var todos=(typeof load==='function')?load():[];
     var ano = reuAno || ((typeof anoAtivo!=='undefined'&&anoAtivo)?anoAtivo:null);
     if(!ano){
@@ -19641,59 +19669,42 @@ function printAtiva(){
     var META_DEP_HE_=(typeof META_DEP_HE !=='undefined')?META_DEP_HE :8;
     var DUTEIS_     =(typeof DUTEIS      !=='undefined')?DUTEIS      :22;
 
-    /* ── 2 · entrega vs plano (base: COM hora extra — o que saiu pela porta) ──
-       Aderência tem card próprio, com a versão sem hora extra ao lado: 92,7%
-       do plano com 82,5% sem HE é a frase inteira, e cada metade sozinha
-       engana. O alvo é previsaoProducao (Plano Mestre), nunca `meta`, que é
-       derivada do realizado. O card de produção é volume, não veredito:
-       fica na cor da marca e a cor de decisão mora na aderência. */
+    /* ── 2 · o plano cabe sem hora extra? (base: JORNADA NORMAL) ──
+       Uma pergunta por faixa, na mesma base da manchete. Antes a aderência
+       era medida COM hora extra e ficava verde (105,1% em AGO/26) ao lado do
+       ritmo vermelho (-10,9%) — os dois certos, e a tela parecendo se
+       contradizer. Agora a aderência é em jornada normal (96,4%), e o 105,1%
+       vai para o card de entrega, escrito como "com hora extra". O alvo é
+       previsaoProducao (Plano Mestre), nunca `meta`, que é derivada do
+       realizado. */
     var planoMes=rMes.previsaoProducao||0;
+    var diasMes=DashUtils.getDias(rMes);
     var atMes  =planoMes>0?(rMes.producaoReal/planoMes)*100:null;
     var atMesSE=planoMes>0?(DashUtils.getProd(rMes)/planoMes)*100:null;
     var aderAno  =(A.plano>0)?(A.prod/A.plano)*100:null;
     var aderAnoSE=(A.plano>0)?(A.normal/A.plano)*100:null;
-    var ader   = anoTodo?aderAno:atMes;
-    var aderSE = anoTodo?aderAnoSE:atMesSE;
+    var ader   = anoTodo?aderAno:atMes;       /* com HE  → card de entrega */
+    var aderSE = anoTodo?aderAnoSE:atMesSE;   /* sem HE  → card do plano   */
     var planoRef = anoTodo?A.plano:planoMes;
-    var b2=card('Aderência ao plano de '+(anoTodo?ano:mes), ader!==null?(fd(ader,1)+'%'):'—',
-                ader!==null ? ('sem hora extra '+fd(aderSE,1)+'% · previsto '+fi(planoRef)+' pç')
-                            : 'sem previsão lançada no Plano Mestre',
-                ader===null?'#00E5FF':corMeta(ader,100), true, 'mestre')
-      +card('Produção de '+(anoTodo?ano:mes), fi(A.prod)+' pç',
-                fi(A.normal)+' normais + '+fi(A.deHE)+' em hora extra'
-                +(anoTodo?'':(' · acumulado do ano '+fi(Y.prod)+' pç')),
-                '#F5A623', true, 'mestre')
-      +(pm&&pm.ano===ano?card('Ritmo demonstrado', fi(pm.ritmoDem)+' pç/dia',
-                'exigido '+fi(pm.ritmoExig)+' pç/dia · jornada normal'
-                +(pm.planoAberto>0?(' · falta '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'):''),
-                pm.cor||(pm.pctFolga>=0?'#4CAF50':'#F44336'), true, 'mestre'):'');
 
-    /* ── 3 · carteira e capacidade (base: JORNADA NORMAL) ──
-       Carteira em DIAS ÚTEIS de produção normal — a unidade do deck da
-       reunião e a que a diretoria compara com prazo de entrega. O ritmo é o
-       do ano até aqui (peças normais ÷ dias trabalhados). Limiares: os mesmos
-       0,5 e 1,5 mês de antes, em dias (×DUTEIS).
-       Ressalva que vale escrever: o saldo acumula vendido − faturado desde o
-       início da série, então é a VARIAÇÃO da carteira, não o saldo absoluto
-       do ERP. Saldo negativo é sinal disso, não fila negativa. */
-    var CT = DashUtils.carteira(todos, ano, mes);
-    var b3='';
-    if(CT.meses > 0){
-      var prodDiaN = Y.dias>0 ? Y.normal/Y.dias : 0;
-      var diasCart = prodDiaN>0 ? CT.saldo/prodDiaN : null;
-      var corCart  = diasCart===null ? '#00E5FF'
-                   : diasCart <= 0.5*DUTEIS_ ? '#4CAF50'
-                   : diasCart <= 1.5*DUTEIS_ ? '#FF9800' : '#F44336';
-      var tend = CT.tendMes===null ? 'tendência: histórico curto'
-               : ('tendência '+(CT.tendMes>=0?'+':'')+fi(CT.tendMes)+' pç/mês · '
-                  +(CT.tendMes>0?'a fila está crescendo':'a fábrica está consumindo a fila'));
-      var saldoTxt=(CT.saldo>=0?'':'-')+fi(Math.abs(CT.saldo))+' pç';
-      b3+=card('Carteira a faturar',
-               diasCart!==null ? ((diasCart<0?'-':'')+fi(Math.abs(diasCart))+' dias úteis') : saldoTxt,
-               (diasCart!==null ? (saldoTxt+' ao ritmo de '+fi(prodDiaN)+' pç/dia útil normal · ') : '')+tend,
-               corCart, true, 'mestre');
-    }
-    b3+=card('Dependência de hora extra', fd(A.depHE,1)+'%',
+    /* Ritmo do PERÍODO mostrado (mês: 1.414 vs 1.467 em AGO/26), com o do
+       ano na linha de apoio — o do ano é o da manchete. Mostrar só o do ano
+       sob o rótulo "Produção de AGO" fazia 1.300 ser lido como agosto. */
+    var ritDem = anoTodo ? (pm&&pm.ano===ano?pm.ritmoDem:null) : (diasMes>0?DashUtils.getProd(rMes)/diasMes:null);
+    var ritExg = anoTodo ? (pm&&pm.ano===ano?pm.ritmoExig:null) : (diasMes>0&&planoMes>0?planoMes/diasMes:null);
+    var folga  = (ritDem!==null&&ritExg>0) ? ((ritDem/ritExg)-1)*100 : null;
+    var corRit = folga===null?'#00E5FF':(folga>=0?'#4CAF50':(folga>-5?'#FF9800':'#F44336'));
+    var subRit = (ritExg!==null?('exigido '+fi(ritExg)+' pç/dia'):'sem plano no mês')
+      +(!anoTodo&&pm&&pm.ano===ano?(' · no ano '+fi(pm.ritmoDem)+' vs '+fi(pm.ritmoExig)):'')
+      +(pm&&pm.ano===ano&&pm.planoAberto>0?(' · falta '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'):'');
+
+    var b2=card('Aderência ao plano de '+(anoTodo?ano:mes)+' · jornada normal', aderSE!==null?(fd(aderSE,1)+'%'):'—',
+                aderSE!==null ? ('com hora extra '+fd(ader,1)+'% · previsto '+fi(planoRef)+' pç')
+                              : 'sem previsão lançada no Plano Mestre',
+                aderSE===null?'#00E5FF':corMeta(aderSE,100), true, 'mestre')
+      +card('Ritmo demonstrado'+(anoTodo?' no ano':' em '+mes), ritDem!==null?(fi(ritDem)+' pç/dia'):'—',
+                subRit, corRit, true, 'mestre')
+      +card('Dependência de hora extra', fd(A.depHE,1)+'%',
              fi(A.deHE)+' pç de '+fi(A.he)+' h extras · '+fd(A.pctHE,1)+'% das horas'
              +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%')),
              A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), true, 'eficiencia')
@@ -19701,17 +19712,52 @@ function printAtiva(){
              (anoTodo?'':('ano '+fd(Y.absMed,1)+'% · '))+'faltas+atrasos ÷ h. normais · meta '+META_ABS_+'%',
              corMeta(A.absMed,META_ABS_,true), true, 'pessoas');
 
+    /* ── 3 · entrega e carteira ──
+       Produção é volume, não veredito: cor da marca, e o "% do plano com hora
+       extra" escrito na linha de apoio — é onde o 105,1% mora agora.
+       Carteira em DIAS ÚTEIS de produção normal (ritmo do ano até aqui).
+       Limiares: os mesmos 0,5 e 1,5 mês de antes, em dias (×DUTEIS).
+       Tendência em duas janelas: 6 meses (a de sempre) e os 2 últimos —
+       em AGO/26 a de 6 meses dizia "+4.790/mês, fila crescendo" enquanto a
+       carteira tinha caído 7.136 pç desde junho. A frase segue a recente.
+       Ressalva: o saldo acumula vendido − faturado desde o início da série,
+       então é a VARIAÇÃO da carteira, não o saldo absoluto do ERP. */
+    var b3=card('Produção de '+(anoTodo?ano:mes), fi(A.prod)+' pç',
+                fi(A.normal)+' normais + '+fi(A.deHE)+' em hora extra'
+                +(ader!==null?(' · '+fd(ader,1)+'% do plano com hora extra'):'')
+                +(anoTodo?'':(' · acumulado do ano '+fi(Y.prod)+' pç')),
+                '#F5A623', true, 'mestre');
+    var CT = DashUtils.carteira(todos, ano, mes);
+    if(CT.meses > 0){
+      var prodDiaN = Y.dias>0 ? Y.normal/Y.dias : 0;
+      var diasCart = prodDiaN>0 ? CT.saldo/prodDiaN : null;
+      var corCart  = diasCart===null ? '#00E5FF'
+                   : diasCart <= 0.5*DUTEIS_ ? '#4CAF50'
+                   : diasCart <= 1.5*DUTEIS_ ? '#FF9800' : '#F44336';
+      var h=CT.hist||[], tCurta=null, nCurta=Math.min(2,h.length-1);
+      if(nCurta>=1) tCurta=(h[h.length-1].saldo-h[h.length-1-nCurta].saldo)/nCurta;
+      var tend = CT.tendMes===null ? 'tendência: histórico curto'
+               : ('tendência 6 m '+(CT.tendMes>=0?'+':'')+fi(CT.tendMes)+' pç/mês');
+      if(tCurta!==null) tend+=' · últimos '+nCurta+' m '+(tCurta>=0?'+':'')+fi(tCurta)+' pç/mês · '
+                              +(tCurta>0?'a fila está crescendo':'a fábrica está consumindo a fila');
+      var saldoTxt=(CT.saldo>=0?'':'-')+fi(Math.abs(CT.saldo))+' pç';
+      b3+=card('Carteira a faturar',
+               diasCart!==null ? ((diasCart<0?'-':'')+fi(Math.abs(diasCart))+' dias úteis') : saldoTxt,
+               (diasCart!==null ? (saldoTxt+' ao ritmo de '+fi(prodDiaN)+' pç/dia útil normal · ') : '')+tend,
+               corCart, true, 'mestre');
+    }
+
     /* ── 4 · ações críticas ── crítica = aberta E (Vermelho OU prazo vencido) */
     var R = DashUtils.acoesResumo(Acoes.lista(), hojeISO());
     b3+=card('Ações críticas', String(R.criticas),
              R.abertas+' em aberto · '+R.vencidas+' com prazo vencido · '+R.concluidas+' concluída'+(R.concluidas===1?'':'s'),
              R.criticas>0?'#F44336':(R.abertas>0?'#FF9800':'#4CAF50'), true, '#reu-acoes');
 
-    /* Ordem = ordem da decisão: entregamos o plano? A que custo e com que
-       fila? E o que vamos fazer sobre o que está vermelho. */
+    /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
+       porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
     corpo.innerHTML=manchete
-      +faixa('Entrega vs plano — base: com hora extra, o que saiu pela porta', b2)
-      +faixa('Carteira e capacidade — base: jornada normal, o que cabe sem comprar hora extra', b3)
+      +faixa('O plano cabe sem hora extra? — base: jornada normal, a mesma da manchete', b2)
+      +faixa('Entrega e carteira — o que saiu pela porta e o que falta faturar', b3)
       +blocoAcoes(mes+'/'+ano);
   }
 
@@ -19895,9 +19941,9 @@ function printAtiva(){
     }
     if(a.id){ var ant=Acoes.lista().filter(function(x){ return x.id===a.id; })[0]; if(ant){ a.criadoEm=ant.criadoEm; a.mesRef=ant.mesRef; } }
     if(!a.mesRef){ var l=document.getElementById('reu-per-lbl'); a.mesRef=l?l.textContent:''; }
+    _acForm(false);          /* antes de salvar: salvar re-renderiza e preservaria o form aberto */
     Acoes.salvar(a);
-    _acForm(false);
-    if(typeof toast==='function') toast('Ação salva.','ok');
+    if(typeof toast==='function') toast('Ação salva'+((typeof SHEETS_WEBAPP_URL!=='undefined'&&SHEETS_WEBAPP_URL)?' — enviada para a aba ACOES da planilha.':' localmente.'),'ok');
   };
   window.reuAcaoStatus=function(id,st){
     var a=Acoes.lista().filter(function(x){ return x.id===id; })[0]; if(!a) return;
@@ -20164,9 +20210,16 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b68';
+var APP_VERSAO = 'b69';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b69', data:'10/09/2026', itens:[
+    'AGO/26 na Reuniao: "Aderencia 105,1%" em verde ao lado de "Ritmo abaixo do plano -10,9%" em vermelho. Os dois certos — a aderencia contava hora extra e o ritmo nao — e a tela parecendo se contradizer.',
+    'Uma pergunta por faixa, na mesma base. Faixa 1, "O plano cabe sem hora extra?": aderencia em jornada normal (96,4%, ambar), ritmo, dependencia de HE e absenteismo. O 105,1% foi para o card de producao, escrito como "% do plano com hora extra".',
+    'Ritmo demonstrado passa a ser o do mes mostrado (1.414 vs 1.467 em AGO/26), com o do ano na linha de apoio. Antes mostrava so o do ano (1.300) sob o rotulo do mes.',
+    'Tendencia da carteira em duas janelas: 6 meses e os 2 ultimos. Em AGO/26 a de 6 meses dizia "fila crescendo" com a carteira 7.136 pc menor que em junho.',
+    'Nao dava para registrar acao: o formulario sumia com o texto a cada re-render da tela — e a carga da planilha chega segundos depois de abrir o painel, bem na hora de digitar. O formulario agora sobrevive ao re-render, com valores e foco.'
+  ]},
   { v:'b68', data:'10/09/2026', itens:[
     'Reuniao do Mes com sete indicadores em vez de dezoito. Sairam do nivel 1: ticket medio, vendido e faturado no ano, o bloco de mix (volumes, fator de embalagem, peso, familia lider, pecas por hora) e a Independencia de HE — que e o mesmo sinal da dependencia de hora extra (r = -0,993) escrito de forma que ninguem explica em reuniao. Tudo continua nas abas de origem, a um clique.',
     'Aderencia ao plano ganhou card proprio, com a versao sem hora extra ao lado: 92,7% do plano com 82,5% sem HE e a frase inteira. Producao virou volume, na cor da marca — a cor de decisao mora na aderencia.',
