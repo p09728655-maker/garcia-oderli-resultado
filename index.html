@@ -1315,12 +1315,12 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <!-- Card Eficiência -->
     <div class="mes-card mes-card-ef" id="mes-card-ef">
       <div class="mes-card-badge">DESEMPENHO</div>
-      <div class="mes-card-title">Independência de HE</div>
+      <div class="mes-card-title">Dependência de HE</div>
       <div class="mes-card-value mes-val-green" id="mes-ef-val">—</div>
-      <div class="mes-card-sub">prod. jornada normal ÷ meta (derivada)</div>
+      <div class="mes-card-sub">peças de hora extra ÷ peças entregues</div>
       <div class="mes-card-meta">
         <span class="mes-meta-lbl">Meta</span>
-        <span class="mes-meta-val">≥ 90%</span>
+        <span class="mes-meta-val" id="mes-ef-meta">≤ 8%</span>
       </div>
     </div>
 
@@ -1546,12 +1546,12 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div class="charts1" style="margin-top:20px">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Evolução Geral — Independência de HE &amp; Absenteísmo (%)</span>
+        <span class="cTtl">▸ Evolução Geral — Dependência de HE &amp; Absenteísmo (%)</span>
         <div class="lgnd">
-          <span class="li"><span class="ld" style="background:var(--cyan)"></span>Eficiência</span>
+          <span class="li"><span class="ld" style="background:var(--cyan)"></span>Dep. HE (% do volume)</span>
           <span class="li"><span class="ld" style="background:var(--purple)"></span>Absenteísmo</span>
           <span class="li"><span class="ld" style="background:var(--pink)"></span>H.Falta Prod %</span>
-          <span class="li"><span class="ld" style="border:1px dashed var(--t3)"></span>Meta 90%</span>
+          <span class="li"><span class="ld" style="border:1px dashed var(--t3)"></span>Meta HE 8%</span>
         </div>
       </div>
       <canvas id="cEfic" height="220" width="1582" style="display: block; height: 220px;" class="canvas-zoom" title="Clique para ampliar"></canvas>
@@ -1580,19 +1580,18 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     </div>
     <div>
       <div class="pageHdrTitle">Eficiência Operacional</div>
-      <div class="pageHdrSub">Independência de hora extra e as horas que a sustentam — meta ≥ 90%</div>
+      <div class="pageHdrSub">Dependência de hora extra e as horas que a sustentam — meta ≤ 8% do volume</div>
     </div>
   </div>
   <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-    <div class="kCard kg"><div class="kLbl">Independência de HE</div><div class="kVal" id="kv3-ef">—</div><div class="kSub">prod. jornada normal ÷ meta (derivada) · meta ≥ 90%</div></div>
     <div class="kCard ka"><div class="kLbl">Peças Perdidas</div><div class="kVal" id="kv3-oee">—</div><div class="kSub">h. de falta e atraso × ritmo</div></div>
     <!-- O mesmo número do card "Dependência de hora extra" da Reunião: parcela
          do VOLUME que veio de hora extra. Sem ele aqui, quem descia da Reunião
          (8,2% do volume) caía em "% Extras / Carga" (8,0% das horas de carga)
          e achava que o painel se contradizia. -->
     <div class="kCard ka" id="card3-dephe"><div class="kLbl">Dependência de HE</div><div class="kVal" id="kv3-dephe">—</div><div class="kSub" id="ks3-dephe">% do volume vindo de hora extra</div></div>
-    <div class="kCard kg"><div class="kLbl">Meses ≥ 90%</div><div class="kVal" id="kv3-acima">—</div><div class="kSub">indep. de HE na meta</div></div>
-    <div class="kCard kr"><div class="kLbl">Meses &lt; 90%</div><div class="kVal" id="kv3-abaixo">—</div><div class="kSub">indep. de HE abaixo da meta</div></div>
+    <div class="kCard kg"><div class="kLbl">Meses dentro da meta de HE</div><div class="kVal" id="kv3-acima">—</div><div class="kSub">dependência ≤ 8% do volume</div></div>
+    <div class="kCard kr"><div class="kLbl">Meses acima da meta de HE</div><div class="kVal" id="kv3-abaixo">—</div><div class="kSub">dependência &gt; 8% do volume</div></div>
   </div>
   <div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:20px 0 10px;padding-left:2px">▸ Horas — carga, normais, extras e perdidas</div>
   <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
@@ -1606,7 +1605,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Evolução da Independência de HE (%)</span>
+        <span class="cTtl">▸ Evolução da Dependência de HE (% do volume)</span>
         <div class="lgnd">
           <span class="li"><span class="ld" style="background:var(--cyan)"></span>Eficiência</span>
           <span class="li"><span class="ld" style="border:1px dashed rgba(255,255,255,.2)"></span>Meta 90%</span>
@@ -1619,7 +1618,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Δ Independência de HE vs Mês Anterior (p.p.)</span>
+        <span class="cTtl">▸ Δ Dependência de HE vs Mês Anterior (p.p.)</span>
         <div class="lgnd">
           <span class="li"><span class="ld" style="background:var(--green)"></span>Melhora</span>
           <span class="li"><span class="ld" style="background:var(--red)"></span>Piora</span>
@@ -1766,7 +1765,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       <thead>
         <tr>
           <th>Mês</th>
-          <th>Δ Indep. HE</th>
+          <th>Δ Dep. HE</th>
           <th>Δ Peças perdidas</th>
           <th>Δ Absenteísmo</th>
           <th>Δ H. Totais</th>
@@ -1865,12 +1864,15 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
          não produtividade. MAR/26 marcou 101,12%, o melhor número do painel,
          com o segundo pior ritmo real do histórico. O valor exibido é o
          mesmo de sempre — só o rótulo passou a dizer o que ele mede. -->
-    <div class="kLbl">Independência de Hora Extra</div>
-    <div id="rex-ef-val" class="kVal" style="color:var(--green)">—</div>
-    <div class="kSub">quanto do volume saiu sem hora extra</div>
+    <!-- Era "Independência de HE" — o mesmo fato que "Veio de hora extra" no
+         card de Produção, com outro nome e outra meta. Aqui entra o que ainda
+         faltava na história: o que as faltas custaram em peças. -->
+    <div class="kLbl">Peças perdidas por falta e atraso</div>
+    <div id="rex-ef-val" class="kVal" style="color:var(--amber)">—</div>
+    <div class="kSub">h. de falta e atraso × ritmo em hora normal</div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--b)">
-      <span style="font-size:.63rem;color:var(--t2)">Meta: 90%</span>
-      <span id="rex-ef-diff" style="font-family: var(--mono); font-size: 0.72rem; color: rgb(255, 23, 68);">-2,8 p.p.</span>
+      <span style="font-size:.63rem;color:var(--t2)">da produção normal</span>
+      <span id="rex-ef-diff" style="font-family: var(--mono); font-size: 0.72rem;">—</span>
     </div>
     <div id="rex-ef-status" style="position: absolute; top: 12px; right: 12px; width: 9px; height: 9px; border-radius: 50%; background: rgb(255, 23, 68); box-shadow: rgb(255, 23, 68) 0px 0px 6px;"></div>
   </div>
@@ -2777,8 +2779,8 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
           <th title="Horas trabalhadas em jornada normal, sem horas extras">H. Norm.</th><th title="Total de horas extras (50% + 100%)">H. Ext.</th><th title="Total de horas de faltas no mês">Faltas</th><th title="Total de horas de atrasos no mês">Atraso</th>
           <th title="(Faltas + Atrasos) ÷ H. Normais × 100
 Mede o % da jornada perdida por ausências">Abs. %</th>
-          <th title="Independência de HE = Prod. s/ Extras ÷ Meta × 100
-A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), não é capacidade nem alvo. O número mede quanto da entrega saiu sem hora extra.">Indep. HE %</th>
+          <th title="Dependência de HE = (Produção − Prod. s/ Extras) ÷ Produção × 100
+Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">Dep. HE %</th>
           <th title="Coluna eficienciaAdj da planilha: vem pronta e não é reproduzível por fórmula nenhuma (b63). Só referência — o painel usa Peças Perdidas no lugar.">Ef. Aj. % (planilha)</th>
           <th title="Total de peças produzidas no mês (incluindo hora extra)">Produção</th>
           <th title="Prod. s/ Extra: peças produzidas apenas nas horas normais
@@ -3224,8 +3226,7 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
   var ORDEM_MES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   /* Margem de Melhoria = (META_EF − eficiência) ÷ META_EF × 100. Positivo =
      falta para a meta; negativo = meta superada. Não é margem financeira.
-     META_EF é a constante global (aba METAS) — a cópia local que existia aqui
-     ignorava a planilha. */
+     (Indicador aposentado na b77; a coluna `margem` da planilha não é mais exibida.) */
 
   function bFmt(n,dec) { dec=dec||0; if(n==null||isNaN(n))return'—'; return n.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
   function bFmtR(n) { if(n==null||isNaN(n))return'—'; return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -3310,27 +3311,29 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
        não margem financeira. Positivo = falta para a meta; negativo = meta
        superada. A base não tem receita nem custo de produto, então não há como
        falar de resultado econômico aqui. */
-    var faltaPP = META_EF - a.eficiencia;
-    if(a.margem>0){
-      out.push({status: a.margem>5?'bad':'warn', titulo:'Independência de HE abaixo da meta de '+META_EF+'%',
-        fato:'Independência de hora extra de '+bFmtPct(a.eficiencia)+' contra meta de '+META_EF+'% — margem de melhoria de '
-          +bFmtPct(a.margem)+' ('+bFmt(faltaPP,2)+' pp).',
-        analise:'A margem de melhoria mede a distância até a meta de eficiência, não resultado financeiro. '
-          +'Fechar essa distância significa produzir o mesmo com menos hora disponível, ou mais com a mesma hora.',
-        recomendacao:'Atacar as causas de perda de hora produtiva: absenteísmo, setup, parada de máquina e retrabalho.',
+    /* Dependência de hora extra: peças de HE ÷ peças entregues. Era
+       "Independência de HE" (prod. normal ÷ meta derivada) com "margem de
+       melhoria" — o mesmo fato, invertido, contra uma meta circular. */
+    var _pnD = (a.prodSemExtras>0?a.prodSemExtras:(a.producaoReal||0));
+    var _heD = Math.max(0,(a.producaoReal||0)-_pnD);
+    var _dep = (a.producaoReal>0)?(_heD/a.producaoReal)*100:0;
+    if(_dep>META_DEP_HE){
+      out.push({status: _dep>15?'bad':'warn', titulo:'Dependência de hora extra acima da meta de '+META_DEP_HE+'% do volume',
+        fato:bFmt(_heD)+' das '+bFmt(a.producaoReal)+' peças entregues ('+bFmtPct(_dep)+') só existiram porque houve hora extra; a meta é no máximo '+META_DEP_HE+'%.',
+        analise:'Hora extra não é capacidade: é a fábrica comprando horas para cobrir o que a jornada normal não entregou. '
+          +'Quanto maior a parcela, mais o resultado do mês depende de custo extra e de disposição da equipe.',
+        recomendacao:'Atacar as causas de perda de hora produtiva na jornada normal: absenteísmo, setup, parada de máquina e retrabalho.',
         calculos:[
-          {label:'Margem de melhoria',formula:'('+META_EF+' − '+bFmt(a.eficiencia,2)+') ÷ '+META_EF+' × 100',resultado:bFmtPct(a.margem)},
-          {label:'Distância em pontos',formula:META_EF+' − '+bFmt(a.eficiencia,2),resultado:bFmt(faltaPP,2)+' pp'}
+          {label:'Peças de hora extra',formula:bFmt(a.producaoReal)+' − '+bFmt(_pnD),resultado:bFmt(_heD)+' pçs'},
+          {label:'Dependência de HE',formula:bFmt(_heD)+' ÷ '+bFmt(a.producaoReal)+' × 100',resultado:bFmtPct(_dep)}
         ]});
     } else {
-      out.push({status:'ok',titulo:'Independência de hora extra acima da meta de '+META_EF+'%',
-        fato:'Independência de hora extra de '+bFmtPct(a.eficiencia)+' contra meta de '+META_EF+'% — margem de melhoria de '
-          +bFmtPct(a.margem)+', ou seja, meta superada em '+bFmt(Math.abs(faltaPP),2)+' pp.',
-        analise:'Margem de melhoria negativa quer dizer meta batida: não há distância a fechar neste indicador. '
-          +'Vale checar se a meta de '+META_EF+'% ainda representa desafio para a operação.',
-        recomendacao:'Registrar o que sustentou o resultado e avaliar se a meta de eficiência deve subir.',
+      out.push({status:'ok',titulo:'Dependência de hora extra dentro da meta de '+META_DEP_HE+'%',
+        fato:bFmt(_heD)+' das '+bFmt(a.producaoReal)+' peças entregues ('+bFmtPct(_dep)+') vieram de hora extra.',
+        analise:'A entrega do mês se sustentou na jornada normal.',
+        recomendacao:'Registrar o que sustentou o resultado e manter o acompanhamento mensal.',
         calculos:[
-          {label:'Margem de melhoria',formula:'('+META_EF+' − '+bFmt(a.eficiencia,2)+') ÷ '+META_EF+' × 100',resultado:bFmtPct(a.margem)}
+          {label:'Dependência de HE',formula:bFmt(_heD)+' ÷ '+bFmt(a.producaoReal)+' × 100',resultado:bFmtPct(_dep)}
         ]});
     }
 
@@ -3401,24 +3404,23 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
 
   function gerarSWOT(a,ant,anoAnt) {
     var s={forcas:[],fraquezas:[],oportunidades:[],ameacas:[]};
+
+    /* Forças */
     /* Dependência de HE = parcela do VOLUME vinda de hora extra — a mesma conta
        da Reunião. Antes era h. extras ÷ h. carga > 10%, com o mesmo nome. */
     var _depV=a.producaoReal>0?((a.producaoReal-(a.prodSemExtras||a.producaoReal))/a.producaoReal)*100:0;
     var depExtra=_depV>META_DEP_HE;
-
-    /* Forças */
     var _pv=a.previsaoProducao||0, _pn=a.prodSemExtras||0;
     if(_pv>0&&_pn>=_pv) s.forcas.push('Plano do mês cumprido em jornada normal ('+bFmt(_pn)+' de '+bFmt(_pv)+' pçs).');
     else if(_pv>0&&a.producaoReal>=_pv) s.fraquezas.push('Plano do mês só fechou com hora extra ('+bFmt(_pn)+' em jornada normal, '+bFmt(a.producaoReal-_pn)+' em HE).');
-    if(a.eficiencia>=META_EF) s.forcas.push('Independência de hora extra em bom patamar ('+bFmtPct(a.eficiencia)+').');
-    if(ant&&a.eficiencia>ant.eficiencia) s.forcas.push('Independência de HE em evolução frente a '+ant.mes+'/'+String(ant.ano).slice(2)+'.');
-    if(a.margem<0) s.forcas.push('Meta de eficiência superada — margem de melhoria de '+bFmtPct(a.margem)+'.');
+    if(!depExtra) s.forcas.push('Dependência de hora extra dentro da meta ('+bFmtPct(_depV)+' do volume).');
+    if(ant){ var _depAnt=ant.producaoReal>0?((ant.producaoReal-(ant.prodSemExtras||ant.producaoReal))/ant.producaoReal)*100:null;
+      if(_depAnt!==null&&_depV<_depAnt) s.forcas.push('Dependência de hora extra caiu frente a '+ant.mes+'/'+String(ant.ano).slice(2)+' ('+bFmtPct(_depAnt)+' → '+bFmtPct(_depV)+').'); }
     if(ant&&a.totalExtras<ant.totalExtras) s.forcas.push('Redução de horas extras contra o mês anterior.');
     if(anoAnt&&a.producaoReal>anoAnt.producaoReal) s.forcas.push('Produção superior ao mesmo mês do ano anterior.');
     if(!s.forcas.length) s.forcas.push('Base de indicadores consolidada para acompanhamento mensal.');
 
     /* Fraquezas */
-    if(a.margem>0) s.fraquezas.push('Eficiência abaixo da meta — margem de melhoria de '+bFmtPct(a.margem)+'.');
     if(a.absenteismo>10) s.fraquezas.push('Absenteísmo acima de 10% ('+bFmtPct(a.absenteismo)+').');
     if((a.previsaoProducao||0)>0&&a.producaoReal<a.previsaoProducao) s.fraquezas.push('Previsão de produção não atingida.');
     if(_pv>0&&a.producaoReal<_pv) s.fraquezas.push('Produção abaixo do plano do mês ('+bFmt(a.producaoReal)+' de '+bFmt(_pv)+' pçs, mesmo com hora extra).');
@@ -3427,14 +3429,14 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
 
     /* Oportunidades */
     s.oportunidades.push('Usar o CQP para integrar produção, qualidade e finanças.');
-    if(a.margem>0) s.oportunidades.push('Fechar a margem de melhoria da eficiência atacando perdas de hora produtiva.');
+    if(depExtra) s.oportunidades.push('Reduzir a dependência de hora extra atacando as perdas de hora produtiva da jornada normal.');
     if((a.qtdeVendida||0)>(a.qtdeFaturado||0)) s.oportunidades.push('Carteira vendida aquecida — potencial de faturamento se a capacidade acompanhar.');
     s.oportunidades.push('Reduzir perdas e retrabalhos com plano de qualidade.');
     s.oportunidades.push('Melhorar o planejamento de capacidade (meta × previsão × capacidade).');
 
     /* Ameaças */
     if((a.qtdeVendida||0)>(a.qtdeFaturado||0)) s.ameacas.push('Carteira vendida maior que faturada pode gerar pressão e queda de qualidade.');
-    if(a.margem>5) s.ameacas.push('Distância relevante até a meta de eficiência pode exigir hora extra recorrente.');
+    if(_depV>15) s.ameacas.push('Dependência de hora extra acima de 15% do volume tende a virar hora extra recorrente.');
     if(a.absenteismo>ABS_ATENCAO) s.ameacas.push('Absenteísmo pode afetar a estabilidade de setores críticos.');
     if(depExtra) s.ameacas.push('Horas extras elevadas podem aumentar fadiga e falhas.');
     if(!s.ameacas.length) s.ameacas.push('Monitorar absenteísmo e horas extras, que corroem a eficiência.');
@@ -3444,21 +3446,6 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
 
   function gerarPauta(a,ant) {
     var itens=[];
-    /* Margem de Melhoria = distância até a meta de eficiência, não margem
-       financeira. Positivo = falta para a meta; negativo = meta superada. */
-    if(a.margem>5){
-      itens.push({icon:'🔴',badge:'red',label:'Crítico',
-        texto:'<strong>Independência de hora extra '+bFmtPct(a.margem)+' abaixo da meta</strong> ('+bFmtPct(a.eficiencia)+' contra '+META_EF+'%) — a entrega está apoiada em hora extra.'});
-    } else if(a.margem>0){
-      itens.push({icon:'🟡',badge:'yellow',label:'Atenção',
-        texto:'<strong>Independência de hora extra a '+bFmtPct(a.margem)+' da meta</strong> ('+bFmtPct(a.eficiencia)+' contra '+META_EF+'%).'});
-    } else {
-      itens.push({icon:'🟢',badge:'green',label:'Positivo',
-        /* "margem de melhoria de -1,62%" como ponto POSITIVO confunde: negativo
-           aqui significa meta superada. Se precisa de explicação para não ser
-           lido ao contrário, não entra na pauta. */
-        texto:'<strong>Independência de hora extra acima da meta</strong> — '+bFmtPct(a.eficiencia)+' contra '+META_EF+'%.'});
-    }
     /* Usava 10% enquanto o Resumo Executivo usa META_ABS (3%): o Briefing
        imprimia "absenteísmo controlado" para o mesmo mês que o Resumo marcava
        em vermelho. Um painel não pode se contradizer por escrito. */
@@ -3484,13 +3471,18 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
        faltaram 2.193 peças. Era o pior texto do produto. */
     var _pn = (a.prodSemExtras > 0 ? a.prodSemExtras : (a.producaoReal || 0));
     var _he = Math.max(0, (a.producaoReal || 0) - _pn);
-    if(_pn >= a.meta){
+    var _depP = (a.producaoReal>0)?(_he/a.producaoReal)*100:0;
+    var _pvP = a.previsaoProducao||0;
+    /* Um item só para a hora extra: quanto da entrega dependeu dela, contra a
+       meta de volume — e, se há plano, se a jornada normal o cobriu. */
+    if(_depP<=META_DEP_HE){
       itens.push({icon:'🟢',badge:'green',label:'Positivo',
-        texto:'<strong>Capacidade cumprida em jornada normal</strong> — '+bFmt(_pn)+' pçs sem hora extra, contra capacidade de '+bFmt(a.meta)+' pçs.'});
+        texto:'<strong>Entrega sustentada na jornada normal</strong> — '+bFmt(_pn)+' pçs sem hora extra; '+bFmtPct(_depP)+' do volume veio de HE (meta ≤ '+META_DEP_HE+'%).'
+          +(_pvP>0?(_pn>=_pvP?' Plano do mês cumprido sem hora extra.':' Sem hora extra o plano de '+bFmt(_pvP)+' pçs não teria fechado.'):'')});
     } else {
-      var gap=a.meta-_pn;
-      itens.push({icon: _he>0?'🟡':'🔴', badge: _he>0?'yellow':'red', label: _he>0?'Atenção':'Crítico',
-        texto:'<strong>A entrega dependeu de hora extra</strong> — em jornada normal saíram '+bFmt(_pn)+' pçs contra capacidade de '+bFmt(a.meta)+' ('+bFmt(((gap/a.meta)*100),1)+'% abaixo). As outras '+bFmt(_he)+' pçs vieram de '+bFmt(a.totalExtras,1)+'h de hora extra.'});
+      itens.push({icon: _depP>15?'🔴':'🟡', badge: _depP>15?'red':'yellow', label: _depP>15?'Crítico':'Atenção',
+        texto:'<strong>A entrega dependeu de hora extra</strong> — '+bFmt(_he)+' das '+bFmt(a.producaoReal)+' pçs ('+bFmtPct(_depP)+') vieram de HE, meta ≤ '+META_DEP_HE+'%.'
+          +(_pvP>0?(' Em jornada normal saíram '+bFmt(_pn)+' pçs contra plano de '+bFmt(_pvP)+'.'):'')});
     }
     if(ant&&a.colaboradores<ant.colaboradores){
       itens.push({icon:'🟡',badge:'yellow',label:'Atenção',
@@ -3557,10 +3549,6 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
                 cls:_dep<=8?'ok':(_dep<=15?'warn':'bad'),
                 delta:bFmt(_pn)+' em jornada normal + '+bFmt(_he)+' em hora extra ('+bFmt(_dep,1)+'%)'};
       })(),
-      /* "Eficiência" renomeada: a conta tem r = -0,993 com % de hora extra e
-         r = -0,33, negativa, com o ritmo real. Mesmo número, nome honesto. */
-      {label:'Independência de HE',value:bFmtPct(a.eficiencia),cls:a.eficiencia>=META_EF?'ok':'warn',
-       delta:ant?bDeltaPp(a.eficiencia,ant.eficiencia)+colRef1:'—'},
       /* Era Efic. Ajustada — coluna opaca da planilha, não reproduzível, passa
          de 100%. Trocada pelo mesmo conceito em unidade auditável. */
       (function(){
@@ -3572,9 +3560,6 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
                 cls:_pct<=5?'ok':(_pct<=10?'warn':'bad'),
                 delta:bFmt(a.totalFaltaAtraso,1)+'h de falta/atraso · '+bFmt(_pct,1)+'% da produção normal'};
       })(),
-      /* margem = distância até a meta de eficiência: positivo é o que falta */
-      {label:'Margem de Melhoria',value:bFmtPct(a.margem),cls:a.margem<=0?'ok':(a.margem<=5?'warn':'bad'),
-       delta:(a.margem<=0?'Meta de '+META_EF+'% superada':'Falta para a meta de '+META_EF+'%')},
       {label:'Absenteísmo',value:bFmtPct(a.absenteismo),cls:a.absenteismo<=META_ABS?'ok':(a.absenteismo<=ABS_ATENCAO?'warn':'bad'),
        delta:ant?bDeltaPp(a.absenteismo,ant.absenteismo,true)+colRef1:'—'},
       {label:'Qtde Vendida',value:bFmt(a.qtdeVendida)+' pçs',cls:'neu',delta:ant?bDelta(a.qtdeVendida,ant.qtdeVendida)+' vs '+colRef1:'—'},
@@ -3597,8 +3582,7 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
       lin('Previsão (Plano Mestre)', function(d){return d.previsaoProducao>0?bFmt(d.previsaoProducao)+' pçs':'—';}),
       lin('Qtde Faturada',      function(d){return bFmt(d.qtdeFaturado)+' pçs';}),
       lin('Qtde Vendida',       function(d){return bFmt(d.qtdeVendida)+' pçs';}),
-      lin('Independência de HE',function(d){return bFmtPct(d.eficiencia);}),
-      lin('Margem de Melhoria', function(d){return bFmtPct(d.margem);}),
+      lin('Dependência de HE',  function(d){var v=depHE(d); return v===null?'—':bFmtPct(v);}),
       lin('Ticket Médio',       function(d){return bFmtR(d.ticketMedio);}),
       lin('Custo Capital',      function(d){return bFmtR(d.custoCap);})
     ].join('');
@@ -3785,8 +3769,7 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
             "Custo Capital" na mesma tela é lido como margem financeira. Ela
             continua no corpo do briefing, com o rótulo completo. */
          +'<div class="brfg-meta-item"><span>'+bFmt(a.producaoReal)+' pçs</span>Produção entregue (c/ HE)</div>'
-         +'<div class="brfg-meta-item"><span>'+bFmt(a.prodSemExtras>0?a.prodSemExtras:a.producaoReal)+' pçs</span>Em jornada normal</div>'
-         +'<div class="brfg-meta-item"><span>'+bFmtPct(a.eficiencia)+'</span>Independência de HE</div>'
+         +'<div class="brfg-meta-item"><span>'+(depHE(a)===null?'—':bFmtPct(depHE(a)))+'</span>Veio de hora extra</div>'
          +'<div class="brfg-meta-item"><span>'+bFmtPct(a.absenteismo)+'</span>Absenteísmo</div>'
        +'</div>'
       +'</div>'
@@ -4326,7 +4309,7 @@ body.pg-reuniao aside.sidebar::-webkit-scrollbar-thumb { background: var(--b); b
 
 /* ── CONSTANTES ── */
 var SK      = 'dash_v3';
-var META_EF = 90;
+/* META_EF (90%) aposentada na b77 junto com a "Independência de HE". */
 /* Limiar único de absenteísmo. Antes cada aba tinha o seu — Resumo 3%,
    Reunião 5%, Briefing 10% e 13% — e o painel se contradizia por escrito: o
    Briefing imprimia "absenteísmo controlado" para o mesmo mês que o Resumo
@@ -4360,7 +4343,7 @@ var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
    localStorage para a primeira pintura não sair com o padrão e depois trocar.
    Chaves aceitas: só as constantes abaixo, para uma célula errada não virar
    variável solta. */
-var METAS_CHAVES = ['META_EF','META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS'];
+var METAS_CHAVES = ['META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS'];   /* META_EF aposentada com a Independência de HE */
 var METAS_ORIGEM = {};   /* chave → { valor, unidade, vigencia, origem, observacao } */
 function aplicarMetas(m, avisar){
   if(!m || typeof m!=='object') return 0;
@@ -4385,7 +4368,6 @@ function aplicarMetas(m, avisar){
    desconhecida e valor ≤ 0, e carimba alteradoEm. O que o usuário salva
    aqui vale na hora (aplicarMetas) e chega na planilha em segundos. */
 var METAS_ROTULOS = {
-  META_EF:     ['Independência de HE mínima', '%',   'prod. em jornada normal ÷ meta derivada'],
   META_ABS:    ['Absenteísmo — meta',          '%',   'faltas + atrasos ÷ h. normais; até este valor é verde'],
   ABS_ATENCAO: ['Absenteísmo — crítico acima de', '%', 'acima disto o card fica vermelho'],
   META_DEP_HE: ['Dependência de hora extra máxima', '% do volume', 'parcela da entrega que pode vir de HE'],
@@ -4505,6 +4487,13 @@ function fi(v){
   if(v===null||v===undefined||isNaN(v))return '--';
   return Number(v).toLocaleString('pt-BR',{maximumFractionDigits:0})
 }
+/* Dependência de HE por mês: peças de hora extra ÷ peças entregues. Régua:
+   ≤ META_DEP_HE verde · ≤ 15 amarelo · > 15 vermelho (menor é melhor). A antiga
+   "Independência de HE" (prodSemExtras ÷ meta derivada) era o mesmo fato com
+   outro nome, outra meta e cores contrárias — saiu de todas as telas. */
+function depHE(r){ return (r&&r.producaoReal>0&&r.prodSemExtras>0)?((r.producaoReal-r.prodSemExtras)/r.producaoReal)*100:null; }
+function clDep(v){ return v===null||v===undefined?'':(v<=META_DEP_HE?'v':v<=15?'y':'r'); }
+function clDepStr(v){ return v===null||v===undefined?'':(v<=META_DEP_HE?'verde':v<=15?'amarelo':'vermelho'); }
 function clEf(e){return e>=90?'v':e>=80?'y':'r'}
 function clEfStr(e){return e>=90?'verde':e>=80?'amarelo':'vermelho'}
 
@@ -5455,8 +5444,9 @@ function render(){
     var at  = (r.previsaoProducao||0)>0&&r.prodSemExtras>0?(r.prodSemExtras/r.previsaoProducao)*100:null;
     var hfp = calcHFP(r);
     var hfp_pct = hfp!==null&&r.horasCarga>0?(hfp/r.horasCarga)*100:null;
-    var efCl = r.eficiencia>=90?'verde':r.eficiencia>=80?'amarelo':'vermelho';
-    var efBw = Math.min(r.eficiencia,100);
+    var depR = depHE(r);
+    var efCl = depR===null?'':clDepStr(depR);
+    var efBw = depR===null?0:Math.min(depR*4,100);   /* barra: 25% de HE = cheia */
     var efBc = efCl==='verde'?'var(--green)':efCl==='amarelo'?'var(--yellow)':'var(--red)';
     var hfpCor = hfp_pct!==null?(hfp_pct>10?'var(--red)':hfp_pct>5?'var(--amber)':'var(--green)'):'var(--t3)';
 
@@ -5472,11 +5462,11 @@ function render(){
       +'Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100\n'
       +'= ('+fi(r.faltas)+' + '+fi(r.atraso)+') ÷ '+fi(r.horasNormais)+' × 100\n'
       +'= '+f(r.absenteismo)+'%';
-    var tipEf = r.mes+'/'+r.ano+' — Eficiência\n'
-      +'Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100\n'
-      +'= '+fi(r.prodSemExtras||0)+' ÷ '+fi(r.meta)+' × 100\n'
-      +'= '+f(r.eficiencia)+'%\n'
-      +'Meta: ≥ 90%';
+    var tipEf = r.mes+'/'+r.ano+' — Dependência de HE\n'
+      +'Fórmula: (Produção − Prod. s/ Extras) ÷ Produção × 100\n'
+      +'= ('+fi(r.producaoReal||0)+' − '+fi(r.prodSemExtras||0)+') ÷ '+fi(r.producaoReal||0)+' × 100\n'
+      +'= '+(depR===null?'—':f(depR)+'%')+'\n'
+      +'Meta: ≤ '+META_DEP_HE+'% do volume';
     /* A coluna eficienciaAdj continua na tabela por ser dado da planilha, mas o
        tooltip parou de afirmar uma fórmula: testei sete famílias contra os 18
        meses e nenhuma reproduz (melhor erro médio 2,89 p.p.). Ela também passa
@@ -5506,7 +5496,7 @@ function render(){
       '<td class="cNum">'+fi(r.faltas)+' h</td>'+
       '<td class="cNum">'+fi(r.atraso)+' h</td>'+
       '<td class="cNum" title="'+tipAbs+'">'+f(r.absenteismo)+'%</td>'+
-      '<td title="'+tipEf+'"><div class="pw"><span class="bef '+efCl+'"><span class="dot"></span>'+f(r.eficiencia)+'%</span>'+
+      '<td title="'+tipEf+'"><div class="pw"><span class="bef '+efCl+'"><span class="dot"></span>'+(depR===null?'—':f(depR)+'%')+'</span>'+
         '<div class="pb"><div class="pf" style="width:'+efBw+'%;background:'+efBc+'"></div></div></div></td>'+
       '<td class="cNum" title="'+tipEfAdj+'">'+f(r.eficienciaAdj)+'%</td>'+
       '<td class="cNum">'+fi(r.producaoReal)+'</td>'+
@@ -5549,7 +5539,7 @@ function renderTotais(d,tf){
      de percentuais entre meses de 15 e de 23 dias — outro número. */
   var _Pt=DashUtils.periodo(d);
   var ab=_Pt.absenteismo===null?0:_Pt.absenteismo;
-  var efMedia=_Pt.aderencia===null?0:_Pt.aderencia;
+  var efMedia=(_Pt.depExtras===null||_Pt.depExtras===undefined)?0:_Pt.depExtras;   /* dependência de HE do período */
   /* Aderência ao plano em jornada normal: prod. s/ extras ÷ previsão (Plano Mestre) */
   var tPrev=0, tSemPrev=0; d.forEach(function(r){ if((r.previsaoProducao||0)>0){ tPrev+=r.previsaoProducao; tSemPrev+=DashUtils.getProd(r); } });
   var at=tPrev>0?(tSemPrev/tPrev)*100:null;
@@ -5565,7 +5555,7 @@ function renderTotais(d,tf){
     '<td class="cNum">'+fi(tF)+' h</td>'+
     '<td class="cNum">'+fi(tA)+' h</td>'+
     '<td class="cNum">'+f(ab)+'%</td>'+
-    '<td><span class="bef '+(efMedia>=90?'verde':efMedia>=80?'amarelo':'vermelho')+'"><span class="dot"></span>'+f(efMedia)+'%</span></td>'+
+    '<td><span class="bef '+clDepStr(efMedia)+'"><span class="dot"></span>'+f(efMedia)+'%</span></td>'+
     '<td class="cNum" style="color:var(--t3)">—</td>'+
     '<td class="cNum">'+fi(tProd)+'</td>'+
     '<td class="cNum">'+
@@ -5628,7 +5618,7 @@ function renderKPIs(d){
   s('kv-carga', fi(tCarga)+' h');
   s('kv-hn',  fi(tHN)+' h');
   var _Pk=DashUtils.periodo(d);
-  s('kv-ef',  f(_Pk.aderencia===null?ef:_Pk.aderencia)+'%');
+  s('kv-ef',  f((_Pk.depExtras===null||_Pk.depExtras===undefined)?0:_Pk.depExtras)+'%');   /* dependência de HE */
   /* Era f(efAdj)+'%' — a Eficiência Ajustada, coluna opaca da planilha que
      não é reproduzível por nenhuma fórmula, passa de 100% em 3 dos 18 meses
      e correlaciona -0,42 com o ritmo real. Trocada por peças perdidas por
@@ -5726,8 +5716,8 @@ function calcDeltas(dados){
   var deltas=[];
   for(var i=1;i<dados.length;i++){
     var cur=dados[i], prv=dados[i-1];
-    var efCur=cur.eficiencia;
-    var efPrv=prv.eficiencia;
+    var efCur=depHE(cur)||0;   /* dependência de HE: subir é ruim */
+    var efPrv=depHE(prv)||0;
     deltas.push({
       label: prv.mes+'/'+prv.ano+' → '+cur.mes+'/'+cur.ano,
       mes: cur.mes+'/'+cur.ano,
@@ -5819,14 +5809,14 @@ function renderDeltaTable(deltas){
       return '<td class="dNum '+cls+'">'+ar+(sfx==='h'?fi(abs):f(abs))+(sfx||'')+'</td>'
     }
     var score=0;
-    if(d.dEf>0)score++; else if(d.dEf<0)score--;
+    if(d.dEf<0)score++; else if(d.dEf>0)score--;   /* dependência de HE caindo é bom */
     if(d.dProd>0)score++; else if(d.dProd<0)score--;
     if(d.dAbs<0)score++; else if(d.dAbs>0)score--;
     var tend=score>=2?'<span class="dUp">▲ Melhora</span>':score<=-2?'<span class="dDn">▼ Piora</span>':'<span class="dNt">― Estável</span>';
     var tr=document.createElement('tr');
     tr.innerHTML=
       '<td class="dMes">'+d.mes+'</td>'+
-      dCell(d.dEf,false,'%')+
+      dCell(d.dEf,true,' p.p.')+
       dCell(d.dOEE,true,' pç')+   /* peças perdidas: subir é ruim */
       dCell(d.dAbs,true,'%')+
       dCell(d.dHT,false,' h')+
@@ -5851,7 +5841,7 @@ function drawComparacao(dados){
   }
   var deltas=calcDeltas(dados);
   var labels=deltas.map(function(d){return d.mes});
-  drawDivBars('cDeltaEf',  'emDeltaEf',  labels,deltas.map(function(d){return d.dEf}),   C.green,C.red,   190,'%',   false);
+  drawDivBars('cDeltaEf',  'emDeltaEf',  labels,deltas.map(function(d){return d.dEf}),   C.green,C.red,   190,' p.p.',   true);
   drawDivBars('cDeltaProd','emDeltaProd', labels,deltas.map(function(d){return d.dProd}),  C.cyan, C.pink,  190,'',    false);
   drawDivBars('cDeltaAbs', 'emDeltaAbs',  labels,deltas.map(function(d){return d.dAbs}),   C.green,C.red,   180,'%',   true);
   drawDivBars('cDeltaTkt', 'emDeltaTkt',  labels,deltas.map(function(d){return d.dTkt}),   C.amber,C.red,   180,' R$', false);
@@ -5886,14 +5876,13 @@ function drawEfic(dados){
   var pad={t:20,r:42,b:44,l:50};
   var gW=W-pad.l-pad.r, gH=H-pad.t-pad.b, n=dados.length;
 
-  var efics  = dados.map(function(r){return r.eficiencia});
-  var oees   = dados.map(function(r){return r.eficienciaAdj});
+  var efics  = dados.map(function(r){var d=depHE(r); return d===null?0:d;});   /* dependência de HE */
   var absens = dados.map(function(r){return r.absenteismo});
   var hfpPcts= dados.map(function(r){
     var h=calcHFP(r); if(h===null||!r.horasCarga)return null;
     return(h/r.horasCarga)*100
   });
-  var allVals=efics.concat(absens).concat(hfpPcts.filter(function(v){return v!==null})).concat([100]);
+  var allVals=efics.concat(absens).concat(hfpPcts.filter(function(v){return v!==null})).concat([20]);
   var yMax=Math.ceil(Math.max.apply(null,allVals)/10)*10+5;
 
   function xP(i){return pad.l+(i+0.5)*(gW/n)}
@@ -5908,10 +5897,10 @@ function drawEfic(dados){
     ctx.fillText(v+'%',pad.l-7,yy)
   }
   // Meta 90%
-  var ym=yP(META_EF);
+  var ym=yP(META_DEP_HE);
   ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,.1)'; ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
   ctx.moveTo(pad.l,ym); ctx.lineTo(pad.l+gW,ym); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle=DS.C.canvasLabel; ctx.textAlign='left'; ctx.fillText('90%',pad.l+gW+4,ym);
+  ctx.fillStyle=DS.C.canvasLabel; ctx.textAlign='left'; ctx.fillText(META_DEP_HE+'%',pad.l+gW+4,ym);
 
   // Labels X
   ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle=C.txt;
@@ -5944,7 +5933,7 @@ function drawEfic(dados){
 
   // Pontos eficiência com label
   efics.forEach(function(v,i){
-    var x=xP(i),y=yP(v), cl=clEf(v);
+    var x=xP(i),y=yP(v), cl=clDep(v);
     var cor=cl==='v'?C.green:cl==='y'?C.yellow:C.red;
     ctx.beginPath(); ctx.arc(x,y,5.5,0,Math.PI*2); ctx.fillStyle=cor+'28'; ctx.fill();
     ctx.beginPath(); ctx.arc(x,y,3.5,0,Math.PI*2);
@@ -5963,13 +5952,13 @@ function drawEfic(dados){
     var idx=Math.floor((mx-pad.l)/bw);
     if(idx<0||idx>=n){tipHide();return}
     var r=dados[idx];
-    var ef=efics[idx], oee=oees[idx], abs=absens[idx];
+    var ef=efics[idx], abs=absens[idx];
     var hfp=calcHFP(r);
     var hfpPct=hfp!==null&&r.horasCarga>0?(hfp/r.horasCarga)*100:null;
-    var efCls=ef>=90?'g':ef>=80?'a':'r';
+    var efCls=ef<=META_DEP_HE?'g':ef<=15?'a':'r';
     var absCls=abs<=3?'g':abs<=6?'a':'r';
     var html='<div class="tip-title">'+r.mes+'/'+r.ano+'</div>'+
-      tipRow('Indep. HE',f(ef)+'%',efCls)+
+      tipRow('Dep. HE (% volume)',f(ef)+'%',efCls)+
       tipRow('Absenteísmo',f(abs)+'%',absCls)+
       (hfpPct!==null?tipRow('H.Falta Prod.',f(hfpPct)+'%',hfpPct>10?'r':hfpPct>5?'a':'g'):'')+
       tipRow('Produção',fi(r.producaoReal)+' pç')+
@@ -6039,10 +6028,10 @@ function drawBars(canvasId,emId,dados,valFn,cor,H,labelFn){
   cv.onmouseleave=tipHide
 }
 
-/* Barras coloridas por eficiência */
+/* Barras coloridas pela dependência de HE do mês (menor é melhor) */
 function corEf(r){
-  var e=r.eficiencia||0;   /* independência de HE do mês, mesma régua dos outros cards */
-  return e>=META_EF?C.green:e>=META_EF-10?C.yellow:C.red
+  var e=depHE(r); if(e===null) return C.cyan;
+  return e<=META_DEP_HE?C.green:e<=15?C.yellow:C.red
 }
 
 /* Gráfico barras agrupadas: Horas Totais / Normais / Extras */
@@ -6055,24 +6044,23 @@ function drawEficSimples(dados,cvId,emId){
   var o=setupCanvas(cvId,240), ctx=o.ctx, W=o.W, H=o.H;
   var pad={t:20,r:42,b:44,l:50};
   var gW=W-pad.l-pad.r, gH=H-pad.t-pad.b, n=dados.length;
-  var efics=dados.map(function(r){return r.eficiencia});
-  var oees=dados.map(function(r){return r.eficienciaAdj});
-  var yMax=105;
+  var efics=dados.map(function(r){var d=depHE(r); return d===null?0:d;});   /* dependência de HE */
+  var yMax=Math.max(20, Math.ceil((Math.max.apply(null,efics.concat([META_DEP_HE]))+5)/5)*5);
   function xP(i){return pad.l+(i+0.5)*(gW/n)}
   function yP(v){return pad.t+gH-(v/yMax)*gH}
   // Grade
   ctx.font='12px Consolas,monospace';ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillStyle=C.txt;
-  for(var v=0;v<=yMax;v+=20){
+  for(var v=0;v<=yMax;v+=5){
     var yy=yP(v);
     ctx.beginPath();ctx.strokeStyle=C.grid;ctx.lineWidth=1;ctx.setLineDash([3,4]);
     ctx.moveTo(pad.l,yy);ctx.lineTo(pad.l+gW,yy);ctx.stroke();ctx.setLineDash([]);
     ctx.fillText(v+'%',pad.l-7,yy)
   }
-  // Meta 90%
-  var ym=yP(META_EF);
+  // Meta de dependência de HE
+  var ym=yP(META_DEP_HE);
   ctx.beginPath();ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
   ctx.moveTo(pad.l,ym);ctx.lineTo(pad.l+gW,ym);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle=DS.C.canvasLabel;ctx.textAlign='left';ctx.fillText('90%',pad.l+gW+4,ym);
+  ctx.fillStyle=DS.C.canvasLabel;ctx.textAlign='left';ctx.fillText(META_DEP_HE+'%',pad.l+gW+4,ym);
   // Labels X
   ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle=C.txt;
   dados.forEach(function(r,i){ctx.fillText(r.mes,xP(i),pad.t+gH+9)});
@@ -6092,7 +6080,7 @@ function drawEficSimples(dados,cvId,emId){
   dl(efics,C.cyan,2.4);
   // Pontos
   efics.forEach(function(v,i){
-    var x=xP(i),y=yP(v),cl=clEf(v);
+    var x=xP(i),y=yP(v),cl=clDep(v);
     var cor=cl==='v'?C.green:cl==='y'?C.yellow:C.red;
     ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle=cor;ctx.fill();
     ctx.font='bold 13px Consolas,monospace';ctx.fillStyle=cor;
@@ -6104,10 +6092,10 @@ function drawEficSimples(dados,cvId,emId){
     var idx=Math.floor((e.clientX-rect.left-pad.l)/(gW/n));
     if(idx<0||idx>=n){tipHide();return}
     var r=dados[idx];
-    var ef2=efics[idx],cls2=ef2>=90?'g':ef2>=80?'a':'r';
+    var ef2=efics[idx],cls2=ef2<=META_DEP_HE?'g':ef2<=15?'a':'r';
     tipShow('<div class="tip-title">'+r.mes+'/'+r.ano+'</div>'+
-      tipRow('Indep. HE',f(ef2)+'%',cls2)+
-      tipRow('Meta',META_EF+'%'),e)
+      tipRow('Dep. HE (% volume)',f(ef2)+'%',cls2)+
+      tipRow('Meta','≤ '+META_DEP_HE+'%'),e)
   };
   cv.onmouseleave=tipHide
 }
@@ -6497,10 +6485,10 @@ function exportCSV(){
   var hdr='Mes;Ano;Colaboradores;H.Carga;Faltas(h);Atraso(h);TotalFaltaAtraso;Absenteismo(%);'
     +'H.Normais;Extra50;Extra100;TotalExtras;H.Totais;'
     +'ProducaoEntregue_c_extras;ProducaoNormal_s_extras;PecasDeHoraExtra;'
-    +'Meta_derivada;IndepHE_s_extras_vs_meta(%);ProdCE_vs_meta(%);IndependenciaHE(%);EficienciaAjustada_planilha(%);'
+    +'Meta_derivada;ProdSE_vs_meta_derivada(%);ProdCE_vs_meta_derivada(%);Eficiencia_planilha(%);EficienciaAjustada_planilha(%);'
     +'HFaltaProd(h);TicketMedio(R$);CustoCapNaoAprov(R$);'
     +'QtdeFaturado;QtdeVendida;PrevisaoProducao;DiasTrabalhados;HorasFerias;'
-    +'AderenciaPlano_c_extras(%);AderenciaPlano_s_extras(%)';
+    +'AderenciaPlano_c_extras(%);AderenciaPlano_s_extras(%);DependenciaHE(%)';
   var rows=dados.map(function(r){
     var sn = DashUtils.getProd(r);                       /* base sem extras */
     var at = r.meta>0 ? (sn/r.meta)*100 : 0;             /* mesma conta da tela */
@@ -6515,7 +6503,8 @@ function exportCSV(){
       r.qtdeFaturado||0, r.qtdeVendida||0, r.previsaoProducao||0,
       r.diasTrabalhados||0, r.horasFerias||0,
       ((r.previsaoProducao||0)>0?((r.producaoReal||0)/r.previsaoProducao*100).toFixed(2):''),
-      ((r.previsaoProducao||0)>0?(sn/r.previsaoProducao*100).toFixed(2):'')
+      ((r.previsaoProducao||0)>0?(sn/r.previsaoProducao*100).toFixed(2):''),
+      (depHE(r)===null?'':depHE(r).toFixed(2))
     ].join(';')
   });
   var csv='\uFEFF'+hdr+'\n'+rows.join('\n');
@@ -6880,14 +6869,14 @@ function bindCardTooltips(dados){
     tipRow('H. Extras total',fi(tExt)+' h')+
     tipRow('% Extras',f(tHT>0?(tExt/tHT)*100:0)+'%');
 
-  var _Pef=DashUtils.periodo(dados); ef=_Pef.aderencia===null?ef:_Pef.aderencia;
-  var efCls=ef>=META_EF?'g':ef>=META_EF-10?'a':'r';
-  var efHtml='<div class="tip-title">Independência de HE</div>'+
+  var _Pef=DashUtils.periodo(dados); ef=(_Pef.depExtras===null||_Pef.depExtras===undefined)?0:_Pef.depExtras;
+  var efCls=ef<=META_DEP_HE?'g':ef<=15?'a':'r';
+  var efHtml='<div class="tip-title">Dependência de HE</div>'+
     tipRow('Período (ponderado)',f(ef)+'%',efCls)+
-    tipRow('Fórmula','Prod. jornada normal ÷ meta (derivada)')+
-    tipRow('Meta',META_EF+'%')+
-    tipRow('Desvio',(ef>=META_EF?'▲ +':'▼ ')+f(Math.abs(ef-META_EF))+'p.p.',ef>=META_EF?'g':'r')+
-    tipRow('Meses ≥ 90%',dados.filter(function(r){return r.eficiencia>=90}).length+'/'+dados.length);
+    tipRow('Fórmula','Peças de hora extra ÷ peças entregues')+
+    tipRow('Meta','≤ '+META_DEP_HE+'%')+
+    tipRow('Desvio',(ef<=META_DEP_HE?'▼ ':'▲ +')+f(Math.abs(ef-META_DEP_HE))+'p.p.',ef<=META_DEP_HE?'g':'r')+
+    tipRow('Meses na meta',dados.filter(function(r){var v=depHE(r);return v!==null&&v<=META_DEP_HE}).length+'/'+dados.length);
 
   var _Pp = DashUtils.periodo(dados);
   var oeeHtml='<div class="tip-title">Peças Perdidas por Falta e Atraso</div>'+
@@ -6999,7 +6988,7 @@ function renderKPIsExtras(d){
 
   if(!d.length){
     ['kv2-cap','kv2-hn','kv2-ext','kv2-hfp','kv2-carga','kv2-hnpct','kv2-extpct',
-     'kv3-ef','kv3-oee','kv3-acima','kv3-abaixo',
+     'kv3-oee','kv3-acima','kv3-abaixo',
      'kv4-abs','kv4-fat','kv4-atr','kv4-acima',
      'kv5-prod','kv5-med','kv5-tkt','kv5-best','kv5-meta','kv5-var'].forEach(function(id){s(id,'--')});
     return
@@ -7018,7 +7007,8 @@ function renderKPIsExtras(d){
   var ef=tOEE/d.length;
   var oee=tEfAdj/d.length;
   var ab=tAbs/d.length;
-  var acima90=d.filter(function(r){return r.eficiencia>=90}).length;
+  /* meses com dependência de HE dentro da meta (peças de HE ÷ entregues ≤ META_DEP_HE) */
+  var acima90=d.filter(function(r){var v=depHE(r); return v!==null&&v<=META_DEP_HE}).length;
   var acimaAbs=d.filter(function(r){return r.absenteismo>META_ABS}).length;
   var u=d[d.length-1], hfp=calcHFP(u);
 
@@ -7043,7 +7033,7 @@ function renderKPIsExtras(d){
   s('ks2-hfp', d.length===1?(d[0].mes+'/'+d[0].ano):'Acumulado período');
 
   // Eficiência
-  s('kv3-ef',     f((DashUtils.periodo(d).aderencia)||ef)+'%');   /* ponderado, como na Reunião */
+
   /* Era a Eficiência Ajustada (média de eficienciaAdj). Ver comentário em
      DashUtils.periodo: coluna não reproduzível, passa de 100%, e anda para o
      lado errado em relação ao ritmo e ao absenteísmo. */
@@ -7293,7 +7283,7 @@ function bindZooms(){
   function dl(){var d=dd();return d.length>=2?calcDeltas(d):[];}
 
   bindZoom('cEfic','Evolução — Eficiência & Absenteísmo',drawEfic,function(){return [dd()];});
-  bindZoom('cEfic2','Evolução — Independência de HE',drawEficSimples,function(){return [dd(),'cEfic2','emEfic2'];});
+  bindZoom('cEfic2','Evolução — Dependência de HE (% do volume)',drawEficSimples,function(){return [dd(),'cEfic2','emEfic2'];});
   bindZoom('cProd','Produção Real (peças)',drawBars,function(){var d=dd();return ['cProd','emProd',d,function(r){return r.producaoReal;},function(r){return corEf(r);},520,function(v){return fi(v);}];});
   bindZoom('cMetaReal','Previsto vs Realizado s/ Hora Extra',drawMetaReal,function(){return [dd()];});
   bindZoom('cProd2','Produção Real Total (peças)',drawBars,function(){var d=dd();return ['cProd2','emProd2',d,function(r){return r.producaoReal;},function(r){return corEf(r);},520,function(v){return fi(v);}];});
@@ -7301,7 +7291,7 @@ function bindZooms(){
   bindZoom('cTkt','Ticket Médio (R$)',drawTkt,function(){return [dd()];});
   bindZoom('cTkt2','Ticket Médio (R$)',drawBars,function(){var d=dd();return ['cTkt2','emTkt2',d,function(r){return r.ticketMedio>0?r.ticketMedio:null;},C.purple,520,function(v){return v?'R$'+f(v,0):'';} ];});
   bindZoom('cAbs','Absenteísmo Mensal (%)',drawAbs,function(){return [dd()];});
-  bindZoom('cDeltaEf','Δ Eficiência vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaEf','emDeltaEf',x.map(function(r){return r.mes;}),x.map(function(r){return r.dEf;}),C.green,C.red,520,' p.p.',false];});
+  bindZoom('cDeltaEf','Δ Dependência de HE vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaEf','emDeltaEf',x.map(function(r){return r.mes;}),x.map(function(r){return r.dEf;}),C.green,C.red,520,' p.p.',true];});
   bindZoom('cDeltaAbs','Δ Absenteísmo vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaAbs','emDeltaAbs',x.map(function(r){return r.mes;}),x.map(function(r){return r.dAbs;}),C.green,C.red,520,' p.p.',true];});
   bindZoom('cDeltaProd','Δ Produção vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaProd','emDeltaProd',x.map(function(r){return r.mes;}),x.map(function(r){return r.dProd;}),C.cyan,C.pink,520,' pç',false];});
   bindZoom('cDeltaTkt','Δ Ticket Médio vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaTkt','emDeltaTkt',x.map(function(r){return r.mes;}),x.map(function(r){return r.dTkt;}),C.amber,C.red,520,' R$',false];});
@@ -7420,7 +7410,9 @@ function renderResumoExecutivo(dados) {
   /* Percentuais por razão de totais, não por média de percentuais: num
      recorte multi-mês a média aritmética pesa igual um mês de 15 dias e um
      de 23. */
-  var efM  = P.aderencia   || 0;   /* = prodSemExtras ÷ meta, ponderado */
+  var efM  = P.aderencia   || 0;   /* = prodSemExtras ÷ meta — só para o insight de capacidade sem plano */
+  var perdPc = (P.pecasPerdidas===null||P.pecasPerdidas===undefined)?null:P.pecasPerdidas;
+  var perdPct= perdPc===null?0:(P.pctPerdidas||0);
   var absM = P.absenteismo || 0;
   var tktM = P.ticket      || 0;
   var nTkt = P.fatPecas > 0 ? 1 : 0;
@@ -7453,7 +7445,7 @@ function renderResumoExecutivo(dados) {
   e=el('rex-prod-plano');
   if(e) e.textContent = P.aderPlano === null ? '—'
         : fmtP(P.aderPlano).replace(' ','')+' do previsto';
-  e=el('rex-ef-val');    if(e) e.textContent = fmtP(efM).replace(' ','');
+  e=el('rex-ef-val');    if(e) e.textContent = perdPc===null ? '—' : fmt(perdPc)+' pç';
   e=el('rex-abs-val');   if(e) e.textContent = fmtP(absM).replace(' ','');
   e=el('rex-tkt-val');   if(e) e.textContent = nTkt>0 ? 'R$ '+tktM.toFixed(0) : '--';
   /* ticket ÷ (1 − dep. de HE): o ticket que entregaria a mesma receita com
@@ -7490,7 +7482,7 @@ function renderResumoExecutivo(dados) {
      por construção algébrica, não por desempenho. Trocar a base para sem
      extras só inverteria (vermelho em 17 de 18). Nenhum dos dois informa.
      O que informa é quanto do volume dependeu de hora extra. */
-  var okP=depHE<=META_DEP_HE, okE=efM>=META_EF, okA=absM<=META_ABS, okT=tktM>=META_TICKET;
+  var okP=depHE<=META_DEP_HE, okE=perdPct<=5, okA=absM<=META_ABS, okT=tktM>=META_TICKET;
   var _tm=document.getElementById('rex-tkt-meta'); if(_tm) _tm.textContent='Meta: R$ '+META_TICKET;
   /* A bolinha era 9px de cor pura, sem forma nem texto. Em P&B verde vira
      cinza 135 e vermelho cinza 118 — 17 níveis em 255, indistinguíveis. E o
@@ -7514,8 +7506,8 @@ function renderResumoExecutivo(dados) {
   semDot('rex-abs-status', 'rex-card-abs', okA);
   semDot('rex-tkt-status', 'rex-card-tkt', okT);
 
-  var efD=efM-META_EF, abD=absM-META_ABS, tkD=tktM-META_TICKET;
-  e=el('rex-ef-diff');  if(e){ e.textContent=(efD>=0?'+':'')+efD.toFixed(1).replace('.',',')+' p.p.'; e.style.color=DS.delta(efD, true); }
+  var efD=perdPct, abD=absM-META_ABS, tkD=tktM-META_TICKET;
+  e=el('rex-ef-diff');  if(e){ e.textContent=perdPc===null?'—':(perdPct.toFixed(1).replace('.',',')+'%'); e.style.color=perdPct<=5?DS.C.bom:(perdPct<=10?DS.C.alerta:DS.C.ruim); }
   e=el('rex-abs-diff'); if(e){ e.textContent=(abD<=0?'- ':'+ ')+Math.abs(abD).toFixed(1).replace('.',',')+' p.p.'; e.style.color=DS.delta(-abD, true); }
   if(nTkt>0){ e=el('rex-tkt-diff'); if(e){ e.textContent=(tkD>=0?'+ R$ ':'- R$ ')+Math.abs(tkD).toFixed(0); e.style.color=DS.delta(tkD, true); } }
 
@@ -7531,7 +7523,6 @@ function renderResumoExecutivo(dados) {
   if(sL){
     var itens = [
       {l:'Dependência de Hora Extra', m:'Até 8% do volume entregue', ok:okP},
-      {l:'Independência de HE', m:'Meta: '+META_EF+'%',           ok:okE},
       {l:'Absenteísmo',      m:'Meta: até '+META_ABS+'%',         ok:okA},
       {l:'Ticket Médio',     m:'Meta: R$ '+META_TICKET,           ok:okT},
       {l:'Horas Extras',     m:'Até 15% das h. totais',           ok:pctE<=15}
@@ -7555,10 +7546,10 @@ function renderResumoExecutivo(dados) {
   var iL = el('rex-insights-list');
   if(iL){
     var ins = [];
-    if(efM >= 90){
-      ins.push({t:'good', txt:'Independência de HE de <b>'+fmtP(efM)+'</b> — meta de '+META_EF+'% atingida no período.'});
+    if(depHE <= META_DEP_HE){
+      ins.push({t:'good', txt:'Dependência de hora extra de <b>'+fmtP(depHE)+'</b> do volume — dentro da meta de '+META_DEP_HE+'%.'});
     } else {
-      ins.push({t:'warn', txt:'Independência de HE de <b>'+fmtP(efM)+'</b> — <b>'+Math.abs(efD).toFixed(1).replace('.',',')+'</b> p.p. abaixo da meta de '+META_EF+'%.'});
+      ins.push({t:depHE>15?'crit':'warn', txt:'Dependência de hora extra de <b>'+fmtP(depHE)+'</b> do volume — <b>'+(depHE-META_DEP_HE).toFixed(1).replace('.',',')+'</b> p.p. acima da meta de '+META_DEP_HE+'%: a entrega está apoiada em hora extra.'});
     }
     if(absM > ABS_ATENCAO){
       ins.push({t:'crit', txt:'Absenteísmo elevado: <b>'+fmtP(absM)+'</b> — impacta diretamente a capacidade produtiva.'});
@@ -7660,16 +7651,16 @@ function renderResumoExecutivo(dados) {
     'somando hora extra dá meta batida sempre.</div>'
   );
 
-  var efCls = efM>=META_EF?'g':efM>=META_EF-10?'a':'r';
+  /* Card "Peças perdidas por falta e atraso" (era Independência de HE) */
   bindRexTooltip('rex-card-ef',
-    '<div class="tip-title">Eficiência Média</div>'+
-    tipRow('Eficiência', fmtP(efM), efCls)+
-    tipRow('Meta', '90,0 %')+
-    tipRow('Diferença', (efD>=0?'+':'')+efD.toFixed(1).replace('.',',')+' p.p.', efD>=0?'g':'r')+
-    tipRow('Fórmula', 'Prod. s/ Extras ÷ Cap. Teórica')+
+    '<div class="tip-title">Peças Perdidas por Falta e Atraso</div>'+
+    tipRow('Peças perdidas', perdPc===null?'—':fmt(perdPc)+' pç', perdPct<=5?'g':(perdPct<=10?'a':'r'))+
+    tipRow('% da produção normal', perdPct.toFixed(1).replace('.',',')+'%', perdPct<=5?'g':(perdPct<=10?'a':'r'))+
+    tipRow('Horas de falta e atraso', fmt(P.hPerdidas)+' h')+
+    tipRow('Ritmo em hora normal', (P.ritmoNormal||0).toFixed(2).replace('.',',')+' pç/h')+
+    tipRow('Fórmula', 'h. de falta e atraso × (prod. normal ÷ h. normais)')+
     '<div style="border-top:1px solid var(--b);margin:5px 0"></div>'+
-    '<div style="font-size:.62rem;color:var(--t2);margin-bottom:3px">dos '+n+' meses no período:</div>'+
-    tipRow('Meses c/ meta (≥90%)', dados.filter(function(r){return r.producaoReal>0&&r.eficiencia>=90;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.eficiencia>=90;}).length===n?'g':dados.filter(function(r){return r.producaoReal>0&&r.eficiencia>=90;}).length===0?'r':'a')
+    '<div style="font-size:.62rem;color:var(--t2);line-height:1.4">Quantas peças deixaram de sair pelas horas perdidas, ao ritmo que a fábrica demonstrou no período. ≤ 5% verde · ≤ 10% atenção.</div>'
   );
 
   var absCls = absM<=META_ABS?'g':absM<=ABS_ATENCAO?'a':'r';
@@ -11718,10 +11709,10 @@ function cfInicializar() {
 
       /* 5. Eficiência de Produção */
       '<div class="ind-card ic-green">',
-      '  <div class="ind-lbl">Independência de HE</div>',
+      '  <div class="ind-lbl">Dependência de HE</div>',
       '  <div class="ind-val" id="ind-v-ef-prod">—</div>',
-      '  <div class="ind-unit">produção real ÷ cap. teórica</div>',
-      '  <div class="ind-form" id="ind-f-ef-prod">ProdReal ÷ Meta</div>',
+      '  <div class="ind-unit">% das peças entregues que veio de hora extra</div>',
+      '  <div class="ind-form" id="ind-f-ef-prod">(Prod − Prod s/HE) ÷ Prod</div>',
       '</div>',
 
       '</div>' /* .ind-grid */
@@ -11774,8 +11765,9 @@ function cfInicializar() {
     /* ── 4. Capacidade Perdida ── */
     var capPerdida = (DashUtils.periodo(registros).pecasPerdidas) || 0;   /* mesma conta da Reunião */
 
-    /* ── 5. Independência de HE ── */
-    var efProducao = totMeta > 0 ? (totProd / totMeta) * 100 : null;
+    /* ── 5. Dependência de HE (peças de HE ÷ entregues), a mesma conta da Reunião ── */
+    var _Pd = DashUtils.periodo(registros);
+    var efProducao = (_Pd.depExtras === null || _Pd.depExtras === undefined) ? null : _Pd.depExtras;
 
     /* ── Escrever no DOM ── */
 
@@ -11819,13 +11811,13 @@ function cfInicializar() {
     }
 
     /* 5 */
-    if (efProducao !== null && efProducao > 0) {
+    if (efProducao !== null) {
       var efEl = document.getElementById('ind-v-ef-prod');
       if (efEl) {
         efEl.textContent = fP(efProducao);
-        efEl.style.color = efProducao >= 90 ? DS.C.bom : efProducao >= 75 ? DS.C.alerta : DS.C.ruim;
+        efEl.style.color = efProducao <= META_DEP_HE ? DS.C.bom : efProducao <= 15 ? DS.C.alerta : DS.C.ruim;
       }
-      set('ind-f-ef-prod', fI(totProd) + ' ÷ ' + fI(totMeta) + ' (meta col S)');
+      set('ind-f-ef-prod', fI(_Pd.deExtras) + ' ÷ ' + fI(_Pd.comExtras) + ' (meta ≤ ' + META_DEP_HE + '%)');
     } else {
       set('ind-v-ef-prod', '—');
     }
@@ -11918,10 +11910,10 @@ function cfInicializar() {
 
     /* ── kCard — aba Produção / Dashboard ── */
     'card-ef': {
-      titulo: 'Independência de HE',
-      formula: 'ProdSemExtras ÷ Meta × 100',
-      corpo: 'Quanto da entrega saiu sem hora extra. A meta é derivada da planilha (= produção real × h. normais ÷ h. carga): não é capacidade nem alvo, por isso o nome não é "eficiência".',
-      interpretacao: '<span class="uit-good">≥ 90%</span> meta · <span class="uit-warn">80–89%</span> atenção · <span class="uit-bad">&lt; 80%</span> crítico'
+      titulo: 'Dependência de HE',
+      formula: '(Produção − Produção s/ Extras) ÷ Produção × 100',
+      corpo: 'Parcela das peças entregues que só existiu porque houve hora extra. Hora extra não é capacidade.',
+      interpretacao: '<span class="uit-good">≤ 8%</span> meta · <span class="uit-warn">8–15%</span> atenção · <span class="uit-bad">&gt; 15%</span> a entrega depende de hora extra'
     },
     'card-oee': {
       titulo: 'Peças Perdidas por Falta e Atraso',
@@ -12053,10 +12045,10 @@ function cfInicializar() {
       interpretacao: 'Quanto maior, maior o impacto das ausências na capacidade produtiva total.'
     },
     'ind-v-ef-prod': {
-      titulo: 'Independência de HE',
-      formula: 'Produção s/ hora extra ÷ Meta (derivada) × 100',
-      corpo: 'O mesmo indicador da Reunião e do Resumo: quanto da entrega saiu sem hora extra. A meta é derivada da planilha, não é capacidade.',
-      interpretacao: '<span class="uit-good">≥ 90%</span> meta · <span class="uit-warn">80–89%</span> atenção · <span class="uit-bad">&lt; 80%</span> crítico'
+      titulo: 'Dependência de HE',
+      formula: '(Produção − Produção s/ Extras) ÷ Produção × 100',
+      corpo: 'O mesmo indicador da Reunião e do Resumo: parcela das peças entregues que veio de hora extra.',
+      interpretacao: '<span class="uit-good">≤ 8%</span> meta · <span class="uit-warn">8–15%</span> atenção · <span class="uit-bad">&gt; 15%</span> a entrega depende de hora extra'
     },
 
     /* ── cap-card — aba Capacidade ── */
@@ -14537,15 +14529,18 @@ input:disabled, select:disabled {
     var gapFunc = funcNec > 0 ? funcNec - mediaColabs : 0;
 
     /* ── Eficiência / Absenteísmo ── */
-    var eficiencia = totMeta > 0 ? (totProd / totMeta) * 100 : null;
-    /* ponderado (h perdidas ÷ h normais), a base da Reunião — não média de % */
+    /* ponderado, a base da Reunião — não média de % */
     var _Pvg = DashUtils.periodo(registros);
+    /* Dependência de HE (peças de HE ÷ entregues). `eficiencia` era prod. normal
+       ÷ meta derivada — o mesmo fato com nome e cores contrárias. */
+    var eficiencia = (_Pvg.depExtras === null || _Pvg.depExtras === undefined) ? null : _Pvg.depExtras;
+    var _mm = document.getElementById('mes-ef-meta'); if (_mm) _mm.textContent = '≤ ' + META_DEP_HE + '%';
     var absMedia   = _Pvg.absenteismo === null ? 0 : _Pvg.absenteismo;
 
     var efDisplay  = eficiencia !== null ? fN(eficiencia, 1) + '%' : ($v('kv-ef')  || '—');
     var absDisplay = absMedia   > 0      ? fN(absMedia,   1) + '%' : ($v('kv-abs') || '—');
     var efCor  = eficiencia !== null
-      ? (eficiencia >= META_EF ? DS.C.bom : eficiencia >= META_EF-10 ? DS.C.alerta : DS.C.ruim)
+      ? (eficiencia <= META_DEP_HE ? DS.C.bom : eficiencia <= 15 ? DS.C.alerta : DS.C.ruim)
       : ($c('kv-ef') || DS.C.bom);
     var absCor = absMedia > 0
       ? (absMedia <= META_ABS ? DS.C.bom : absMedia <= ABS_ATENCAO ? DS.C.alerta : DS.C.ruim)
@@ -14704,10 +14699,10 @@ input:disabled, select:disabled {
 
       /* Eficiência */
       if (eficiencia !== null) {
-        var efD = eficiencia - META_EF;
+        var efD = eficiencia - META_DEP_HE;
         var efSign = efD >= 0 ? '+' : '';
-        bullets.push({ t: efD >= 0 ? 'good' : (efD > -10 ? 'warn' : 'crit'),
-          txt: 'Independência de HE ' + (efD >= 0 ? 'acima' : 'abaixo') + ' da meta (' + efSign + fN(efD, 1) + 'pp vs ' + META_EF + '%)'});
+        bullets.push({ t: efD <= 0 ? 'good' : (efD <= 7 ? 'warn' : 'crit'),
+          txt: 'Dependência de hora extra ' + (efD <= 0 ? 'dentro' : 'acima') + ' da meta (' + fN(eficiencia, 1) + '% do volume vs ' + META_DEP_HE + '%)'});
       }
 
       /* Capacidade */
@@ -14927,7 +14922,7 @@ input:disabled, select:disabled {
       '</div>',
       '<div class="aaa-charts">',
         '<div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Produção por mês</div><canvas id="aaa-c-prod" height="160"></canvas><div class="aaa-legend" id="aaa-lg-prod"></div></div>',
-        '<div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Independência de HE % por mês</div><canvas id="aaa-c-ef" height="160"></canvas><div class="aaa-legend" id="aaa-lg-ef"></div></div>',
+        '<div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Dependência de HE % por mês</div><canvas id="aaa-c-ef" height="160"></canvas><div class="aaa-legend" id="aaa-lg-ef"></div></div>',
         '<div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Absenteísmo % por mês</div><canvas id="aaa-c-abs" height="160"></canvas><div class="aaa-legend" id="aaa-lg-abs"></div></div>',
       '</div>',
       '<div class="aaa-wrap"><table class="aaa-table"><thead id="aaa-thead"></thead><tbody id="aaa-tbody"></tbody></table></div>',
@@ -15035,9 +15030,9 @@ input:disabled, select:disabled {
     anos.forEach(function(a, i) {
       var cor = CORES[i % CORES.length];
       th += '<th style="color:'+cor+'">'+a+' Prod</th>';
-      th += '<th style="color:'+cor+'">'+a+' Ind.HE%</th>';
+      th += '<th style="color:'+cor+'">'+a+' Dep.HE%</th>';
       th += '<th style="color:'+cor+'">'+a+' Abs%</th>';
-      if (i < anos.length - 1) th += '<th class="aaa-sep" style="color:var(--t3)">Δ Prod%</th><th style="color:var(--t3)">Δ Ef pp</th>';
+      if (i < anos.length - 1) th += '<th class="aaa-sep" style="color:var(--t3)">Δ Prod%</th><th style="color:var(--t3)">Δ Dep.HE pp</th>';
     });
     th += '</tr>';
     thead.innerHTML = th;
@@ -15056,7 +15051,7 @@ input:disabled, select:disabled {
       });
       recs.forEach(function(r, i) {
         var prod = r ? r.producaoReal : null;
-        var ef   = r ? r.eficiencia   : null;
+        var ef   = r ? depHE(r)       : null;
         var abs  = r ? r.absenteismo  : null;
         html += '<td class="aaa-val">'+(prod !== null ? prod.toLocaleString('pt-BR') : '—')+'</td>';
         html += '<td class="aaa-val">'+(ef   !== null ? ef.toFixed(1)+'%'            : '—')+'</td>';
@@ -15070,9 +15065,9 @@ input:disabled, select:disabled {
             html += '<td class="aaa-var aaa-sep '+cls+'">'+(dProd > 0 ? '+' : '')+dProd.toFixed(1)+'%</td>';
           } else { html += '<td class="aaa-var aaa-sep neu">—</td>'; }
           /* Δ Eficiência pp */
-          if (ef !== null && rNext && rNext.eficiencia !== null) {
-            var dEf = rNext.eficiencia - ef;
-            var cls2 = dEf > 0 ? 'pos' : dEf < 0 ? 'neg' : 'neu';
+          if (ef !== null && rNext && depHE(rNext) !== null) {
+            var dEf = depHE(rNext) - ef;
+            var cls2 = dEf < 0 ? 'pos' : dEf > 0 ? 'neg' : 'neu';   /* dependência caindo é bom */
             html += '<td class="aaa-var '+cls2+'">'+(dEf > 0 ? '+' : '')+dEf.toFixed(1)+' pp</td>';
           } else { html += '<td class="aaa-var neu">—</td>'; }
         }
@@ -15110,7 +15105,7 @@ input:disabled, select:disabled {
 
     renderTabela(porAno, anos);
     desenharLinhas('aaa-c-prod', 'aaa-lg-prod', porAno, mesesPresentes, function(r) { return r.producaoReal; }, '', false);
-    desenharLinhas('aaa-c-ef',   'aaa-lg-ef',   porAno, mesesPresentes, function(r) { return r.eficiencia;   }, '%', false);
+    desenharLinhas('aaa-c-ef',   'aaa-lg-ef',   porAno, mesesPresentes, function(r) { return depHE(r);      }, '%', false);
     desenharLinhas('aaa-c-abs',  'aaa-lg-abs',  porAno, mesesPresentes, function(r) { return r.absenteismo;  }, '%', true);
   }
 
@@ -15867,7 +15862,7 @@ input:disabled, select:disabled {
       + '</div>'
       + '<div class="capa-meta">'
       + '<div class="cm-item"><div class="cm-l">Cap. Total (h)</div><div class="cm-v">' + txt('kv-cap') + '</div><div class="cm-s">Acumulado per\u00edodo</div></div>'
-      + '<div class="cm-item"><div class="cm-l">Efici\u00eancia M\u00e9dia</div><div class="cm-v">' + txt('kv-ef') + '</div><div class="cm-s">Prod. s/ extras \u00f7 Cap.</div></div>'
+      + '<div class="cm-item"><div class="cm-l">Depend\u00eancia de HE</div><div class="cm-v">' + txt('kv-ef') + '</div><div class="cm-s">Pe\u00e7as de HE \u00f7 entregues Cap.</div></div>'
       + '<div class="cm-item"><div class="cm-l">Produ\u00e7\u00e3o Total</div><div class="cm-v">' + txt('kv-prod') + '</div><div class="cm-s">Pe\u00e7as acumuladas</div></div>'
       + '<div class="cm-item"><div class="cm-l">Absenteísmo M\u00e9dio</div><div class="cm-v">' + txt('kv-abs') + '</div><div class="cm-s">% do per\u00edodo</div></div>'
       + '</div>'
@@ -15881,7 +15876,7 @@ input:disabled, select:disabled {
           {l:'Cap. Total (h)', v:txt('kv-cap'), cls:'b'},
           {l:'H. Normais',     v:txt('kv-hn'),  cls:'b'},
           {l:'H. Perdidas',    v:txt('kv-hfp'), cls:'r'},
-          {l:'Efici\u00eancia', v:txt('kv-ef'),  cls:'v'}
+          {l:'Depend\u00eancia de HE', v:txt('kv-ef'),  cls:'v'}
         ])
       + kRow([
           {l:'Peças perdidas',v:txt('kv-oee'),  cls:'v'},
@@ -15909,15 +15904,14 @@ input:disabled, select:disabled {
 
     /* ══ PÁG 3 — EFICIÊNCIA ══ */
     var p3 = pb()
-      + pgHdr('Independ\u00eancia de HE', 'Produ\u00e7\u00e3o em jornada normal \u00f7 meta derivada da planilha')
+      + pgHdr('Depend\u00eancia de HE', 'Pe\u00e7as de hora extra \u00f7 pe\u00e7as entregues \u2014 hora extra n\u00e3o \u00e9 capacidade')
       + secHdr('Indicadores de Efici\u00eancia')
       + kRow([
-          {l:'Efici\u00eancia M\u00e9dia', v:txt('kv3-ef'),     cls:'v'},
           {l:'Peças perdidas',  v:txt('kv3-oee'),    cls:'v'},
-          {l:'Meses \u2265 90%', v:txt('kv3-acima'),  cls:'v'},
+          {l:'Meses dentro da meta de HE', v:txt('kv3-acima'),  cls:'v'},
           {l:'Meses < 90%',     v:txt('kv3-abaixo'), cls:'r'}
         ])
-      + '<div class="aviso">Meta de efici\u00eancia: 90% \u2014 Verde \u2265 90% \u00b7 Amarelo \u2265 80% \u00b7 Vermelho < 80%</div>'
+      + '<div class="aviso">Depend\u00eancia de HE: meta \u2264 ' + META_DEP_HE + '% do volume \u2014 Verde \u2264 ' + META_DEP_HE + '% \u00b7 Amarelo \u2264 15% \u00b7 Vermelho > 15%</div>'
       + secHdr('Gr\u00e1ficos — Efici\u00eancia')
       + gg([['cEfic2','Efici\u00eancia Mensal (detalhe)'],['cDeltaEf','Varia\u00e7\u00e3o de Efici\u00eancia'],['cEfic','Efici\u00eancia Geral'],['cMetaReal','Meta vs. Real']])
       + '<div class="footer"><span>Patrimar M\u00f3veis Ltda \u2014 PCP</span><span>Gerado em ' + dataGer + '</span></div>';
@@ -15983,7 +15977,7 @@ input:disabled, select:disabled {
       + secHdr('KPIs Executivos')
       + kRow([
           {l:'Produ\u00e7\u00e3o',   v:txt('rex-prod-val'), cls:'b'},
-          {l:'Efici\u00eancia',v:txt('rex-ef-val'),   cls:'v'},
+          {l:'Pe\u00e7as perdidas por falta e atraso',v:txt('rex-ef-val'),   cls:'v'},
           {l:'Absenteísmo', v:txt('rex-abs-val'),  cls:'y'},
           {l:'Ticket',      v:txt('rex-tkt-val'),  cls:'b'}
         ])
@@ -20289,9 +20283,15 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b76';
+var APP_VERSAO = 'b77';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b77', data:'10/09/2026', itens:[
+    'Independencia de HE aposentada. Era o mesmo fato da Dependencia de HE (pecas de hora extra ÷ entregues) invertido, contra uma meta derivada do proprio realizado, com outra meta (90%) — JUN/26 saia verde numa tela e vermelho na outra. Fica um indicador so, com uma meta so: Dependencia de HE ≤ 8% do volume (aba METAS).',
+    'Onde a dependencia ja aparecia na mesma tela, o card antigo nao foi convertido, foi trocado pelo que faltava na historia: no Resumo virou Pecas Perdidas por falta e atraso; na aba Eficiencia o card saiu (a Dependencia ja estava la); no Briefing sairam Independencia e Margem de Melhoria, e o cabecalho diz quanto veio de hora extra.',
+    'Convertidos: Visao Geral (card, bullet e grafico), Eficiencia (Meses na meta, grafico de evolucao), Comparativo (delta com sinal invertido: cair e bom), Ano a Ano, Dados (coluna Dep. HE %), PPCP (painel industrial), Briefing (achado, pauta, SWOT, tabela), PDF, CSV e tooltips.',
+    'META_EF saiu do editor de metas. A linha na aba METAS pode ficar; e ignorada.'
+  ]},
   { v:'b76', data:'10/09/2026', itens:[
     'Metas oficiais editaveis pelo app: botao "Metas oficiais" na barra lateral abre as seis metas com valor, vigencia, origem e observacao. Salvar grava na aba METAS (com data) e vale na hora em todo o painel.',
     'Governanca: origem e vigencia obrigatorias em toda linha alterada; o Apps Script recusa chave desconhecida e valor ≤ 0. Republicar o Apps Script.'
