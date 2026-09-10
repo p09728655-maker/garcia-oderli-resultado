@@ -2,12 +2,12 @@
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Dashboard — Capacidade &amp; Eficiência 2025/2026</title>
+<title>RitmoPatrimar · Resultado</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#111111">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PPCP Capacidade">
+<meta name="apple-mobile-web-app-title" content="RP Resultado">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <!--
@@ -1057,10 +1057,49 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-p{color:var(--ds-ruim)}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
-#tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style>  <link rel="manifest" href="./manifest.webmanifest">
+#tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style>
   <link rel="icon" href="./favicon-32.png">
 </head>
 <body><div id="alertas-banner" style="display: none;"></div>
+<!-- ══ ENTRADA DO APP ══
+     Mesma entrada do RitmoPatrimar Embalagem: logo, nome, pulso e a frase.
+     Fica 1,4 s (ou até o clique) e some com fade. Não bloqueia nada: o
+     painel carrega por baixo. Em segunda abertura na mesma sessão não
+     aparece — só na entrada de verdade. -->
+<style>
+#splash{position:fixed;inset:0;z-index:200000;background:#0b0b0b;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:22px;cursor:pointer;transition:opacity .45s ease;
+  font-family:'Segoe UI',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+#splash.off{opacity:0;pointer-events:none}
+#splash .sp-logo{width:220px;height:auto;background:#fff;border-radius:12px;padding:12px 18px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+#splash .sp-nome{font-size:clamp(2.4rem,5.4vw,4.6rem);font-weight:900;letter-spacing:.14em;color:#fff;line-height:1;
+  font-family:'Bahnschrift','Arial Narrow','Segoe UI',Arial,sans-serif;text-transform:uppercase}
+#splash .sp-sub{font-size:clamp(1rem,2.2vw,1.7rem);font-weight:800;letter-spacing:.42em;color:#F5A623;margin-top:-10px;text-transform:uppercase}
+#splash .sp-pulso{width:min(300px,60vw);height:36px}
+#splash .sp-frase{font-size:1.15rem;font-weight:700;color:#e8e8e8;letter-spacing:.01em}
+#splash .sp-frase b{color:#FF5722}
+#splash .sp-ver{position:absolute;bottom:18px;font:600 11px Consolas,monospace;color:#5f6b78;letter-spacing:.06em}
+@media (prefers-reduced-motion: reduce){ #splash{transition:none} }
+</style>
+<div id="splash" onclick="this.classList.add('off')" aria-label="Entrada">
+  <img class="sp-logo" src="logo-patrimar.jpg" alt="Patrimar Móveis" onerror="this.style.display='none'">
+  <div class="sp-nome">RitmoPatrimar</div>
+  <div class="sp-sub">Resultado</div>
+  <svg class="sp-pulso" viewBox="0 0 300 36" fill="none" stroke="#FF5722" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M0 18 H120 L138 18 L150 4 L162 32 L174 18 H300"/>
+  </svg>
+  <div class="sp-frase">O resultado do mês, em uma tela<b>.</b></div>
+  <div class="sp-ver" id="splash-ver"></div>
+</div>
+<script>
+(function(){
+  var el=document.getElementById('splash'); if(!el) return;
+  var vez=false; try{ vez=!sessionStorage.getItem('rp_splash'); sessionStorage.setItem('rp_splash','1'); }catch(e){ vez=true; }
+  if(!vez){ el.parentNode.removeChild(el); return; }
+  setTimeout(function(){ el.classList.add('off'); }, 1400);
+  el.addEventListener('transitionend', function(){ if(el.classList.contains('off')&&el.parentNode) el.parentNode.removeChild(el); });
+})();
+</script>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -1071,7 +1110,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
            onerror="this.parentElement.innerHTML='<svg viewBox=&quot;0 0 24 24&quot;><path d=&quot;M3 13h4v8H3v-8zm7-6h4v14h-4V7zm7-4h4v18h-4V3z&quot;></path></svg>';this.parentElement.classList.remove('hIcon-logo')">
     </div>
     <div>
-      <h1>Capacidade &amp; <span>Eficiência</span></h1>
+      <h1>RitmoPatrimar <span>Resultado</span></h1>
       <div class="hBadge" id="hBadge">▸ ANÁLISE 2025 / 2026 — DADOS REAIS DA PLANILHA</div>
     </div>
   </div>
@@ -1184,12 +1223,12 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 <!-- ══ ABAS DE NAVEGAÇÃO (4 grupos MES) ══ -->
 <nav class="pageNav" id="main-nav">
   <!-- 0 · REUNIÃO — primeira porque é a tela que se abre na reunião -->
-  <button class="pTab" data-group="reuniao" onclick="mudarGrupo('reuniao',this)">
+  <button class="pTab on" data-group="reuniao" onclick="mudarGrupo('reuniao',this)">
     <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4z"></path></svg>
     Reunião
   </button>
   <!-- 1 · VISÃO GERAL -->
-  <button class="pTab on" data-group="geral" onclick="mudarGrupo('geral',this)">
+  <button class="pTab" data-group="geral" onclick="mudarGrupo('geral',this)">
     <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 13h4v8H3v-8zm7-6h4v14h-4V7zm7-4h4v18h-4V3z"></path></svg>
     Visão Geral
   </button>
@@ -1740,7 +1779,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 <div class="page" id="page-ano-a-ano"><div class="aaa-hdr"><div class="aaa-hdr-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v2H3V3zm0 8h18v2H3v-2zm0 8h18v2H3v-2zm16-14l-4 4 4 4"></path></svg></div><div><div class="aaa-title">Comparação Ano a Ano</div><div class="aaa-sub">Evolução de cada mês comparado ao mesmo mês do ano anterior</div></div></div><div class="aaa-charts" style="display: grid;"><div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Produção por mês</div><canvas id="aaa-c-prod" height="160" width="300" style="width: 300px; height: 160px;"></canvas><div class="aaa-legend" id="aaa-lg-prod"><span class="aaa-li"><span class="aaa-ld" style="background:#F5A623"></span>2025</span><span class="aaa-li"><span class="aaa-ld" style="background:#FF9800"></span>2026</span></div></div><div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Eficiência % por mês</div><canvas id="aaa-c-ef" height="160" width="300" style="width: 300px; height: 160px;"></canvas><div class="aaa-legend" id="aaa-lg-ef"><span class="aaa-li"><span class="aaa-ld" style="background:#F5A623"></span>2025</span><span class="aaa-li"><span class="aaa-ld" style="background:#FF9800"></span>2026</span></div></div><div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Absenteísmo % por mês</div><canvas id="aaa-c-abs" height="160" width="300" style="width: 300px; height: 160px;"></canvas><div class="aaa-legend" id="aaa-lg-abs"><span class="aaa-li"><span class="aaa-ld" style="background:#F5A623"></span>2025</span><span class="aaa-li"><span class="aaa-ld" style="background:#FF9800"></span>2026</span></div></div></div><div class="aaa-wrap" style="display: block;"><table class="aaa-table"><thead id="aaa-thead"><tr><th>Mês</th><th style="color:#F5A623">2025 Prod</th><th style="color:#F5A623">2025 Ef%</th><th style="color:#F5A623">2025 Abs%</th><th class="aaa-sep" style="color:var(--t3)">Δ Prod%</th><th style="color:var(--t3)">Δ Ef pp</th><th style="color:#FF9800">2026 Prod</th><th style="color:#FF9800">2026 Ef%</th><th style="color:#FF9800">2026 Abs%</th></tr></thead><tbody id="aaa-tbody"><tr><td class="aaa-mes">JAN</td><td class="aaa-val">31.041</td><td class="aaa-val">90.0%</td><td class="aaa-val">11.5%</td><td class="aaa-var aaa-sep neg">-27.7%</td><td class="aaa-var neg">-1.9 pp</td><td class="aaa-val">22.437</td><td class="aaa-val">88.1%</td><td class="aaa-val">9.0%</td></tr><tr><td class="aaa-mes">FEV</td><td class="aaa-val">30.042</td><td class="aaa-val">76.8%</td><td class="aaa-val">17.2%</td><td class="aaa-var aaa-sep pos">+8.3%</td><td class="aaa-var pos">+10.1 pp</td><td class="aaa-val">32.547</td><td class="aaa-val">87.0%</td><td class="aaa-val">12.6%</td></tr><tr><td class="aaa-mes">MAR</td><td class="aaa-val">33.101</td><td class="aaa-val">81.1%</td><td class="aaa-val">9.8%</td><td class="aaa-var aaa-sep neg">-16.6%</td><td class="aaa-var pos">+20.0 pp</td><td class="aaa-val">27.600</td><td class="aaa-val">101.1%</td><td class="aaa-val">13.9%</td></tr><tr><td class="aaa-mes">ABR</td><td class="aaa-val">35.720</td><td class="aaa-val">79.7%</td><td class="aaa-val">9.9%</td><td class="aaa-var aaa-sep neg">-18.3%</td><td class="aaa-var pos">+12.6 pp</td><td class="aaa-val">29.195</td><td class="aaa-val">92.3%</td><td class="aaa-val">15.1%</td></tr><tr><td class="aaa-mes">MAI</td><td class="aaa-val">36.450</td><td class="aaa-val">80.1%</td><td class="aaa-val">9.9%</td><td class="aaa-var aaa-sep neg">-8.6%</td><td class="aaa-var pos">+7.7 pp</td><td class="aaa-val">33.330</td><td class="aaa-val">87.8%</td><td class="aaa-val">10.4%</td></tr><tr><td class="aaa-mes">JUN</td><td class="aaa-val">25.468</td><td class="aaa-val">84.0%</td><td class="aaa-val">11.3%</td><td class="aaa-var aaa-sep pos">+19.6%</td><td class="aaa-var pos">+7.4 pp</td><td class="aaa-val">30.451</td><td class="aaa-val">91.5%</td><td class="aaa-val">10.7%</td></tr><tr><td class="aaa-mes">JUL</td><td class="aaa-val">31.810</td><td class="aaa-val">95.9%</td><td class="aaa-val">11.8%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-95.9 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">AGO</td><td class="aaa-val">34.096</td><td class="aaa-val">92.0%</td><td class="aaa-val">11.8%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-92.0 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">SET</td><td class="aaa-val">36.145</td><td class="aaa-val">91.8%</td><td class="aaa-val">11.7%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-91.8 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">OUT</td><td class="aaa-val">33.123</td><td class="aaa-val">89.9%</td><td class="aaa-val">12.8%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-89.9 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">NOV</td><td class="aaa-val">23.332</td><td class="aaa-val">91.0%</td><td class="aaa-val">14.5%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-91.0 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">DEZ</td><td class="aaa-val">30.939</td><td class="aaa-val">79.6%</td><td class="aaa-val">14.6%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-79.6 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr></tbody></table></div><div class="aaa-empty" id="aaa-empty" style="display: none;">Sem dados suficientes — importe a planilha.</div></div>
 
 <!-- ══ PÁGINA: RESUMO EXECUTIVO ══ -->
-<div class="page on" id="page-resumo">
+<div class="page" id="page-resumo">
 
 <!-- VEREDITO EXECUTIVO — headline única, entendível em segundos -->
 <div id="exec-veredito" style="background:linear-gradient(135deg,var(--panel),rgba(244,67,54,.04));border:1px solid var(--b);border-left:5px solid #F44336;border-radius:var(--r);padding:26px 30px;margin-bottom:18px">
@@ -4388,7 +4427,7 @@ body.pg-reuniao aside.sidebar::-webkit-scrollbar-thumb { background: var(--b); b
 #page-reuniao .reu-link:hover .reu-lbl::after { content: ' ↗'; color: var(--cyan); }
 @media (max-width: 1100px) { #page-reuniao .reu-row3 { grid-template-columns: 1fr !important; } }
 </style>
-<div class="page" id="page-reuniao">
+<div class="page on" id="page-reuniao">
   <div class="pageHdr">
     <div class="pageHdrIcon" style="background:#F5A623">
       <svg viewBox="0 0 24 24" fill="var(--bg)"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"></path></svg>
@@ -7081,7 +7120,7 @@ function bindCardTooltips(dados){
 /* ════════════════════════════════════════════════════════════
    NAVEGAÇÃO POR ABAS
 ════════════════════════════════════════════════════════════ */
-var paginaAtiva='resumo';
+var paginaAtiva='reuniao';   /* a Reunião é a porta de entrada */
 
 function mudarPagina(id, btn){
   paginaAtiva=id;
@@ -12730,8 +12769,8 @@ function cfInicializar() {
   });
 
   /* Estado ativo */
-  var _grupoAtivo = 'geral';
-  var _subAtivo   = 'resumo';
+  var _grupoAtivo = 'reuniao';
+  var _subAtivo   = 'reuniao';
 
   /* ════════════════════════════════════════
      2. CSS
@@ -12957,11 +12996,19 @@ function cfInicializar() {
      8. INICIALIZAÇÃO
   ════════════════════════════════════════ */
   function _init() {
-    /* Renderiza sub-nav inicial (VISÃO GERAL → visao) */
-    renderSubNav('geral', 'visao');
-
-    /* Garante que a aba de grupo correta está ativa */
-    _restoreGroupTab('geral');
+    /* Porta de entrada: Reunião do Mês. ?aba=<id> (ou #<id>) abre outra —
+       é o que os atalhos do ícone do app usam (manifest.json → shortcuts). */
+    var pedida = null;
+    try {
+      var q = new URLSearchParams(location.search).get('aba') || (location.hash||'').replace(/^#/, '');
+      if (q && document.getElementById('page-' + q) && PAGE_TO_GROUP[q]) pedida = q;
+    } catch (e) {}
+    var g0 = pedida ? PAGE_TO_GROUP[pedida] : 'reuniao';
+    var p0 = pedida || 'reuniao';
+    _grupoAtivo = g0; _subAtivo = p0;
+    if (typeof _nav4_mpOrig === 'function') _nav4_mpOrig(p0, null);
+    renderSubNav(g0, p0);
+    _restoreGroupTab(g0);
 
     /* Quando o módulo PPCP cria pTab-ppcp, ele está oculto pelo CSS.
        Mas garantimos que page-ppcp (quando criada) entra no mapa. */
@@ -19289,7 +19336,7 @@ function printAtiva(){
         +'padding:8px 22px;border-top:1px solid #edf2f7;margin-top:8px}'
       +'</style></head><body>'
       +'<div class="hd"><div class="hdrow">'+(typeof logoImprimir==='function'?logoImprimir(30):'')+'<div>'
-      +'<div class="lb">PPCP · Capacidade &amp; Eficiência — Patrimar Móveis</div>'
+      +'<div class="lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
       +'<h1>Produção por Produto e Volumes — '+rotPer+'</h1>'
       +'<div class="sb">O que a fábrica fabricou, código a código · fonte: reporte mensal do ERP (transação 3)</div>'
       +'</div></div></div>'
@@ -19301,7 +19348,7 @@ function printAtiva(){
       +tabFam
       +listagem
       +'</div>'
-      +'<div class="ft"><span>Dashboard PPCP — Capacidade &amp; Eficiência</span>'
+      +'<div class="ft"><span>RitmoPatrimar Resultado — PPCP</span>'
       +'<span>Gerado em: '+hoje+'</span></div>'
       +'</body></html>');
     w.document.close();
@@ -19916,11 +19963,11 @@ function printAtiva(){
         +'padding:8px 22px;border-top:1px solid #edf2f7;margin-top:10px}'
       +'</style></head><body>'
       +'<div class="hd"><div class="hdrow">'+(typeof logoImprimir==='function'?logoImprimir(30):'')+'<div>'
-      +'<div class="lb">PPCP · Capacidade &amp; Eficiência — Patrimar Móveis</div>'
+      +'<div class="lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
       +'<h1>Reunião do Mês — '+per+'</h1>'
       +'<div class="sb">Plano · entrega · capacidade · carteira · plano de ação</div></div></div></div>'
       +'<div class="bd">'+corpo.innerHTML+'</div>'
-      +'<div class="ft"><span>Dashboard PPCP — Capacidade &amp; Eficiência</span><span>Gerado em: '+hoje+'</span></div>'
+      +'<div class="ft"><span>RitmoPatrimar Resultado — PPCP</span><span>Gerado em: '+hoje+'</span></div>'
       +'</body></html>');
     w.document.close();
     w.addEventListener('afterprint', function(){ w.close(); });
@@ -20634,6 +20681,7 @@ var APP_HISTORICO = [
     var el = document.getElementById('app-version');
     if (!el) return;
     el.textContent = 'v' + APP_DATA.split('/').reverse().join('.') + ' · ' + APP_VERSAO;
+    var sv=document.getElementById('splash-ver'); if(sv) sv.textContent='v'+APP_DATA.split('/').reverse().join('.')+' · '+APP_VERSAO;
     el.title = 'Versão publicada — clique para ver o que mudou';
     el.style.pointerEvents = 'auto';
     el.style.cursor = 'pointer';

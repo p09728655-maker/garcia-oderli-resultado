@@ -1,4 +1,4 @@
-/* Service Worker — PPCP Capacidade & Eficiência
+/* Service Worker — RitmoPatrimar Resultado (PPCP Patrimar)
    Network-first (sem cache HTTP) para o shell do app, permite abrir offline
    com os últimos dados sincronizados. */
 
