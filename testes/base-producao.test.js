@@ -181,5 +181,32 @@ const base = REGS[REGS.length - 1];
     f.length > 0);
 });
 
+/* ══ PLANO DE AÇÃO — card "Ações críticas" da Reunião ══
+   Crítica = em aberto E (prioridade Vermelho OU prazo vencido). Concluída e
+   Cancelada nunca contam. Status vazio é Aberta. Datas ISO comparam como
+   texto — se alguém gravar dd/mm/aaaa, a comparação quebra em silêncio, por
+   isso o Apps Script devolve Data como ISO. */
+sec('acoesResumo() — ações críticas');
+const HOJE = '2026-09-10';
+const ACOES = [
+  { id:'1', prioridade:'Vermelho', prazo:'2026-09-30', status:'Aberta' },        /* crítica: vermelha        */
+  { id:'2', prioridade:'Amarelo',  prazo:'2026-09-01', status:'Em andamento' },  /* crítica: vencida         */
+  { id:'3', prioridade:'Amarelo',  prazo:'2026-10-15', status:'Aberta' },        /* aberta, não crítica      */
+  { id:'4', prioridade:'Vermelho', prazo:'2026-08-01', status:'Concluída' },     /* fechada: não conta       */
+  { id:'5', prioridade:'Vermelho', prazo:'2026-08-01', status:'Cancelada' },     /* fechada: não conta       */
+  { id:'6', prioridade:'Verde',    prazo:'',           status:'' },              /* aberta sem prazo         */
+  { id:'7', prioridade:'Verde',    prazo:'2026-09-10', status:'Aberta' },        /* vence HOJE: não vencida  */
+];
+const ra = U.acoesResumo(ACOES, HOJE);
+ok('total',        ra.total,      7, 0);
+ok('abertas',      ra.abertas,    5, 0);
+ok('vencidas',     ra.vencidas,   1, 0);
+ok('críticas',     ra.criticas,   2, 0);
+ok('concluídas',   ra.concluidas, 1, 0);
+ok('canceladas',   ra.canceladas, 1, 0);
+afirma('lista vazia não quebra',   U.acoesResumo([], HOJE).criticas === 0);
+afirma('null não quebra',          U.acoesResumo(null, HOJE).total === 0);
+afirma('sem "hoje" ninguém vence', U.acoesResumo(ACOES, '').vencidas === 0);
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

@@ -20,6 +20,12 @@
  *   que não existir, preservando a ordem das colunas da planilha. NÃO escreve
  *   na coluna de previsão nem na aba PLANO MESTRE: o plano é do planejamento,
  *   e deixar o app sobrescrevê-lo permitiria apagar o plano sem querer.
+ *
+ * ACOES — plano de ação da Reunião do Mês (uma linha por ação/decisão).
+ *   doGet devolve a aba inteira em `acoes`; doPost aceita { secret, acoes:[…] }
+ *   e casa cada item pelo `id`. Quem tem `atualizadoEm` mais novo vence: dois
+ *   navegadores editando a mesma ação não se sobrescrevem às cegas. A aba é
+ *   criada na primeira gravação, com o cabeçalho de ACOES_CAMPOS.
  */
 
 /* Aba com uma linha por mês (a que alimenta o dashboard). */
@@ -36,6 +42,10 @@ var LINHA_VOLUMES = 'TOTAL VOLUMES';
    quantidade) — alimentada pelo ReporteVolumes.gs. O dashboard usa para a
    listagem de produtos produzidos por código. */
 var ABA_REPORTE = 'REPORTE_VOLUMES';
+/* Aba do plano de ação da Reunião do Mês. Uma linha por ação ou decisão. */
+var ABA_ACOES = 'ACOES';
+var ACOES_CAMPOS = ['id','tipo','prioridade','kpi','desvio','causa','acao',
+  'responsavel','prazo','status','mesRef','criadoEm','atualizadoEm'];
 
 var MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
@@ -59,6 +69,7 @@ function doGet() {
     saida = { ok: true, dados: dados, plano: plano.produtos,
               planoVolumes: plano.volumes, planoLotes: plano.lotes,
               producaoItens: lerReporteVolumes(ss),
+              acoes: lerAcoes(ss),
               geradoEm: new Date().toISOString() };
   } catch (e) {
     saida = { ok: false, erro: String(e && e.message || e) };
@@ -79,11 +90,23 @@ function doPost(e) {
     lock.waitLock(30000);   /* duas abas salvando ao mesmo tempo não se atropelam */
     var corpo = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (SECRET && corpo.secret !== SECRET) throw new Error('Senha inválida.');
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
     var recebidos = corpo.dados;
-    if (!recebidos || !recebidos.length) throw new Error('Nada para gravar.');
+    var acoes = corpo.acoes;
+    var temDados = recebidos && recebidos.length;
+    var temAcoes = acoes && acoes.length;
+    if (!temDados && !temAcoes) throw new Error('Nada para gravar.');
 
-    var res = gravarHistorico(SpreadsheetApp.getActiveSpreadsheet(), recebidos);
-    saida = { ok: true, atualizados: res.atualizados, incluidos: res.incluidos };
+    saida = { ok: true };
+    if (temDados) {
+      var res = gravarHistorico(ss, recebidos);
+      saida.atualizados = res.atualizados; saida.incluidos = res.incluidos;
+    }
+    if (temAcoes) {
+      var ra = gravarAcoes(ss, acoes);
+      saida.acoesAtualizadas = ra.atualizados; saida.acoesIncluidas = ra.incluidas;
+      saida.acoesIgnoradas = ra.ignoradas;
+    }
   } catch (err) {
     saida = { ok: false, erro: String(err && err.message || err) };
   } finally {
@@ -334,6 +357,103 @@ function aplicarPlano(dados, plano) {
   });
 }
 
+/* ══ ACOES (plano de ação da Reunião do Mês) ══
+   Tudo é texto: id, datas em ISO (AAAA-MM-DD) e status por extenso. O Sheets
+   converte "2026-09-30" em Data sozinho, por isso a leitura devolve Data como
+   ISO de novo — senão o painel receberia um timestamp e a comparação de prazo
+   quebraria. Aba ausente → []. */
+function lerAcoes(ss) {
+  var aba = ss.getSheetByName(ABA_ACOES);
+  if (!aba || aba.getLastRow() < 2) return [];
+  var linhas = aba.getDataRange().getValues();
+  var cab = linhas[0].map(function (c) { return txt(c); });
+  var out = [];
+  for (var r = 1; r < linhas.length; r++) {
+    var rec = {};
+    for (var c = 0; c < cab.length; c++) {
+      if (!cab[c]) continue;
+      rec[cab[c]] = acaoTxt(linhas[r][c]);
+    }
+    if (!rec.id) continue;
+    out.push(rec);
+  }
+  return out;
+}
+
+function gravarAcoes(ss, recebidas) {
+  var aba = ss.getSheetByName(ABA_ACOES);
+  if (!aba) {
+    aba = ss.insertSheet(ABA_ACOES);
+    aba.getRange(1, 1, 1, ACOES_CAMPOS.length).setValues([ACOES_CAMPOS]);
+    aba.setFrozenRows(1);
+  } else if (aba.getLastRow() === 0) {
+    aba.getRange(1, 1, 1, ACOES_CAMPOS.length).setValues([ACOES_CAMPOS]);
+  }
+  var linhas = aba.getDataRange().getValues();
+  var cab = linhas[0].map(function (c) { return txt(c); });
+  var col = {};
+  cab.forEach(function (n, i) { if (n && col[n] === undefined) col[n] = i; });
+  if (col.id === undefined) throw new Error('Coluna "id" não encontrada em ' + ABA_ACOES + '.');
+
+  var mapa = {};
+  for (var r = 1; r < linhas.length; r++) {
+    var id = acaoTxt(linhas[r][col.id]);
+    if (id) mapa[id] = r;
+  }
+
+  var atualizados = 0, incluidas = 0, ignoradas = 0;
+  recebidas.forEach(function (a) {
+    if (!a || !a.id) return;
+    var id = String(a.id);
+    var idx = mapa[id];
+    var linha;
+    if (idx === undefined) {
+      linha = new Array(cab.length).fill('');
+      linhas.push(linha);
+      idx = linhas.length - 1;
+      mapa[id] = idx;
+      incluidas++;
+    } else {
+      linha = linhas[idx];
+      /* A planilha tem versão mais nova desta ação: outro navegador editou
+         depois. Não sobrescrever. */
+      var naPlanilha = acaoTxt(linha[col.atualizadoEm]);
+      if (naPlanilha && a.atualizadoEm && naPlanilha > String(a.atualizadoEm)) { ignoradas++; return; }
+      atualizados++;
+    }
+    Object.keys(a).forEach(function (campo) {
+      var c = col[campo];
+      if (c === undefined) return;
+      linha[c] = (a[campo] === null || a[campo] === undefined) ? '' : String(a[campo]);
+    });
+  });
+
+  var largura = cab.length;
+  var bloco = linhas.slice(1).map(function (l) {
+    var out = l.slice(0, largura);
+    while (out.length < largura) out.push('');
+    return out;
+  });
+  if (bloco.length) {
+    /* Como texto: impede o Sheets de reconverter prazo em Data e id em número. */
+    var rng = aba.getRange(2, 1, bloco.length, largura);
+    rng.setNumberFormat('@');
+    rng.setValues(bloco);
+  }
+  return { atualizados: atualizados, incluidas: incluidas, ignoradas: ignoradas };
+}
+
+/* Célula da ACOES → texto. Data vira ISO (AAAA-MM-DD). */
+function acaoTxt(v) {
+  if (v === null || v === undefined) return '';
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    if (isNaN(v.getTime())) return '';
+    var m = v.getMonth() + 1, d = v.getDate();
+    return v.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+  }
+  return String(v).trim();
+}
+
 /* ══ HELPERS DE CABEÇALHO ══ */
 function normaliza(v) {
   return String(v === null || v === undefined ? '' : v)
@@ -381,6 +501,9 @@ function testeManual() {
   var dados = lerHistorico(ss);
   aplicarPlano(dados, plano);
   Logger.log('Meses no ' + ABA_HISTORICO + ': ' + dados.length);
+  var acoes = lerAcoes(ss);
+  Logger.log('Ações na ' + ABA_ACOES + ': ' + acoes.length
+    + (acoes.length ? ' (' + acoes.filter(function (a) { return a.status !== 'Concluída' && a.status !== 'Cancelada'; }).length + ' em aberto)' : ' — aba ausente ou vazia, criada na primeira gravação'));
 
   dados.filter(function (r) { return r.ano === new Date().getFullYear(); })
        .forEach(function (r) {

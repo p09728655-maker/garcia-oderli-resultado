@@ -5008,6 +5008,9 @@ function _carregarDoSheetsAoAbrir(){
       if (json.producaoItens && json.producaoItens.length) {
         try { localStorage.setItem('dash_prod_itens_v1', JSON.stringify(json.producaoItens)); } catch (e) {}
       }
+      /* Plano de ação da Reunião (aba ACOES). Mescla com o local: a versão
+         mais nova de cada ação vence, e o que só existe aqui é reenviado. */
+      if (json.acoes && window.Acoes) { try { window.Acoes.mesclar(json.acoes); } catch (e) { console.warn('ACOES:', e); } }
       if (typeof render === 'function') render();
       if (window.DashBus) window.DashBus.emit('dados:salvos', dados);
       console.info('Dados carregados do Google Sheets: ' + dados.length + ' registros.');
@@ -5370,8 +5373,28 @@ window.DashUtils = (function() {
              tendMes: tend, ultimo: ultimo, hist: hist };
   }
 
+  /* ── PLANO DE AÇÃO (Reunião do Mês) ──────────────────────────────────────
+     Conta pura, para o card "Ações críticas" e para o teste. Crítica = em
+     aberto E (prioridade Vermelho OU prazo vencido). Datas em ISO
+     (AAAA-MM-DD) comparam como texto. Status vazio conta como Aberta. */
+  function acoesResumo(lista, hoje) {
+    var o = { total:0, abertas:0, vencidas:0, criticas:0, concluidas:0, canceladas:0 };
+    (lista || []).forEach(function (a) {
+      if (!a) return;
+      o.total++;
+      var st = String(a.status || 'Aberta');
+      if (st === 'Concluída') { o.concluidas++; return; }
+      if (st === 'Cancelada') { o.canceladas++; return; }
+      o.abertas++;
+      var venc = !!(a.prazo && hoje && String(a.prazo) < String(hoje));
+      if (venc) o.vencidas++;
+      if (venc || String(a.prioridade) === 'Vermelho') o.criticas++;
+    });
+    return o;
+  }
+
   return { getDias:getDias, getFat:getFat, getProd:getProd,
-           periodo:periodo, carteira:carteira,
+           periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
 
@@ -19280,11 +19303,21 @@ function printAtiva(){
    REUNIÃO DO MÊS — a tela que substitui a navegação
    ─────────────────────────────────────────────────────────────────────────
    Em reunião de diretoria, trocar de aba custa o fio da conversa. Esta tela
-   junta, na ordem em que a reunião acontece: o veredito do plano, o que foi
-   entregue, a que custo, se o plano cobre a demanda e o que explica o desvio
-   (mix e volumes). Cada bloco vem de módulo que já apura — pmApurado() para
-   o plano e pcApurado() para mix/volumes —, então nenhum número aqui pode
-   divergir das abas de origem: não há segunda conta.
+   junta, na ordem em que a reunião acontece: o veredito do plano, sete
+   indicadores e o plano de ação. Sete, não dezoito: a tela anterior tinha
+   ticket, vendido, faturado, fator de embalagem, peso, família líder e dois
+   ritmos em unidades diferentes — tudo nível 2, que continua nas abas de
+   origem e a que cada card leva ao clicar. Os números vêm de
+   DashUtils.periodo() e de pmApurado(), então nenhum diverge das abas de
+   origem: não há segunda conta.
+
+   Os sete: aderência ao plano (c/HE e s/HE), produção entregue (normal + HE),
+   ritmo demonstrado vs exigido, carteira em dias úteis de produção,
+   dependência de hora extra, absenteísmo e ações críticas em aberto.
+
+   Plano de ação: regra da reunião — nenhum indicador vermelho sem causa,
+   ação, responsável e prazo. Fica na aba ACOES da planilha (fonte), com
+   cópia local para abrir offline. Ver window.Acoes.
 
    Período: último mês FECHADO do ano ativo como manchete, acumulado do ano
    ao lado. Um único mês marcado na sidebar troca a manchete (mão única, como
@@ -19307,7 +19340,10 @@ function printAtiva(){
      detalhe, o card leva à aba que o apura — nível 2 ou 3. É o que permite
      "sem navegação" na maior parte da reunião sem perder a profundidade. */
   function card(lbl,val,sub,cor,grande,ir){
-    var nav=ir?' onclick="reuIr(\''+ir+'\')" title="Ver o detalhe — '+ir+'" style="cursor:pointer;':' style="';
+    /* ir = id de aba (desce a pirâmide) ou '#id' (rola até um bloco desta tela) */
+    var nav=!ir?' style="'
+      : ir.charAt(0)==='#' ? ' onclick="reuFoco(\''+ir+'\')" title="Ver o plano de ação" style="cursor:pointer;'
+      : ' onclick="reuIr(\''+ir+'\')" title="Ver o detalhe — '+ir+'" style="cursor:pointer;';
     return '<div class="reu-card'+(grande?' reu-big':'')+(ir?' reu-link':'')+'"'+nav
       +'background:var(--panel);border:1px solid var(--b);border-top:3px solid '+cor+';'
       +'border-radius:var(--r);padding:'+(grande?'11px 15px':'9px 13px')+'">'
@@ -19363,6 +19399,158 @@ function printAtiva(){
      próprio período e para de depender da sidebar — sem mexer no filtro
      global, que continua valendo para as outras abas. */
   var reuAno = null, reuMes = null;
+
+  /* ── PLANO DE AÇÃO ───────────────────────────────────────────────────────
+     Fonte: aba ACOES da planilha, pelo mesmo Web App do HISTORICO. Cópia em
+     localStorage para a tela abrir offline e para a edição não esperar rede.
+     Cada ação leva `atualizadoEm` (ISO); na mesclagem e na planilha vence a
+     versão mais nova, então dois navegadores editando não se apagam.
+     Não há exclusão: ação errada vira "Cancelada" e some da lista. Assim o
+     registro do que foi combinado em reunião não desaparece. */
+  var AK = 'dash_acoes_v1';
+  var ACAO_STATUS = ['Aberta','Em andamento','Concluída','Cancelada'];
+  var ACAO_PRIOR  = ['Vermelho','Amarelo','Verde'];
+  var ACAO_KPIS   = ['Aderência ao plano','Produção entregue','Ritmo demonstrado','Carteira a faturar',
+                     'Dependência de hora extra','Absenteísmo','Outro'];
+  function hojeISO(){
+    var d=new Date(), m=d.getMonth()+1, dd=d.getDate();
+    return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(dd<10?'0':'')+dd;
+  }
+  function esc(v){
+    return String(v===null||v===undefined?'':v).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
+  }
+  var Acoes = window.Acoes = {
+    lista: function(){ try{ return JSON.parse(localStorage.getItem(AK))||[]; }catch(e){ return []; } },
+    _grava: function(l){ try{ localStorage.setItem(AK, JSON.stringify(l)); }catch(e){} },
+    salvar: function(a){
+      var l=this.lista(), agora=new Date().toISOString();
+      a.atualizadoEm=agora;
+      if(!a.id){ a.id=(typeof uid==='function')?uid():String(Date.now()); a.criadoEm=agora; }
+      var achou=false;
+      for(var i=0;i<l.length;i++){ if(l[i].id===a.id){ l[i]=a; achou=true; break; } }
+      if(!achou) l.push(a);
+      this._grava(l);
+      this._enviar([a]);
+      if(window.DashBus) window.DashBus.emit('acoes:mudou', l);
+      return a;
+    },
+    /* Lista vinda da planilha. Mais novo vence; o que só existe aqui (criado
+       offline, ou antes de a aba existir) é reenviado. */
+    mesclar: function(remotas){
+      var l=this.lista(), mapa={}, rem={}, pend=[];
+      l.forEach(function(x){ if(x&&x.id) mapa[x.id]=x; });
+      (remotas||[]).forEach(function(r){
+        if(!r||!r.id) return; rem[r.id]=r;
+        var loc=mapa[r.id];
+        if(!loc || String(r.atualizadoEm||'') >= String(loc.atualizadoEm||'')) mapa[r.id]=r;
+      });
+      l.forEach(function(x){
+        if(!x||!x.id) return; var r=rem[x.id];
+        if(!r || String(x.atualizadoEm||'') > String(r.atualizadoEm||'')) pend.push(x);
+      });
+      var out=Object.keys(mapa).map(function(k){ return mapa[k]; });
+      this._grava(out);
+      if(pend.length) this._enviar(pend);
+      if(window.DashBus) window.DashBus.emit('acoes:mudou', out);
+    },
+    _enviar: function(itens){
+      if(typeof SHEETS_WEBAPP_URL==='undefined' || !SHEETS_WEBAPP_URL || !itens.length) return;
+      try{
+        fetch(SHEETS_WEBAPP_URL, { method:'POST', mode:'no-cors',
+          headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body: JSON.stringify({ secret: SHEETS_SECRET, acoes: itens }) })
+        .catch(function(err){ console.warn('Sync ACOES falhou (fica salvo localmente):', err); });
+      }catch(e){}
+    }
+  };
+
+  /* Ordem da tabela: abertas antes de fechadas; entre abertas, Vermelho >
+     Amarelo > Verde, e prazo mais próximo primeiro. */
+  function ordenarAcoes(l){
+    var pr={Vermelho:0,Amarelo:1,Verde:2};
+    return l.slice().sort(function(a,b){
+      var fa=(a.status==='Concluída'||a.status==='Cancelada')?1:0;
+      var fb=(b.status==='Concluída'||b.status==='Cancelada')?1:0;
+      if(fa!==fb) return fa-fb;
+      var pa=pr[a.prioridade]===undefined?3:pr[a.prioridade], pb=pr[b.prioridade]===undefined?3:pr[b.prioridade];
+      if(pa!==pb) return pa-pb;
+      return String(a.prazo||'9999').localeCompare(String(b.prazo||'9999'));
+    });
+  }
+  function fData(iso){
+    if(!iso) return '—';
+    var m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m?(m[3]+'/'+m[2]+'/'+m[1].slice(2)):esc(iso);
+  }
+  var mostrarFechadas=false;
+
+  function blocoAcoes(mesRef){
+    var hoje=hojeISO();
+    var todas=ordenarAcoes(Acoes.lista());
+    var vis=todas.filter(function(a){ return mostrarFechadas || !(a.status==='Concluída'||a.status==='Cancelada'); });
+    var corPr={Vermelho:'#F44336',Amarelo:'#FF9800',Verde:'#4CAF50'};
+    var linhas=vis.map(function(a){
+      var aberta=!(a.status==='Concluída'||a.status==='Cancelada');
+      var venc=aberta && a.prazo && a.prazo<hoje;
+      var cp=corPr[a.prioridade]||'var(--t3)';
+      return '<tr'+(aberta?'':' style="opacity:.55"')+'>'
+        +'<td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+cp+';margin-right:6px;vertical-align:middle"></span>'+esc(a.prioridade||'—')+'</td>'
+        +'<td>'+esc(a.tipo||'Ação')+'</td>'
+        +'<td><strong>'+esc(a.kpi||'—')+'</strong>'+(a.desvio?'<div style="color:var(--t3)">'+esc(a.desvio)+'</div>':'')+'</td>'
+        +'<td>'+esc(a.causa||'—')+'</td>'
+        +'<td>'+esc(a.acao||'—')+'</td>'
+        +'<td>'+esc(a.responsavel||'—')+'</td>'
+        +'<td style="white-space:nowrap;'+(venc?'color:#F44336;font-weight:700':'')+'">'+fData(a.prazo)+(venc?' · vencido':'')+'</td>'
+        +'<td style="white-space:nowrap">'+esc(a.status||'Aberta')+'</td>'
+        +'<td class="reu-noprint" style="white-space:nowrap">'
+          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar">✎</button> '
+          +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button>':'')
+        +'</td></tr>';
+    }).join('');
+    var vazio='<tr><td colspan="9" style="color:var(--t3);padding:14px 8px;text-align:center">'
+      +(todas.length?'Nenhuma ação em aberto. Marque "mostrar concluídas" para ver o histórico.'
+                    :'Nenhuma ação registrada. Todo indicador vermelho desta tela precisa de uma linha aqui: causa, ação, responsável e prazo.')
+      +'</td></tr>';
+    var opt=function(lista,sel){ return lista.map(function(v){ return '<option'+(v===sel?' selected':'')+'>'+esc(v)+'</option>'; }).join(''); };
+    var inp='style="width:100%;font-size:.74rem;padding:6px 8px"';
+    var form='<div id="reu-ac-form" class="reu-noprint" style="display:none;border:1px solid var(--b);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;background:rgba(0,0,0,.18)">'
+      +'<input type="hidden" id="ac-id">'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">'
+        +'<label style="font-size:.6rem;color:var(--t3)">Tipo<select id="ac-tipo" '+inp+'>'+opt(['Ação','Decisão'],'Ação')+'</select></label>'
+        +'<label style="font-size:.6rem;color:var(--t3)">Prioridade<select id="ac-prioridade" '+inp+'>'+opt(ACAO_PRIOR,'Vermelho')+'</select></label>'
+        +'<label style="font-size:.6rem;color:var(--t3)">Indicador<select id="ac-kpi" '+inp+'>'+opt(ACAO_KPIS,'Outro')+'</select></label>'
+        +'<label style="font-size:.6rem;color:var(--t3)">Responsável<input type="text" id="ac-responsavel" '+inp+' placeholder="quem responde"></label>'
+        +'<label style="font-size:.6rem;color:var(--t3)">Prazo<input type="date" id="ac-prazo" style="width:100%;font-size:.74rem;padding:6px 8px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:6px;color:var(--t1);font-family:var(--mono);color-scheme:dark"></label>'
+        +'<label style="font-size:.6rem;color:var(--t3)">Status<select id="ac-status" '+inp+'>'+opt(ACAO_STATUS,'Aberta')+'</select></label>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:8px">'
+        +'<label style="font-size:.6rem;color:var(--t3)">Desvio (o que o número mostrou)<input type="text" id="ac-desvio" '+inp+' placeholder="ex.: aderência 82% s/ HE em JUN/26"></label>'
+        +'<label style="font-size:.6rem;color:var(--t3)">Causa principal<input type="text" id="ac-causa" '+inp+' placeholder="por quê"></label>'
+        +'<label style="font-size:.6rem;color:var(--t3)">Ação<input type="text" id="ac-acao" '+inp+' placeholder="o que será feito"></label>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:10px;align-items:center">'
+        +'<button type="button" class="btn btn-c btn-sm" onclick="reuAcaoSalvar()">Salvar</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoFechar()">Cancelar</button>'
+        +'<span id="ac-erro" style="font-size:.68rem;color:#F44336"></span>'
+      +'</div></div>';
+    return '<div class="reu-sec" style="font-size:.55rem;letter-spacing:.13em;text-transform:uppercase;color:var(--t3);margin:11px 0 6px;padding-left:2px">▸ Plano de ação — regra da reunião: nenhum indicador vermelho sem causa, ação, responsável e prazo</div>'
+      +'<div id="reu-acoes" class="reu-acoes" style="background:var(--panel);border:1px solid var(--b);border-radius:var(--r);padding:10px 13px">'
+      +'<div class="reu-noprint" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'
+        +'<button type="button" class="btn btn-a btn-sm" onclick="reuAcaoNova()">+ Nova ação</button>'
+        +'<label style="font-size:.66rem;color:var(--t3);display:inline-flex;align-items:center;gap:5px;cursor:pointer">'
+          +'<input type="checkbox" '+(mostrarFechadas?'checked':'')+' onchange="reuAcaoMostrar(this.checked)" style="width:auto">mostrar concluídas e canceladas</label>'
+        +'<span style="margin-left:auto;font-size:.62rem;color:var(--t3)">aba ACOES da planilha · cópia local para abrir offline</span>'
+      +'</div>'
+      +form
+      +'<div style="overflow-x:auto"><table class="reu-tab" style="width:100%;border-collapse:collapse;font-size:.72rem">'
+        +'<thead><tr style="text-align:left;color:var(--t3);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase">'
+        +'<th style="padding:5px 6px">Prior.</th><th style="padding:5px 6px">Tipo</th><th style="padding:5px 6px">Indicador · desvio</th>'
+        +'<th style="padding:5px 6px">Causa</th><th style="padding:5px 6px">Ação</th><th style="padding:5px 6px">Responsável</th>'
+        +'<th style="padding:5px 6px">Prazo</th><th style="padding:5px 6px">Status</th><th class="reu-noprint"></th></tr></thead>'
+        +'<tbody>'+(linhas||vazio)+'</tbody></table></div>'
+      +'</div>';
+  }
 
   function pintarFiltro(todos, anoAtual, mesAtual, mesesDoAno){
     var alvo=document.getElementById('reu-filtro'); if(!alvo) return;
@@ -19434,12 +19622,8 @@ function printAtiva(){
     var A = anoTodo ? agregado(fechados) : agregado([rMes]);
     var Y = agregado(ateAqui);
     var pm=(typeof window.pmApurado==='function')?window.pmApurado():null;
-    var pcM=(typeof window.pcApurado==='function')?window.pcApurado(ano,mes):null;
-    var pcY=(typeof window.pcApurado==='function')?window.pcApurado(ano,''):null;
 
     /* ── 1 · manchete ── */
-    var planoMes=rMes.previsaoProducao||0;
-    var atMes=planoMes>0?(rMes.producaoReal/planoMes)*100:null;
     var manchete='';
     if(pm&&pm.ano===ano&&pm.titulo){
       manchete='<div style="background:linear-gradient(135deg,var(--panel),rgba(255,255,255,.02));border:1px solid var(--b);'
@@ -19453,118 +19637,82 @@ function printAtiva(){
         +'</div>';
     }
 
-    /* ── 2 · entrega (base: COM hora extra — o que saiu pela porta) ──
-       O card de produção mostra a separação normal x hora extra na própria
-       linha de apoio. Sem ela a diretoria lê o volume entregue como se fosse
-       capacidade da fábrica, e decide headcount por um número que só existe
-       porque houve hora extra. */
-    /* No "Ano todo" a manchete JÁ é o acumulado, então o segundo card seria o
-       mesmo número duas vezes com rótulos diferentes. Nesse estado ele vira a
-       aderência ao plano, que é a pergunta seguinte. */
-    var aderAno = (A.plano>0) ? (A.prod/A.plano)*100 : null;
-    var b2=card(anoTodo ? ('Produção de '+ano) : ('Produção de '+mes), fi(A.prod)+' pç',
+    var META_ABS_   =(typeof META_ABS    !=='undefined')?META_ABS    :3;
+    var META_DEP_HE_=(typeof META_DEP_HE !=='undefined')?META_DEP_HE :8;
+    var DUTEIS_     =(typeof DUTEIS      !=='undefined')?DUTEIS      :22;
+
+    /* ── 2 · entrega vs plano (base: COM hora extra — o que saiu pela porta) ──
+       Aderência tem card próprio, com a versão sem hora extra ao lado: 92,7%
+       do plano com 82,5% sem HE é a frase inteira, e cada metade sozinha
+       engana. O alvo é previsaoProducao (Plano Mestre), nunca `meta`, que é
+       derivada do realizado. O card de produção é volume, não veredito:
+       fica na cor da marca e a cor de decisão mora na aderência. */
+    var planoMes=rMes.previsaoProducao||0;
+    var atMes  =planoMes>0?(rMes.producaoReal/planoMes)*100:null;
+    var atMesSE=planoMes>0?(DashUtils.getProd(rMes)/planoMes)*100:null;
+    var aderAno  =(A.plano>0)?(A.prod/A.plano)*100:null;
+    var aderAnoSE=(A.plano>0)?(A.normal/A.plano)*100:null;
+    var ader   = anoTodo?aderAno:atMes;
+    var aderSE = anoTodo?aderAnoSE:atMesSE;
+    var planoRef = anoTodo?A.plano:planoMes;
+    var b2=card('Aderência ao plano de '+(anoTodo?ano:mes), ader!==null?(fd(ader,1)+'%'):'—',
+                ader!==null ? ('sem hora extra '+fd(aderSE,1)+'% · previsto '+fi(planoRef)+' pç')
+                            : 'sem previsão lançada no Plano Mestre',
+                ader===null?'#00E5FF':corMeta(ader,100), true, 'mestre')
+      +card('Produção de '+(anoTodo?ano:mes), fi(A.prod)+' pç',
                 fi(A.normal)+' normais + '+fi(A.deHE)+' em hora extra'
-                + (anoTodo
-                    ? (aderAno!==null?(' · '+fd(aderAno,1)+'% do previsto'):'')
-                    : (planoMes>0?(' · '+fd(atMes,1)+'% do plano do mês'):'')),
-                anoTodo ? (aderAno!==null?corMeta(aderAno,100):'#F5A623')
-                        : (planoMes>0?corMeta(atMes,100):'#F5A623'), true, 'mestre')
-      +(anoTodo
-        ? card('Aderência ao plano', aderAno!==null?(fd(aderAno,1)+'%'):'—',
-               A.plano>0?('previsto '+fi(A.plano)+' pç no período'):'sem previsão lançada',
-               aderAno===null?'#00E5FF':corMeta(aderAno,100), true, 'mestre')
-        : card('Acumulado do ano', fi(Y.prod)+' pç',
-               fi(Y.normal)+' normais + '+fi(Y.deHE)+' em hora extra'
-               + (pm&&pm.planoAno>0?(' · '+fd((Y.prod/pm.planoAno)*100,1)+'% do plano do ANO inteiro'):''),
-               '#F5A623', true, 'mestre'))
-      +(pm?card('Ritmo demonstrado', fi(pm.ritmoDem)+' pç/dia',
-              'exigido '+fi(pm.ritmoExig)+' pç/dia', pm.pctFolga>=0?'#4CAF50':'#F44336', true, 'mestre'):'')
-      +(pm&&pm.planoAberto>0?card('Falta produzir', fi(pm.planoAberto)+' pç',
-              pm.diasAbertos+' dias úteis · '+fi(pm.ritmoNecR)+' pç/dia', '#FF9800', true, 'mestre'):'');
+                +(anoTodo?'':(' · acumulado do ano '+fi(Y.prod)+' pç')),
+                '#F5A623', true, 'mestre')
+      +(pm&&pm.ano===ano?card('Ritmo demonstrado', fi(pm.ritmoDem)+' pç/dia',
+                'exigido '+fi(pm.ritmoExig)+' pç/dia · jornada normal'
+                +(pm.planoAberto>0?(' · falta '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'):''),
+                pm.cor||(pm.pctFolga>=0?'#4CAF50':'#F44336'), true, 'mestre'):'');
 
-    /* ── 3 · capacidade (base: HORA NORMAL — o que cabe sem comprar HE) ──
-       "Eficiência" saiu daqui sob esse nome. A conta (prodSemExtras ÷ meta)
-       tem r = -0,993 com o percentual de horas extras e r = -0,33, negativo,
-       com o ritmo real de produção: ela mede o quanto a fábrica NÃO usou hora
-       extra, não produtividade. MAR/26 é o caso-tese — 101,12%, o melhor
-       número do painel, com o segundo pior ritmo real do histórico. O valor
-       exibido é o mesmo de sempre; o rótulo passa a dizer o que ele mede.
-       O ritmo em peças por hora normal é a medida de produtividade que
-       faltava, e é ela que mostra a queda de 6,1% de 2025 para 2026. */
-    var META_EF_ =(typeof META_EF  !=='undefined')?META_EF  :90;
-    var META_ABS_=(typeof META_ABS !=='undefined')?META_ABS :3;
-    var rAnt = ritmoAnoAnterior(todos, ano);
-    var dRitmo = (rAnt && A.ritmo) ? ((A.ritmo/rAnt)-1)*100 : null;
-
-    var b3=card('Ritmo produtivo', fd(A.ritmo,2)+' pç/h',
-              'por hora normal · ano '+fd(Y.ritmo,2)
-              + (dRitmo!==null?(' · '+pct(dRitmo)+' vs '+(ano-1)):''),
-              dRitmo===null?'#00E5FF':(dRitmo>=0?'#4CAF50':'#F44336'), false, 'producao')
-      +card('Independência de HE', fd(A.efMed,1)+'%',
-              'ano '+fd(Y.efMed,1)+'% · quanto saiu sem hora extra', corMeta(A.efMed,META_EF_), false, 'eficiencia')
-      +card('Absenteísmo', fd(A.absMed,1)+'%',
-              'ano '+fd(Y.absMed,1)+'% · faltas+atrasos ÷ h. normais',
-              corMeta(A.absMed,META_ABS_,true), false, 'pessoas')
-      +card('Hora extra', fi(A.he)+' h',
-              fd(A.pctHE,1)+'% das horas · '+fd(A.depHE,1)+'% do volume',
-              A.depHE<=8?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), false, 'eficiencia')
-      +(A.tktMed>0?card('Ticket médio', 'R$ '+fd(A.tktMed,2), 'ano R$ '+fd(Y.tktMed,2), '#00E5FF', false, 'producao'):'');
-
-    /* ── 4 · a carteira cobre? ──
-       Carteira é ESTOQUE: acumula desde o início da série até o mês de corte,
-       não se soma dentro do período filtrado. O bloco anterior usava
-       venFech-fatFech só dos meses fechados do plano, o que dá "carteira do
-       período" — coisa que não existe. Expressa em MESES de produção, porque
-       "47.695 peças" não diz nada a quem decide e "1,8 mês de fábrica" diz. */
+    /* ── 3 · carteira e capacidade (base: JORNADA NORMAL) ──
+       Carteira em DIAS ÚTEIS de produção normal — a unidade do deck da
+       reunião e a que a diretoria compara com prazo de entrega. O ritmo é o
+       do ano até aqui (peças normais ÷ dias trabalhados). Limiares: os mesmos
+       0,5 e 1,5 mês de antes, em dias (×DUTEIS).
+       Ressalva que vale escrever: o saldo acumula vendido − faturado desde o
+       início da série, então é a VARIAÇÃO da carteira, não o saldo absoluto
+       do ERP. Saldo negativo é sinal disso, não fila negativa. */
     var CT = DashUtils.carteira(todos, ano, mes);
-    var b4='';
+    var b3='';
     if(CT.meses > 0){
-      var ritmoMes  = Y.n > 0 ? Y.normal / Y.n : 0;         /* jornada normal */
-      var mesesCart = ritmoMes > 0 ? CT.saldo / ritmoMes : null;
-      var corCart   = mesesCart===null ? '#00E5FF'
-                    : mesesCart <= 0.5 ? '#4CAF50'
-                    : mesesCart <= 1.5 ? '#FF9800' : '#F44336';
-      b4=card('Carteira a faturar',
-              (CT.saldo>=0?'':'-')+fi(Math.abs(CT.saldo))+' pç',
-              mesesCart!==null
-                ? (fd(Math.abs(mesesCart),1)+' mês de produção em jornada normal')
-                : 'sem ritmo de referência',
-              corCart, true, 'mestre')
-        +card('Tendência da carteira',
-              CT.tendMes===null?'—':((CT.tendMes>=0?'+':'')+fi(CT.tendMes)+' pç/mês'),
-              CT.tendMes===null?'histórico curto'
-                : (CT.tendMes>0?'a fila está crescendo':'a fábrica está consumindo a fila'),
-              CT.tendMes===null?'#00E5FF':(CT.tendMes>0?'#F44336':'#4CAF50'), true, 'mestre')
-        +card('Vendido no ano', fi(Y._P.vendida)+' pç', 'pedidos entrados', '#00E5FF', false, 'mestre')
-        +card('Faturado no ano', fi(Y._P.demanda)+' pç',
-              'entregue ao cliente · produção normal '+fi(Y.normal), '#F5A623', false, 'capfat');
+      var prodDiaN = Y.dias>0 ? Y.normal/Y.dias : 0;
+      var diasCart = prodDiaN>0 ? CT.saldo/prodDiaN : null;
+      var corCart  = diasCart===null ? '#00E5FF'
+                   : diasCart <= 0.5*DUTEIS_ ? '#4CAF50'
+                   : diasCart <= 1.5*DUTEIS_ ? '#FF9800' : '#F44336';
+      var tend = CT.tendMes===null ? 'tendência: histórico curto'
+               : ('tendência '+(CT.tendMes>=0?'+':'')+fi(CT.tendMes)+' pç/mês · '
+                  +(CT.tendMes>0?'a fila está crescendo':'a fábrica está consumindo a fila'));
+      var saldoTxt=(CT.saldo>=0?'':'-')+fi(Math.abs(CT.saldo))+' pç';
+      b3+=card('Carteira a faturar',
+               diasCart!==null ? ((diasCart<0?'-':'')+fi(Math.abs(diasCart))+' dias úteis') : saldoTxt,
+               (diasCart!==null ? (saldoTxt+' ao ritmo de '+fi(prodDiaN)+' pç/dia útil normal · ') : '')+tend,
+               corCart, true, 'mestre');
     }
+    b3+=card('Dependência de hora extra', fd(A.depHE,1)+'%',
+             fi(A.deHE)+' pç de '+fi(A.he)+' h extras · '+fd(A.pctHE,1)+'% das horas'
+             +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%')),
+             A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), true, 'eficiencia')
+      +card('Absenteísmo', fd(A.absMed,1)+'%',
+             (anoTodo?'':('ano '+fd(Y.absMed,1)+'% · '))+'faltas+atrasos ÷ h. normais · meta '+META_ABS_+'%',
+             corMeta(A.absMed,META_ABS_,true), true, 'pessoas');
 
-    /* ── 5 · mix e volumes ── */
-    var b5='';
-    if(pcM){
-      var pnt=pm&&pm.ponte?pm.ponte:null;
-      b5=card('Volumes de '+mes, fi(pcM.vol), 'caixas embaladas no mês', '#00E5FF', false, 'prodcod')
-        +card('Fator de embalagem', fd(pcM.fator,2)+' vol/pç', 'ano '+(pcY?fd(pcY.fator,2):'—')+' vol/pç', '#00E5FF', false, 'prodcod')
-        +(pcM.kgPc>0?card('Peso por produto', fd(pcM.kgPc,1)+' kg',
-              pnt&&pnt.temKg?('contra '+fd(pnt.kgPc_a,1)+' kg em '+pnt.anoAnt):'produção física do mês','#4CAF50', false, 'prodcod'):'')
-        +(pcM.famLider?card('Família líder', pcM.famLider.nome,
-              fd((pcM.famLider.q/pcM.prod)*100,1)+'% da produção do mês','#F5A623', false, 'prodcod'):'')
-        +(pnt?card('Peças por hora vs '+pnt.anoAnt, pct(pnt.pctPcH),
-              pnt.temKg?('em quilos '+pct(pnt.pctKgH)+' — mix explica a diferença'):'sem quilos para separar mix',
-              pnt.pctPcH>=0?'#4CAF50':'#F44336', false, 'mestre'):'');
-    }
+    /* ── 4 · ações críticas ── crítica = aberta E (Vermelho OU prazo vencido) */
+    var R = DashUtils.acoesResumo(Acoes.lista(), hojeISO());
+    b3+=card('Ações críticas', String(R.criticas),
+             R.abertas+' em aberto · '+R.vencidas+' com prazo vencido · '+R.concluidas+' concluída'+(R.concluidas===1?'':'s'),
+             R.criticas>0?'#F44336':(R.abertas>0?'#FF9800':'#4CAF50'), true, '#reu-acoes');
 
-    /* Ordem = ordem da decisão, não ordem do dado. A pergunta que a diretoria
-       de fato faz é "entregamos o que vendemos?", então a carteira vem antes
-       do volume produzido. E cada faixa declara a base uma vez, no título, em
-       vez de repetir "(c/ extras)" em cada card: mais barato de ler e não
-       sobra card sem ressalva. */
+    /* Ordem = ordem da decisão: entregamos o plano? A que custo e com que
+       fila? E o que vamos fazer sobre o que está vermelho. */
     corpo.innerHTML=manchete
-      +(b4?faixa('A carteira cobre? — estoque de pedidos a faturar', b4):'')
-      +faixa('Entrega — base: com hora extra, o que saiu pela porta', b2)
-      +faixa('Capacidade — base: hora normal, o que cabe sem comprar hora extra', b3)
-      +(b5?faixa('Mix e volumes — o que explica o desvio', b5):'');
+      +faixa('Entrega vs plano — base: com hora extra, o que saiu pela porta', b2)
+      +faixa('Carteira e capacidade — base: jornada normal, o que cabe sem comprar hora extra', b3)
+      +blocoAcoes(mes+'/'+ano);
   }
 
   /* Relatório de uma página, para circular antes da reunião. */
@@ -19589,7 +19737,13 @@ function printAtiva(){
       +'.bd{padding:12px 22px}'
       +'.reu-sec{font-size:8px!important;letter-spacing:1.6px;text-transform:uppercase;color:#3E4C59!important;'
         +'font-weight:700;margin:12px 0 6px!important;padding:0 0 3px!important;border-bottom:1.5px solid #edf2f7}'
-      +'.reu-grid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:7px!important}'
+      +'.reu-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;gap:7px!important}'
+      +'.reu-noprint{display:none!important}'
+      +'.reu-acoes{background:#fff!important;border:1px solid #D3D8DE!important;border-radius:5px!important;padding:6px 8px!important}'
+      +'.reu-tab{width:100%;border-collapse:collapse;font-size:7.5pt!important}'
+      +'.reu-tab th{font-size:6.5pt!important;color:#52606D!important;text-align:left;padding:3px 5px!important;border-bottom:1px solid #D3D8DE}'
+      +'.reu-tab td{padding:4px 5px!important;border-top:1px solid #edf2f7;vertical-align:top;color:#1F2933!important}'
+      +'.reu-tab tr{opacity:1!important}'
       /* Card chapado e sem fio colorido: quem julga na folha e a manchete. */
       +'.reu-card{background:#fff!important;border:1px solid #D3D8DE!important;'
         +'border-radius:5px!important;padding:8px 10px!important}'
@@ -19606,7 +19760,7 @@ function printAtiva(){
       +'<div class="hd"><div class="hdrow">'+(typeof logoImprimir==='function'?logoImprimir(30):'')+'<div>'
       +'<div class="lb">PPCP · Capacidade &amp; Eficiência — Patrimar Móveis</div>'
       +'<h1>Reunião do Mês — '+per+'</h1>'
-      +'<div class="sb">Entrega · capacidade · demanda · mix</div></div></div></div>'
+      +'<div class="sb">Plano · entrega · capacidade · carteira · plano de ação</div></div></div></div>'
       +'<div class="bd">'+corpo.innerHTML+'</div>'
       +'<div class="ft"><span>Dashboard PPCP — Capacidade &amp; Eficiência</span><span>Gerado em: '+hoje+'</span></div>'
       +'</body></html>');
@@ -19697,6 +19851,60 @@ function printAtiva(){
     try { history.pushState({ reuVolta: 1 }, '', location.href); } catch(e){}
   };
 
+  /* ── handlers do plano de ação ── */
+  window.reuFoco=function(sel){
+    var el=document.querySelector(sel); if(!el) return;
+    el.scrollIntoView({behavior:'smooth',block:'start'});
+    el.style.boxShadow='0 0 0 2px #F5A623';
+    setTimeout(function(){ el.style.boxShadow=''; },1200);
+  };
+  function _acForm(on){ var f=document.getElementById('reu-ac-form'); if(f) f.style.display=on?'block':'none'; }
+  function _acSet(id,v){ var el=document.getElementById(id); if(el) el.value=(v===undefined||v===null)?'':v; }
+  function _acGet(id){ var el=document.getElementById(id); return el?String(el.value||'').trim():''; }
+  window.reuAcaoNova=function(){
+    _acSet('ac-id',''); _acSet('ac-tipo','Ação'); _acSet('ac-prioridade','Vermelho'); _acSet('ac-kpi','Outro');
+    _acSet('ac-responsavel',''); _acSet('ac-prazo',''); _acSet('ac-status','Aberta');
+    _acSet('ac-desvio',''); _acSet('ac-causa',''); _acSet('ac-acao','');
+    var e=document.getElementById('ac-erro'); if(e) e.textContent='';
+    _acForm(true);
+    var r=document.getElementById('ac-responsavel'); if(r) r.focus();
+  };
+  window.reuAcaoEditar=function(id){
+    var a=Acoes.lista().filter(function(x){ return x.id===id; })[0]; if(!a) return;
+    _acSet('ac-id',a.id); _acSet('ac-tipo',a.tipo||'Ação'); _acSet('ac-prioridade',a.prioridade||'Vermelho');
+    _acSet('ac-kpi',ACAO_KPIS.indexOf(a.kpi)>=0?a.kpi:'Outro');
+    _acSet('ac-responsavel',a.responsavel); _acSet('ac-prazo',a.prazo); _acSet('ac-status',a.status||'Aberta');
+    _acSet('ac-desvio',a.desvio); _acSet('ac-causa',a.causa); _acSet('ac-acao',a.acao);
+    var e=document.getElementById('ac-erro'); if(e) e.textContent='';
+    _acForm(true);
+    reuFoco('#reu-ac-form');
+  };
+  window.reuAcaoFechar=function(){ _acForm(false); };
+  window.reuAcaoSalvar=function(){
+    var a={ id:_acGet('ac-id')||'', tipo:_acGet('ac-tipo'), prioridade:_acGet('ac-prioridade'), kpi:_acGet('ac-kpi'),
+            desvio:_acGet('ac-desvio'), causa:_acGet('ac-causa'), acao:_acGet('ac-acao'),
+            responsavel:_acGet('ac-responsavel'), prazo:_acGet('ac-prazo'), status:_acGet('ac-status') };
+    var faltam=[];
+    if(!a.acao) faltam.push('ação');
+    if(!a.responsavel) faltam.push('responsável');
+    if(!a.prazo) faltam.push('prazo');
+    if(a.prioridade==='Vermelho' && !a.causa) faltam.push('causa (obrigatória para prioridade Vermelho)');
+    if(faltam.length){
+      var e=document.getElementById('ac-erro'); if(e) e.textContent='Falta: '+faltam.join(', ')+'.';
+      return;
+    }
+    if(a.id){ var ant=Acoes.lista().filter(function(x){ return x.id===a.id; })[0]; if(ant){ a.criadoEm=ant.criadoEm; a.mesRef=ant.mesRef; } }
+    if(!a.mesRef){ var l=document.getElementById('reu-per-lbl'); a.mesRef=l?l.textContent:''; }
+    Acoes.salvar(a);
+    _acForm(false);
+    if(typeof toast==='function') toast('Ação salva.','ok');
+  };
+  window.reuAcaoStatus=function(id,st){
+    var a=Acoes.lista().filter(function(x){ return x.id===id; })[0]; if(!a) return;
+    a.status=st; Acoes.salvar(a);
+  };
+  window.reuAcaoMostrar=function(on){ mostrarFechadas=!!on; render(); };
+
   /* A classe no body liga o CSS que faz a barra lateral rolar por dentro —
      só nesta tela, para não mexer no comportamento das outras. */
   function marcarPagina(id){
@@ -19721,6 +19929,7 @@ function printAtiva(){
     if(window.DashBus&&window.DashBus.on){
       window.DashBus.on('dados:salvos',render);
       window.DashBus.on('render:feito',render);
+      window.DashBus.on('acoes:mudou',render);
       window.DashBus.on('pagina:mudou',function(p){
         if(!p) return;
         marcarPagina(p.id);
@@ -19955,9 +20164,18 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b67';
-var APP_DATA   = '04/09/2026';
+var APP_VERSAO = 'b68';
+var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b68', data:'10/09/2026', itens:[
+    'Reuniao do Mes com sete indicadores em vez de dezoito. Sairam do nivel 1: ticket medio, vendido e faturado no ano, o bloco de mix (volumes, fator de embalagem, peso, familia lider, pecas por hora) e a Independencia de HE — que e o mesmo sinal da dependencia de hora extra (r = -0,993) escrito de forma que ninguem explica em reuniao. Tudo continua nas abas de origem, a um clique.',
+    'Aderencia ao plano ganhou card proprio, com a versao sem hora extra ao lado: 92,7% do plano com 82,5% sem HE e a frase inteira. Producao virou volume, na cor da marca — a cor de decisao mora na aderencia.',
+    'Carteira a faturar passa a ser lida em DIAS UTEIS de producao normal, a unidade que se compara com prazo. Mesmos limiares de antes (0,5 e 1,5 mes), em dias. A tendencia entrou no mesmo card.',
+    'Plano de acao dentro da Reuniao: prioridade, indicador, desvio, causa, acao, responsavel, prazo e status. Regra da reuniao escrita no titulo — nenhum indicador vermelho sem causa, acao, responsavel e prazo. Prioridade Vermelho exige causa.',
+    'Card Acoes criticas: em aberto com prioridade Vermelho ou prazo vencido. Clicar rola ate a tabela.',
+    'Fonte do plano de acao e a aba ACOES da planilha, pelo mesmo Web App (republicar o Apps Script). Copia local para abrir offline; a versao mais nova de cada acao vence, entao dois navegadores nao se apagam. Nao ha exclusao: acao errada vira Cancelada.',
+    'O relatorio da Reuniao imprime a tabela do plano de acao, sem os botoes.'
+  ]},
   { v:'b67', data:'04/09/2026', itens:[
     'Tabela mes a mes do Plano Mestre: as colunas Desvio e Ritmo usam bases diferentes e a tabela nao dizia. Em AGO/26 a linha mostrava +1.564 em verde ao lado de 1.414 contra 1.467 em vermelho — e os dois estavam certos.',
     'O DESVIO conta o volume entregue, com hora extra. O RITMO mede so a jornada normal, porque a pergunta do plano e se ele cabe SEM comprar hora extra.',
