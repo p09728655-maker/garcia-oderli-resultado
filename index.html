@@ -19789,7 +19789,8 @@ function printAtiva(){
     var r1 = aderSE===null ? 'sem plano lançado'
            : (aderSE>=100?'Sim':'Não')+': '+fd(aderSE,1)+'% do plano em jornada normal'
              +(folga!==null?(' · ritmo '+pct(folga)):'')
-             +(perdPc>0?(' · '+fi(perdPc)+' pç perdidas por falta e atraso'):'');
+             +(perdPc>0?(' · '+fi(perdPc)+' pç perdidas por falta e atraso'
+                          +(perdDias!==null?(' = '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de fábrica'):'')):'');
     var c1 = aderSE===null?'var(--t2)':corMeta(aderSE,100);
     var r2 = fi(A.prod)+' pç entregues'+(ader!==null?(', '+fd(ader,1)+'% do plano com hora extra'):'')
            +(diasCart!==null?(' · carteira de '+fi(diasCart)+' dias úteis'):'');
