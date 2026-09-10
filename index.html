@@ -5384,6 +5384,7 @@ window.DashUtils = (function() {
       if (!a) return;
       o.total++;
       var st = String(a.status || 'Aberta');
+      if (st === 'Excluída') { o.total--; return; }   /* apagada: não existe para o painel */
       if (st === 'Concluída') { o.concluidas++; return; }
       if (st === 'Cancelada') { o.canceladas++; return; }
       o.abertas++;
@@ -19501,6 +19502,7 @@ function printAtiva(){
   function blocoAcoes(mesRef){
     var hoje=hojeISO();
     var todas=ordenarAcoes(Acoes.lista());
+    todas=todas.filter(function(a){ return a.status!=='Excluída'; });
     var vis=todas.filter(function(a){ return mostrarFechadas || !(a.status==='Concluída'||a.status==='Cancelada'); });
     var corPr={Vermelho:'#F44336',Amarelo:'#FF9800',Verde:'#4CAF50'};
     var linhas=vis.map(function(a){
@@ -19518,7 +19520,8 @@ function printAtiva(){
         +'<td style="white-space:nowrap">'+esc(a.status||'Aberta')+'</td>'
         +'<td class="reu-noprint" style="white-space:nowrap">'
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar">✎</button> '
-          +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button>':'')
+          +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button> ':'')
+          +'<button type="button" class="btn btn-r btn-sm" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)">🗑</button>'
         +'</td></tr>';
     }).join('');
     var vazio='<tr><td colspan="9" style="color:var(--t3);padding:14px 8px;text-align:center">'
@@ -19985,6 +19988,15 @@ function printAtiva(){
     var a=Acoes.lista().filter(function(x){ return x.id===id; })[0]; if(!a) return;
     a.status=st; Acoes.salvar(a);
   };
+  /* Excluir é soft: status "Excluída". Some de toda lista e contagem, mas a
+     linha continua na planilha — teste apagado não vira ação fantasma, e
+     ação apagada por engano tem como ser recuperada na aba ACOES. */
+  window.reuAcaoExcluir=function(id){
+    var a=Acoes.lista().filter(function(x){ return x.id===id; })[0]; if(!a) return;
+    if(!confirm('Excluir esta ação?\n\n'+(a.acao||'(sem descrição)')+'\n\nEla some do painel. A linha fica na planilha como "Excluída".')) return;
+    a.status='Excluída'; Acoes.salvar(a);
+    if(typeof toast==='function') toast('Ação excluída.','ok');
+  };
   window.reuAcaoMostrar=function(on){ mostrarFechadas=!!on; render(); };
 
   /* A classe no body liga o CSS que faz a barra lateral rolar por dentro —
@@ -20246,9 +20258,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b69';
+var APP_VERSAO = 'b70';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b70', data:'10/09/2026', itens:[
+    'Botao de excluir acao no plano de acao, com confirmacao. A acao some de toda lista e contagem; a linha fica na planilha com status "Excluida", entao teste apagado nao vira fantasma e acao apagada por engano se recupera na aba ACOES.'
+  ]},
   { v:'b69', data:'10/09/2026', itens:[
     'AGO/26 na Reuniao: "Aderencia 105,1%" em verde ao lado de "Ritmo abaixo do plano -10,9%" em vermelho. Os dois certos — a aderencia contava hora extra e o ritmo nao — e a tela parecendo se contradizer.',
     'Uma pergunta por faixa, na mesma base. Faixa 1, "O plano cabe sem hora extra?": aderencia em jornada normal (96,4%, ambar), ritmo, dependencia de HE e absenteismo. O 105,1% foi para o card de producao, escrito como "% do plano com hora extra".',
