@@ -4137,14 +4137,21 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
 #page-reuniao .reu-link:hover { border-color: var(--cyan); transform: translateY(-2px); }
 #page-reuniao .reu-link:hover .reu-lbl::after { content: ' ↗'; color: var(--cyan); }
 @media (max-width: 1100px) { #page-reuniao .reu-row3 { grid-template-columns: 1fr !important; } }
-/* Cabeçalho em duas linhas: título e ações em cima, filtro de período
-   embaixo, com a largura inteira. Sem isto o filtro herdava a sobra de
-   largura do cabeçalho e os meses viravam uma coluna. */
+/* Cabeçalho em duas linhas: título e ações em cima, faixa de período
+   embaixo. Sem isto o filtro herdava a sobra de largura do cabeçalho e os
+   meses viravam uma coluna. A faixa segue .prod-toolbar: rótulo fixo, meses
+   ocupando a sobra (flex:1, por isso não sobra vão morto) e o período
+   fechando à direita. */
 #page-reuniao .pageHdr { flex-wrap: wrap; }
-#page-reuniao #reu-filtro { flex: 1 0 100%; order: 9; }
+#page-reuniao .reu-hdr-filtro { flex: 1 0 100%; order: 9; display: flex; align-items: center;
+  gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--b); }
+#page-reuniao .reu-hdr-flabel { font-size: .58rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--t2); flex-shrink: 0; }
+#page-reuniao #reu-filtro { flex: 1 1 auto; }
 /* Na projeção, chip de mês com o tamanho de quem lê a 5 m da tela.
    !important porque pintarFiltro() escreve font-size e padding no style
    inline de cada botão — sem isto a regra não pega. */
+body.tv-mode #page-reuniao .reu-hdr-flabel { font-size: .8rem; }
 body.tv-mode #page-reuniao #reu-filtro { gap: 7px !important; }
 body.tv-mode #page-reuniao #reu-filtro button { font-size: .8rem !important; padding: 7px 12px !important; }
 /* Barra da trilha de apresentação: fixa embaixo, em qualquer aba, enquanto
@@ -4187,9 +4194,6 @@ body.tv-mode #reu-trilha .rt-btn { width:54px; height:54px; font-size:1.6rem; }
       <div class="pageHdrSub">Nível 1 da pirâmide — diretoria, mensal · clique num indicador para descer ao detalhe · <b>Apresentar</b> segue a trilha da reunião</div>
     </div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:14px">
-      <span id="reu-per-lbl" style="font-family:var(--mono);font-size:1rem;font-weight:800;letter-spacing:.06em;
-        color:#F5A623;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.45);
-        border-radius:8px;padding:7px 16px;white-space:nowrap">—</span>
       <button onclick="reuApresentar()" id="reu-btn-apres"
         title="Trilha da reunião: abre as abas na ordem da pauta, com a resposta de cada pergunta na barra de baixo. Setas ← → avançam, ESC sai."
         style="display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border:1px solid #F5A623;
@@ -4209,11 +4213,18 @@ body.tv-mode #reu-trilha .rt-btn { width:54px; height:54px; font-size:1.6rem; }
     <!-- Filtro próprio da aba. Antes o período vinha só da barra lateral,
          que fica escondida no modo TV e em tela de reunião — trocar de mês
          no meio da apresentação exigia sair da tela.
-         Linha própria: dentro do grupo da direita os doze meses eram
-         espremidos entre o rótulo do período e os dois botões (todos
-         nowrap) e empilhavam um sobre o outro — pior no Modo TV, que
-         aumenta a fonte. Ocupando a largura inteira, cabem lado a lado. -->
-    <div id="reu-filtro" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end"></div>
+         Segunda linha no mesmo molde da toolbar de Produção e Capacidade:
+         rótulo à esquerda, meses ocupando a sobra, período fechando à
+         direita. Dentro do grupo da direita os doze meses eram espremidos
+         entre o período e os botões (todos nowrap) e empilhavam um sobre o
+         outro — em janela de 1000 px, um mês por linha. -->
+    <div class="reu-hdr-filtro">
+      <span class="reu-hdr-flabel">▸ Período</span>
+      <div id="reu-filtro" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"></div>
+      <span id="reu-per-lbl" style="font-family:var(--mono);font-size:1rem;font-weight:800;letter-spacing:.06em;
+        color:#F5A623;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.45);
+        border-radius:8px;padding:7px 16px;white-space:nowrap;flex-shrink:0">—</span>
+    </div>
   </div>
   <div id="reu-corpo"></div>
 </div>
@@ -20578,8 +20589,8 @@ var APP_VERSAO = 'b82';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
   { v:'b82', data:'10/09/2026', itens:[
-    'Filtro de periodo da Reuniao ganhou linha propria no cabecalho. Espremido entre o rotulo do periodo e os botoes Apresentar/Relatorio (todos nowrap), sobrava pouca largura e os doze meses empilhavam um sobre o outro — em janela de 1000 px cada mes ficava numa linha (15 linhas de chips); no Modo TV a 1366 px, duas linhas. Agora ocupa a largura inteira: uma linha so ate 1366 px, duas no maximo em janela estreita.',
-    'Modo TV: chip de mes maior (0,8 rem, 7x12 px) — o tamanho anterior nao se le a distancia de reuniao.',
+    'Filtro de periodo da Reuniao virou faixa propria no rodape do cabecalho, no mesmo molde da toolbar de Producao e Capacidade: rotulo Periodo a esquerda, meses ocupando a sobra da linha e o periodo escolhido fechando a direita. Estava espremido entre o rotulo do periodo e os botoes Apresentar/Relatorio (todos nowrap) e os meses empilhavam um sobre o outro — janela de 1000 px, 9 linhas de chips; Modo TV a 1366 px, 2 linhas. Agora e 1 linha em 1920 e 1366 px, TV ou nao.',
+    'Modo TV: chip de mes maior (0,8 rem, 7x12 px) — o tamanho anterior nao se le a distancia de reuniao. O cabecalho passa de 70 para 151 px, sem custo de rolagem: a barra lateral e a coluna mais alta da tela e absorve a diferenca (1.289 px de pagina antes e depois).',
     'Entrada do app passa de 1,4 s para 2,8 s. Com a batida animando ate 0,9 s, sobrava meio segundo para ler a tela. Continua saindo no clique e so aparece na primeira abertura da sessao.'
   ]},
   { v:'b81', data:'10/09/2026', itens:[
