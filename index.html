@@ -3211,10 +3211,10 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
     SET:'Setembro',OUT:'Outubro',NOV:'Novembro',DEZ:'Dezembro'
   };
   var ORDEM_MES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-  /* Meta de eficiência usada pela planilha para calcular a Margem de Melhoria:
-     margem = (META_EF − eficiência) ÷ META_EF × 100. Positivo = falta para a
-     meta; negativo = meta superada. Não é margem financeira. */
-  var META_EF = 90;
+  /* Margem de Melhoria = (META_EF − eficiência) ÷ META_EF × 100. Positivo =
+     falta para a meta; negativo = meta superada. Não é margem financeira.
+     META_EF é a constante global (aba METAS) — a cópia local que existia aqui
+     ignorava a planilha. */
 
   function bFmt(n,dec) { dec=dec||0; if(n==null||isNaN(n))return'—'; return n.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
   function bFmtR(n) { if(n==null||isNaN(n))return'—'; return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -4340,6 +4340,33 @@ var META_TICKET = 250;
 var JORNADA_MIN_DIA = 528;
 var HDÍA    = JORNADA_MIN_DIA/60; /* 8,8 h/dia */
 var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
+
+/* ── METAS OFICIAIS (aba METAS da planilha) ─────────────────────────────────
+   Os valores acima são o PADRÃO do código. A fonte oficial é a aba METAS
+   (chave | valor | unidade | vigencia | origem | observacao): o doGet devolve
+   em `metas`, e aqui elas sobrescrevem as constantes — uma meta se muda na
+   planilha, com origem e vigência, não no navegador nem no código. Cópia em
+   localStorage para a primeira pintura não sair com o padrão e depois trocar.
+   Chaves aceitas: só as constantes abaixo, para uma célula errada não virar
+   variável solta. */
+var METAS_CHAVES = ['META_EF','META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS'];
+var METAS_ORIGEM = {};   /* chave → { valor, unidade, vigencia, origem, observacao } */
+function aplicarMetas(m, avisar){
+  if(!m || typeof m!=='object') return 0;
+  var n=0, mudou=[];
+  METAS_CHAVES.forEach(function(k){
+    var rec=m[k]; if(!rec) return;
+    var v=(typeof rec==='object')?Number(rec.valor):Number(rec);
+    if(!(v>0)) return;
+    if(window[k]!==v){ mudou.push(k+' '+window[k]+'→'+v); }
+    window[k]=v; METAS_ORIGEM[k]=(typeof rec==='object')?rec:{valor:v}; n++;
+  });
+  if(n){ try{ localStorage.setItem('dash_metas_sheet_v1', JSON.stringify(m)); }catch(e){} }
+  if(avisar && mudou.length && typeof toast==='function') toast('Metas oficiais aplicadas da aba METAS: '+mudou.join(' · '),'ok');
+  return n;
+}
+/* Cópia local, antes de qualquer render. */
+(function(){ try{ var c=JSON.parse(localStorage.getItem('dash_metas_sheet_v1')); if(c) aplicarMetas(c,false); }catch(e){} })();
 var ORDEM   = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
 /* ── DADOS DA PLANILHA (100% real — extraídos de ANALISE_CAPACIDADE_E_EFICIENCIA.xlsx) ──
@@ -4772,6 +4799,8 @@ function _carregarDoSheetsAoAbrir(){
       /* Plano de ação da Reunião (aba ACOES). Mescla com o local: a versão
          mais nova de cada ação vence, e o que só existe aqui é reenviado. */
       if (json.acoes && window.Acoes) { try { window.Acoes.mesclar(json.acoes); } catch (e) { console.warn('ACOES:', e); } }
+      /* Metas oficiais (aba METAS): sobrescrevem as constantes antes do render. */
+      if (json.metas) { try { aplicarMetas(json.metas, true); } catch (e) { console.warn('METAS:', e); } }
       if (typeof render === 'function') render();
       if (window.DashBus) window.DashBus.emit('dados:salvos', dados);
       console.info('Dados carregados do Google Sheets: ' + dados.length + ' registros.');
@@ -7085,7 +7114,8 @@ function renderKPIsExtras(d){
   }
 }
 
-var META_ABS=3;
+/* var META_ABS=3 morava aqui, redeclarando a constante global DEPOIS de a aba
+   METAS ter sido aplicada — e a meta da planilha voltava a 3 no reload. */
 
 /* ════════════════════════════════════════════════════════════
    ZOOM DE GRÁFICOS — intercept getElementById para redesenho nativo
@@ -7411,7 +7441,7 @@ function renderResumoExecutivo(dados) {
     var itens = [
       {l:'Dependência de Hora Extra', m:'Até 8% do volume entregue', ok:okP},
       {l:'Independência de HE', m:'Meta: '+META_EF+'%',           ok:okE},
-      {l:'Absenteísmo',      m:'Meta: até 3%',                    ok:okA},
+      {l:'Absenteísmo',      m:'Meta: até '+META_ABS+'%',         ok:okA},
       {l:'Ticket Médio',     m:'Meta: R$ '+META_TICKET,           ok:okT},
       {l:'Horas Extras',     m:'Até 15% das h. totais',           ok:pctE<=15}
     ];
@@ -7435,7 +7465,7 @@ function renderResumoExecutivo(dados) {
   if(iL){
     var ins = [];
     if(efM >= 90){
-      ins.push({t:'good', txt:'Eficiência média de <b>'+fmtP(efM)+'</b> — meta de 90% atingida no período.'});
+      ins.push({t:'good', txt:'Independência de HE de <b>'+fmtP(efM)+'</b> — meta de '+META_EF+'% atingida no período.'});
     } else {
       ins.push({t:'warn', txt:'Independência de HE de <b>'+fmtP(efM)+'</b> — <b>'+Math.abs(efD).toFixed(1).replace('.',',')+'</b> p.p. abaixo da meta de '+META_EF+'%.'});
     }
@@ -20168,9 +20198,14 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b74';
+var APP_VERSAO = 'b75';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b75', data:'10/09/2026', itens:[
+    'Aba METAS na planilha: chave, valor, unidade, vigencia, origem e observacao. O painel le junto com o HISTORICO e sobrescreve META_EF, META_ABS, ABS_ATENCAO, META_DEP_HE, META_TICKET e DUTEIS. Meta se muda na planilha, com dono e vigencia — nao no codigo.',
+    'Rode criarAbaMetas() no Apps Script uma vez: a aba nasce com os valores que estavam no codigo. O app nao escreve nela.',
+    'Copia local das metas para a primeira pintura nao sair com o padrao e trocar depois. Toast avisa quando a planilha muda uma meta.'
+  ]},
   { v:'b74', data:'10/09/2026', itens:[
     'Status da Fabrica era tres semaforos com o mesmo texto e bases diferentes: PPCP (faturado, ±5%), Visao Geral (faturado, −10%) e Resumo (vendido, −10%). Agora os tres usam DashUtils.statusFabrica: demanda = vendido (fallback faturado), gap ≤0 cobre · ≤10% atencao · >10% sobrecarga. Rotulo diz "Demanda (vendido)".',
     'Funcionarios Necessarios tinha quatro implementacoes; virou uma funcao (demanda/dia ÷ producao normal/dia por colaborador).',
