@@ -196,6 +196,7 @@ const ACOES = [
   { id:'5', prioridade:'Vermelho', prazo:'2026-08-01', status:'Cancelada' },     /* fechada: não conta       */
   { id:'6', prioridade:'Verde',    prazo:'',           status:'' },              /* aberta sem prazo         */
   { id:'7', prioridade:'Verde',    prazo:'2026-09-10', status:'Aberta' },        /* vence HOJE: não vencida  */
+  { id:'8', prioridade:'Vermelho', prazo:'2026-01-01', status:'Excluída' },      /* apagada: não existe      */
 ];
 const ra = U.acoesResumo(ACOES, HOJE);
 ok('total',        ra.total,      7, 0);
