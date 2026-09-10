@@ -54,7 +54,6 @@ var ABA_ACOES = 'ACOES';
 var ABA_METAS = 'METAS';
 var METAS_PADRAO = [
   ['chave','valor','unidade','vigencia','origem','observacao'],
-  ['META_EF',     90,  '%',   '2026-01', 'PPCP',      'Independência de HE mínima: produção em jornada normal ÷ meta derivada da planilha'],
   ['META_ABS',    3,   '%',   '2026-01', 'RH',        'Absenteísmo (faltas + atrasos ÷ h. normais): dentro da meta até este valor. Histórico 2025-26: 9% a 17%'],
   ['ABS_ATENCAO', 6,   '%',   '2026-01', 'RH',        'Absenteísmo acima disto é crítico'],
   ['META_DEP_HE', 8,   '%',   '2026-01', 'PPCP',      'Máximo do volume entregue que pode vir de hora extra'],
