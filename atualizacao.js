@@ -153,8 +153,13 @@
         window.location.reload();
       });
 
-      /* Painel costuma ficar aberto o dia todo em TV/monitor. */
-      setInterval(function () { reg.update().catch(function () {}); }, 5 * 60 * 1000);
+      /* Painel costuma ficar aberto o dia todo em TV/monitor: checa a cada
+         minuto e sempre que a janela volta ao foco — senão quem volta ao app
+         espera o próximo ciclo para ver o aviso. */
+      var checar = function () { reg.update().catch(function () {}); };
+      setInterval(checar, 60 * 1000);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) checar(); });
+      window.addEventListener('focus', checar);
     }).catch(function (err) {
       console.warn('SW não registrou (app segue funcionando):', err);
     });

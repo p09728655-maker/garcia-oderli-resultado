@@ -20618,7 +20618,7 @@ var APP_HISTORICO = [
      Antes a página recarregava sozinha quando um service worker novo assumia.
      Recarregar sem avisar no meio de uma reunião é pior que esperar: some
      filtro, some rolagem. Agora aparece um aviso e quem decide é o usuário. */
-  function avisarAtualizacao(aplicar){
+  function avisarAtualizacao(aplicar, versaoNova){
     if (document.getElementById('ver-update')) return;
     var box = document.createElement('div');
     box.id = 'ver-update';
@@ -20627,9 +20627,10 @@ var APP_HISTORICO = [
       + 'border-radius:8px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.55);'
       + 'font-size:.8rem;color:var(--t1);animation:fi .25s ease';
     box.innerHTML =
-      '<div style="font-weight:700;margin-bottom:5px;color:var(--cyan)">↻ Nova versão disponível</div>'
+      '<div style="font-weight:700;margin-bottom:5px;color:var(--cyan)">↻ Nova versão disponível'
+        + (versaoNova ? ' · <span style="font-family:var(--mono)">' + versaoNova + '</span>' : '') + '</div>'
       + '<div style="font-size:.74rem;color:var(--t2);line-height:1.5;margin-bottom:11px">'
-        + 'Atualizar recarrega a página. Os dados ficam salvos — só o que estiver '
+        + 'Você está na ' + APP_VERSAO + '. Atualizar recarrega a página. Os dados ficam salvos — só o que estiver '
         + 'em edição na tela se perde.</div>'
       + '<div style="display:flex;gap:8px">'
         + '<button id="ver-up-ok" style="flex:1;padding:7px 12px;border:1px solid var(--cyan);border-radius:5px;'
@@ -20650,27 +20651,45 @@ var APP_HISTORICO = [
 
   if (!('serviceWorker' in navigator)) return;
 
+  /* Versão publicada agora, lida do próprio index.html no servidor. Serve
+     para (a) escrever no aviso qual versão está chegando e (b) não avisar
+     quando a página já É a versão nova — o HTML é network-first, então um
+     recarregar já traz o b73 antes de o service worker novo instalar, e o
+     aviso "nova versão" aparecia para quem já estava nela. */
+  function versaoPublicada(){
+    return fetch('/index.html?_v=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.text(); })
+      .then(function(t){ var m = t.match(/var APP_VERSAO = '([^']+)'/); return m ? m[1] : null; })
+      .catch(function(){ return null; });
+  }
+
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/sw.js').then(function(reg){
-      /* Checa assim que abre — não espera o ciclo automático (~24h). */
-      reg.update().catch(function(){});
+      var silencioso = false;   /* SW novo assumindo sem recarregar: a página já é a versão nova */
+
+      function tratarNovo(sw){
+        versaoPublicada().then(function(v){
+          if (v && v === APP_VERSAO) {
+            /* Já estamos na versão publicada: troca o worker por baixo, sem
+               aviso e sem recarregar. */
+            silencioso = true;
+            sw.postMessage({ tipo: 'ATIVAR_AGORA' });
+            return;
+          }
+          avisarAtualizacao(function(){ sw.postMessage({ tipo: 'ATIVAR_AGORA' }); }, v);
+        });
+      }
 
       function vigiar(sw){
         if (!sw) return;
         sw.addEventListener('statechange', function(){
           /* "installed" com um controller ativo = versão nova esperando. Sem
              controller é a primeira instalação, e aí não há o que avisar. */
-          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-            avisarAtualizacao(function(){
-              sw.postMessage({ tipo: 'ATIVAR_AGORA' });
-            });
-          }
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) tratarNovo(sw);
         });
       }
 
-      if (reg.waiting && navigator.serviceWorker.controller) {
-        avisarAtualizacao(function(){ reg.waiting.postMessage({ tipo: 'ATIVAR_AGORA' }); });
-      }
+      if (reg.waiting && navigator.serviceWorker.controller) tratarNovo(reg.waiting);
       vigiar(reg.installing);
       reg.addEventListener('updatefound', function(){ vigiar(reg.installing); });
 
@@ -20678,12 +20697,21 @@ var APP_HISTORICO = [
       var recarregando = false;
       navigator.serviceWorker.addEventListener('controllerchange', function(){
         if (recarregando) return;
+        if (silencioso) { silencioso = false; return; }
         recarregando = true;
         window.location.reload();
       });
 
-      /* O painel costuma ficar aberto o dia todo em TV/monitor. */
-      setInterval(function(){ reg.update().catch(function(){}); }, 5 * 60 * 1000);
+      /* Checa assim que abre — não espera o ciclo automático (~24h) —, a cada
+         minuto (o painel fica aberto o dia todo em TV) e sempre que a janela
+         volta ao foco: era aqui que o aviso "demorava a aparecer" — quem
+         voltava ao app esperava até 5 min pelo próximo ciclo. */
+      var checar = function(){ reg.update().catch(function(){}); };
+      checar();
+      setInterval(checar, 60 * 1000);
+      document.addEventListener('visibilitychange', function(){ if (!document.hidden) checar(); });
+      window.addEventListener('focus', checar);
+      window.checarAtualizacao = checar;
     }).catch(function(err){
       console.warn('SW falhou ao registrar (app continua funcionando normal):', err);
     });
