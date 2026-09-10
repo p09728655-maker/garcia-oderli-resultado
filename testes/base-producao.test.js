@@ -209,5 +209,17 @@ afirma('lista vazia não quebra',   U.acoesResumo([], HOJE).criticas === 0);
 afirma('null não quebra',          U.acoesResumo(null, HOJE).total === 0);
 afirma('sem "hoje" ninguém vence', U.acoesResumo(ACOES, '').vencidas === 0);
 
+/* ══ STATUS DA FÁBRICA — régua única para Resumo, PPCP e Visão Geral ══ */
+sec('statusFabrica() e demanda()');
+afirma('demanda: vendido primeiro',          U.demanda({qtdeVendida:100, qtdeFaturado:80, producaoReal:70}) === 100);
+afirma('demanda: sem vendido usa faturado',  U.demanda({qtdeVendida:0,   qtdeFaturado:80, producaoReal:70}) === 80);
+afirma('demanda: sem ambos usa produção',    U.demanda({producaoReal:70}) === 70);
+afirma('gap ≤ 0 → ok',                       U.statusFabrica(100, 100).nivel === 'ok');
+afirma('gap 10% → atenção',                  U.statusFabrica(100, 90).nivel === 'atencao');
+afirma('gap 10,1% → sobrecarga',             U.statusFabrica(1000, 899).nivel === 'sobrecarga');
+afirma('demanda zero não quebra',            U.statusFabrica(0, 50).nivel === 'ok');
+ok('funcNecessarios 1.000/dia a 40 pç/colab', U.funcNecessarios(1000, 800, 20), 25, 0);
+afirma('funcNecessarios sem produção devolve colabs', U.funcNecessarios(1000, 0, 20) === 20);
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

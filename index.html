@@ -1283,8 +1283,8 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       </div>
       <div class="mes-sf-metrics">
         <div class="mes-sf-metric">
-          <span class="mes-sf-mlbl">Demanda</span>
-          <span class="mes-sf-mval" id="mes-sf-dem" style="color: rgb(255, 179, 0);">564.324</span>
+          <span class="mes-sf-mlbl">Demanda (vendido)</span>
+          <span class="mes-sf-mval" id="mes-sf-dem">—</span>
         </div>
         <div class="mes-sf-metric">
           <span class="mes-sf-mlbl">Produção</span>
@@ -2890,7 +2890,7 @@ A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), n�
     <div class="ppcp-gap-sub" id="ppcp-gap-dia-sub">Déficit produção · dem 747 − prod 644 pç/dia</div>
     <div class="ppcp-gap-bar-track"><div class="ppcp-gap-bar-fill" id="ppcp-gap-dia-bar" style="width: 30.0651%; background: rgb(255, 23, 68);"></div></div>
   </div>
-</div><div id="sf-status-wrap"><div id="sf-status-card" style="--sf-accent: #F44336; cursor: help;"><div class="sf-left"><div class="sf-title"><svg viewBox="0 0 24 24" width="13" height="13" fill="#888888"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"></path></svg>Status da Fábrica<i class="ui-tip-icon" id="sf-tip-icon">?</i></div><div class="sf-sub" id="sf-sub">Baseado em 12 meses · GAP = 24.965 pç (+13,9% da demanda)</div></div><div class="sf-center"><div class="sf-status" id="sf-status-val" style="color: rgb(255, 23, 68);">🔴 Sobrecarga</div></div><div class="sf-right"><div class="sf-metric"><div class="sf-metric-lbl">GAP</div><div class="sf-metric-val" id="sf-gap-val" style="color: rgb(255, 23, 68);">24.965</div><div class="sf-metric-unit">peças</div></div><div class="sf-metric"><div class="sf-metric-lbl">GAP %</div><div class="sf-metric-val" id="sf-gap-pct" style="color: rgb(255, 23, 68);">+13,9%</div><div class="sf-metric-unit">da demanda</div></div><div class="sf-metric"><div class="sf-metric-lbl">Demanda</div><div class="sf-metric-val" id="sf-dem-val" style="color:var(--ds-demanda)">180.080</div><div class="sf-metric-unit">peças</div></div><div class="sf-metric"><div class="sf-metric-lbl">Produção</div><div class="sf-metric-val" id="sf-prod-val" style="color:var(--ds-destaque)">155.115</div><div class="sf-metric-unit">peças</div></div></div></div></div>
+</div><div id="sf-status-wrap"><div id="sf-status-card" style="--sf-accent: #F44336; cursor: help;"><div class="sf-left"><div class="sf-title"><svg viewBox="0 0 24 24" width="13" height="13" fill="#888888"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"></path></svg>Status da Fábrica<i class="ui-tip-icon" id="sf-tip-icon">?</i></div><div class="sf-sub" id="sf-sub">Baseado em 12 meses · GAP = 24.965 pç (+13,9% da demanda)</div></div><div class="sf-center"><div class="sf-status" id="sf-status-val" style="color: rgb(255, 23, 68);">🔴 Sobrecarga</div></div><div class="sf-right"><div class="sf-metric"><div class="sf-metric-lbl">GAP</div><div class="sf-metric-val" id="sf-gap-val" style="color: rgb(255, 23, 68);">24.965</div><div class="sf-metric-unit">peças</div></div><div class="sf-metric"><div class="sf-metric-lbl">GAP %</div><div class="sf-metric-val" id="sf-gap-pct" style="color: rgb(255, 23, 68);">+13,9%</div><div class="sf-metric-unit">da demanda</div></div><div class="sf-metric"><div class="sf-metric-lbl">Demanda (vendido)</div><div class="sf-metric-val" id="sf-dem-val" style="color:var(--ds-demanda)">—</div><div class="sf-metric-unit">peças</div></div><div class="sf-metric"><div class="sf-metric-lbl">Produção</div><div class="sf-metric-val" id="sf-prod-val" style="color:var(--ds-destaque)">155.115</div><div class="sf-metric-unit">peças</div></div></div></div></div>
 <div id="ui-grupo-producao-ppcp" class="ui-group-label" style="font-size: 0.55rem; letter-spacing: 0.13em; text-transform: uppercase; color: rgb(42, 74, 106); margin: 18px 0px 6px; padding-left: 2px; display: flex; align-items: center; gap: 7px;">📦  Produção Real da Fábrica<span style="flex:1;height:1px;background:#2A2A2A;display:inline-block"></span></div><div class="ppcp-sec">▸ Produção Real da Fábrica</div>
 <div class="ppcp-kgrid" id="ppcp-kgrid-prod" style="cursor: help;">
   <div class="ppcp-card pk-cyan" style="cursor: help;">
@@ -4334,7 +4334,11 @@ var META_DEP_HE = 8;   /* % do volume vindo de hora extra */
    Ticket não é indicador de capacidade: só "evita hora extra" se a receita
    alvo for fixa e o mix puder subir de valor. Ver tooltip do card. */
 var META_TICKET = 250;
-var HDÍA    = 8.48; /* horas/dia — 8h48min conforme empresa */
+/* Jornada diária da fábrica: 8h48 = 528 min = 8,8 h. Uma constante só; os
+   módulos abaixo apontavam cada um para o seu "528" (e HDÍA dizia 8,48 —
+   8h48 em decimal é 8,80). Takt, capacidade/hora e demanda/hora derivam daqui. */
+var JORNADA_MIN_DIA = 528;
+var HDÍA    = JORNADA_MIN_DIA/60; /* 8,8 h/dia */
 var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
 var ORDEM   = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
@@ -5151,8 +5155,36 @@ window.DashUtils = (function() {
     return o;
   }
 
+  /* ── DEMANDA para o veredito/status ─────────────────────────────────────
+     Vendido, com fallback em faturado e em produção. É a regra do veredito
+     do Resumo (b60): faturado cai junto com a produção em mês travado, e a
+     "demanda" diminuía sozinha. Status da Fábrica do PPCP e da Visão Geral
+     usavam faturado — três semáforos com o mesmo texto e resultados
+     diferentes. Agora os três passam por aqui. */
+  function demanda(r) {
+    if (!r) return 0;
+    return r.qtdeVendida > 0 ? r.qtdeVendida : (r.qtdeFaturado > 0 ? r.qtdeFaturado : (r.producaoReal || 0));
+  }
+  /* ── STATUS DA FÁBRICA ──────────────────────────────────────────────────
+     gap% = (demanda − produção normal) ÷ demanda. ≤ 0 cobre · ≤ 10 atenção ·
+     > 10 sobrecarga. Régua única (o PPCP usava ±5 sobre faturado). */
+  function statusFabrica(dem, prod) {
+    var gap = dem - prod;
+    var pct = dem > 0 ? (gap / dem) * 100 : 0;
+    var nivel = pct <= 0 ? 'ok' : (pct <= 10 ? 'atencao' : 'sobrecarga');
+    return { nivel: nivel, pct: pct, gap: gap,
+             emoji: nivel === 'ok' ? '🟢' : (nivel === 'atencao' ? '🟡' : '🔴'),
+             texto: nivel === 'ok' ? 'CAPACIDADE OK' : (nivel === 'atencao' ? 'ATENÇÃO' : 'SOBRECARGA') };
+  }
+  /* ── FUNCIONÁRIOS NECESSÁRIOS ── demanda/dia ÷ (produção normal/dia ÷ colaboradores) */
+  function funcNecessarios(demDia, prodDia, colabs) {
+    if (!(colabs > 0) || !(prodDia > 0)) return colabs || 0;
+    return demDia / (prodDia / colabs);
+  }
+
   return { getDias:getDias, getFat:getFat, getProd:getProd,
            periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
+           demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
 
@@ -7807,7 +7839,7 @@ _tryRestoreFromIDB(function(){ init(); });
    PROD TAKT MODULE — namespace prod* / takt2*
    Constante: 528 minutos disponíveis por dia
 ════════════════════════════════════════════════════════════════ */
-var PROD_MIN_DIA = 528;          // minutos disponíveis por dia
+var PROD_MIN_DIA = JORNADA_MIN_DIA;   // minutos disponíveis por dia (constante única)
 var PROD_HORAS_DIA = PROD_MIN_DIA / 60; // = 8.8 horas
 
 /* Dias úteis típicos por mês — base para converter produção mensal → por dia */
@@ -8376,7 +8408,7 @@ function prodOnAtivarAba() {
 ════════════════════════════════════════════════════════════════ */
 
 /* ── Constante e estado ── */
-var CF_MIN_DIA   = 528;
+var CF_MIN_DIA   = JORNADA_MIN_DIA;
 var CF_HORAS_DIA = CF_MIN_DIA / 60;  // 8.8 h
 var CF_DIAS_MES  = DashUtils.DIAS_FB;   /* uma tabela só de fallback (era outra, divergente) */
 var cfAnoSel     = null;
@@ -9733,7 +9765,7 @@ function cfInicializar() {
   'use strict';
 
   /* ── Constantes ── */
-  var MIN_DIA   = 528;
+  var MIN_DIA   = JORNADA_MIN_DIA;
   var HORAS_DIA = MIN_DIA / 60;           // 8,8 h
   var CAP_HORA_DEFAULT = 160;             // pç/hora — editável no painel
   var CAP_HORA_SK      = 'cf_cap_hora_fabrica_final';
@@ -9975,7 +10007,7 @@ function cfInicializar() {
   'use strict';
 
   /* ─── Constantes ─── */
-  var MIN_DIA   = 528;
+  var MIN_DIA   = JORNADA_MIN_DIA;
   var HORAS_DIA = MIN_DIA / 60;
   var DIAS_FB   = { JAN:20,FEV:20,MAR:21,ABR:19,MAI:21,JUN:19,JUL:23,AGO:21,SET:22,OUT:23,NOV:19,DEZ:15 };
   var ORDEM_MES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -10055,7 +10087,7 @@ function cfInicializar() {
     var gapMes      = fat    - prod;
 
     var capFuncDia  = colabs > 0 ? prodDia / colabs : 0;
-    var funcNec     = capFuncDia > 0 ? demDia / capFuncDia : colabs;
+    var funcNec     = DashUtils.funcNecessarios(demDia, prodDia, colabs);
     var gapFunc     = funcNec - colabs;
 
     return {
@@ -10110,7 +10142,7 @@ function cfInicializar() {
     var gapDia     = demDia - prodDia;
     var gapMes     = totFat - totProd;
     var capFuncDia = mediaColabs > 0 ? prodDia / mediaColabs : 0;
-    var funcNec     = capFuncDia > 0 ? demDia / capFuncDia : mediaColabs;
+    var funcNec     = DashUtils.funcNecessarios(demDia, prodDia, mediaColabs);
     var gapFunc     = funcNec - mediaColabs;
 
     /* ── Novos indicadores industriais (PPCP) ── */
@@ -11056,7 +11088,7 @@ function cfInicializar() {
 (function () {
   'use strict';
 
-  var MIN_DIA   = 528;
+  var MIN_DIA   = JORNADA_MIN_DIA;
   var DIAS_FB   = { JAN:20,FEV:20,MAR:21,ABR:19,MAI:21,JUN:19,JUL:23,AGO:21,SET:22,OUT:23,NOV:19,DEZ:15 };
   var ORDEM_MES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
@@ -11141,8 +11173,8 @@ function cfInicializar() {
     /* Funcionários */
     var cFD     = mc > 0 ? pDia    / mc : 0;
     var cFDAdj  = mc > 0 ? pDiaAdj / mc : 0;
-    var fNec    = cFD    > 0 ? dDia / cFD    : mc;
-    var fNecAdj = cFDAdj > 0 ? dDia / cFDAdj : mc;
+    var fNec    = DashUtils.funcNecessarios(dDia, pDia,    mc);
+    var fNecAdj = DashUtils.funcNecessarios(dDia, pDiaAdj, mc);
 
     return {
       totProd:totProd, totProdAdj:totProdAdj, totFat:totFat, totDias:totDias, mc:mc,
@@ -11469,7 +11501,7 @@ function cfInicializar() {
 (function () {
   'use strict';
 
-  var HORAS_DIA  = 528 / 60;   /* 8,8 h — consistente com o sistema */
+  var HORAS_DIA  = JORNADA_MIN_DIA / 60;   /* 8,8 h — constante única */
   var PANEL_ID   = 'ind-industrial-panel';
 
   /* ── Formatadores locais ── */
@@ -12097,7 +12129,7 @@ function cfInicializar() {
     JUL:23, AGO:21, SET:22, OUT:23, NOV:19, DEZ:15
   };
   function _getDias(r) { return r.diasTrabalhados > 0 ? r.diasTrabalhados : (_DIAS_FB[r.mes] || 22); }
-  function _getFat(r)  { return r.qtdeFaturado  > 0 ? r.qtdeFaturado   : (r.producaoReal  || 0); }
+  function _getFat(r)  { return DashUtils.demanda(r); }   /* vendido → faturado → produção: a base do veredito */
   function _getProd(r) { return r.prodSemExtras > 0 ? r.prodSemExtras  : (r.producaoReal  || 0); }
 
   /* ── Formatadores locais ── */
@@ -12227,7 +12259,7 @@ function cfInicializar() {
             '<div class="sf-metric-unit">da demanda</div>' +
           '</div>' +
           '<div class="sf-metric">' +
-            '<div class="sf-metric-lbl">Demanda</div>' +
+            '<div class="sf-metric-lbl">Demanda (vendido)</div>' +
             '<div class="sf-metric-val" id="sf-dem-val" style="color:var(--ds-demanda)">—</div>' +
             '<div class="sf-metric-unit">peças</div>' +
           '</div>' +
@@ -12252,10 +12284,12 @@ function cfInicializar() {
   /* ════════════════════════════════════════
      3. CÁLCULO E RENDERIZAÇÃO
   ════════════════════════════════════════ */
+  /* Mesma régua do veredito do Resumo e da Visão Geral (DashUtils.statusFabrica):
+     gap ≤ 0 cobre · ≤ 10% atenção · > 10% sobrecarga. Era ±5% sobre faturado. */
   function _calcStatus(pctGap) {
-    if      (pctGap <= -5) return { emoji: '🟢', texto: 'Capacidade OK',  cor: DS.C.bom, accent: DS.C.bom };
-    else if (pctGap <=  5) return { emoji: '🟡', texto: 'Atenção',        cor: DS.C.alerta, accent: DS.C.alerta };
-    else                   return { emoji: '🔴', texto: 'Sobrecarga',      cor: DS.C.ruim, accent: DS.C.ruim };
+    if      (pctGap <= 0)  return { emoji: '🟢', texto: 'CAPACIDADE OK',  cor: DS.C.bom, accent: DS.C.bom };
+    else if (pctGap <= 10) return { emoji: '🟡', texto: 'ATENÇÃO',        cor: DS.C.alerta, accent: DS.C.alerta };
+    else                   return { emoji: '🔴', texto: 'SOBRECARGA',      cor: DS.C.ruim, accent: DS.C.ruim };
   }
 
   function _render(registros) {
@@ -12314,7 +12348,7 @@ function cfInicializar() {
     var meses = registros.length;
     _setText('sf-sub',
       'Baseado em ' + meses + (meses === 1 ? ' mês' : ' meses') +
-      ' · GAP = ' + _fI(gapMes) + ' pç (' + _fP(pctGap) + ' da demanda)'
+      ' · GAP = ' + _fI(gapMes) + ' pç (' + _fP(pctGap) + ' do vendido) · prod. em jornada normal'
     );
 
     /* Tooltip no ícone */
@@ -14157,7 +14191,7 @@ input:disabled, select:disabled {
   'use strict';
 
   /* ══ CONSTANTES — idênticas ao sistema PPCP ══ */
-  var HORAS_DIA = 528 / 60;   /* 8,8 h — consistente com MIN_DIA = 528 */
+  var HORAS_DIA = JORNADA_MIN_DIA / 60;   /* 8,8 h — constante única */
 
   /* ══ HELPERS DE ACESSO AO REGISTRO (mesmas funções de todos os módulos) ══ */
   var _DIAS_FB = {
@@ -14232,7 +14266,7 @@ input:disabled, select:disabled {
     /* Subtítulo descritivo */
     var difHora = capacidadeHora - demandaHora;
     set('mes-sf-sub',
-      'Cap/h: ' + fN(capacidadeHora, 1) + ' · Dem/h: ' + fN(demandaHora, 1) +
+      'Cap/h: ' + fN(capacidadeHora, 1) + ' · Vend/h: ' + fN(demandaHora, 1) +
       ' · Δ ' + fSign(difHora, 1) + ' pç/h' +
       ' · ' + p.n + (p.n === 1 ? ' mês' : ' meses'));
 
@@ -14341,13 +14375,14 @@ input:disabled, select:disabled {
     /* ── Acumular totais (mesma lógica de todos os módulos) ── */
     var totFat = 0, totProd = 0, totDias = 0, totVendida = 0;
     var totColabs = 0, totHorasPerd = 0, totMeta = 0, totAbs = 0;
-    var n = registros.length;
+    var n = registros.length; var totDemV = 0;
 
     registros.forEach(function(r) {
       totFat       += _fat(r);
       totProd      += _prod(r);
       totDias      += _dias(r);
       totVendida   += (r.qtdeVendida || 0);
+      totDemV      += DashUtils.demanda(r);   /* base do status: vendido → faturado → produção */
       totColabs    += (r.colaboradores || 0);
       totHorasPerd += (r.faltas || 0) + (r.atraso || 0);
       totMeta      += (r.meta > 0 ? r.meta : 0);
@@ -14363,6 +14398,7 @@ input:disabled, select:disabled {
     var vendaDia       = totDias  > 0 ? totVendida / totDias : 0;
     var prodHora       = HORAS_DIA > 0 ? prodDia / HORAS_DIA : 0;
     var demandaHora    = horasTot  > 0 ? totFat / horasTot : 0;
+    var demandaHoraV   = horasTot  > 0 ? totDemV / horasTot : 0;   /* para o Status da Fábrica */
     var prodFHora      = mediaColabs > 0 ? prodHora / mediaColabs : 0;
     var capacidadeHora = mediaColabs * prodFHora;   /* = prodHora */
 
@@ -14376,7 +14412,7 @@ input:disabled, select:disabled {
     /* ── GAP ── */
     var gapMes  = totFat  - totProd;
     var gapDia  = demDia  - prodDia;
-    var funcNec = (mediaColabs > 0 && prodDia > 0) ? demDia / (prodDia / mediaColabs) : 0;
+    var funcNec = (mediaColabs > 0 && prodDia > 0) ? DashUtils.funcNecessarios(demDia, prodDia, mediaColabs) : 0;
     var gapFunc = funcNec > 0 ? funcNec - mediaColabs : 0;
 
     /* ── Eficiência / Absenteísmo ── */
@@ -14395,8 +14431,9 @@ input:disabled, select:disabled {
       : ($c('kv-abs') || DS.C.alerta);
 
     /* ══ NÍVEL 1 — STATUS DA FÁBRICA ══ */
-    atualizarStatusFabrica(demandaHora, capacidadeHora,
-      { n: n, totFat: totFat, totProd: totProd, gapMes: gapMes });
+    /* Status da Fábrica pela mesma base do veredito do Resumo e do PPCP: vendido. */
+    atualizarStatusFabrica(demandaHoraV, capacidadeHora,
+      { n: n, totFat: totDemV, totProd: totProd, gapMes: totDemV - totProd });
 
     set('mes-ef-val',  efDisplay,  efCor);
     set('mes-abs-val', absDisplay, absCor);
@@ -14491,7 +14528,7 @@ input:disabled, select:disabled {
           return;
         }
         var dias = Math.ceil(gapMesX / prodDia);
-        var circulo = '⏳', seta = '', subtxt = 'para zerar o backlog';
+        var circulo = '⏳', seta = '', subtxt = 'para cobrir o gap do período';
         if (n >= 2) {
           var rA = registros[n-2], rB = registros[n-1];
           var pA = _dias(rA) > 0 ? _prod(rA) / _dias(rA) : 0;
@@ -17039,7 +17076,7 @@ function printAtiva(){
 <script>
 /* ══ VEREDITO EXECUTIVO — calcula direto dos dados (independente de outras abas) ══ */
 (function(){
-  var HORAS_DIA = 528/60;
+  var HORAS_DIA = JORNADA_MIN_DIA/60;
   var _DIAS_FB = { JAN:20, FEV:20, MAR:21, ABR:19, MAI:21, JUN:19,
                    JUL:23, AGO:21, SET:22, OUT:23, NOV:19, DEZ:15 };
   function _dias(r)  { return r.diasTrabalhados > 0 ? r.diasTrabalhados : (_DIAS_FB[r.mes] || 22); }
@@ -17081,10 +17118,10 @@ function printAtiva(){
     var diferenca = capacidadeHora - demandaHora;
     var pct = demandaHora > 0 ? (diferenca/demandaHora)*100 : 0;
 
-    var statusTxt, cor;
-    if (capacidadeHora >= demandaHora)      { statusTxt = '🟢 CAPACIDADE OK'; cor = '#4CAF50'; }
-    else if (pct > -10)                     { statusTxt = '🟡 ATENÇÃO';       cor = '#FF9800'; }
-    else                                     { statusTxt = '🔴 SOBRECARGA';    cor = '#F44336'; }
+    /* Régua única com PPCP e Visão Geral: DashUtils.statusFabrica (gap ≤0 / ≤10% / >10%). */
+    var _st = DashUtils.statusFabrica(totFat, totProd);
+    var statusTxt = _st.emoji + ' ' + _st.texto;
+    var cor = _st.nivel === 'ok' ? '#4CAF50' : (_st.nivel === 'atencao' ? '#FF9800' : '#F44336');
 
     document.getElementById('ev-status-txt').textContent = statusTxt;
     document.getElementById('ev-status-txt').style.color = cor;
@@ -20131,9 +20168,16 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b73';
+var APP_VERSAO = 'b74';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b74', data:'10/09/2026', itens:[
+    'Status da Fabrica era tres semaforos com o mesmo texto e bases diferentes: PPCP (faturado, ±5%), Visao Geral (faturado, −10%) e Resumo (vendido, −10%). Agora os tres usam DashUtils.statusFabrica: demanda = vendido (fallback faturado), gap ≤0 cobre · ≤10% atencao · >10% sobrecarga. Rotulo diz "Demanda (vendido)".',
+    'Funcionarios Necessarios tinha quatro implementacoes; virou uma funcao (demanda/dia ÷ producao normal/dia por colaborador).',
+    'Jornada de 528 min era constante repetida em seis modulos e HDIA dizia 8,48 h (8h48 em decimal e 8,80). Constante unica JORNADA_MIN_DIA.',
+    '"Dias para zerar o backlog" da Visao Geral passa a dizer o que e: dias para cobrir o gap do periodo — nao e a carteira acumulada da Reuniao.',
+    'Meta de ticket medio: META_TICKET, uma constante so no bloco de constantes. O valor 250 e a media historica dos 18 meses (R$ 247,69), nao uma meta decidida.'
+  ]},
   { v:'b73', data:'10/09/2026', itens:[
     'Nome: RitmoPatrimar Resultado. Entrada do app igual ao RitmoPatrimar Embalagem (logo, nome, pulso e frase). A Reuniao e a porta de entrada; ?aba=<id> abre outra, e o icone do app ganhou atalhos (Reuniao, Plano Mestre, Resumo, Briefing).',
     'Auditoria de coerencia: 62 achados, 31 de severidade alta, em todas as abas. Regra unica: o mesmo indicador tem a mesma conta, o mesmo rotulo e a mesma regua em toda tela.',
