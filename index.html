@@ -1840,7 +1840,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div id="rex-tkt-val" class="kVal" style="color:var(--purple)">R$ 246</div>
     <div class="kSub">R$ por peça faturada</div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--b)">
-      <span style="font-size:.63rem;color:var(--t2)">Meta: R$ 250</span>
+      <span style="font-size:.63rem;color:var(--t2)" id="rex-tkt-meta">Meta: R$ 250</span>
       <span id="rex-tkt-diff" style="font-family: var(--mono); font-size: 0.72rem; color: rgb(255, 23, 68);">- R$ 4</span>
     </div>
     <div id="rex-tkt-status" style="position: absolute; top: 12px; right: 12px; width: 9px; height: 9px; border-radius: 50%; background: rgb(255, 23, 68); box-shadow: rgb(255, 23, 68) 0px 0px 6px;"></div>
@@ -4583,6 +4583,12 @@ var META_EF = 90;
 var META_ABS    = 3;   /* dentro da meta                */
 var ABS_ATENCAO = 6;   /* acima disto, crítico          */
 var META_DEP_HE = 8;   /* % do volume vindo de hora extra */
+/* Ticket médio (R$ por peça faturada). Os R$ 250 estavam cravados em seis
+   lugares do Resumo. Registro: a média ponderada dos 18 meses fechados é
+   R$ 247,69 — ou seja, 250 é a média histórica, não uma meta decidida.
+   Ticket não é indicador de capacidade: só "evita hora extra" se a receita
+   alvo for fixa e o mix puder subir de valor. Ver tooltip do card. */
+var META_TICKET = 250;
 var HDÍA    = 8.48; /* horas/dia — 8h48min conforme empresa */
 var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
 var ORDEM   = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -7573,7 +7579,8 @@ function renderResumoExecutivo(dados) {
      por construção algébrica, não por desempenho. Trocar a base para sem
      extras só inverteria (vermelho em 17 de 18). Nenhum dos dois informa.
      O que informa é quanto do volume dependeu de hora extra. */
-  var okP=depHE<=8, okE=efM>=90, okA=absM<=3, okT=tktM>=250;
+  var okP=depHE<=META_DEP_HE, okE=efM>=META_EF, okA=absM<=META_ABS, okT=tktM>=META_TICKET;
+  var _tm=document.getElementById('rex-tkt-meta'); if(_tm) _tm.textContent='Meta: R$ '+META_TICKET;
   /* A bolinha era 9px de cor pura, sem forma nem texto. Em P&B verde vira
      cinza 135 e vermelho cinza 118 — 17 níveis em 255, indistinguíveis. E o
      @media print força .kVal para azul-marinho, matando o resto do semáforo.
@@ -7596,7 +7603,7 @@ function renderResumoExecutivo(dados) {
   semDot('rex-abs-status', 'rex-card-abs', okA);
   semDot('rex-tkt-status', 'rex-card-tkt', okT);
 
-  var efD=efM-90, abD=absM-3, tkD=tktM-250;
+  var efD=efM-META_EF, abD=absM-META_ABS, tkD=tktM-META_TICKET;
   e=el('rex-ef-diff');  if(e){ e.textContent=(efD>=0?'+':'')+efD.toFixed(1).replace('.',',')+' p.p.'; e.style.color=DS.delta(efD, true); }
   e=el('rex-abs-diff'); if(e){ e.textContent=(abD<=0?'- ':'+ ')+Math.abs(abD).toFixed(1).replace('.',',')+' p.p.'; e.style.color=DS.delta(-abD, true); }
   if(nTkt>0){ e=el('rex-tkt-diff'); if(e){ e.textContent=(tkD>=0?'+ R$ ':'- R$ ')+Math.abs(tkD).toFixed(0); e.style.color=DS.delta(tkD, true); } }
@@ -7615,7 +7622,7 @@ function renderResumoExecutivo(dados) {
       {l:'Dependência de Hora Extra', m:'Até 8% do volume entregue', ok:okP},
       {l:'Eficiência Média', m:'Meta: 90%',                       ok:okE},
       {l:'Absenteísmo',      m:'Meta: até 3%',                    ok:okA},
-      {l:'Ticket Médio',     m:'Meta: R$ 250',                    ok:okT},
+      {l:'Ticket Médio',     m:'Meta: R$ '+META_TICKET,           ok:okT},
       {l:'Horas Extras',     m:'Até 15% das h. totais',           ok:pctE<=15}
     ];
     sL.innerHTML = itens.map(function(it){
@@ -7740,7 +7747,7 @@ function renderResumoExecutivo(dados) {
     'somando hora extra dá meta batida sempre.</div>'
   );
 
-  var efCls = efM>=90?'g':efM>=80?'a':'r';
+  var efCls = efM>=META_EF?'g':efM>=META_EF-10?'a':'r';
   bindRexTooltip('rex-card-ef',
     '<div class="tip-title">Eficiência Média</div>'+
     tipRow('Eficiência', fmtP(efM), efCls)+
@@ -7752,7 +7759,7 @@ function renderResumoExecutivo(dados) {
     tipRow('Meses c/ meta (≥90%)', dados.filter(function(r){return r.producaoReal>0&&r.eficiencia>=90;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.eficiencia>=90;}).length===n?'g':dados.filter(function(r){return r.producaoReal>0&&r.eficiencia>=90;}).length===0?'r':'a')
   );
 
-  var absCls = absM<=3?'g':absM<=6?'a':'r';
+  var absCls = absM<=META_ABS?'g':absM<=ABS_ATENCAO?'a':'r';
   var hPerdidasTotal = 0;
   dados.forEach(function(r){ hPerdidasTotal += ((r.faltas||0)+(r.atraso||0)); });
   bindRexTooltip('rex-card-abs',
@@ -7767,16 +7774,16 @@ function renderResumoExecutivo(dados) {
     tipRow('Meses acima 3% (ruim)', dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>3;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>3;}).length===0?'g':dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>3;}).length===n?'r':'a')
   );
 
-  var tktCls = tktM>=250?'g':tktM>=200?'a':'r';
+  var tktCls = tktM>=META_TICKET?'g':tktM>=META_TICKET*0.8?'a':'r';
   bindRexTooltip('rex-card-tkt',
     '<div class="tip-title">Ticket Médio</div>'+
     tipRow('Ticket médio', nTkt>0?'R$ '+tktM.toFixed(2).replace('.',','):'--', tktCls)+
-    tipRow('Meta', 'R$ 250,00')+
+    tipRow('Meta', 'R$ '+META_TICKET.toFixed(2).replace('.',','))+
     tipRow('Diferença', (tkD>=0?'+ R$ ':'- R$ ')+Math.abs(tkD).toFixed(0), tkD>=0?'g':'r')+
     tipRow('Fórmula', 'Receita ÷ peças faturadas (ponderado)')+
     '<div style="border-top:1px solid var(--b);margin:5px 0"></div>'+
     '<div style="font-size:.62rem;color:var(--t2);margin-bottom:3px">dos '+n+' meses no período:</div>'+
-    tipRow('Meses c/ meta (≥R$250)', dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=250;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=250;}).length===n?'g':dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=250;}).length===0?'r':'a')
+    tipRow('Meses c/ meta (≥R$'+META_TICKET+')', dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=META_TICKET;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=META_TICKET;}).length===n?'g':dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=META_TICKET;}).length===0?'r':'a')
   );
 
   // Card horas totais (não tem id próprio, vamos buscar pelo kLbl)
