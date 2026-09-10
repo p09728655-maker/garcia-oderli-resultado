@@ -1537,6 +1537,11 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
     <div class="kCard kg"><div class="kLbl">Eficiência Média</div><div class="kVal" id="kv3-ef">87,8%</div><div class="kSub">Prod.s/Extras ÷ Cap.Teórica</div></div>
     <div class="kCard ka"><div class="kLbl">Peças Perdidas</div><div class="kVal" id="kv3-oee">—</div><div class="kSub">h. de falta e atraso × ritmo</div></div>
+    <!-- O mesmo número do card "Dependência de hora extra" da Reunião: parcela
+         do VOLUME que veio de hora extra. Sem ele aqui, quem descia da Reunião
+         (8,2% do volume) caía em "% Extras / Carga" (8,0% das horas de carga)
+         e achava que o painel se contradizia. -->
+    <div class="kCard ka" id="card3-dephe"><div class="kLbl">Dependência de HE</div><div class="kVal" id="kv3-dephe">—</div><div class="kSub" id="ks3-dephe">% do volume vindo de hora extra</div></div>
     <div class="kCard kg"><div class="kLbl">Meses ≥ 90%</div><div class="kVal" id="kv3-acima">8/18</div><div class="kSub">Meta atingida</div></div>
     <div class="kCard kr"><div class="kLbl">Meses &lt; 90%</div><div class="kVal" id="kv3-abaixo">10/18</div><div class="kSub">Abaixo da meta</div></div>
   </div>
@@ -1546,8 +1551,8 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div class="kCard ka"><div class="kLbl">H. Normais</div><div class="kVal" id="kv2-hn">264.508 h</div><div class="kSub">Sem extras</div></div>
     <div class="kCard kp"><div class="kLbl">H. Extras Total</div><div class="kVal" id="kv2-ext">38.413 h</div><div class="kSub">50% + 100%</div></div>
     <div class="kCard kr"><div class="kLbl">H. Perdidas (F+A)</div><div class="kVal" id="kv2-hfp">32.000 h</div><div class="kSub" id="ks2-hfp">Acumulado período</div></div>
-    <div class="kCard ka" id="card2-hnpct"><div class="kLbl">% Normais / Carga</div><div class="kVal" id="kv2-hnpct">—</div><div class="kSub">Coberto sem hora extra</div></div>
-    <div class="kCard ka" id="card2-extpct"><div class="kLbl">% Extras / Carga</div><div class="kVal" id="kv2-extpct">—</div><div class="kSub">Da capacidade em hora extra</div></div>
+    <div class="kCard ka" id="card2-hnpct"><div class="kLbl">% Normais / Carga</div><div class="kVal" id="kv2-hnpct">—</div><div class="kSub">h. normais ÷ h. carga · base: horas</div></div>
+    <div class="kCard ka" id="card2-extpct"><div class="kLbl">% Extras / Carga</div><div class="kVal" id="kv2-extpct">—</div><div class="kSub">h. extras ÷ h. carga · base: horas, não volume</div></div>
   </div>
   <div class="charts1">
     <div class="cBox">
@@ -1590,7 +1595,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     </div>
   </div>
   <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-    <div class="kCard ka"><div class="kLbl">Absenteísmo Médio</div><div class="kVal" id="kv4-abs">12,1%</div><div class="kSub">Período selecionado</div></div>
+    <div class="kCard ka"><div class="kLbl">Absenteísmo</div><div class="kVal" id="kv4-abs">12,1%</div><div class="kSub">faltas + atrasos ÷ h. normais do período</div></div>
     <div class="kCard ka"><div class="kLbl">Total Faltas (h)</div><div class="kVal" id="kv4-fat">28.499 h</div><div class="kSub">Acumulado</div></div>
     <div class="kCard ka"><div class="kLbl">Total Atrasos (h)</div><div class="kVal" id="kv4-atr">3.501 h</div><div class="kSub">Acumulado</div></div>
     <div class="kCard kr"><div class="kLbl">Meses acima 3%</div><div class="kVal" id="kv4-acima">18/18</div><div class="kSub">Acima do limite</div></div>
@@ -1792,7 +1797,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div id="rex-prod-val" class="kVal" style="color:var(--cyan)">—</div>
     <div class="kSub" id="rex-prod-split">peças no período</div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--b)">
-      <span style="font-size:.63rem;color:var(--t2)">Veio de hora extra</span>
+      <span style="font-size:.63rem;color:var(--t2)">Veio de hora extra · % do volume</span>
       <span id="rex-prod-dep" style="font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--t2)">—</span>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px">
@@ -1882,10 +1887,10 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   </div>
 
   <div class="kCard" style="cursor: help;">
-    <div class="kLbl">⚡ % Horas Extras</div>
+    <div class="kLbl">⚡ HE sobre horas totais</div>
     <div style="display:flex;align-items:baseline;gap:6px">
       <span id="rex-ext-pct-val" class="kVal" style="font-size:1.35rem;color:var(--t1)">13,0%</span>
-      <span class="kSub">% das h totais</span>
+      <span class="kSub">h. extras ÷ h. totais · base: horas, não volume</span>
     </div>
     <div style="margin-top:10px;background:var(--bg);border-radius:4px;height:4px;overflow:hidden">
       <div id="rex-ext-pct-bar" style="height: 100%; background: linear-gradient(90deg,#FF9800,var(--amber2)); border-radius: 4px; width: 52.1252%; transition: width 0.6s;"></div>
@@ -4345,7 +4350,7 @@ Fórmula: Faltas + Atrasos
           <th style="text-align:right" title="Produção entregue ÷ Plano — inclui hora extra">Atingim. c/ HE</th>
           <th style="text-align:right" title="Produção em jornada normal ÷ Plano">Atingim. s/ HE</th>
           <th style="text-align:right">Dias úteis</th>
-          <th style="text-align:right" title="Plano ÷ dias úteis">Ritmo necessário</th>
+          <th style="text-align:right" title="Plano ÷ dias trabalhados (mês fechado) ou ÷ dias planejados (mês aberto)">Ritmo necessário</th>
           <th style="text-align:right" title="Produção em JORNADA NORMAL ÷ dias úteis. Não conta hora extra: o plano precisa caber na jornada normal, senão a entrega depende de HE todo mês.">Ritmo realizado (s/ HE)</th>
         </tr>
       </thead>
@@ -5722,7 +5727,10 @@ function renderKPIs(d){
   s('kv-oee', _Pperd.pecasPerdidas === null ? '--'
               : Math.round(_Pperd.pecasPerdidas).toLocaleString('pt-BR')+' pç');
   s('kv-prod',fi(tProd));
-  s('kv-abs', f(ab)+'%');
+  /* Ponderado (h perdidas ÷ h normais do período), não média de percentuais:
+     é a base da Reunião e do Resumo. A média aritmética entre meses de 15 e
+     de 23 dias dava outro número para o mesmo período. */
+  s('kv-abs', _Pperd.absenteismo===null ? f(ab)+'%' : f(_Pperd.absenteismo)+'%');
   s('kv-tkt', nTkt>0?'R$ '+f(tTkt/nTkt,2):'—');
 
   // H. Perdidas — soma acumulada do período, não só último mês
@@ -7132,11 +7140,26 @@ function renderKPIsExtras(d){
   var _P3 = DashUtils.periodo(d);
   s('kv3-oee', _P3.pecasPerdidas === null ? '—'
                : Math.round(_P3.pecasPerdidas).toLocaleString('pt-BR')+' pç');
+  /* Dependência de HE — parcela do volume vinda de hora extra. Mesma conta e
+     mesmos limiares do card da Reunião (META_DEP_HE / 15). */
+  var _dep = (_P3.depExtras === null || _P3.depExtras === undefined) ? null : _P3.depExtras;
+  var _elDep = document.getElementById('kv3-dephe');
+  if(_elDep){
+    if(_dep === null){ _elDep.textContent='—'; _elDep.style.color=''; }
+    else {
+      _elDep.textContent = f(_dep)+'%';
+      var _limDep = (typeof META_DEP_HE!=='undefined')?META_DEP_HE:8;
+      _elDep.style.color = _dep<=_limDep?'var(--green)':(_dep<=15?'var(--amber)':'var(--red)');
+    }
+  }
+  var _ksDep = document.getElementById('ks3-dephe');
+  if(_ksDep) _ksDep.textContent = _dep === null ? '% do volume vindo de hora extra'
+    : (fi(_P3.deExtras)+' pç de '+fi(_P3.comExtras)+' vieram de '+fi(_P3.hExtras)+' h extras');
   s('kv3-acima',  acima90+'/'+d.length);
   s('kv3-abaixo', (d.length-acima90)+'/'+d.length);
 
-  // Pessoas
-  s('kv4-abs',   f(ab)+'%');
+  // Pessoas — ponderado, mesma base da Reunião (ver kv-abs)
+  s('kv4-abs',   _P3.absenteismo===null ? f(ab)+'%' : f(_P3.absenteismo)+'%');
   s('kv4-fat',   fi(tF)+' h');
   s('kv4-atr',   fi(tA)+' h');
   s('kv4-acima', acimaAbs+'/'+d.length);
@@ -12162,8 +12185,14 @@ function cfInicializar() {
     'card2-extpct': {
       titulo: 'H. Extras vs Carga',
       formula: 'H. Extras ÷ H. Carga × 100',
-      corpo: 'Percentual da capacidade teórica que precisou de hora extra para ser coberto.',
+      corpo: 'Percentual da capacidade teórica (em HORAS) que precisou de hora extra para ser coberto. Não é a mesma base da Dependência de HE, que é sobre o VOLUME produzido.',
       interpretacao: '<span class="uit-good">≤ 10%</span> saudável · <span class="uit-warn">10–15%</span> atenção · <span class="uit-bad">&gt; 15%</span> alto'
+    },
+    'kv3-dephe': {
+      titulo: 'Dependência de Hora Extra',
+      formula: '(Produção Real − Produção s/ Extras) ÷ Produção Real × 100',
+      corpo: 'Parcela do VOLUME entregue que só existiu porque houve hora extra. É o número do card "Dependência de hora extra" da Reunião do Mês. Difere de "% Extras / Carga", que compara horas, não peças.',
+      interpretacao: '<span class="uit-good">≤ 8%</span> dentro da meta · <span class="uit-warn">8–15%</span> atenção · <span class="uit-bad">&gt; 15%</span> a entrega depende de hora extra'
     }
   };
 
@@ -17571,7 +17600,12 @@ function printAtiva(){
       var atCE=(plano>0&&fechado)?(real/plano)*100:null;
       var atSE=(plano>0&&fechado&&normal>0)?(normal/plano)*100:null;
       function corAt(v){ return v===null?'var(--t3)':(v>=100?'var(--green)':(v>=90?'var(--amber)':'var(--red)')); }
-      var ritmoNec=plano>0?plano/diasP:null;
+      /* Mês fechado: plano ÷ dias TRABALHADOS — a mesma base do ritmo exigido
+         do ano (diasPlanFech) e do card da Reunião. Dividir pelos dias
+         planejados dava 1.564 na tabela e 1.643 na Reunião para JUN/26 (21 x
+         20 dias), e o painel parecia se contradizer. Mês aberto segue nos
+         dias planejados: não há outro. */
+      var ritmoNec=plano>0?plano/dias:null;
       var ritmoReal=horasFechadas?normal/dias:null;
       var corDesvio=desvio===null?'var(--t3)':(desvio>=0?'var(--green)':'var(--red)');
       var corRitmo=(ritmoReal!==null&&ritmoNec!==null)?(ritmoReal>=ritmoNec?'var(--green)':'var(--red)'):'var(--t1)';
@@ -17595,7 +17629,7 @@ function printAtiva(){
            duvida: da vermelho no mesmo mes em que o desvio da verde. */
         +'<td style="text-align:right;color:'+corRitmo+';font-weight:700"'
           +(ritmoReal===null?'':' title="'+fi(normal)+' peças em jornada normal ÷ '+dias+' dias = '+fi(ritmoReal)+' pç/dia'
-            +String.fromCharCode(10)+'O plano pede '+fi(ritmoNec)+' pç/dia.'
+            +String.fromCharCode(10)+'O plano pede '+fi(plano)+' ÷ '+dias+' dias = '+fi(ritmoNec)+' pç/dia.'
             +String.fromCharCode(10)+'Com hora extra o ritmo foi '+fi(real/dias)+' pç/dia — mas hora extra não é capacidade."')
           +'>'+(ritmoReal!==null?fi(ritmoReal):'—')+'</td>'
         +'</tr>';
@@ -19723,7 +19757,7 @@ function printAtiva(){
       +card('Ritmo demonstrado'+(anoTodo?' no ano':' em '+mes), ritDem!==null?(fi(ritDem)+' pç/dia'):'—',
                 subRit, corRit, false, 'mestre')
       +card('Dependência de hora extra', fd(A.depHE,1)+'%',
-             fi(A.deHE)+' pç de '+fi(A.he)+' h extras<br>'+fd(A.pctHE,1)+'% das horas'
+             fi(A.deHE)+' pç de '+fi(A.he)+' h extras<br>'+fd(A.pctHE,1)+'% das horas totais'
              +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%')),
              A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), false, 'eficiencia')
       +card('Absenteísmo', fd(A.absMed,1)+'%',
@@ -20269,9 +20303,14 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b71';
+var APP_VERSAO = 'b72';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b72', data:'10/09/2026', itens:[
+    'Descer da Reuniao pelo card "Dependencia de hora extra" (8,2% do VOLUME em AGO/26) caia em "% Extras / Carga" (8,0% das HORAS de carga) — bases diferentes, e a tela nao dizia. Parecia contradicao.',
+    'A aba Eficiencia & Horas ganhou o card Dependencia de HE com a mesma conta e os mesmos limiares da Reuniao, e os cards de horas passam a declarar a base ("h. extras ÷ h. carga · base: horas, nao volume"). No Resumo, "% Horas Extras" virou "HE sobre horas totais" pelo mesmo motivo.',
+    'Auditoria dos outros cards da Reuniao contra a aba de destino achou mais duas divergencias, corrigidas: o Ritmo necessario da tabela do Plano Mestre dividia pelos dias PLANEJADOS (1.564 em JUN/26) enquanto a Reuniao e o veredito do ano usam os dias TRABALHADOS (1.643); e o absenteismo das abas Pessoas e Visao Geral era media aritmetica de percentuais, nao horas perdidas ÷ horas normais como na Reuniao.'
+  ]},
   { v:'b71', data:'10/09/2026', itens:[
     'Pecas perdidas por falta e atraso entram na Reuniao, dentro do card de absenteismo: "2.050 h de falta e atraso = 4.195 pc · 3,0 dias de producao" (AGO/26). E a traducao que a diretoria entende; 14,1% sozinho nao decide nada.',
     'Nao virou card proprio de proposito: e o mesmo problema do absenteismo em outra unidade, e como card separado entraria duas vezes na regra "vermelho sem acao". A resposta da faixa 1 tambem passa a citar as pecas perdidas.'
