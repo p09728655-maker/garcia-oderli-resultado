@@ -20103,9 +20103,9 @@ function printAtiva(){
       dica:'Leia a manchete e as três respostas. Não leia os cards — eles são a prova, não a fala.' },
     { id:'mestre',     n:'Pergunta 1', t:'O plano cabe sem hora extra?',             fala:'r1',       cor:'c1',
       dica:'Ritmo exigido × demonstrado, o que falta do plano do ano e em quantos dias úteis.' },
-    { id:'eficiencia', n:'Pergunta 1', t:'Quanto da entrega veio de hora extra?',    fala:'he',       cor:'cHe',
+    { id:'eficiencia', n:'Causa 1 · hora extra', t:'Quanto da entrega veio de hora extra?',    fala:'he',       cor:'cHe',
       dica:'Dependência de HE contra a meta e a evolução mês a mês. Custo da HE vira decisão: turno, headcount ou nada.' },
-    { id:'pessoas',    n:'Pergunta 1', t:'O que falta e atraso custaram?',           fala:'abs',      cor:'cAbs',
+    { id:'pessoas',    n:'Causa 2 · absenteísmo', t:'O que falta e atraso custaram?',           fala:'abs',      cor:'cAbs',
       dica:'Absenteísmo traduzido em peças e dias de fábrica — é a causa da hora extra, não um indicador de RH.' },
     { id:'producao',   n:'Pergunta 2', t:'O que entregamos e o que falta faturar?', fala:'r2',       cor:'c2',
       dica:'Vendido, produzido e faturado no mês. A carteira em dias úteis diz se a fila cabe no ritmo normal.' },
@@ -20560,9 +20560,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b80';
+var APP_VERSAO = 'b81';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b81', data:'10/09/2026', itens:[
+    'Trilha: os passos 3 e 4 (Eficiencia & Horas, Pessoas) apareciam rotulados como Pergunta 1, igual ao passo 2. Agora sao Causa 1 (hora extra) e Causa 2 (absenteismo).'
+  ]},
   { v:'b80', data:'10/09/2026', itens:[
     'Pergunta 1 da Reuniao passa a responder: quanto faltou para o plano em jornada normal, quanto a falta e o atraso custaram, e se com o absenteismo na meta o plano caberia sem hora extra (ou se e capacidade). O "ritmo -x%" saiu da frase: era a aderencia dita de outro jeito.',
     'Botao Ocultar/mostrar painel lateral ficava invisivel quando o painel estava oculto (o estilo do estado ativo usava uma variavel de cor inexistente; o icone ficava na cor do fundo e so aparecia no hover). Agora fica ambar. Alem disso, com o painel oculto aparece uma alca fixa na borda esquerda (Filtros) que reabre o painel.'
