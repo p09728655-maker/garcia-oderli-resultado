@@ -1,15 +1,84 @@
 {
-  "name": "PPCP Capacidade & Eficiência",
-  "short_name": "PPCP Capacidade",
-  "description": "Dashboard de Capacidade e Eficiência - PPCP Patrimar",
-  "start_url": "/",
+  "name": "RitmoPatrimar Resultado",
+  "short_name": "Resultado",
+  "description": "RitmoPatrimar Resultado — Reunião do Mês, plano, entrega e plano de ação. PPCP Patrimar Móveis.",
+  "lang": "pt-BR",
+  "start_url": "/?aba=reuniao&origem=app",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#111111",
+  "background_color": "#0b0b0b",
   "theme_color": "#111111",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Reunião do Mês",
+      "short_name": "Reunião",
+      "url": "/?aba=reuniao&origem=atalho",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Planejamento Mestre",
+      "short_name": "Plano",
+      "url": "/?aba=mestre&origem=atalho",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Resumo Executivo",
+      "short_name": "Resumo",
+      "url": "/?aba=resumo&origem=atalho",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Briefing Mensal",
+      "short_name": "Briefing",
+      "url": "/?aba=briefing&origem=atalho",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

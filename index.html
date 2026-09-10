@@ -2,12 +2,12 @@
 <html lang="pt-BR"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Dashboard — Capacidade &amp; Eficiência 2025/2026</title>
+<title>RitmoPatrimar · Resultado</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#111111">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PPCP Capacidade">
+<meta name="apple-mobile-web-app-title" content="RP Resultado">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <!--
@@ -1057,10 +1057,49 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .enh-row-val.cv-p{color:var(--ds-ruim)}
 .enh-row-val.cv-n{color:var(--ds-destaque)}
 .enh-row-val.cv-ok{color:var(--ds-bom)}
-#tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style>  <link rel="manifest" href="./manifest.webmanifest">
+#tip .enh-tip-interp{margin-top:5px;font-size:.68rem;color:#5a8fbd;line-height:1.5}</style><style id="mes-status-accent-style">#mes-card-status-wrap.mes-card::before { background: #F44336 !important; }</style>
   <link rel="icon" href="./favicon-32.png">
 </head>
 <body><div id="alertas-banner" style="display: none;"></div>
+<!-- ══ ENTRADA DO APP ══
+     Mesma entrada do RitmoPatrimar Embalagem: logo, nome, pulso e a frase.
+     Fica 1,4 s (ou até o clique) e some com fade. Não bloqueia nada: o
+     painel carrega por baixo. Em segunda abertura na mesma sessão não
+     aparece — só na entrada de verdade. -->
+<style>
+#splash{position:fixed;inset:0;z-index:200000;background:#0b0b0b;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:22px;cursor:pointer;transition:opacity .45s ease;
+  font-family:'Segoe UI',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+#splash.off{opacity:0;pointer-events:none}
+#splash .sp-logo{width:220px;height:auto;background:#fff;border-radius:12px;padding:12px 18px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+#splash .sp-nome{font-size:clamp(2.4rem,5.4vw,4.6rem);font-weight:900;letter-spacing:.14em;color:#fff;line-height:1;
+  font-family:'Bahnschrift','Arial Narrow','Segoe UI',Arial,sans-serif;text-transform:uppercase}
+#splash .sp-sub{font-size:clamp(1rem,2.2vw,1.7rem);font-weight:800;letter-spacing:.42em;color:#F5A623;margin-top:-10px;text-transform:uppercase}
+#splash .sp-pulso{width:min(300px,60vw);height:36px}
+#splash .sp-frase{font-size:1.15rem;font-weight:700;color:#e8e8e8;letter-spacing:.01em}
+#splash .sp-frase b{color:#FF5722}
+#splash .sp-ver{position:absolute;bottom:18px;font:600 11px Consolas,monospace;color:#5f6b78;letter-spacing:.06em}
+@media (prefers-reduced-motion: reduce){ #splash{transition:none} }
+</style>
+<div id="splash" onclick="this.classList.add('off')" aria-label="Entrada">
+  <img class="sp-logo" src="logo-patrimar.jpg" alt="Patrimar Móveis" onerror="this.style.display='none'">
+  <div class="sp-nome">RitmoPatrimar</div>
+  <div class="sp-sub">Resultado</div>
+  <svg class="sp-pulso" viewBox="0 0 300 36" fill="none" stroke="#FF5722" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M0 18 H120 L138 18 L150 4 L162 32 L174 18 H300"/>
+  </svg>
+  <div class="sp-frase">O resultado do mês, em uma tela<b>.</b></div>
+  <div class="sp-ver" id="splash-ver"></div>
+</div>
+<script>
+(function(){
+  var el=document.getElementById('splash'); if(!el) return;
+  var vez=false; try{ vez=!sessionStorage.getItem('rp_splash'); sessionStorage.setItem('rp_splash','1'); }catch(e){ vez=true; }
+  if(!vez){ el.parentNode.removeChild(el); return; }
+  setTimeout(function(){ el.classList.add('off'); }, 1400);
+  el.addEventListener('transitionend', function(){ if(el.classList.contains('off')&&el.parentNode) el.parentNode.removeChild(el); });
+})();
+</script>
 <div id="app">
 
 <!-- ══ HEADER ══ -->
@@ -1071,7 +1110,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
            onerror="this.parentElement.innerHTML='<svg viewBox=&quot;0 0 24 24&quot;><path d=&quot;M3 13h4v8H3v-8zm7-6h4v14h-4V7zm7-4h4v18h-4V3z&quot;></path></svg>';this.parentElement.classList.remove('hIcon-logo')">
     </div>
     <div>
-      <h1>Capacidade &amp; <span>Eficiência</span></h1>
+      <h1>RitmoPatrimar <span>Resultado</span></h1>
       <div class="hBadge" id="hBadge">▸ ANÁLISE 2025 / 2026 — DADOS REAIS DA PLANILHA</div>
     </div>
   </div>
@@ -1184,12 +1223,12 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 <!-- ══ ABAS DE NAVEGAÇÃO (4 grupos MES) ══ -->
 <nav class="pageNav" id="main-nav">
   <!-- 0 · REUNIÃO — primeira porque é a tela que se abre na reunião -->
-  <button class="pTab" data-group="reuniao" onclick="mudarGrupo('reuniao',this)">
+  <button class="pTab on" data-group="reuniao" onclick="mudarGrupo('reuniao',this)">
     <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4z"></path></svg>
     Reunião
   </button>
   <!-- 1 · VISÃO GERAL -->
-  <button class="pTab on" data-group="geral" onclick="mudarGrupo('geral',this)">
+  <button class="pTab" data-group="geral" onclick="mudarGrupo('geral',this)">
     <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 13h4v8H3v-8zm7-6h4v14h-4V7zm7-4h4v18h-4V3z"></path></svg>
     Visão Geral
   </button>
@@ -1240,7 +1279,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
         <div class="mes-card-value" id="mes-sf-status" data-status-id="statusFabrica" style="color: rgb(255, 23, 68);">🔴 SOBRECARGA</div>
         <!-- statusFabrica: alias exigido pela lógica de status -->
         <div id="statusFabrica" style="display:none"></div>
-        <div class="mes-card-sub" id="mes-sf-sub">Cap/h: 148,7 · Dem/h: 177,6 · Δ -28,9 pç/h · 18 meses</div>
+        <div class="mes-card-sub" id="mes-sf-sub">—</div>
       </div>
       <div class="mes-sf-metrics">
         <div class="mes-sf-metric">
@@ -1265,9 +1304,9 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <!-- Card Eficiência -->
     <div class="mes-card mes-card-ef" id="mes-card-ef">
       <div class="mes-card-badge">DESEMPENHO</div>
-      <div class="mes-card-title">Eficiência</div>
-      <div class="mes-card-value mes-val-green" id="mes-ef-val" style="color: rgb(0, 230, 118);">87,8%</div>
-      <div class="mes-card-sub">Prod. s/ extras ÷ cap. teórica</div>
+      <div class="mes-card-title">Independência de HE</div>
+      <div class="mes-card-value mes-val-green" id="mes-ef-val">—</div>
+      <div class="mes-card-sub">prod. jornada normal ÷ meta (derivada)</div>
       <div class="mes-card-meta">
         <span class="mes-meta-lbl">Meta</span>
         <span class="mes-meta-val">≥ 90%</span>
@@ -1431,7 +1470,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div id="mes-analise-panel">
     <div>
       <div style="font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);margin-bottom:12px">▸ PONTOS DO PERÍODO</div>
-      <div id="mes-analise-bullets"><div style="display:flex;gap:9px;align-items:flex-start;padding:8px 11px;border-radius:5px;background:rgba(255,152,0,.06);border:1px solid rgba(255,152,0,.22)"><span style="color:#ffd04d;font-size:.8rem;flex-shrink:0;margin-top:1px">◆</span><span style="font-size:.78rem;color:#ffd04d;line-height:1.5">Eficiência abaixo da meta (-8,4pp vs 96%)</span></div><div style="display:flex;gap:9px;align-items:flex-start;padding:8px 11px;border-radius:5px;background:rgba(244,67,54,.06);border:1px solid rgba(244,67,54,.22)"><span style="color:#ff8a9a;font-size:.8rem;flex-shrink:0;margin-top:1px">■</span><span style="font-size:.78rem;color:#ff8a9a;line-height:1.5">Capacidade acima de 100% — fábrica em sobrecarga</span></div><div style="display:flex;gap:9px;align-items:flex-start;padding:8px 11px;border-radius:5px;background:rgba(255,152,0,.06);border:1px solid rgba(255,152,0,.22)"><span style="color:#ffd04d;font-size:.8rem;flex-shrink:0;margin-top:1px">◆</span><span style="font-size:.78rem;color:#ffd04d;line-height:1.5">Produção não atendeu demanda (-16,3%)</span></div><div style="display:flex;gap:9px;align-items:flex-start;padding:8px 11px;border-radius:5px;background:rgba(244,67,54,.06);border:1px solid rgba(244,67,54,.22)"><span style="color:#ff8a9a;font-size:.8rem;flex-shrink:0;margin-top:1px">■</span><span style="font-size:.78rem;color:#ff8a9a;line-height:1.5">Absenteísmo: 12,13% — acima do limite (10%)</span></div><div style="display:flex;gap:9px;align-items:flex-start;padding:8px 11px;border-radius:5px;background:rgba(255,152,0,.06);border:1px solid rgba(255,152,0,.22)"><span style="color:#ffd04d;font-size:.8rem;flex-shrink:0;margin-top:1px">◆</span><span style="font-size:.78rem;color:#ffd04d;line-height:1.5">⏳ Vendas superam produção em 139.578 pçs — monitorar backlog</span></div><div style="margin-top:10px;padding:10px 12px;border-radius:5px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);font-size:.78rem;color:var(--ds-destaque);line-height:1.5"><b>📌 Conclusão:</b> Período crítico — múltiplos indicadores fora do controle</div></div>
+      <div id="mes-analise-bullets"><div style="color:var(--t3);font-size:.78rem;padding:10px 0">— aguardando dados do período —</div></div>
     </div>
     <div>
       <div style="font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);margin-bottom:12px">▸ VS. MÊS ANTERIOR</div>
@@ -1496,10 +1535,9 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div class="charts1" style="margin-top:20px">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Evolução Geral — Eficiência, Ef. Ajustada &amp; Absenteísmo (%)</span>
+        <span class="cTtl">▸ Evolução Geral — Independência de HE &amp; Absenteísmo (%)</span>
         <div class="lgnd">
           <span class="li"><span class="ld" style="background:var(--cyan)"></span>Eficiência</span>
-          <span class="li"><span class="ld" style="background:var(--amber)"></span>Ef. Ajust.</span>
           <span class="li"><span class="ld" style="background:var(--purple)"></span>Absenteísmo</span>
           <span class="li"><span class="ld" style="background:var(--pink)"></span>H.Falta Prod %</span>
           <span class="li"><span class="ld" style="border:1px dashed var(--t3)"></span>Meta 90%</span>
@@ -1531,19 +1569,19 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     </div>
     <div>
       <div class="pageHdrTitle">Eficiência Operacional</div>
-      <div class="pageHdrSub">Eficiência real, Ef. Ajustada e as horas que a sustentam — meta ≥ 90%</div>
+      <div class="pageHdrSub">Independência de hora extra e as horas que a sustentam — meta ≥ 90%</div>
     </div>
   </div>
   <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-    <div class="kCard kg"><div class="kLbl">Eficiência Média</div><div class="kVal" id="kv3-ef">87,8%</div><div class="kSub">Prod.s/Extras ÷ Cap.Teórica</div></div>
+    <div class="kCard kg"><div class="kLbl">Independência de HE</div><div class="kVal" id="kv3-ef">—</div><div class="kSub">prod. jornada normal ÷ meta (derivada) · meta ≥ 90%</div></div>
     <div class="kCard ka"><div class="kLbl">Peças Perdidas</div><div class="kVal" id="kv3-oee">—</div><div class="kSub">h. de falta e atraso × ritmo</div></div>
     <!-- O mesmo número do card "Dependência de hora extra" da Reunião: parcela
          do VOLUME que veio de hora extra. Sem ele aqui, quem descia da Reunião
          (8,2% do volume) caía em "% Extras / Carga" (8,0% das horas de carga)
          e achava que o painel se contradizia. -->
     <div class="kCard ka" id="card3-dephe"><div class="kLbl">Dependência de HE</div><div class="kVal" id="kv3-dephe">—</div><div class="kSub" id="ks3-dephe">% do volume vindo de hora extra</div></div>
-    <div class="kCard kg"><div class="kLbl">Meses ≥ 90%</div><div class="kVal" id="kv3-acima">8/18</div><div class="kSub">Meta atingida</div></div>
-    <div class="kCard kr"><div class="kLbl">Meses &lt; 90%</div><div class="kVal" id="kv3-abaixo">10/18</div><div class="kSub">Abaixo da meta</div></div>
+    <div class="kCard kg"><div class="kLbl">Meses ≥ 90%</div><div class="kVal" id="kv3-acima">—</div><div class="kSub">indep. de HE na meta</div></div>
+    <div class="kCard kr"><div class="kLbl">Meses &lt; 90%</div><div class="kVal" id="kv3-abaixo">—</div><div class="kSub">indep. de HE abaixo da meta</div></div>
   </div>
   <div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:20px 0 10px;padding-left:2px">▸ Horas — carga, normais, extras e perdidas</div>
   <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
@@ -1557,10 +1595,9 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Evolução Eficiência &amp; Ef. Ajustada (%)</span>
+        <span class="cTtl">▸ Evolução da Independência de HE (%)</span>
         <div class="lgnd">
           <span class="li"><span class="ld" style="background:var(--cyan)"></span>Eficiência</span>
-          <span class="li"><span class="ld" style="background:var(--amber)"></span>Ef. Ajust.</span>
           <span class="li"><span class="ld" style="border:1px dashed rgba(255,255,255,.2)"></span>Meta 90%</span>
         </div>
       </div>
@@ -1571,7 +1608,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Δ Eficiência vs Mês Anterior (p.p.)</span>
+        <span class="cTtl">▸ Δ Independência de HE vs Mês Anterior (p.p.)</span>
         <div class="lgnd">
           <span class="li"><span class="ld" style="background:var(--green)"></span>Melhora</span>
           <span class="li"><span class="ld" style="background:var(--red)"></span>Piora</span>
@@ -1643,13 +1680,13 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div class="kCard ka" id="card5-med"><div class="kLbl">Média Mensal</div><div class="kVal" id="kv5-med">30.935 pç</div><div class="kSub">Peças/mês</div></div>
     <div class="kCard kp"><div class="kLbl">Ticket Médio</div><div class="kVal" id="kv5-tkt">R$ 249,36</div><div class="kSub">R$ por peça</div></div>
     <div class="kCard kg" id="card5-best"><div class="kLbl">Melhor Mês</div><div class="kVal" id="kv5-best">36.450 pç</div><div class="kSub" id="ks5-best">MAI/2025</div></div>
-    <div class="kCard kc"><div class="kLbl">Meta Acumulada</div><div class="kVal" id="kv5-meta">539.517 pç</div><div class="kSub">Cap. teórica s/ extras</div></div>
-    <div class="kCard ka" id="card5-var"><div class="kLbl">Atingimento Médio</div><div class="kVal" id="kv5-var" style="color: var(--amber);">87,6%</div><div class="kSub">Prod. s/ extras ÷ Meta</div></div>
+    <div class="kCard kc"><div class="kLbl">Previsto (Plano Mestre)</div><div class="kVal" id="kv5-meta">—</div><div class="kSub">Σ previsão dos meses com plano</div></div>
+    <div class="kCard ka" id="card5-var"><div class="kLbl">Aderência ao plano · c/ HE</div><div class="kVal" id="kv5-var">—</div><div class="kSub">produção entregue ÷ previsto</div></div>
   </div>
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Meta vs Realizado s/ Hora Extra (peças)</span>
+        <span class="cTtl">▸ Previsto (Plano Mestre) vs Realizado s/ Hora Extra (peças)</span>
         <div class="lgnd">
           <span class="li"><span class="ld" style="background:var(--t2);border:1px dashed var(--t2)"></span>Meta</span>
           <span class="li"><span class="ld" style="background:var(--cyan)"></span>Realizado</span>
@@ -1718,8 +1755,8 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       <thead>
         <tr>
           <th>Mês</th>
-          <th>Δ Eficiência</th>
-          <th>Δ Ef. Ajust.</th>
+          <th>Δ Indep. HE</th>
+          <th>Δ Peças perdidas</th>
           <th>Δ Absenteísmo</th>
           <th>Δ H. Totais</th>
           <th>Δ H. Extras</th>
@@ -1729,7 +1766,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
           <th>Tendência</th>
         </tr>
       </thead>
-      <tbody id="tbodyDelta"><tr><td class="dMes">FEV/2025</td><td class="dNum dDn">▼ 9,4%</td><td class="dNum dDn">▼ 13,2%</td><td class="dNum dDn">▲ 5,7%</td><td class="dNum dUp">▲ 1.279,0 h</td><td class="dNum dUp">▲ 1.576,0 h</td><td class="dNum dDn">▼ 999,0</td><td class="dNum dUp">▲ 1,0</td><td class="dNum dUp">▲ 0,4 R$</td><td><span class="dDn">▼ Piora</span></td></tr><tr><td class="dMes">MAR/2025</td><td class="dNum dUp">▲ 3,4%</td><td class="dNum dUp">▲ 4,3%</td><td class="dNum dUp">▼ 7,4%</td><td class="dNum dUp">▲ 1.054,0 h</td><td class="dNum dDn">▼ 332,0 h</td><td class="dNum dUp">▲ 3.059,0</td><td class="dNum dUp">▲ 3,0</td><td class="dNum dUp">▲ 31,0 R$</td><td><span class="dUp">▲ Melhora</span></td></tr><tr><td class="dMes">ABR/2025</td><td class="dNum dDn">▼ 1,3%</td><td class="dNum dDn">▼ 1,4%</td><td class="dNum dDn">▲ 0,1%</td><td class="dNum dUp">▲ 370,0 h</td><td class="dNum dUp">▲ 274,0 h</td><td class="dNum dUp">▲ 2.619,0</td><td class="dNum dUp">▲ 4,0</td><td class="dNum dDn">▼ 34,8 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">MAI/2025</td><td class="dNum dDn">▼ 0,0%</td><td class="dNum dUp">▲ 0,4%</td><td class="dNum dDn">▲ 0,1%</td><td class="dNum dUp">▲ 1.038,0 h</td><td class="dNum dUp">▲ 198,0 h</td><td class="dNum dUp">▲ 730,0</td><td class="dNum dUp">▲ 4,0</td><td class="dNum dUp">▲ 34,1 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">JUN/2025</td><td class="dNum dUp">▲ 2,8%</td><td class="dNum dUp">▲ 4,0%</td><td class="dNum dDn">▲ 1,3%</td><td class="dNum dDn">▼ 991,0 h</td><td class="dNum dDn">▼ 661,0 h</td><td class="dNum dDn">▼ 10.982,0</td><td class="dNum dUp">▲ 2,0</td><td class="dNum dUp">▲ 62,7 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">JUL/2025</td><td class="dNum dUp">▲ 9,8%</td><td class="dNum dUp">▲ 11,9%</td><td class="dNum dDn">▲ 0,5%</td><td class="dNum dUp">▲ 1.625,0 h</td><td class="dNum dDn">▼ 1.540,0 h</td><td class="dNum dUp">▲ 6.342,0</td><td class="dNum dUp">▲ 2,0</td><td class="dNum dDn">▼ 16,7 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">AGO/2025</td><td class="dNum dDn">▼ 3,9%</td><td class="dNum dDn">▼ 3,9%</td><td class="dNum dNt">0,0%</td><td class="dNum dDn">▼ 662,0 h</td><td class="dNum dUp">▲ 642,0 h</td><td class="dNum dUp">▲ 2.286,0</td><td class="dNum dUp">▲ 1,0</td><td class="dNum dDn">▼ 22,6 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">SET/2025</td><td class="dNum dUp">▲ 0,1%</td><td class="dNum dDn">▼ 0,2%</td><td class="dNum dUp">▼ 0,1%</td><td class="dNum dUp">▲ 1.030,0 h</td><td class="dNum dUp">▲ 85,0 h</td><td class="dNum dUp">▲ 2.049,0</td><td class="dNum dDn">▼ 2,0</td><td class="dNum dUp">▲ 19,6 R$</td><td><span class="dUp">▲ Melhora</span></td></tr><tr><td class="dMes">OUT/2025</td><td class="dNum dDn">▼ 1,4%</td><td class="dNum dDn">▼ 1,9%</td><td class="dNum dDn">▲ 1,1%</td><td class="dNum dUp">▲ 1.456,0 h</td><td class="dNum dUp">▲ 433,0 h</td><td class="dNum dDn">▼ 3.022,0</td><td class="dNum dUp">▲ 2,0</td><td class="dNum dUp">▲ 20,4 R$</td><td><span class="dDn">▼ Piora</span></td></tr><tr><td class="dMes">NOV/2025</td><td class="dNum dUp">▲ 0,5%</td><td class="dNum dUp">▲ 1,1%</td><td class="dNum dDn">▲ 1,8%</td><td class="dNum dDn">▼ 3.850,0 h</td><td class="dNum dDn">▼ 526,0 h</td><td class="dNum dDn">▼ 9.791,0</td><td class="dNum dDn">▼ 3,0</td><td class="dNum dDn">▼ 8,3 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">DEZ/2025</td><td class="dNum dDn">▼ 6,1%</td><td class="dNum dDn">▼ 11,3%</td><td class="dNum dDn">▲ 0,1%</td><td class="dNum dDn">▼ 2.542,0 h</td><td class="dNum dUp">▲ 563,0 h</td><td class="dNum dUp">▲ 7.607,0</td><td class="dNum dDn">▼ 1,0</td><td class="dNum dDn">▼ 48,2 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">JAN/2026</td><td class="dNum dUp">▲ 4,5%</td><td class="dNum dUp">▲ 8,5%</td><td class="dNum dUp">▼ 5,6%</td><td class="dNum dUp">▲ 1.432,0 h</td><td class="dNum dDn">▼ 450,0 h</td><td class="dNum dDn">▼ 8.502,0</td><td class="dNum dUp">▲ 1,0</td><td class="dNum dUp">▲ 77,5 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">FEV/2026</td><td class="dNum dDn">▼ 0,7%</td><td class="dNum dDn">▼ 1,2%</td><td class="dNum dDn">▲ 3,5%</td><td class="dNum dUp">▲ 3.357,0 h</td><td class="dNum dUp">▲ 551,0 h</td><td class="dNum dUp">▲ 10.110,0</td><td class="dNum dUp">▲ 5,0</td><td class="dNum dDn">▼ 23,9 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">MAR/2026</td><td class="dNum dUp">▲ 9,8%</td><td class="dNum dUp">▲ 14,2%</td><td class="dNum dDn">▲ 1,3%</td><td class="dNum dDn">▼ 1.767,6 h</td><td class="dNum dDn">▼ 1.871,6 h</td><td class="dNum dDn">▼ 4.947,0</td><td class="dNum dDn">▼ 5,0</td><td class="dNum dDn">▼ 18,8 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">ABR/2026</td><td class="dNum dDn">▼ 6,1%</td><td class="dNum dDn">▼ 8,9%</td><td class="dNum dDn">▲ 1,2%</td><td class="dNum dDn">▼ 864,4 h</td><td class="dNum dUp">▲ 944,6 h</td><td class="dNum dUp">▲ 1.595,0</td><td class="dNum dUp">▲ 3,0</td><td class="dNum dDn">▼ 7,5 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">MAI/2026</td><td class="dNum dDn">▼ 3,6%</td><td class="dNum dDn">▼ 4,5%</td><td class="dNum dUp">▼ 4,7%</td><td class="dNum dUp">▲ 2.395,0 h</td><td class="dNum dUp">▲ 886,0 h</td><td class="dNum dUp">▲ 4.135,0</td><td class="dNum dNt">0,0</td><td class="dNum dUp">▲ 23,3 R$</td><td><span class="dNt">― Estável</span></td></tr><tr><td class="dMes">JUN/2026</td><td class="dNum dUp">▲ 3,1%</td><td class="dNum dUp">▲ 3,7%</td><td class="dNum dDn">▲ 0,2%</td><td class="dNum dDn">▼ 2.380,0 h</td><td class="dNum dDn">▼ 806,0 h</td><td class="dNum dDn">▼ 2.879,0</td><td class="dNum dDn">▼ 1,0</td><td class="dNum dDn">▼ 3,4 R$</td><td><span class="dNt">― Estável</span></td></tr></tbody>
+      <tbody id="tbodyDelta"><!-- preenchido pelo JS; vinha commitado com 18 meses congelados --></tbody>
     </table>
     <div class="emp" id="tblDeltaEmp" style="display:none">
       <svg viewBox="0 0 24 24"><path d="M3 13h4v8H3v-8zm7-6h4v14h-4V7zm7-4h4v18h-4V3z"></path></svg>
@@ -1740,21 +1777,24 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 <div class="page" id="page-ano-a-ano"><div class="aaa-hdr"><div class="aaa-hdr-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v2H3V3zm0 8h18v2H3v-2zm0 8h18v2H3v-2zm16-14l-4 4 4 4"></path></svg></div><div><div class="aaa-title">Comparação Ano a Ano</div><div class="aaa-sub">Evolução de cada mês comparado ao mesmo mês do ano anterior</div></div></div><div class="aaa-charts" style="display: grid;"><div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Produção por mês</div><canvas id="aaa-c-prod" height="160" width="300" style="width: 300px; height: 160px;"></canvas><div class="aaa-legend" id="aaa-lg-prod"><span class="aaa-li"><span class="aaa-ld" style="background:#F5A623"></span>2025</span><span class="aaa-li"><span class="aaa-ld" style="background:#FF9800"></span>2026</span></div></div><div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Eficiência % por mês</div><canvas id="aaa-c-ef" height="160" width="300" style="width: 300px; height: 160px;"></canvas><div class="aaa-legend" id="aaa-lg-ef"><span class="aaa-li"><span class="aaa-ld" style="background:#F5A623"></span>2025</span><span class="aaa-li"><span class="aaa-ld" style="background:#FF9800"></span>2026</span></div></div><div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Absenteísmo % por mês</div><canvas id="aaa-c-abs" height="160" width="300" style="width: 300px; height: 160px;"></canvas><div class="aaa-legend" id="aaa-lg-abs"><span class="aaa-li"><span class="aaa-ld" style="background:#F5A623"></span>2025</span><span class="aaa-li"><span class="aaa-ld" style="background:#FF9800"></span>2026</span></div></div></div><div class="aaa-wrap" style="display: block;"><table class="aaa-table"><thead id="aaa-thead"><tr><th>Mês</th><th style="color:#F5A623">2025 Prod</th><th style="color:#F5A623">2025 Ef%</th><th style="color:#F5A623">2025 Abs%</th><th class="aaa-sep" style="color:var(--t3)">Δ Prod%</th><th style="color:var(--t3)">Δ Ef pp</th><th style="color:#FF9800">2026 Prod</th><th style="color:#FF9800">2026 Ef%</th><th style="color:#FF9800">2026 Abs%</th></tr></thead><tbody id="aaa-tbody"><tr><td class="aaa-mes">JAN</td><td class="aaa-val">31.041</td><td class="aaa-val">90.0%</td><td class="aaa-val">11.5%</td><td class="aaa-var aaa-sep neg">-27.7%</td><td class="aaa-var neg">-1.9 pp</td><td class="aaa-val">22.437</td><td class="aaa-val">88.1%</td><td class="aaa-val">9.0%</td></tr><tr><td class="aaa-mes">FEV</td><td class="aaa-val">30.042</td><td class="aaa-val">76.8%</td><td class="aaa-val">17.2%</td><td class="aaa-var aaa-sep pos">+8.3%</td><td class="aaa-var pos">+10.1 pp</td><td class="aaa-val">32.547</td><td class="aaa-val">87.0%</td><td class="aaa-val">12.6%</td></tr><tr><td class="aaa-mes">MAR</td><td class="aaa-val">33.101</td><td class="aaa-val">81.1%</td><td class="aaa-val">9.8%</td><td class="aaa-var aaa-sep neg">-16.6%</td><td class="aaa-var pos">+20.0 pp</td><td class="aaa-val">27.600</td><td class="aaa-val">101.1%</td><td class="aaa-val">13.9%</td></tr><tr><td class="aaa-mes">ABR</td><td class="aaa-val">35.720</td><td class="aaa-val">79.7%</td><td class="aaa-val">9.9%</td><td class="aaa-var aaa-sep neg">-18.3%</td><td class="aaa-var pos">+12.6 pp</td><td class="aaa-val">29.195</td><td class="aaa-val">92.3%</td><td class="aaa-val">15.1%</td></tr><tr><td class="aaa-mes">MAI</td><td class="aaa-val">36.450</td><td class="aaa-val">80.1%</td><td class="aaa-val">9.9%</td><td class="aaa-var aaa-sep neg">-8.6%</td><td class="aaa-var pos">+7.7 pp</td><td class="aaa-val">33.330</td><td class="aaa-val">87.8%</td><td class="aaa-val">10.4%</td></tr><tr><td class="aaa-mes">JUN</td><td class="aaa-val">25.468</td><td class="aaa-val">84.0%</td><td class="aaa-val">11.3%</td><td class="aaa-var aaa-sep pos">+19.6%</td><td class="aaa-var pos">+7.4 pp</td><td class="aaa-val">30.451</td><td class="aaa-val">91.5%</td><td class="aaa-val">10.7%</td></tr><tr><td class="aaa-mes">JUL</td><td class="aaa-val">31.810</td><td class="aaa-val">95.9%</td><td class="aaa-val">11.8%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-95.9 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">AGO</td><td class="aaa-val">34.096</td><td class="aaa-val">92.0%</td><td class="aaa-val">11.8%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-92.0 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">SET</td><td class="aaa-val">36.145</td><td class="aaa-val">91.8%</td><td class="aaa-val">11.7%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-91.8 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">OUT</td><td class="aaa-val">33.123</td><td class="aaa-val">89.9%</td><td class="aaa-val">12.8%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-89.9 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">NOV</td><td class="aaa-val">23.332</td><td class="aaa-val">91.0%</td><td class="aaa-val">14.5%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-91.0 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr><tr><td class="aaa-mes">DEZ</td><td class="aaa-val">30.939</td><td class="aaa-val">79.6%</td><td class="aaa-val">14.6%</td><td class="aaa-var aaa-sep neu">—</td><td class="aaa-var neg">-79.6 pp</td><td class="aaa-val">0</td><td class="aaa-val">0.0%</td><td class="aaa-val">0.0%</td></tr></tbody></table></div><div class="aaa-empty" id="aaa-empty" style="display: none;">Sem dados suficientes — importe a planilha.</div></div>
 
 <!-- ══ PÁGINA: RESUMO EXECUTIVO ══ -->
-<div class="page on" id="page-resumo">
+<div class="page" id="page-resumo">
 
 <!-- VEREDITO EXECUTIVO — headline única, entendível em segundos -->
-<div id="exec-veredito" style="background:linear-gradient(135deg,var(--panel),rgba(244,67,54,.04));border:1px solid var(--b);border-left:5px solid #F44336;border-radius:var(--r);padding:26px 30px;margin-bottom:18px">
+<div id="exec-veredito" style="background:linear-gradient(135deg,var(--panel),rgba(255,255,255,.02));border:1px solid var(--b);border-left:5px solid var(--b);border-radius:var(--r);padding:26px 30px;margin-bottom:18px">
+  <!-- Vinha commitado com o veredito de um período congelado ("SOBRECARGA
+       +16,3%, 472.441 × 564.324"). Com filtro vazio o JS sai cedo e o texto
+       velho ficava na tela. Agora nasce neutro; só o JS escreve números. -->
   <div style="font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--t2);margin-bottom:10px">▸ VEREDITO DO PERÍODO</div>
   <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:10px">
-    <span id="ev-status-txt" style="font-size:2.1rem;font-weight:800;letter-spacing:.02em;color:#F44336">🔴 SOBRECARGA</span>
-    <span id="ev-gap-pct" style="font-size:1.3rem;font-family:var(--mono);font-weight:700;color:#F44336">+16,3%</span>
-    <span id="ev-gap-lbl" style="font-size:.72rem;color:var(--t2)">da demanda sem cobertura</span>
+    <span id="ev-status-txt" style="font-size:2.1rem;font-weight:800;letter-spacing:.02em;color:var(--t3)">—</span>
+    <span id="ev-gap-pct" style="font-size:1.3rem;font-family:var(--mono);font-weight:700;color:var(--t3)"></span>
+    <span id="ev-gap-lbl" style="font-size:.72rem;color:var(--t2)">aguardando dados do período</span>
   </div>
   <div id="ev-frase" style="font-size:.95rem;color:var(--t1);line-height:1.5;max-width:900px">
-    A fábrica produziu <b id="ev-prod-inline">472.441</b> peças contra uma demanda de <b id="ev-dem-inline">564.324</b> — déficit de <b id="ev-gap-inline">91.883</b> peças no período. Isso não se resolve apertando eficiência: é capacidade instalada abaixo da demanda.
+    Produção <b id="ev-prod-inline">—</b> · demanda <b id="ev-dem-inline">—</b> · gap <b id="ev-gap-inline">—</b>.
   </div>
-  <div id="ev-acao" style="margin-top:14px;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.8rem;color:var(--t2);border-left:2px solid rgba(244,67,54,.4)">
-    <b style="color:var(--t1)">Ação recomendada:</b> avaliar aumento de capacidade (turno, headcount ou hora extra estrutural) — ou renegociar prazos de entrega com o gap atual.
+  <div id="ev-acao" style="margin-top:14px;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.8rem;color:var(--t2);border-left:2px solid var(--b)">
+    <b style="color:var(--t1)">Ação recomendada:</b> —
   </div>
 </div>
 
@@ -1767,7 +1807,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <div id="rex-tendencia-badge" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 30px; font-size: 0.75rem; font-weight: 700; font-family: var(--mono); border-color: rgb(0, 230, 118); border-top-style: ; border-top-width: ; border-right-style: ; border-right-width: ; border-bottom-style: ; border-bottom-width: ; border-left-style: ; border-left-width: ; border-image-source: ; border-image-slice: ; border-image-width: ; border-image-outset: ; border-image-repeat: ; color: var(--t2); background: rgba(0, 230, 118, 0.1);">
-      <span id="rex-tend-icon" style="color: rgb(0, 230, 118);">▲</span> <span id="rex-tend-txt" style="color: rgb(0, 230, 118);">MELHORANDO</span>
+      <span id="rex-tend-icon">—</span> <span id="rex-tend-txt">—</span>
     </div>
     <div style="font-family:var(--mono);font-size:.65rem;color:var(--t3);text-align:right">
       <div id="rex-periodo-label">Período: 2025, 2026</div>
@@ -1840,8 +1880,15 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div id="rex-tkt-val" class="kVal" style="color:var(--purple)">R$ 246</div>
     <div class="kSub">R$ por peça faturada</div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--b)">
-      <span style="font-size:.63rem;color:var(--t2)">Meta: R$ 250</span>
+      <span style="font-size:.63rem;color:var(--t2)" id="rex-tkt-meta">Meta: R$ 250</span>
       <span id="rex-tkt-diff" style="font-family: var(--mono); font-size: 0.72rem; color: rgb(255, 23, 68);">- R$ 4</span>
+    </div>
+    <!-- Ticket que cobriria a MESMA receita produzindo só na jornada normal:
+         ticket ÷ (1 − dependência de HE). É decisão comercial de mix, não de
+         PPCP — por isso fica aqui e não na Reunião. -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px">
+      <span style="font-size:.63rem;color:var(--t2)">Cobriria a receita sem HE</span>
+      <span id="rex-tkt-semhe" style="font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--t2)">—</span>
     </div>
     <div id="rex-tkt-status" style="position: absolute; top: 12px; right: 12px; width: 9px; height: 9px; border-radius: 50%; background: rgb(255, 23, 68); box-shadow: rgb(255, 23, 68) 0px 0px 6px;"></div>
   </div>
@@ -1904,11 +1951,11 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
   <div class="cBox">
     <div class="cTtl" style="margin-bottom:14px">▸ SEMÁFORO DE METAS</div>
-    <div id="rex-semaforo-list" style="display:flex;flex-direction:column;gap:9px"><div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;background:rgba(76,175,80,.06);border:1px solid rgba(76,175,80,.2)"><span style="width:18px;height:18px;border-radius:50%;background:#4CAF50;color:#111111;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 6px #4CAF50">✓</span><span style="font-size:.75rem;color:#F5F5F5;flex:1">Produção Total</span><span style="font-size:.62rem;color:#888888">Maior ou igual à meta acumulada</span><span style="font-size:.65rem;font-weight:700;color:#4CAF50;font-family:Consolas,monospace;padding:1px 7px;border-radius:10px;border:1px solid rgba(76,175,80,.2)">ATINGIDA</span></div><div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;background:rgba(244,67,54,.06);border:1px solid rgba(244,67,54,.2)"><span style="width:18px;height:18px;border-radius:50%;background:#F44336;color:#111111;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 6px #F44336">✗</span><span style="font-size:.75rem;color:#F5F5F5;flex:1">Eficiência Média</span><span style="font-size:.62rem;color:#888888">Meta: 90%</span><span style="font-size:.65rem;font-weight:700;color:#F44336;font-family:Consolas,monospace;padding:1px 7px;border-radius:10px;border:1px solid rgba(244,67,54,.2)">ABAIXO</span></div><div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;background:rgba(244,67,54,.06);border:1px solid rgba(244,67,54,.2)"><span style="width:18px;height:18px;border-radius:50%;background:#F44336;color:#111111;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 6px #F44336">✗</span><span style="font-size:.75rem;color:#F5F5F5;flex:1">Absenteísmo</span><span style="font-size:.62rem;color:#888888">Meta: até 3%</span><span style="font-size:.65rem;font-weight:700;color:#F44336;font-family:Consolas,monospace;padding:1px 7px;border-radius:10px;border:1px solid rgba(244,67,54,.2)">ABAIXO</span></div><div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;background:rgba(244,67,54,.06);border:1px solid rgba(244,67,54,.2)"><span style="width:18px;height:18px;border-radius:50%;background:#F44336;color:#111111;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 6px #F44336">✗</span><span style="font-size:.75rem;color:#F5F5F5;flex:1">Ticket Médio</span><span style="font-size:.62rem;color:#888888">Meta: R$ 250</span><span style="font-size:.65rem;font-weight:700;color:#F44336;font-family:Consolas,monospace;padding:1px 7px;border-radius:10px;border:1px solid rgba(244,67,54,.2)">ABAIXO</span></div><div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;background:rgba(76,175,80,.06);border:1px solid rgba(76,175,80,.2)"><span style="width:18px;height:18px;border-radius:50%;background:#4CAF50;color:#111111;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 6px #4CAF50">✓</span><span style="font-size:.75rem;color:#F5F5F5;flex:1">Horas Extras</span><span style="font-size:.62rem;color:#888888">Até 15% das h. totais</span><span style="font-size:.65rem;font-weight:700;color:#4CAF50;font-family:Consolas,monospace;padding:1px 7px;border-radius:10px;border:1px solid rgba(76,175,80,.2)">ATINGIDA</span></div></div>
+    <div id="rex-semaforo-list" style="display:flex;flex-direction:column;gap:9px"><div style="color:var(--t3);font-size:.78rem;padding:10px 0">— aguardando dados do período —</div></div>
   </div>
   <div class="cBox">
     <div class="cTtl" style="margin-bottom:14px">▸ INSIGHTS AUTOMÁTICOS</div>
-    <div id="rex-insights-list" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;gap:10px;padding:9px 12px;border-radius:5px;background:rgba(255,152,0,.06);border:1px solid rgba(255,152,0,.22);align-items:flex-start"><span style="font-size:.9rem;margin-top:1px;flex-shrink:0">⚠️</span><span style="font-size:.78rem;color:#ffd04d;line-height:1.5">Eficiência de <b>87,2 %</b> — <b>2,8</b> p.p. abaixo da meta de 90%.</span></div><div style="display:flex;gap:10px;padding:9px 12px;border-radius:5px;background:rgba(244,67,54,.06);border:1px solid rgba(244,67,54,.22);align-items:flex-start"><span style="font-size:.9rem;margin-top:1px;flex-shrink:0">🔴</span><span style="font-size:.78rem;color:#ff8a9a;line-height:1.5">Absenteísmo elevado: <b>12,1 %</b> — impacta diretamente a capacidade produtiva.</span></div><div style="display:flex;gap:10px;padding:9px 12px;border-radius:5px;background:rgba(255,152,0,.06);border:1px solid rgba(255,152,0,.22);align-items:flex-start"><span style="font-size:.9rem;margin-top:1px;flex-shrink:0">⚠️</span><span style="font-size:.78rem;color:#ffd04d;line-height:1.5">Horas extras representam <b>13,0 %</b> do total — acompanhar impacto no custo.</span></div><div style="display:flex;gap:10px;padding:9px 12px;border-radius:5px;background:rgba(76,175,80,.06);border:1px solid rgba(76,175,80,.25);align-items:flex-start"><span style="font-size:.9rem;margin-top:1px;flex-shrink:0">✅</span><span style="font-size:.78rem;color:#5effa0;line-height:1.5">Produção superou a meta em <b>3,2%</b> (14.571 peças acima).</span></div></div>
+    <div id="rex-insights-list" style="display:flex;flex-direction:column;gap:10px"><div style="color:var(--t3);font-size:.78rem;padding:10px 0">— aguardando dados do período —</div></div>
   </div>
 </div>
 
@@ -2719,328 +2766,22 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
           <th title="Horas trabalhadas em jornada normal, sem horas extras">H. Norm.</th><th title="Total de horas extras (50% + 100%)">H. Ext.</th><th title="Total de horas de faltas no mês">Faltas</th><th title="Total de horas de atrasos no mês">Atraso</th>
           <th title="(Faltas + Atrasos) ÷ H. Normais × 100
 Mede o % da jornada perdida por ausências">Abs. %</th>
-          <th title="Produção Sem Extras ÷ Capacidade Teórica Hora Normal × 100
-Mede o quanto foi produzido nas horas normais vs o máximo possível">Efic. %</th>
-          <th title="Eficiência ajustada considerando o impacto das horas perdidas (faltas/atrasos)">Ef. Aj. %</th>
+          <th title="Independência de HE = Prod. s/ Extras ÷ Meta × 100
+A meta é derivada da planilha (= produção real × h. normais ÷ h. carga), não é capacidade nem alvo. O número mede quanto da entrega saiu sem hora extra.">Indep. HE %</th>
+          <th title="Coluna eficienciaAdj da planilha: vem pronta e não é reproduzível por fórmula nenhuma (b63). Só referência — o painel usa Peças Perdidas no lugar.">Ef. Aj. % (planilha)</th>
           <th title="Total de peças produzidas no mês (incluindo hora extra)">Produção</th>
           <th title="Prod. s/ Extra: peças produzidas apenas nas horas normais
-Meta: Capacidade Teórica = H. Normais × Cap. Hora Prevista">S/ Extra / Meta</th>
-          <th title="Prod. s/ Extras ÷ Meta (Cap. Teórica) × 100
-≥ 90% = verde | ≥ 80% = amarelo | &lt; 80% = vermelho">Ating.</th>
+▶ Meta: coluna derivada da planilha (= produção real × h. normais ÷ h. carga). Não é capacidade nem alvo.">S/ Extra / Meta</th>
+          <th title="Aderência ao plano em jornada normal = Prod. s/ Extras ÷ Previsão (Plano Mestre) × 100
+≥ 100% = verde | abaixo = vermelho">Ader. plano s/HE</th>
           <th title="Total de horas de faltas + atrasos no mês
 % entre parênteses = H. Perdidas ÷ H. Carga × 100">H. Perd.</th>
           <th title="Valor médio de venda por peça produzida">Ticket</th>
           <th>Ações</th>
         </tr>
       </thead>
-      <tbody id="tbody"><tr><td class="cMes">JAN/2025</td><td class="cNum">83</td><td class="cNum">12.820 h</td><td class="cNum">13.998 h</td><td class="cNum">12.375 h</td><td class="cNum">1.623 h</td><td class="cNum">1.263 h</td><td class="cNum">162 h</td><td class="cNum" title="JAN/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.263 + 162) ÷ 12.820 × 100
-= 11,5%">11,5%</td><td title="JAN/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 26.970 ÷ 29.964 × 100
-= 90,0%
-Meta: ≥ 90%"><div class="pw"><span class="bef verde"><span class="dot"></span>90,0%</span><div class="pb"><div class="pf" style="width:90.01%;background:var(--green)"></div></div></div></td><td class="cNum" title="JAN/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 94,5%">94,5%</td><td class="cNum">31.041</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">26.970</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 29.964</span></td><td title="JAN/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 26.970 ÷ 29.964 × 100
-= 90,0%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt ok">90,0%</span></td><td class="cNum" title="JAN/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.263 + 162 = 1.425 h
-% sobre H. Carga: 1.425 ÷ 12.820 × 100 = 11,1%" style="color:var(--red);font-weight:700;">1.425 h <span style="font-size:.67rem;opacity:.7">(11,1%)</span></td><td class="cNum">R$ 188,74</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs8upn')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs8upn')">✕</button></div></td></tr><tr><td class="cMes">FEV/2025</td><td class="cNum">84</td><td class="cNum">12.623 h</td><td class="cNum">15.277 h</td><td class="cNum">12.078 h</td><td class="cNum">3.199 h</td><td class="cNum">1.896 h</td><td class="cNum">185 h</td><td class="cNum" title="FEV/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.896 + 185) ÷ 12.623 × 100
-= 17,2%">17,2%</td><td title="FEV/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 22.085 ÷ 28.745 × 100
-= 76,8%
-Meta: ≥ 90%"><div class="pw"><span class="bef vermelho"><span class="dot"></span>76,8%</span><div class="pb"><div class="pf" style="width:76.83%;background:var(--red)"></div></div></div></td><td class="cNum" title="FEV/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 82,8%">82,8%</td><td class="cNum">30.042</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">22.085</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 28.745</span></td><td title="FEV/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 22.085 ÷ 28.745 × 100
-= 76,8%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">76,8%</span></td><td class="cNum" title="FEV/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.896 + 185 = 2.081 h
-% sobre H. Carga: 2.081 ÷ 12.623 × 100 = 16,5%" style="color:var(--red);font-weight:700;">2.081 h <span style="font-size:.67rem;opacity:.7">(16,5%)</span></td><td class="cNum">R$ 189,13</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs8dr4')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs8dr4')">✕</button></div></td></tr><tr><td class="cMes">MAR/2025</td><td class="cNum">87</td><td class="cNum">13.872 h</td><td class="cNum">16.331 h</td><td class="cNum">13.464 h</td><td class="cNum">2.867 h</td><td class="cNum">1.139 h</td><td class="cNum">182 h</td><td class="cNum" title="MAR/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.139 + 182) ÷ 13.872 × 100
-= 9,8%">9,8%</td><td title="MAR/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 26.053 ÷ 32.127 × 100
-= 81,1%
-Meta: ≥ 90%"><div class="pw"><span class="bef amarelo"><span class="dot"></span>81,1%</span><div class="pb"><div class="pf" style="width:81.09%;background:var(--yellow)"></div></div></div></td><td class="cNum" title="MAR/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 84,6%">84,6%</td><td class="cNum">33.101</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">26.053</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 32.127</span></td><td title="MAR/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 26.053 ÷ 32.127 × 100
-= 81,1%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">81,1%</span></td><td class="cNum" title="MAR/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.139 + 182 = 1.321 h
-% sobre H. Carga: 1.321 ÷ 13.872 × 100 = 9,5%" style="color:var(--amber);font-weight:700;">1.321 h <span style="font-size:.67rem;opacity:.7">(9,5%)</span></td><td class="cNum">R$ 220,14</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs8bmt')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs8bmt')">✕</button></div></td></tr><tr><td class="cMes">ABR/2025</td><td class="cNum">91</td><td class="cNum">14.065 h</td><td class="cNum">16.701 h</td><td class="cNum">13.560 h</td><td class="cNum">3.141 h</td><td class="cNum">1.150 h</td><td class="cNum">187 h</td><td class="cNum" title="ABR/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.150 + 187) ÷ 14.065 × 100
-= 9,9%">9,9%</td><td title="ABR/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 27.446 ÷ 34.437 × 100
-= 79,7%
-Meta: ≥ 90%"><div class="pw"><span class="bef vermelho"><span class="dot"></span>79,7%</span><div class="pb"><div class="pf" style="width:79.7%;background:var(--red)"></div></div></div></td><td class="cNum" title="ABR/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 82,9%">82,9%</td><td class="cNum">35.720</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">27.446</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 34.437</span></td><td title="ABR/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 27.446 ÷ 34.437 × 100
-= 79,7%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">79,7%</span></td><td class="cNum" title="ABR/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.150 + 187 = 1.337 h
-% sobre H. Carga: 1.337 ÷ 14.065 × 100 = 9,5%" style="color:var(--amber);font-weight:700;">1.337 h <span style="font-size:.67rem;opacity:.7">(9,5%)</span></td><td class="cNum">R$ 185,36</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs8bt2')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs8bt2')">✕</button></div></td></tr><tr><td class="cMes">MAI/2025</td><td class="cNum">95</td><td class="cNum">15.008 h</td><td class="cNum">17.739 h</td><td class="cNum">14.400 h</td><td class="cNum">3.339 h</td><td class="cNum">1.150 h</td><td class="cNum">283 h</td><td class="cNum" title="MAI/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.150 + 283) ÷ 15.008 × 100
-= 10,0%">10,0%</td><td title="MAI/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 27.998 ÷ 34.973 × 100
-= 80,1%
-Meta: ≥ 90%"><div class="pw"><span class="bef amarelo"><span class="dot"></span>80,1%</span><div class="pb"><div class="pf" style="width:80.06%;background:var(--yellow)"></div></div></div></td><td class="cNum" title="MAI/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 83,5%">83,5%</td><td class="cNum">36.450</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">27.998</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 34.973</span></td><td title="MAI/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 27.998 ÷ 34.973 × 100
-= 80,1%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">80,1%</span></td><td class="cNum" title="MAI/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.150 + 283 = 1.433 h
-% sobre H. Carga: 1.433 ÷ 15.008 × 100 = 9,5%" style="color:var(--amber);font-weight:700;">1.433 h <span style="font-size:.67rem;opacity:.7">(9,5%)</span></td><td class="cNum">R$ 219,47</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs896l')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs896l')">✕</button></div></td></tr><tr><td class="cMes">JUN/2025</td><td class="cNum">97</td><td class="cNum">14.604 h</td><td class="cNum">16.748 h</td><td class="cNum">14.070 h</td><td class="cNum">2.678 h</td><td class="cNum">1.310 h</td><td class="cNum">273 h</td><td class="cNum" title="JUN/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.310 + 273) ÷ 14.604 × 100
-= 11,3%">11,3%</td><td title="JUN/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 20.621 ÷ 24.537 × 100
-= 84,0%
-Meta: ≥ 90%"><div class="pw"><span class="bef amarelo"><span class="dot"></span>84,0%</span><div class="pb"><div class="pf" style="width:84.04%;background:var(--yellow)"></div></div></div></td><td class="cNum" title="JUN/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 89,8%">89,8%</td><td class="cNum">25.468</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">20.621</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 24.537</span></td><td title="JUN/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 20.621 ÷ 24.537 × 100
-= 84,0%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">84,0%</span></td><td class="cNum" title="JUN/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.310 + 273 = 1.583 h
-% sobre H. Carga: 1.583 ÷ 14.604 × 100 = 10,8%" style="color:var(--red);font-weight:700;">1.583 h <span style="font-size:.67rem;opacity:.7">(10,8%)</span></td><td class="cNum">R$ 282,12</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs89ew')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs89ew')">✕</button></div></td></tr><tr><td class="cMes">JUL/2025</td><td class="cNum">99</td><td class="cNum">17.698 h</td><td class="cNum">18.373 h</td><td class="cNum">17.235 h</td><td class="cNum">1.138 h</td><td class="cNum">1.692 h</td><td class="cNum">340 h</td><td class="cNum" title="JUL/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.692 + 340) ÷ 17.698 × 100
-= 11,8%">11,8%</td><td title="JUL/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 29.710 ÷ 30.978 × 100
-= 95,9%
-Meta: ≥ 90%"><div class="pw"><span class="bef verde"><span class="dot"></span>95,9%</span><div class="pb"><div class="pf" style="width:95.91%;background:var(--green)"></div></div></div></td><td class="cNum" title="JUL/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 102,6%">102,6%</td><td class="cNum">31.810</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">29.710</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 30.978</span></td><td title="JUL/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 29.710 ÷ 30.978 × 100
-= 95,9%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt ok">95,9%</span></td><td class="cNum" title="JUL/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.692 + 340 = 2.032 h
-% sobre H. Carga: 2.032 ÷ 17.698 × 100 = 11,5%" style="color:var(--red);font-weight:700;">2.032 h <span style="font-size:.67rem;opacity:.7">(11,5%)</span></td><td class="cNum">R$ 265,42</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs86x5')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs86x5')">✕</button></div></td></tr><tr><td class="cMes">AGO/2025</td><td class="cNum">100</td><td class="cNum">16.503 h</td><td class="cNum">17.711 h</td><td class="cNum">15.931 h</td><td class="cNum">1.780 h</td><td class="cNum">1.518 h</td><td class="cNum">360 h</td><td class="cNum" title="AGO/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.518 + 360) ÷ 16.503 × 100
-= 11,8%">11,8%</td><td title="AGO/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 30.286 ÷ 32.914 × 100
-= 92,0%
-Meta: ≥ 90%"><div class="pw"><span class="bef verde"><span class="dot"></span>92,0%</span><div class="pb"><div class="pf" style="width:92.02%;background:var(--green)"></div></div></div></td><td class="cNum" title="AGO/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 97,6%">97,6%</td><td class="cNum">34.096</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">30.286</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 32.914</span></td><td title="AGO/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 30.286 ÷ 32.914 × 100
-= 92,0%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt ok">92,0%</span></td><td class="cNum" title="AGO/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.518 + 360 = 1.878 h
-% sobre H. Carga: 1.878 ÷ 16.503 × 100 = 11,4%" style="color:var(--red);font-weight:700;">1.878 h <span style="font-size:.67rem;opacity:.7">(11,4%)</span></td><td class="cNum">R$ 242,80</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs8i4k')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs8i4k')">✕</button></div></td></tr><tr><td class="cMes">SET/2025</td><td class="cNum">98</td><td class="cNum">17.420 h</td><td class="cNum">18.741 h</td><td class="cNum">16.876 h</td><td class="cNum">1.865 h</td><td class="cNum">1.654 h</td><td class="cNum">312 h</td><td class="cNum" title="SET/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.654 + 312) ÷ 17.420 × 100
-= 11,7%">11,7%</td><td title="SET/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 32.151 ÷ 35.016 × 100
-= 91,8%
-Meta: ≥ 90%"><div class="pw"><span class="bef verde"><span class="dot"></span>91,8%</span><div class="pb"><div class="pf" style="width:91.82%;background:var(--green)"></div></div></div></td><td class="cNum" title="SET/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 97,3%">97,3%</td><td class="cNum">36.145</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">32.151</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 35.016</span></td><td title="SET/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 32.151 ÷ 35.016 × 100
-= 91,8%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt ok">91,8%</span></td><td class="cNum" title="SET/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.654 + 312 = 1.966 h
-% sobre H. Carga: 1.966 ÷ 17.420 × 100 = 11,3%" style="color:var(--red);font-weight:700;">1.966 h <span style="font-size:.67rem;opacity:.7">(11,3%)</span></td><td class="cNum">R$ 262,43</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs85cb')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs85cb')">✕</button></div></td></tr><tr><td class="cMes">OUT/2025</td><td class="cNum">100</td><td class="cNum">18.459 h</td><td class="cNum">20.197 h</td><td class="cNum">17.899 h</td><td class="cNum">2.298 h</td><td class="cNum">1.952 h</td><td class="cNum">333 h</td><td class="cNum" title="OUT/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.952 + 333) ÷ 18.459 × 100
-= 12,8%">12,8%</td><td title="OUT/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 28.870 ÷ 32.118 × 100
-= 89,9%
-Meta: ≥ 90%"><div class="pw"><span class="bef amarelo"><span class="dot"></span>89,9%</span><div class="pb"><div class="pf" style="width:89.89%;background:var(--yellow)"></div></div></div></td><td class="cNum" title="OUT/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 96,8%">96,8%</td><td class="cNum">33.123</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">28.870</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 32.118</span></td><td title="OUT/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 28.870 ÷ 32.118 × 100
-= 89,9%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">89,9%</span></td><td class="cNum" title="OUT/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.952 + 333 = 2.285 h
-% sobre H. Carga: 2.285 ÷ 18.459 × 100 = 12,4%" style="color:var(--red);font-weight:700;">2.285 h <span style="font-size:.67rem;opacity:.7">(12,4%)</span></td><td class="cNum">R$ 282,84</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs8635')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs8635')">✕</button></div></td></tr><tr><td class="cMes">NOV/2025</td><td class="cNum">97</td><td class="cNum">15.092 h</td><td class="cNum">16.347 h</td><td class="cNum">14.575 h</td><td class="cNum">1.772 h</td><td class="cNum">1.754 h</td><td class="cNum">363 h</td><td class="cNum" title="NOV/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.754 + 363) ÷ 15.092 × 100
-= 14,5%">14,5%</td><td title="NOV/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 20.495 ÷ 22.533 × 100
-= 91,0%
-Meta: ≥ 90%"><div class="pw"><span class="bef verde"><span class="dot"></span>91,0%</span><div class="pb"><div class="pf" style="width:90.96%;background:var(--green)"></div></div></div></td><td class="cNum" title="NOV/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 100,4%">100,4%</td><td class="cNum">23.332</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">20.495</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 22.533</span></td><td title="NOV/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 20.495 ÷ 22.533 × 100
-= 91,0%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt ok">91,0%</span></td><td class="cNum" title="NOV/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.754 + 363 = 2.117 h
-% sobre H. Carga: 2.117 ÷ 15.092 × 100 = 14,0%" style="color:var(--red);font-weight:700;">2.117 h <span style="font-size:.67rem;opacity:.7">(14,0%)</span></td><td class="cNum">R$ 274,52</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs8c85')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs8c85')">✕</button></div></td></tr><tr><td class="cMes">DEZ/2025</td><td class="cNum">96</td><td class="cNum">11.470 h</td><td class="cNum">13.805 h</td><td class="cNum">11.470 h</td><td class="cNum">2.335 h</td><td class="cNum">1.321 h</td><td class="cNum">356 h</td><td class="cNum" title="DEZ/2025 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.321 + 356) ÷ 11.470 × 100
-= 14,6%">14,6%</td><td title="DEZ/2025 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 24.641 ÷ 30.939 × 100
-= 79,6%
-Meta: ≥ 90%"><div class="pw"><span class="bef vermelho"><span class="dot"></span>79,6%</span><div class="pb"><div class="pf" style="width:79.64%;background:var(--red)"></div></div></div></td><td class="cNum" title="DEZ/2025 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 84,2%">84,2%</td><td class="cNum">30.939</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">24.641</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 30.939</span></td><td title="DEZ/2025 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 24.641 ÷ 30.939 × 100
-= 79,6%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">79,6%</span></td><td class="cNum" title="DEZ/2025 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.321 + 356 = 1.677 h
-% sobre H. Carga: 1.677 ÷ 11.470 × 100 = 14,6%" style="color:var(--red);font-weight:700;">1.677 h <span style="font-size:.67rem;opacity:.7">(14,6%)</span></td><td class="cNum">R$ 226,36</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs8v2t')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs8v2t')">✕</button></div></td></tr><tr><td class="cMes">JAN/2026</td><td class="cNum">97</td><td class="cNum">13.701 h</td><td class="cNum">15.237 h</td><td class="cNum">13.352 h</td><td class="cNum">1.885 h</td><td class="cNum">1.040 h</td><td class="cNum">165 h</td><td class="cNum" title="JAN/2026 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.040 + 165) ÷ 13.701 × 100
-= 9,0%">9,0%</td><td title="JAN/2026 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 19.269 ÷ 21.865 × 100
-= 88,1%
-Meta: ≥ 90%"><div class="pw"><span class="bef amarelo"><span class="dot"></span>88,1%</span><div class="pb"><div class="pf" style="width:88.13%;background:var(--yellow)"></div></div></div></td><td class="cNum" title="JAN/2026 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 93,3%">93,3%</td><td class="cNum">22.437</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">19.269</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 21.865</span></td><td title="JAN/2026 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 19.269 ÷ 21.865 × 100
-= 88,1%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">88,1%</span></td><td class="cNum" title="JAN/2026 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.040 + 165 = 1.205 h
-% sobre H. Carga: 1.205 ÷ 13.701 × 100 = 8,8%" style="color:var(--amber);font-weight:700;">1.205 h <span style="font-size:.67rem;opacity:.7">(8,8%)</span></td><td class="cNum">R$ 303,86</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs8i0j')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs8i0j')">✕</button></div></td></tr><tr><td class="cMes">FEV/2026</td><td class="cNum">102</td><td class="cNum">16.544 h</td><td class="cNum">18.594 h</td><td class="cNum">16.158 h</td><td class="cNum">2.436 h</td><td class="cNum">2.029 h</td><td class="cNum">0 h</td><td class="cNum" title="FEV/2026 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (2.029 + 0) ÷ 16.544 × 100
-= 12,6%">12,6%</td><td title="FEV/2026 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 27.640 ÷ 31.788 × 100
-= 87,0%
-Meta: ≥ 90%"><div class="pw"><span class="bef amarelo"><span class="dot"></span>87,0%</span><div class="pb"><div class="pf" style="width:86.95%;background:var(--yellow)"></div></div></div></td><td class="cNum" title="FEV/2026 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 92,9%">92,9%</td><td class="cNum">32.547</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">27.640</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 31.788</span></td><td title="FEV/2026 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 27.640 ÷ 31.788 × 100
-= 87,0%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">87,0%</span></td><td class="cNum" title="FEV/2026 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 2.029 + 0 = 2.029 h
-% sobre H. Carga: 2.029 ÷ 16.544 × 100 = 12,3%" style="color:var(--red);font-weight:700;">2.029 h <span style="font-size:.67rem;opacity:.7">(12,3%)</span></td><td class="cNum">R$ 279,95</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosbvs864b')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosbvs864b')">✕</button></div></td></tr><tr><td class="cMes">MAR/2026</td><td class="cNum">97</td><td class="cNum">17.036 h</td><td class="cNum">16.826 h</td><td class="cNum">16.262 h</td><td class="cNum">564 h</td><td class="cNum">2.258 h</td><td class="cNum">0 h</td><td class="cNum" title="MAR/2026 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (2.258 + 0) ÷ 17.036 × 100
-= 13,9%">13,9%</td><td title="MAR/2026 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 26.642 ÷ 26.346 × 100
-= 101,1%
-Meta: ≥ 90%"><div class="pw"><span class="bef verde"><span class="dot"></span>101,1%</span><div class="pb"><div class="pf" style="width:100%;background:var(--green)"></div></div></div></td><td class="cNum" title="MAR/2026 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 110,6%">110,6%</td><td class="cNum">27.600</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">26.642</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 26.346</span></td><td title="MAR/2026 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 26.642 ÷ 26.346 × 100
-= 101,1%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt ok">101,1%</span></td><td class="cNum" title="MAR/2026 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 2.258 + 0 = 2.258 h
-% sobre H. Carga: 2.258 ÷ 17.036 × 100 = 13,3%" style="color:var(--red);font-weight:700;">2.258 h <span style="font-size:.67rem;opacity:.7">(13,3%)</span></td><td class="cNum">R$ 261,11</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosc0ci5n5')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosc0ci5n5')">✕</button></div></td></tr><tr><td class="cMes">ABR/2026</td><td class="cNum">100</td><td class="cNum">14.889 h</td><td class="cNum">15.962 h</td><td class="cNum">14.453 h</td><td class="cNum">1.509 h</td><td class="cNum">2.179 h</td><td class="cNum">0 h</td><td class="cNum" title="ABR/2026 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (2.179 + 0) ÷ 14.889 × 100
-= 15,1%">15,1%</td><td title="ABR/2026 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 26.147 ÷ 28.340 × 100
-= 92,3%
-Meta: ≥ 90%"><div class="pw"><span class="bef verde"><span class="dot"></span>92,3%</span><div class="pb"><div class="pf" style="width:92.26%;background:var(--green)"></div></div></div></td><td class="cNum" title="ABR/2026 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 100,0%">100,0%</td><td class="cNum">29.195</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">26.147</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 28.340</span></td><td title="ABR/2026 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 26.147 ÷ 28.340 × 100
-= 92,3%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt ok">92,3%</span></td><td class="cNum" title="ABR/2026 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 2.179 + 0 = 2.179 h
-% sobre H. Carga: 2.179 ÷ 14.889 × 100 = 14,6%" style="color:var(--red);font-weight:700;">2.179 h <span style="font-size:.67rem;opacity:.7">(14,6%)</span></td><td class="cNum">R$ 253,63</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosc0cice5')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosc0cice5')">✕</button></div></td></tr><tr><td class="cMes">MAI/2026</td><td class="cNum">100</td><td class="cNum">16.482 h</td><td class="cNum">18.357 h</td><td class="cNum">15.962 h</td><td class="cNum">2.395 h</td><td class="cNum">1.662 h</td><td class="cNum">0 h</td><td class="cNum" title="MAI/2026 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.662 + 0) ÷ 16.482 × 100
-= 10,4%">10,4%</td><td title="MAI/2026 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 28.329 ÷ 32.278 × 100
-= 87,8%
-Meta: ≥ 90%"><div class="pw"><span class="bef amarelo"><span class="dot"></span>87,8%</span><div class="pb"><div class="pf" style="width:87.76%;background:var(--yellow)"></div></div></div></td><td class="cNum" title="MAI/2026 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 92,5%">92,5%</td><td class="cNum">33.330</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">28.329</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 32.278</span></td><td title="MAI/2026 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 28.329 ÷ 32.278 × 100
-= 87,8%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt nok">87,8%</span></td><td class="cNum" title="MAI/2026 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.662 + 0 = 1.662 h
-% sobre H. Carga: 1.662 ÷ 16.482 × 100 = 10,1%" style="color:var(--red);font-weight:700;">1.662 h <span style="font-size:.67rem;opacity:.7">(10,1%)</span></td><td class="cNum">R$ 276,95</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosc0ciswk')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosc0ciswk')">✕</button></div></td></tr><tr><td class="cMes">JUN/2026</td><td class="cNum">99</td><td class="cNum">14.792 h</td><td class="cNum">15.977 h</td><td class="cNum">14.388 h</td><td class="cNum">1.589 h</td><td class="cNum">1.532 h</td><td class="cNum">0 h</td><td class="cNum" title="JUN/2026 — Absenteísmo
-Fórmula: (Faltas + Atrasos) ÷ H. Normais × 100
-= (1.532 + 0) ÷ 14.792 × 100
-= 10,7%">10,7%</td><td title="JUN/2026 — Eficiência
-Fórmula: Prod. s/ Extras ÷ Cap. Teórica × 100
-= 27.088 ÷ 29.619 × 100
-= 91,5%
-Meta: ≥ 90%"><div class="pw"><span class="bef verde"><span class="dot"></span>91,5%</span><div class="pb"><div class="pf" style="width:91.45%;background:var(--green)"></div></div></div></td><td class="cNum" title="JUN/2026 — Ef. Ajustada
-Eficiência corrigida pelo impacto das horas perdidas
-(faltas e atrasos que diminuem a capacidade real)
-= 96,4%">96,4%</td><td class="cNum">30.451</td><td class="cNum"><span style="font-size:1rem;font-weight:700;color:var(--cyan)">27.088</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 29.619</span></td><td title="JUN/2026 — Atingimento
-Fórmula: Prod. s/ Extras ÷ Meta × 100
-= 27.088 ÷ 29.619 × 100
-= 91,5%
-Verde ≥ 90% | Amarelo ≥ 80% | Vermelho &lt; 80%"><span class="bmt ok">91,5%</span></td><td class="cNum" title="JUN/2026 — H. Perdidas
-Fórmula: Faltas + Atrasos
-= 1.532 + 0 = 1.532 h
-% sobre H. Carga: 1.532 ÷ 14.792 × 100 = 10,4%" style="color:var(--red);font-weight:700;">1.532 h <span style="font-size:.67rem;opacity:.7">(10,4%)</span></td><td class="cNum">R$ 273,58</td><td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg('mnosc0cijci')">✎</button><button class="btn btn-sm btn-r" onclick="excluirReg('mnosc0cijci')">✕</button></div></td></tr></tbody>
-      <tfoot id="tfoot"><tr><td>TOTAL / MÉDIA</td><td class="cNum">—</td><td class="cNum">273.078 h</td><td class="cNum">302.921 h</td><td class="cNum">264.508 h</td><td class="cNum">38.413 h</td><td class="cNum">28.499 h</td><td class="cNum">3.501 h</td><td class="cNum">12,1%</td><td><span class="bef amarelo"><span class="dot"></span>87,8%</span></td><td class="cNum">93,5%</td><td class="cNum">556.827</td><td class="cNum"><span style="font-weight:700;color:var(--cyan)">472.441</span><span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ 539.517</span></td><td><span class="bmt nok">87,6%</span></td><td class="cNum">32.000 h</td><td class="cNum">R$ 249,36</td><td></td></tr></tfoot>
+      <tbody id="tbody"><!-- preenchido pelo JS; vinha commitado com 18 meses congelados --></tbody>
+      <tfoot id="tfoot"><!-- preenchido pelo JS; vinha commitado com 18 meses congelados --></tfoot>
     </table>
     <div class="emp" id="tblEmp" style="display:none">
       <svg viewBox="0 0 24 24"><path d="M3 13h4v8H3v-8zm7-6h4v14h-4V7zm7-4h4v18h-4V3z"></path></svg>
@@ -3287,7 +3028,7 @@ Fórmula: Faltas + Atrasos
 <tfoot id="ppcp-tfoot"><tr><td style="color:#FF9800">TOTAL/MÉD</td><td>155.115</td><td>180.080</td><td>241</td><td>644</td><td>747</td><td>73,1</td><td>0,707</td><td style="color:#F44336">49,22</td><td style="color:#4CAF50">36,05</td><td class="ppcp-pos">+24.965</td><td class="ppcp-pos">+103,6</td><td>58,1</td><td class="ppcp-pos">+8,1</td></tr></tfoot>
 </table>
 </div>
-<div id="ind-industrial-panel" style="cursor: help;"><div class="ind-sec">▸ Indicadores Industriais — Capacidade &amp; Eficiência</div><div class="ind-grid"><div class="ind-card ic-amber">  <div class="ind-lbl">Demanda / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-dem-hora">84,9</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-dem-hora">180.080 ÷ (241d × 8,8h)</div></div><div class="ind-card ic-cyan">  <div class="ind-lbl">Capacidade / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-hora">73,1</div>  <div class="ind-unit">peças / hora disponível</div>  <div class="ind-form" id="ind-f-cap-hora">50 func × 1,48 pç/func/h</div></div><div class="ind-card ic-red">  <div class="ind-lbl">GAP de Produção / Hora<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-gap-hora" style="color: rgb(255, 23, 68);">+11,8</div>  <div class="ind-unit" id="ind-u-gap-hora">⚠ Sobrecarga · dem 84,9 − prod 73,1 pç/h</div>  <div class="ind-form" id="ind-f-gap-hora">84,9 − 73,1 pç/h</div></div><div class="ind-card ic-purple">  <div class="ind-lbl">Capacidade Perdida<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-cap-perd">794.694</div>  <div class="ind-unit" id="ind-u-cap-perd">10.865h perdidas × 73,1 pç/h</div>  <div class="ind-form" id="ind-f-cap-perd">H.Perd 10.865h × Prod/h 73,1</div></div><div class="ind-card ic-green">  <div class="ind-lbl">Eficiência de Produção<i class="ui-tip-icon" title="" style="cursor: help;">?</i></div>  <div class="ind-val" id="ind-v-ef-prod" style="color: rgb(0, 230, 118);">91,1%</div>  <div class="ind-unit">produção real ÷ cap. teórica</div>  <div class="ind-form" id="ind-f-ef-prod">155.115 ÷ 170.236 (meta col S)</div></div></div></div></div></div>
+<!-- painel Indicadores Industriais: criado pelo JS (injetarHTML) — vinha congelado aqui com números de outro período --></div></div>
 <!-- ══ PÁGINA: BRIEFING MENSAL ══ -->
 <div class="page" id="page-briefing">
 <style>
@@ -3560,7 +3301,7 @@ Fórmula: Faltas + Atrasos
        falar de resultado econômico aqui. */
     var faltaPP = META_EF - a.eficiencia;
     if(a.margem>0){
-      out.push({status: a.margem>5?'bad':'warn', titulo:'Eficiência abaixo da meta de '+META_EF+'%',
+      out.push({status: a.margem>5?'bad':'warn', titulo:'Independência de HE abaixo da meta de '+META_EF+'%',
         fato:'Independência de hora extra de '+bFmtPct(a.eficiencia)+' contra meta de '+META_EF+'% — margem de melhoria de '
           +bFmtPct(a.margem)+' ('+bFmt(faltaPP,2)+' pp).',
         analise:'A margem de melhoria mede a distância até a meta de eficiência, não resultado financeiro. '
@@ -3649,12 +3390,17 @@ Fórmula: Faltas + Atrasos
 
   function gerarSWOT(a,ant,anoAnt) {
     var s={forcas:[],fraquezas:[],oportunidades:[],ameacas:[]};
-    var depExtra=a.horasCarga>0&&(a.totalExtras/a.horasCarga)>0.10;
+    /* Dependência de HE = parcela do VOLUME vinda de hora extra — a mesma conta
+       da Reunião. Antes era h. extras ÷ h. carga > 10%, com o mesmo nome. */
+    var _depV=a.producaoReal>0?((a.producaoReal-(a.prodSemExtras||a.producaoReal))/a.producaoReal)*100:0;
+    var depExtra=_depV>META_DEP_HE;
 
     /* Forças */
-    if(a.meta>0&&a.producaoReal>=a.meta) s.forcas.push('Meta mensal de produção batida ('+bFmt(a.producaoReal)+' pçs).');
-    if(a.eficiencia>=90) s.forcas.push('Eficiência operacional em bom patamar ('+bFmtPct(a.eficiencia)+').');
-    if(ant&&a.eficiencia>ant.eficiencia) s.forcas.push('Eficiência em evolução frente a '+ant.mes+'/'+String(ant.ano).slice(2)+'.');
+    var _pv=a.previsaoProducao||0, _pn=a.prodSemExtras||0;
+    if(_pv>0&&_pn>=_pv) s.forcas.push('Plano do mês cumprido em jornada normal ('+bFmt(_pn)+' de '+bFmt(_pv)+' pçs).');
+    else if(_pv>0&&a.producaoReal>=_pv) s.fraquezas.push('Plano do mês só fechou com hora extra ('+bFmt(_pn)+' em jornada normal, '+bFmt(a.producaoReal-_pn)+' em HE).');
+    if(a.eficiencia>=META_EF) s.forcas.push('Independência de hora extra em bom patamar ('+bFmtPct(a.eficiencia)+').');
+    if(ant&&a.eficiencia>ant.eficiencia) s.forcas.push('Independência de HE em evolução frente a '+ant.mes+'/'+String(ant.ano).slice(2)+'.');
     if(a.margem<0) s.forcas.push('Meta de eficiência superada — margem de melhoria de '+bFmtPct(a.margem)+'.');
     if(ant&&a.totalExtras<ant.totalExtras) s.forcas.push('Redução de horas extras contra o mês anterior.');
     if(anoAnt&&a.producaoReal>anoAnt.producaoReal) s.forcas.push('Produção superior ao mesmo mês do ano anterior.');
@@ -3664,8 +3410,8 @@ Fórmula: Faltas + Atrasos
     if(a.margem>0) s.fraquezas.push('Eficiência abaixo da meta — margem de melhoria de '+bFmtPct(a.margem)+'.');
     if(a.absenteismo>10) s.fraquezas.push('Absenteísmo acima de 10% ('+bFmtPct(a.absenteismo)+').');
     if((a.previsaoProducao||0)>0&&a.producaoReal<a.previsaoProducao) s.fraquezas.push('Previsão de produção não atingida.');
-    if(a.meta>0&&a.producaoReal<a.meta) s.fraquezas.push('Produção abaixo da meta mensal.');
-    if(depExtra) s.fraquezas.push('Dependência de hora extra acima de 10% da carga.');
+    if(_pv>0&&a.producaoReal<_pv) s.fraquezas.push('Produção abaixo do plano do mês ('+bFmt(a.producaoReal)+' de '+bFmt(_pv)+' pçs, mesmo com hora extra).');
+    if(depExtra) s.fraquezas.push('Dependência de hora extra acima de '+META_DEP_HE+'% do volume ('+bFmtPct(_depV)+' da entrega veio de HE).');
     if(!s.fraquezas.length) s.fraquezas.push('Sem fraquezas críticas detectadas automaticamente neste mês.');
 
     /* Oportunidades */
@@ -3678,7 +3424,7 @@ Fórmula: Faltas + Atrasos
     /* Ameaças */
     if((a.qtdeVendida||0)>(a.qtdeFaturado||0)) s.ameacas.push('Carteira vendida maior que faturada pode gerar pressão e queda de qualidade.');
     if(a.margem>5) s.ameacas.push('Distância relevante até a meta de eficiência pode exigir hora extra recorrente.');
-    if(a.absenteismo>10) s.ameacas.push('Absenteísmo pode afetar a estabilidade de setores críticos.');
+    if(a.absenteismo>ABS_ATENCAO) s.ameacas.push('Absenteísmo pode afetar a estabilidade de setores críticos.');
     if(depExtra) s.ameacas.push('Horas extras elevadas podem aumentar fadiga e falhas.');
     if(!s.ameacas.length) s.ameacas.push('Monitorar absenteísmo e horas extras, que corroem a eficiência.');
 
@@ -3837,11 +3583,10 @@ Fórmula: Faltas + Atrasos
       lin('Total Extras',       function(d){return bFmt(d.totalExtras,1)+' h';}),
       lin('Absenteísmo',        function(d){return bFmtPct(d.absenteismo);}),
       lin('Produção Real',      function(d){return bFmt(d.producaoReal)+' pçs';}),
-      lin('Meta',               function(d){return bFmt(d.meta)+' pçs';}),
+      lin('Previsão (Plano Mestre)', function(d){return d.previsaoProducao>0?bFmt(d.previsaoProducao)+' pçs':'—';}),
       lin('Qtde Faturada',      function(d){return bFmt(d.qtdeFaturado)+' pçs';}),
       lin('Qtde Vendida',       function(d){return bFmt(d.qtdeVendida)+' pçs';}),
-      lin('Eficiência',         function(d){return bFmtPct(d.eficiencia);}),
-      lin('Eficiência Ajustada',function(d){return bFmtPct(d.eficienciaAdj);}),
+      lin('Independência de HE',function(d){return bFmtPct(d.eficiencia);}),
       lin('Margem de Melhoria', function(d){return bFmtPct(d.margem);}),
       lin('Ticket Médio',       function(d){return bFmtR(d.ticketMedio);}),
       lin('Custo Capital',      function(d){return bFmtR(d.custoCap);})
@@ -4381,7 +4126,7 @@ body.pg-reuniao aside.sidebar::-webkit-scrollbar-thumb { background: var(--b); b
 #page-reuniao .reu-link:hover .reu-lbl::after { content: ' ↗'; color: var(--cyan); }
 @media (max-width: 1100px) { #page-reuniao .reu-row3 { grid-template-columns: 1fr !important; } }
 </style>
-<div class="page" id="page-reuniao">
+<div class="page on" id="page-reuniao">
   <div class="pageHdr">
     <div class="pageHdrIcon" style="background:#F5A623">
       <svg viewBox="0 0 24 24" fill="var(--bg)"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"></path></svg>
@@ -4583,6 +4328,12 @@ var META_EF = 90;
 var META_ABS    = 3;   /* dentro da meta                */
 var ABS_ATENCAO = 6;   /* acima disto, crítico          */
 var META_DEP_HE = 8;   /* % do volume vindo de hora extra */
+/* Ticket médio (R$ por peça faturada). Os R$ 250 estavam cravados em seis
+   lugares do Resumo. Registro: a média ponderada dos 18 meses fechados é
+   R$ 247,69 — ou seja, 250 é a média histórica, não uma meta decidida.
+   Ticket não é indicador de capacidade: só "evita hora extra" se a receita
+   alvo for fixa e o mix puder subir de valor. Ver tooltip do card. */
+var META_TICKET = 250;
 var HDÍA    = 8.48; /* horas/dia — 8h48min conforme empresa */
 var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
 var ORDEM   = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -5546,7 +5297,10 @@ function render(){
   document.getElementById('tblEmp').style.display='none';
 
   dados.forEach(function(r){
-    var at  = r.meta>0&&r.prodSemExtras>0?(r.prodSemExtras/r.meta)*100:null;
+    /* Aderência ao plano em jornada normal (prod. s/ extras ÷ previsão do
+       Plano Mestre). Era prod. s/ extras ÷ meta, e meta é derivada do próprio
+       realizado — nunca reprovava ninguém. */
+    var at  = (r.previsaoProducao||0)>0&&r.prodSemExtras>0?(r.prodSemExtras/r.previsaoProducao)*100:null;
     var hfp = calcHFP(r);
     var hfp_pct = hfp!==null&&r.horasCarga>0?(hfp/r.horasCarga)*100:null;
     var efCl = r.eficiencia>=90?'verde':r.eficiencia>=80?'amarelo':'vermelho';
@@ -5580,9 +5334,9 @@ function render(){
       +'A fórmula não é reproduzível a partir dos outros campos, e o indicador\n'
       +'passa de 100% em alguns meses. Use "Peças perdidas" para medir o\n'
       +'impacto das horas de falta e atraso.';
-    var tipAt = at!==null?(r.mes+'/'+r.ano+' — Atingimento\n'
-      +'Fórmula: Prod. s/ Extras ÷ Meta × 100\n'
-      +'= '+fi(r.prodSemExtras||0)+' ÷ '+fi(r.meta)+' × 100\n'
+    var tipAt = at!==null?(r.mes+'/'+r.ano+' — Aderência ao plano (jornada normal)\n'
+      +'Fórmula: Prod. s/ Extras ÷ Previsão (Plano Mestre) × 100\n'
+      +'= '+fi(r.prodSemExtras||0)+' ÷ '+fi(r.previsaoProducao)+' × 100\n'
       +'= '+f(at)+'%\n'
       +'Verde ≥ 90% | Amarelo ≥ 80% | Vermelho < 80%'):'—';
     var tipHfp = hfp!==null?(r.mes+'/'+r.ano+' — H. Perdidas\n'
@@ -5608,7 +5362,7 @@ function render(){
         '<span style="font-size:1rem;font-weight:700;color:var(--cyan)">'+fi(r.prodSemExtras||0)+'</span>'+
         '<span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ '+fi(r.meta)+'</span>':
         '<span style="color:var(--t3)">—</span>')+'</td>'+
-      '<td title="'+tipAt+'">'+(at!==null?'<span class="bmt '+(at>=90?'ok':'nok')+'">'+f(at)+'%</span>':'<span style="color:var(--t3)">—</span>')+'</td>'+
+      '<td title="'+tipAt+'">'+(at!==null?'<span class="bmt '+(at>=100?'ok':'nok')+'">'+f(at)+'%</span>':'<span style="color:var(--t3)">—</span>')+'</td>'+
       '<td class="cNum" title="'+tipHfp+'" style="color:'+hfpCor+';font-weight:700;">'+(hfp!==null?fi(hfp)+' h'+(hfp_pct!==null?' <span style="font-size:.67rem;opacity:.7">('+f(hfp_pct)+'%)</span>':''):'<span style="color:var(--t3)">—</span>')+'</td>'+
       '<td class="cNum">'+(r.ticketMedio>0?'R$ '+f(r.ticketMedio,2):'—')+'</td>'+
       '<td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center">'+
@@ -5638,12 +5392,15 @@ function renderTotais(d,tf){
     if(r.ticketMedio>0){tTkt+=r.ticketMedio;nTkt++}
     var h=calcHFP(r); if(h!==null){tHfp+=h;hasHfp=true}
   });
-  var ab=tAbs/d.length;
-  // Eficiência média = média das eficiências mensais da planilha
-  var efMedia=d.reduce(function(s,r){return s+r.eficiencia},0)/d.length;
-  var efAjMedia=d.reduce(function(s,r){return s+r.eficienciaAdj},0)/d.length;
-  // Atingimento = total produzido s/ extras ÷ total meta acumulada
-  var at=tMeta>0?(tSemExtra/tMeta)*100:null;
+  /* Ponderado pela base canônica (DashUtils.periodo): h perdidas ÷ h normais,
+     prod. normal ÷ meta, receita ÷ peças faturadas. Antes era média aritmética
+     de percentuais entre meses de 15 e de 23 dias — outro número. */
+  var _Pt=DashUtils.periodo(d);
+  var ab=_Pt.absenteismo===null?0:_Pt.absenteismo;
+  var efMedia=_Pt.aderencia===null?0:_Pt.aderencia;
+  /* Aderência ao plano em jornada normal: prod. s/ extras ÷ previsão (Plano Mestre) */
+  var tPrev=0, tSemPrev=0; d.forEach(function(r){ if((r.previsaoProducao||0)>0){ tPrev+=r.previsaoProducao; tSemPrev+=DashUtils.getProd(r); } });
+  var at=tPrev>0?(tSemPrev/tPrev)*100:null;
 
   var tr=document.createElement('tr');
   tr.innerHTML=
@@ -5657,15 +5414,15 @@ function renderTotais(d,tf){
     '<td class="cNum">'+fi(tA)+' h</td>'+
     '<td class="cNum">'+f(ab)+'%</td>'+
     '<td><span class="bef '+(efMedia>=90?'verde':efMedia>=80?'amarelo':'vermelho')+'"><span class="dot"></span>'+f(efMedia)+'%</span></td>'+
-    '<td class="cNum">'+f(efAjMedia)+'%</td>'+
+    '<td class="cNum" style="color:var(--t3)">—</td>'+
     '<td class="cNum">'+fi(tProd)+'</td>'+
     '<td class="cNum">'+
       '<span style="font-weight:700;color:var(--cyan)">'+fi(tSemExtra)+'</span>'+
       '<span style="font-size:.72rem;color:var(--amber);display:block;margin-top:2px">▶ '+fi(tMeta)+'</span>'+
     '</td>'+
-    '<td>'+(at!==null?'<span class="bmt '+(at>=90?'ok':'nok')+'">'+f(at)+'%</span>':'—')+'</td>'+
+    '<td>'+(at!==null?'<span class="bmt '+(at>=100?'ok':'nok')+'">'+f(at)+'%</span>':'—')+'</td>'+
     '<td class="cNum">'+(hasHfp?fi(tHfp)+' h':'—')+'</td>'+
-    '<td class="cNum">'+(nTkt>0?'R$ '+f(tTkt/nTkt,2):'—')+'</td>'+
+    '<td class="cNum">'+(_Pt.ticket>0?'R$ '+f(_Pt.ticket,2):'—')+'</td>'+
     '<td></td>';
   tf.appendChild(tr)
 }
@@ -5718,7 +5475,8 @@ function renderKPIs(d){
   s('kv-cap',   fi(tHT)+' h');
   s('kv-carga', fi(tCarga)+' h');
   s('kv-hn',  fi(tHN)+' h');
-  s('kv-ef',  f(ef)+'%');
+  var _Pk=DashUtils.periodo(d);
+  s('kv-ef',  f(_Pk.aderencia===null?ef:_Pk.aderencia)+'%');
   /* Era f(efAdj)+'%' — a Eficiência Ajustada, coluna opaca da planilha que
      não é reproduzível por nenhuma fórmula, passa de 100% em 3 dos 18 meses
      e correlaciona -0,42 com o ritmo real. Trocada por peças perdidas por
@@ -5731,7 +5489,7 @@ function renderKPIs(d){
      é a base da Reunião e do Resumo. A média aritmética entre meses de 15 e
      de 23 dias dava outro número para o mesmo período. */
   s('kv-abs', _Pperd.absenteismo===null ? f(ab)+'%' : f(_Pperd.absenteismo)+'%');
-  s('kv-tkt', nTkt>0?'R$ '+f(tTkt/nTkt,2):'—');
+  s('kv-tkt', _Pperd.ticket>0?'R$ '+f(_Pperd.ticket,2):(nTkt>0?'R$ '+f(tTkt/nTkt,2):'—'));
 
   // H. Perdidas — soma acumulada do período, não só último mês
   var tHFP=0;
@@ -5983,7 +5741,7 @@ function drawEfic(dados){
     var h=calcHFP(r); if(h===null||!r.horasCarga)return null;
     return(h/r.horasCarga)*100
   });
-  var allVals=efics.concat(oees).concat(absens).concat(hfpPcts.filter(function(v){return v!==null})).concat([100]);
+  var allVals=efics.concat(absens).concat(hfpPcts.filter(function(v){return v!==null})).concat([100]);
   var yMax=Math.ceil(Math.max.apply(null,allVals)/10)*10+5;
 
   function xP(i){return pad.l+(i+0.5)*(gW/n)}
@@ -6028,7 +5786,6 @@ function drawEfic(dados){
     ctx.stroke(); ctx.setLineDash([])
   }
   drawLine(efics, C.cyan,   2.4, null);
-  drawLine(oees,  C.amber,  1.6, [5,3]);
   drawLine(absens,C.purple, 1.4, [3,4]);
   if(hfpPcts.some(function(v){return v!==null}))
     drawLine(hfpPcts,C.pink,1.3,[2,4],true);
@@ -6045,10 +5802,6 @@ function drawEfic(dados){
     ctx.fillText(f(v)+'%',x,y-7)
   });
 
-  // Pontos Ef. Ajustada
-  oees.forEach(function(v,i){
-    ctx.beginPath(); ctx.arc(xP(i),yP(v),2.5,0,Math.PI*2); ctx.fillStyle=C.amber; ctx.fill()
-  });
 
   // Tooltip hover no canvas
   cv.onmousemove=function(e){
@@ -6064,8 +5817,7 @@ function drawEfic(dados){
     var efCls=ef>=90?'g':ef>=80?'a':'r';
     var absCls=abs<=3?'g':abs<=6?'a':'r';
     var html='<div class="tip-title">'+r.mes+'/'+r.ano+'</div>'+
-      tipRow('Eficiência',f(ef)+'%',efCls)+
-      tipRow('Ef. Ajust.',f(oee)+'%')+
+      tipRow('Indep. HE',f(ef)+'%',efCls)+
       tipRow('Absenteísmo',f(abs)+'%',absCls)+
       (hfpPct!==null?tipRow('H.Falta Prod.',f(hfpPct)+'%',hfpPct>10?'r':hfpPct>5?'a':'g'):'')+
       tipRow('Produção',fi(r.producaoReal)+' pç')+
@@ -6129,7 +5881,7 @@ function drawBars(canvasId,emId,dados,valFn,cor,H,labelFn){
     var r=dados[idx], v=vals[idx];
     var html='<div class="tip-title">'+r.mes+'/'+r.ano+'</div>'+
       tipRow('Valor',labelFn?labelFn(v):fi(v))+
-      (r.meta>0?tipRow('Meta',fi(r.meta))+tipRow('Atingimento',f(r.meta>0?(r.producaoReal/r.meta)*100:0)+'%',r.producaoReal>=r.meta?'g':'r'):'');
+      ((r.previsaoProducao||0)>0?tipRow('Previsto (plano)',fi(r.previsaoProducao))+tipRow('Aderência c/ HE',f((r.producaoReal/r.previsaoProducao)*100)+'%',r.producaoReal>=r.previsaoProducao?'g':((r.producaoReal/r.previsaoProducao)>=0.95?'a':'r')):'');
     tipShow(html,e)
   };
   cv.onmouseleave=tipHide
@@ -6137,8 +5889,8 @@ function drawBars(canvasId,emId,dados,valFn,cor,H,labelFn){
 
 /* Barras coloridas por eficiência */
 function corEf(r){
-  var e=r.horasTotais>0?(r.horasNormais/r.horasTotais)*100:0;
-  return e>=90?C.green:e>=80?C.yellow:C.red
+  var e=r.eficiencia||0;   /* independência de HE do mês, mesma régua dos outros cards */
+  return e>=META_EF?C.green:e>=META_EF-10?C.yellow:C.red
 }
 
 /* Gráfico barras agrupadas: Horas Totais / Normais / Extras */
@@ -6186,7 +5938,6 @@ function drawEficSimples(dados,cvId,emId){
     ctx.stroke()
   }
   dl(efics,C.cyan,2.4);
-  ctx.setLineDash([5,3]);dl(oees,C.amber,1.6);ctx.setLineDash([]);
   // Pontos
   efics.forEach(function(v,i){
     var x=xP(i),y=yP(v),cl=clEf(v);
@@ -6203,9 +5954,8 @@ function drawEficSimples(dados,cvId,emId){
     var r=dados[idx];
     var ef2=efics[idx],cls2=ef2>=90?'g':ef2>=80?'a':'r';
     tipShow('<div class="tip-title">'+r.mes+'/'+r.ano+'</div>'+
-      tipRow('Eficiência',f(ef2)+'%',cls2)+
-      tipRow('Ef. Ajust.',f(oees[idx])+'%')+
-      tipRow('Meta','90%'),e)
+      tipRow('Indep. HE',f(ef2)+'%',cls2)+
+      tipRow('Meta',META_EF+'%'),e)
   };
   cv.onmouseleave=tipHide
 }
@@ -6296,17 +6046,17 @@ function drawTkt(dados){
   })
 }
 
-/* Gráfico Meta vs Realizado s/ Hora Extra */
+/* Gráfico Previsto (Plano Mestre) vs Realizado s/ Hora Extra */
 function drawMetaReal(dados){
   var cv=document.getElementById('cMetaReal'), em=document.getElementById('emMetaReal');
-  var comMeta=dados.filter(function(r){return r.meta>0&&r.prodSemExtras>0});
+  var comMeta=dados.filter(function(r){return (r.previsaoProducao||0)>0&&r.prodSemExtras>0});
   if(!comMeta.length){cv.style.display='none';em.style.display='block';return}
   cv.style.display='block'; em.style.display='none';
   var o=setupCanvas('cMetaReal',240), ctx=o.ctx, W=o.W, H=o.H;
   var pad={t:20,r:20,b:38,l:68};
   var gW=W-pad.l-pad.r, gH=H-pad.t-pad.b, n=comMeta.length;
 
-  var allV=comMeta.map(function(r){return Math.max(r.meta,r.prodSemExtras)});
+  var allV=comMeta.map(function(r){return Math.max(r.previsaoProducao,r.prodSemExtras)});
   var maxV=Math.max.apply(null,allV)*1.12||1;
   var step=Math.ceil(maxV/5/1000)*1000||1;
 
@@ -6331,8 +6081,8 @@ function drawMetaReal(dados){
 
   comMeta.forEach(function(r,i){
     var x=xP(i);
-    var yMeta=yP(r.meta), yReal=yP(r.prodSemExtras);
-    var atingiu=r.prodSemExtras>=r.meta;
+    var yMeta=yP(r.previsaoProducao), yReal=yP(r.prodSemExtras);
+    var atingiu=r.prodSemExtras>=r.previsaoProducao;
 
     // Barra META (tracejada, fundo)
     ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
@@ -6357,7 +6107,7 @@ function drawMetaReal(dados){
     ctx.setLineDash([]);
 
     // Variação %
-    var var_pct=((r.prodSemExtras-r.meta)/r.meta*100);
+    var var_pct=((r.prodSemExtras-r.previsaoProducao)/r.previsaoProducao*100);
     ctx.font='bold 13px Consolas,monospace'; ctx.textAlign='center';
     ctx.fillStyle=atingiu?C.green:C.red;
     var labelY=Math.min(yReal,yMeta)-12;
@@ -6539,8 +6289,12 @@ function salvarForm(){
 
   var hn  = Math.max(0,carga-faltas-atraso);
   var tot = hn+e50+e100;
-  var ef  = tot>0?(hn/tot)*100:0;
-  var ab  = carga>0?((faltas+atraso)/carga)*100:0;
+  /* Mesmas contas do importador e do DashUtils: absenteísmo sobre h. NORMAIS;
+     sem hora extra a produção inteira é jornada normal, senão não há como
+     separar e a base "sem extras" fica em branco (o painel avisa). */
+  var pSem = (e50+e100)>0 ? 0 : prod;
+  var ef  = (meta>0&&pSem>0)?(pSem/meta)*100:0;
+  var ab  = hn>0?((faltas+atraso)/hn)*100:0;
   var dados=load();
 
   if(dados.find(function(r){return r.mes===mes&&r.ano===ano&&r.id!==editId})){
@@ -6556,9 +6310,9 @@ function salvarForm(){
     extra50:e50, extra100:e100,
     totalExtras:parseFloat((e50+e100).toFixed(1)),
     horasTotais:parseFloat(tot.toFixed(1)),
-    producaoReal:prod, meta:meta,
+    producaoReal:prod, prodSemExtras:pSem, meta:meta,
     eficiencia:parseFloat(ef.toFixed(2)),
-    eficienciaAdj:parseFloat(ef.toFixed(2)),
+    eficienciaAdj:0,
     margem:0, ticketMedio:tkt, custoCap:0
   };
 
@@ -6591,9 +6345,10 @@ function exportCSV(){
   var hdr='Mes;Ano;Colaboradores;H.Carga;Faltas(h);Atraso(h);TotalFaltaAtraso;Absenteismo(%);'
     +'H.Normais;Extra50;Extra100;TotalExtras;H.Totais;'
     +'ProducaoEntregue_c_extras;ProducaoNormal_s_extras;PecasDeHoraExtra;'
-    +'Meta;Aderencia_s_extras(%);Aderencia_c_extras(%);Eficiencia(%);EficienciaAjustada(%);'
+    +'Meta_derivada;IndepHE_s_extras_vs_meta(%);ProdCE_vs_meta(%);IndependenciaHE(%);EficienciaAjustada_planilha(%);'
     +'HFaltaProd(h);TicketMedio(R$);CustoCapNaoAprov(R$);'
-    +'QtdeFaturado;QtdeVendida;PrevisaoProducao;DiasTrabalhados;HorasFerias';
+    +'QtdeFaturado;QtdeVendida;PrevisaoProducao;DiasTrabalhados;HorasFerias;'
+    +'AderenciaPlano_c_extras(%);AderenciaPlano_s_extras(%)';
   var rows=dados.map(function(r){
     var sn = DashUtils.getProd(r);                       /* base sem extras */
     var at = r.meta>0 ? (sn/r.meta)*100 : 0;             /* mesma conta da tela */
@@ -6606,7 +6361,9 @@ function exportCSV(){
       r.meta||0, at.toFixed(2), atCE.toFixed(2), r.eficiencia, r.eficienciaAdj,
       h!==null?h.toFixed(0):0,r.ticketMedio.toFixed(2),r.custoCap.toFixed(2),
       r.qtdeFaturado||0, r.qtdeVendida||0, r.previsaoProducao||0,
-      r.diasTrabalhados||0, r.horasFerias||0
+      r.diasTrabalhados||0, r.horasFerias||0,
+      ((r.previsaoProducao||0)>0?((r.producaoReal||0)/r.previsaoProducao*100).toFixed(2):''),
+      ((r.previsaoProducao||0)>0?(sn/r.previsaoProducao*100).toFixed(2):'')
     ].join(';')
   });
   var csv='\uFEFF'+hdr+'\n'+rows.join('\n');
@@ -6971,11 +6728,12 @@ function bindCardTooltips(dados){
     tipRow('H. Extras total',fi(tExt)+' h')+
     tipRow('% Extras',f(tHT>0?(tExt/tHT)*100:0)+'%');
 
-  var efCls=ef>=90?'g':ef>=80?'a':'r';
-  var efHtml='<div class="tip-title">Eficiência Média</div>'+
-    tipRow('Média período',f(ef)+'%',efCls)+
-    tipRow('Fórmula','Prod.s/Extras ÷ Cap.Teórica')+
-    tipRow('Meta','90%')+
+  var _Pef=DashUtils.periodo(dados); ef=_Pef.aderencia===null?ef:_Pef.aderencia;
+  var efCls=ef>=META_EF?'g':ef>=META_EF-10?'a':'r';
+  var efHtml='<div class="tip-title">Independência de HE</div>'+
+    tipRow('Período (ponderado)',f(ef)+'%',efCls)+
+    tipRow('Fórmula','Prod. jornada normal ÷ meta (derivada)')+
+    tipRow('Meta',META_EF+'%')+
     tipRow('Desvio',(ef>=META_EF?'▲ +':'▼ ')+f(Math.abs(ef-META_EF))+'p.p.',ef>=META_EF?'g':'r')+
     tipRow('Meses ≥ 90%',dados.filter(function(r){return r.eficiencia>=90}).length+'/'+dados.length);
 
@@ -7068,7 +6826,7 @@ function bindCardTooltips(dados){
 /* ════════════════════════════════════════════════════════════
    NAVEGAÇÃO POR ABAS
 ════════════════════════════════════════════════════════════ */
-var paginaAtiva='resumo';
+var paginaAtiva='reuniao';   /* a Reunião é a porta de entrada */
 
 function mudarPagina(id, btn){
   paginaAtiva=id;
@@ -7133,7 +6891,7 @@ function renderKPIsExtras(d){
   s('ks2-hfp', d.length===1?(d[0].mes+'/'+d[0].ano):'Acumulado período');
 
   // Eficiência
-  s('kv3-ef',     f(ef)+'%');
+  s('kv3-ef',     f((DashUtils.periodo(d).aderencia)||ef)+'%');   /* ponderado, como na Reunião */
   /* Era a Eficiência Ajustada (média de eficienciaAdj). Ver comentário em
      DashUtils.periodo: coluna não reproduzível, passa de 100%, e anda para o
      lado errado em relação ao ritmo e ao absenteísmo. */
@@ -7167,23 +6925,24 @@ function renderKPIsExtras(d){
   // Produção — com 1 mês só, Média e Melhor Mês repetem o Total: esconde
   s('kv5-prod', fi(tProd)+' pç');
   s('kv5-med',  fi(tProd/d.length)+' pç');
-  s('kv5-tkt',  nTkt>0?'R$ '+f(tTkt/nTkt,2):'—');
+  var _Pt5=DashUtils.periodo(d);
+  s('kv5-tkt',  _Pt5.ticket>0?'R$ '+f(_Pt5.ticket,2):(nTkt>0?'R$ '+f(tTkt/nTkt,2):'—'));
   s('kv5-best', fi(bestProd)+' pç');
   var _c5med=document.getElementById('card5-med'), _c5best=document.getElementById('card5-best');
   if(_c5med)  _c5med.style.display  = d.length>1?'':'none';
   if(_c5best) _c5best.style.display = d.length>1?'':'none';
 
-  // Meta e Variação
-  var tMeta5=0, tSemExtra5=0;
-  d.forEach(function(r){if(r.meta>0){tMeta5+=r.meta; tSemExtra5+=(r.prodSemExtras||0)}});
+  // Previsto (Plano Mestre) e aderência ao plano — era "Meta Acumulada" (Σ meta
+  // derivada do realizado) e "Atingimento" contra ela: verde por construção.
+  var tMeta5=0, tReal5=0;
+  d.forEach(function(r){if((r.previsaoProducao||0)>0){tMeta5+=r.previsaoProducao; tReal5+=(r.producaoReal||0)}});
   s('kv5-meta', tMeta5>0?fi(tMeta5)+' pç':'—');
+  var el5=document.getElementById('kv5-var'), c5=document.getElementById('card5-var');
   if(tMeta5>0){
-    var at5=(tSemExtra5/tMeta5)*100;
-    var el5=document.getElementById('kv5-var');
-    if(el5){el5.textContent=f(at5)+'%'; el5.style.color=at5>=90?'var(--green)':at5>=80?'var(--amber)':'var(--red)';}
-    var c5=document.getElementById('card5-var');
-    if(c5){c5.className='kCard '+(at5>=90?'kg':at5>=80?'ka':'kr');}
-  }
+    var at5=(tReal5/tMeta5)*100;
+    if(el5){el5.textContent=f(at5)+'%'; el5.style.color=at5>=100?'var(--green)':at5>=95?'var(--amber)':'var(--red)';}
+    if(c5){c5.className='kCard '+(at5>=100?'kg':at5>=95?'ka':'kr');}
+  } else { if(el5){el5.textContent='—'; el5.style.color='';} }
   s('ks5-best', bestMes);
 
   // Previsão de Produção vs Realizado (com e sem extras)
@@ -7202,11 +6961,12 @@ function renderKPIsExtras(d){
     var pctCE=(tProdCE5/tPrev5)*100;
     var pctSE=(tProdSE5/tPrev5)*100;
     var elCE=document.getElementById('kv5-prevce');
-    if(elCE){elCE.textContent=f(pctCE)+'%'; elCE.style.color=pctCE>=100?'var(--green)':pctCE>=90?'var(--amber)':'var(--red)';}
+    /* mesma régua da Reunião: ≥100 verde · ≥95 âmbar · abaixo vermelho */
+    if(elCE){elCE.textContent=f(pctCE)+'%'; elCE.style.color=pctCE>=100?'var(--green)':pctCE>=95?'var(--amber)':'var(--red)';}
     var elSE=document.getElementById('kv5-prevse');
-    if(elSE){elSE.textContent=f(pctSE)+'%'; elSE.style.color=pctSE>=100?'var(--green)':pctSE>=90?'var(--amber)':'var(--red)';}
-    var cCE=document.getElementById('card5-prevce'); if(cCE)cCE.className='kCard '+(pctCE>=100?'kg':pctCE>=90?'ka':'kr');
-    var cSE=document.getElementById('card5-prevse'); if(cSE)cSE.className='kCard '+(pctSE>=100?'kg':pctSE>=90?'ka':'kr');
+    if(elSE){elSE.textContent=f(pctSE)+'%'; elSE.style.color=pctSE>=100?'var(--green)':pctSE>=95?'var(--amber)':'var(--red)';}
+    var cCE=document.getElementById('card5-prevce'); if(cCE)cCE.className='kCard '+(pctCE>=100?'kg':pctCE>=95?'ka':'kr');
+    var cSE=document.getElementById('card5-prevse'); if(cSE)cSE.className='kCard '+(pctSE>=100?'kg':pctSE>=95?'ka':'kr');
   } else {
     s('kv5-prev','—'); s('ks5-prev','Nenhum mês com previsão informada');
     s('kv5-prevce','—'); s('kv5-prevse','—');
@@ -7380,9 +7140,9 @@ function bindZooms(){
   function dl(){var d=dd();return d.length>=2?calcDeltas(d):[];}
 
   bindZoom('cEfic','Evolução — Eficiência & Absenteísmo',drawEfic,function(){return [dd()];});
-  bindZoom('cEfic2','Evolução — Eficiência & Ef. Ajustada',drawEficSimples,function(){return [dd(),'cEfic2','emEfic2'];});
+  bindZoom('cEfic2','Evolução — Independência de HE',drawEficSimples,function(){return [dd(),'cEfic2','emEfic2'];});
   bindZoom('cProd','Produção Real (peças)',drawBars,function(){var d=dd();return ['cProd','emProd',d,function(r){return r.producaoReal;},function(r){return corEf(r);},520,function(v){return fi(v);}];});
-  bindZoom('cMetaReal','Meta vs Realizado s/ Hora Extra',drawMetaReal,function(){return [dd()];});
+  bindZoom('cMetaReal','Previsto vs Realizado s/ Hora Extra',drawMetaReal,function(){return [dd()];});
   bindZoom('cProd2','Produção Real Total (peças)',drawBars,function(){var d=dd();return ['cProd2','emProd2',d,function(r){return r.producaoReal;},function(r){return corEf(r);},520,function(v){return fi(v);}];});
   bindZoom('cHoras','Horas Totais vs Normais vs Extras',drawHoras,function(){return [dd()];});
   bindZoom('cTkt','Ticket Médio (R$)',drawTkt,function(){return [dd()];});
@@ -7543,6 +7303,10 @@ function renderResumoExecutivo(dados) {
   e=el('rex-ef-val');    if(e) e.textContent = fmtP(efM).replace(' ','');
   e=el('rex-abs-val');   if(e) e.textContent = fmtP(absM).replace(' ','');
   e=el('rex-tkt-val');   if(e) e.textContent = nTkt>0 ? 'R$ '+tktM.toFixed(0) : '--';
+  /* ticket ÷ (1 − dep. de HE): o ticket que entregaria a mesma receita com
+     as peças da jornada normal. Só faz sentido com hora extra > 0. */
+  var tktSemHE = (nTkt>0 && depHE>0 && depHE<100) ? tktM/(1-depHE/100) : null;
+  e=el('rex-tkt-semhe'); if(e) e.textContent = tktSemHE!==null ? ('R$ '+tktSemHE.toFixed(0)+' (+'+((tktSemHE/tktM-1)*100).toFixed(1).replace('.',',')+'%)') : (nTkt>0?'sem HE no período':'—');
   e=el('rex-ht-val');    if(e) e.textContent = fmt(tHT)+' h';
   e=el('rex-ht-ext');    if(e) e.textContent = fmt(tExt)+' h extras';
 
@@ -7573,7 +7337,8 @@ function renderResumoExecutivo(dados) {
      por construção algébrica, não por desempenho. Trocar a base para sem
      extras só inverteria (vermelho em 17 de 18). Nenhum dos dois informa.
      O que informa é quanto do volume dependeu de hora extra. */
-  var okP=depHE<=8, okE=efM>=90, okA=absM<=3, okT=tktM>=250;
+  var okP=depHE<=META_DEP_HE, okE=efM>=META_EF, okA=absM<=META_ABS, okT=tktM>=META_TICKET;
+  var _tm=document.getElementById('rex-tkt-meta'); if(_tm) _tm.textContent='Meta: R$ '+META_TICKET;
   /* A bolinha era 9px de cor pura, sem forma nem texto. Em P&B verde vira
      cinza 135 e vermelho cinza 118 — 17 níveis em 255, indistinguíveis. E o
      @media print força .kVal para azul-marinho, matando o resto do semáforo.
@@ -7596,7 +7361,7 @@ function renderResumoExecutivo(dados) {
   semDot('rex-abs-status', 'rex-card-abs', okA);
   semDot('rex-tkt-status', 'rex-card-tkt', okT);
 
-  var efD=efM-90, abD=absM-3, tkD=tktM-250;
+  var efD=efM-META_EF, abD=absM-META_ABS, tkD=tktM-META_TICKET;
   e=el('rex-ef-diff');  if(e){ e.textContent=(efD>=0?'+':'')+efD.toFixed(1).replace('.',',')+' p.p.'; e.style.color=DS.delta(efD, true); }
   e=el('rex-abs-diff'); if(e){ e.textContent=(abD<=0?'- ':'+ ')+Math.abs(abD).toFixed(1).replace('.',',')+' p.p.'; e.style.color=DS.delta(-abD, true); }
   if(nTkt>0){ e=el('rex-tkt-diff'); if(e){ e.textContent=(tkD>=0?'+ R$ ':'- R$ ')+Math.abs(tkD).toFixed(0); e.style.color=DS.delta(tkD, true); } }
@@ -7613,9 +7378,9 @@ function renderResumoExecutivo(dados) {
   if(sL){
     var itens = [
       {l:'Dependência de Hora Extra', m:'Até 8% do volume entregue', ok:okP},
-      {l:'Eficiência Média', m:'Meta: 90%',                       ok:okE},
+      {l:'Independência de HE', m:'Meta: '+META_EF+'%',           ok:okE},
       {l:'Absenteísmo',      m:'Meta: até 3%',                    ok:okA},
-      {l:'Ticket Médio',     m:'Meta: R$ 250',                    ok:okT},
+      {l:'Ticket Médio',     m:'Meta: R$ '+META_TICKET,           ok:okT},
       {l:'Horas Extras',     m:'Até 15% das h. totais',           ok:pctE<=15}
     ];
     sL.innerHTML = itens.map(function(it){
@@ -7640,9 +7405,9 @@ function renderResumoExecutivo(dados) {
     if(efM >= 90){
       ins.push({t:'good', txt:'Eficiência média de <b>'+fmtP(efM)+'</b> — meta de 90% atingida no período.'});
     } else {
-      ins.push({t:'warn', txt:'Eficiência de <b>'+fmtP(efM)+'</b> — <b>'+Math.abs(efD).toFixed(1).replace('.',',')+'</b> p.p. abaixo da meta de 90%.'});
+      ins.push({t:'warn', txt:'Independência de HE de <b>'+fmtP(efM)+'</b> — <b>'+Math.abs(efD).toFixed(1).replace('.',',')+'</b> p.p. abaixo da meta de '+META_EF+'%.'});
     }
-    if(absM > 10){
+    if(absM > ABS_ATENCAO){
       ins.push({t:'crit', txt:'Absenteísmo elevado: <b>'+fmtP(absM)+'</b> — impacta diretamente a capacidade produtiva.'});
     } else if(absM > 3){
       ins.push({t:'warn', txt:'Absenteísmo de <b>'+fmtP(absM)+'</b> acima da meta de 3%. Atenção às faltas e atrasos.'});
@@ -7663,7 +7428,9 @@ function renderResumoExecutivo(dados) {
       if(efM >= 100){
         ins.push({t:'good', txt:'Jornada normal cobriu a capacidade: <b>'+fmt(tProd)+'</b> peças contra '+fmt(tMeta)+' de capacidade ('+fmtP(efM)+').'});
       } else {
-        ins.push({t:'warn', txt:'Jornada normal entregou <b>'+fmtP(efM)+'</b> da capacidade — faltaram <b>'+fmt(tMeta-tProd)+'</b> peças para fechar sem hora extra.'});
+        ins.push({t:'warn', txt:(P.plano>0
+          ? 'Jornada normal entregou <b>'+fmtP(P.plano>0?(P.semExtras/P.plano)*100:0)+'</b> do previsto — faltaram <b>'+fmt(Math.max(0,P.plano-P.semExtras))+'</b> peças para fechar o plano sem hora extra.'
+          : 'Jornada normal entregou <b>'+fmtP(efM)+'</b> da meta derivada da planilha — faltaram <b>'+fmt(tMeta-tProd)+'</b> peças para fechar sem hora extra.')});
       }
     }
     if(tHE > 0){
@@ -7740,7 +7507,7 @@ function renderResumoExecutivo(dados) {
     'somando hora extra dá meta batida sempre.</div>'
   );
 
-  var efCls = efM>=90?'g':efM>=80?'a':'r';
+  var efCls = efM>=META_EF?'g':efM>=META_EF-10?'a':'r';
   bindRexTooltip('rex-card-ef',
     '<div class="tip-title">Eficiência Média</div>'+
     tipRow('Eficiência', fmtP(efM), efCls)+
@@ -7752,7 +7519,7 @@ function renderResumoExecutivo(dados) {
     tipRow('Meses c/ meta (≥90%)', dados.filter(function(r){return r.producaoReal>0&&r.eficiencia>=90;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.eficiencia>=90;}).length===n?'g':dados.filter(function(r){return r.producaoReal>0&&r.eficiencia>=90;}).length===0?'r':'a')
   );
 
-  var absCls = absM<=3?'g':absM<=6?'a':'r';
+  var absCls = absM<=META_ABS?'g':absM<=ABS_ATENCAO?'a':'r';
   var hPerdidasTotal = 0;
   dados.forEach(function(r){ hPerdidasTotal += ((r.faltas||0)+(r.atraso||0)); });
   bindRexTooltip('rex-card-abs',
@@ -7767,16 +7534,20 @@ function renderResumoExecutivo(dados) {
     tipRow('Meses acima 3% (ruim)', dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>3;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>3;}).length===0?'g':dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>3;}).length===n?'r':'a')
   );
 
-  var tktCls = tktM>=250?'g':tktM>=200?'a':'r';
+  var tktCls = tktM>=META_TICKET?'g':tktM>=META_TICKET*0.8?'a':'r';
   bindRexTooltip('rex-card-tkt',
     '<div class="tip-title">Ticket Médio</div>'+
     tipRow('Ticket médio', nTkt>0?'R$ '+tktM.toFixed(2).replace('.',','):'--', tktCls)+
-    tipRow('Meta', 'R$ 250,00')+
+    tipRow('Meta', 'R$ '+META_TICKET.toFixed(2).replace('.',','))+
     tipRow('Diferença', (tkD>=0?'+ R$ ':'- R$ ')+Math.abs(tkD).toFixed(0), tkD>=0?'g':'r')+
     tipRow('Fórmula', 'Receita ÷ peças faturadas (ponderado)')+
     '<div style="border-top:1px solid var(--b);margin:5px 0"></div>'+
+    tipRow('Cobriria a receita sem HE', tktSemHE!==null?('R$ '+tktSemHE.toFixed(2).replace('.',',')):'—')+
+    tipRow('Fórmula', 'Ticket ÷ (1 − dependência de HE '+depHE.toFixed(1).replace('.',',')+'%)')+
+    '<div style="font-size:.62rem;color:var(--t2);margin:3px 0 5px;line-height:1.4">Ticket que entregaria a MESMA receita produzindo só na jornada normal. Decisão comercial de mix: ticket não reduz hora extra sozinho.</div>'+
+    '<div style="border-top:1px solid var(--b);margin:5px 0"></div>'+
     '<div style="font-size:.62rem;color:var(--t2);margin-bottom:3px">dos '+n+' meses no período:</div>'+
-    tipRow('Meses c/ meta (≥R$250)', dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=250;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=250;}).length===n?'g':dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=250;}).length===0?'r':'a')
+    tipRow('Meses c/ meta (≥R$'+META_TICKET+')', dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=META_TICKET;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=META_TICKET;}).length===n?'g':dados.filter(function(r){return r.producaoReal>0&&r.ticketMedio>=META_TICKET;}).length===0?'r':'a')
   );
 
   // Card horas totais (não tem id próprio, vamos buscar pelo kLbl)
@@ -8607,7 +8378,7 @@ function prodOnAtivarAba() {
 /* ── Constante e estado ── */
 var CF_MIN_DIA   = 528;
 var CF_HORAS_DIA = CF_MIN_DIA / 60;  // 8.8 h
-var CF_DIAS_MES  = {JAN:22,FEV:20,MAR:21,ABR:22,MAI:21,JUN:22,JUL:23,AGO:22,SET:21,OUT:23,NOV:21,DEZ:19};
+var CF_DIAS_MES  = DashUtils.DIAS_FB;   /* uma tabela só de fallback (era outra, divergente) */
 var cfAnoSel     = null;
 var cfMesesSel   = [];
 
@@ -10354,8 +10125,11 @@ function cfInicializar() {
       var rOrig = registros[i];
       totHorasPerdidas += (rOrig ? ((rOrig.faltas || 0) + (rOrig.atraso || 0)) : 0);
     });
-    var capPerdida        = totHorasPerdidas * prodHora;
-    /* Eficiência de Produção = produção real ÷ capacidade teórica acumulada */
+    /* Peças perdidas canônicas (DashUtils): h de falta e atraso × pç por
+       hora-HOMEM normal. Multiplicar horas-homem pelo ritmo da FÁBRICA inteira
+       dava 794.694 peças no período — 14× o número certo. */
+    var capPerdida        = (DashUtils.periodo(registros).pecasPerdidas) || 0;
+    /* Independência de HE = produção normal ÷ meta derivada */
     var totalMeta = 0;
     registros.forEach(function(r) { totalMeta += (r.meta > 0 ? r.meta : 0); });
     var eficienciaProducao = totalMeta > 0 ? (totProd / totalMeta) * 100 : 0;
@@ -11610,7 +11384,7 @@ function cfInicializar() {
     'ppcp-v-func-nec': { t:'Funcionários Necessários', f:'DemandaDia ÷ CapFuncDia', i:'Quantidade teórica de funcionários para atender 100% da demanda no ritmo atual.' },
     'ppcp-gap-mes':    { t:'Gap Mensal', f:'Faturado − Produção s/ hora extra', i:'+: demanda > produção (risco de backlog). −: produção > demanda (formação de estoque).' },
     'ppcp-gap-dia':    { t:'Gap Diário', f:'DemandaDia − ProduçãoDia', i:'+: déficit diário. −: superávit.' },
-    'cf-v-util':       { t:'Utilização da Fábrica', f:'Faturado ÷ Capacidade × 100', i:'% da capacidade instalada efetivamente utilizada. Meta: ≥ 90%.' },
+    'cf-v-util':       { t:'Utilização da Fábrica', f:'Faturado ÷ Capacidade × 100', i:'% da capacidade cadastrada efetivamente utilizada. < 70% ocioso · 70–95% saudável · 95–100% risco · > 100% sobrecarga.' },
     'cf-v-fat':        { t:'Peças Faturadas', f:'Σ qtdeFaturado (col Z)', i:'Volume total faturado ao cliente no período.' },
     'cf-v-dia':        { t:'Produção Média / Dia', f:'Faturado ÷ DiasTrabalhadosTotal', i:'Volume médio por dia útil no período.' },
     'cf-v-hora':       { t:'Produção Média / Hora', f:'ProduçãoDia ÷ 8,8h', i:'Ritmo médio de produção por hora.' },
@@ -11783,15 +11557,15 @@ function cfInicializar() {
 
       /* 4. Capacidade Perdida */
       '<div class="ind-card ic-purple">',
-      '  <div class="ind-lbl">Capacidade Perdida</div>',
+      '  <div class="ind-lbl">Peças Perdidas (falta e atraso)</div>',
       '  <div class="ind-val" id="ind-v-cap-perd">—</div>',
       '  <div class="ind-unit" id="ind-u-cap-perd">peças não produzidas</div>',
-      '  <div class="ind-form" id="ind-f-cap-perd">H.Perdidas × Prod/h</div>',
+      '  <div class="ind-form" id="ind-f-cap-perd">H.Perdidas × pç por hora-homem normal</div>',
       '</div>',
 
       /* 5. Eficiência de Produção */
       '<div class="ind-card ic-green">',
-      '  <div class="ind-lbl">Eficiência de Produção</div>',
+      '  <div class="ind-lbl">Independência de HE</div>',
       '  <div class="ind-val" id="ind-v-ef-prod">—</div>',
       '  <div class="ind-unit">produção real ÷ cap. teórica</div>',
       '  <div class="ind-form" id="ind-f-ef-prod">ProdReal ÷ Meta</div>',
@@ -11845,9 +11619,9 @@ function cfInicializar() {
     var gapH = demandaH - prodHora;
 
     /* ── 4. Capacidade Perdida ── */
-    var capPerdida = totHorasPerdidas * prodHora;
+    var capPerdida = (DashUtils.periodo(registros).pecasPerdidas) || 0;   /* mesma conta da Reunião */
 
-    /* ── 5. Eficiência de Produção ── */
+    /* ── 5. Independência de HE ── */
     var efProducao = totMeta > 0 ? (totProd / totMeta) * 100 : null;
 
     /* ── Escrever no DOM ── */
@@ -11883,9 +11657,10 @@ function cfInicializar() {
 
     /* 4 */
     if (capPerdida > 0) {
+      var _Pcp = DashUtils.periodo(registros);
       set('ind-v-cap-perd', fI(capPerdida));
-      set('ind-u-cap-perd', fN(totHorasPerdidas, 0) + 'h perdidas × ' + fN(prodHora, 1) + ' pç/h');
-      set('ind-f-cap-perd', 'H.Perd ' + fN(totHorasPerdidas, 0) + 'h × Prod/h ' + fN(prodHora, 1));
+      set('ind-u-cap-perd', fN(_Pcp.hPerdidas, 0) + 'h de falta e atraso × ' + fN(_Pcp.ritmoNormal||0, 2) + ' pç por hora-homem');
+      set('ind-f-cap-perd', 'H.Perd ' + fN(_Pcp.hPerdidas, 0) + 'h × (prod. normal ÷ h. normais) ' + fN(_Pcp.ritmoNormal||0, 2));
     } else {
       set('ind-v-cap-perd', '—');
     }
@@ -11990,16 +11765,16 @@ function cfInicializar() {
 
     /* ── kCard — aba Produção / Dashboard ── */
     'card-ef': {
-      titulo: 'Eficiência',
+      titulo: 'Independência de HE',
       formula: 'ProdSemExtras ÷ Meta × 100',
-      corpo: 'Mede quanto da capacidade teórica foi convertida em produção, sem considerar horas extras.',
-      interpretacao: '<span class="uit-good">≥ 90%</span> meta · <span class="uit-warn">75–89%</span> atenção · <span class="uit-bad">&lt; 75%</span> crítico'
+      corpo: 'Quanto da entrega saiu sem hora extra. A meta é derivada da planilha (= produção real × h. normais ÷ h. carga): não é capacidade nem alvo, por isso o nome não é "eficiência".',
+      interpretacao: '<span class="uit-good">≥ 90%</span> meta · <span class="uit-warn">80–89%</span> atenção · <span class="uit-bad">&lt; 80%</span> crítico'
     },
     'card-oee': {
-      titulo: 'Eficiência Ajustada',
-      formula: 'Eficiência + impacto das horas perdidas',
-      corpo: 'Eficiência recalculada considerando as horas perdidas por falta e atraso.',
-      interpretacao: 'Valor superior à Eficiência indica que as faltas impactam significativamente a capacidade.'
+      titulo: 'Peças Perdidas por Falta e Atraso',
+      formula: 'Horas de falta e atraso × ritmo em hora normal (prod. s/ HE ÷ h. normais)',
+      corpo: 'Quantas peças deixaram de sair pelas horas perdidas, ao ritmo que a fábrica demonstrou no próprio período. Substitui a antiga "Eficiência Ajustada", coluna da planilha que não era reproduzível.',
+      interpretacao: '<span class="uit-good">≤ 5%</span> da produção normal · <span class="uit-warn">5–10%</span> atenção · <span class="uit-bad">&gt; 10%</span> crítico'
     },
     'card-abs': {
       titulo: 'Absenteísmo',
@@ -12102,7 +11877,7 @@ function cfInicializar() {
     /* ── ind-card — Indicadores Industriais ── */
     'ind-v-dem-hora': {
       titulo: 'Demanda / Hora',
-      formula: 'QuantidadeVendida ÷ (Dias × 8,8h)',
+      formula: 'QuantidadeFaturada ÷ (Dias × 8,8h)',
       corpo: 'Ritmo de demanda por hora: quantas peças o cliente precisa por hora disponível de fábrica.',
       interpretacao: 'Base de planejamento. Compare com Capacidade/Hora para ver o GAP.'
     },
@@ -12125,10 +11900,10 @@ function cfInicializar() {
       interpretacao: 'Quanto maior, maior o impacto das ausências na capacidade produtiva total.'
     },
     'ind-v-ef-prod': {
-      titulo: 'Eficiência de Produção',
-      formula: 'Produção s/ hora extra ÷ Meta',
-      corpo: 'Percentual da capacidade teórica (meta) que foi efetivamente convertida em produção.',
-      interpretacao: '<span class="uit-good">≥ 90%</span> excelente · <span class="uit-warn">75–89%</span> atenção · <span class="uit-bad">&lt; 75%</span> crítico'
+      titulo: 'Independência de HE',
+      formula: 'Produção s/ hora extra ÷ Meta (derivada) × 100',
+      corpo: 'O mesmo indicador da Reunião e do Resumo: quanto da entrega saiu sem hora extra. A meta é derivada da planilha, não é capacidade.',
+      interpretacao: '<span class="uit-good">≥ 90%</span> meta · <span class="uit-warn">80–89%</span> atenção · <span class="uit-bad">&lt; 80%</span> crítico'
     },
 
     /* ── cap-card — aba Capacidade ── */
@@ -12708,8 +12483,8 @@ function cfInicializar() {
   });
 
   /* Estado ativo */
-  var _grupoAtivo = 'geral';
-  var _subAtivo   = 'resumo';
+  var _grupoAtivo = 'reuniao';
+  var _subAtivo   = 'reuniao';
 
   /* ════════════════════════════════════════
      2. CSS
@@ -12935,11 +12710,19 @@ function cfInicializar() {
      8. INICIALIZAÇÃO
   ════════════════════════════════════════ */
   function _init() {
-    /* Renderiza sub-nav inicial (VISÃO GERAL → visao) */
-    renderSubNav('geral', 'visao');
-
-    /* Garante que a aba de grupo correta está ativa */
-    _restoreGroupTab('geral');
+    /* Porta de entrada: Reunião do Mês. ?aba=<id> (ou #<id>) abre outra —
+       é o que os atalhos do ícone do app usam (manifest.json → shortcuts). */
+    var pedida = null;
+    try {
+      var q = new URLSearchParams(location.search).get('aba') || (location.hash||'').replace(/^#/, '');
+      if (q && document.getElementById('page-' + q) && PAGE_TO_GROUP[q]) pedida = q;
+    } catch (e) {}
+    var g0 = pedida ? PAGE_TO_GROUP[pedida] : 'reuniao';
+    var p0 = pedida || 'reuniao';
+    _grupoAtivo = g0; _subAtivo = p0;
+    if (typeof _nav4_mpOrig === 'function') _nav4_mpOrig(p0, null);
+    renderSubNav(g0, p0);
+    _restoreGroupTab(g0);
 
     /* Quando o módulo PPCP cria pTab-ppcp, ele está oculto pelo CSS.
        Mas garantimos que page-ppcp (quando criada) entra no mapa. */
@@ -14598,15 +14381,17 @@ input:disabled, select:disabled {
 
     /* ── Eficiência / Absenteísmo ── */
     var eficiencia = totMeta > 0 ? (totProd / totMeta) * 100 : null;
-    var absMedia   = n > 0 ? totAbs / n : 0;
+    /* ponderado (h perdidas ÷ h normais), a base da Reunião — não média de % */
+    var _Pvg = DashUtils.periodo(registros);
+    var absMedia   = _Pvg.absenteismo === null ? 0 : _Pvg.absenteismo;
 
     var efDisplay  = eficiencia !== null ? fN(eficiencia, 1) + '%' : ($v('kv-ef')  || '—');
     var absDisplay = absMedia   > 0      ? fN(absMedia,   1) + '%' : ($v('kv-abs') || '—');
     var efCor  = eficiencia !== null
-      ? (eficiencia >= 90 ? DS.C.bom : eficiencia >= 75 ? DS.C.alerta : DS.C.ruim)
+      ? (eficiencia >= META_EF ? DS.C.bom : eficiencia >= META_EF-10 ? DS.C.alerta : DS.C.ruim)
       : ($c('kv-ef') || DS.C.bom);
     var absCor = absMedia > 0
-      ? (absMedia <= 3 ? DS.C.bom : absMedia <= 5 ? DS.C.alerta : DS.C.ruim)
+      ? (absMedia <= META_ABS ? DS.C.bom : absMedia <= ABS_ATENCAO ? DS.C.alerta : DS.C.ruim)
       : ($c('kv-abs') || DS.C.alerta);
 
     /* ══ NÍVEL 1 — STATUS DA FÁBRICA ══ */
@@ -14761,10 +14546,10 @@ input:disabled, select:disabled {
 
       /* Eficiência */
       if (eficiencia !== null) {
-        var efD = eficiencia - 96;
+        var efD = eficiencia - META_EF;
         var efSign = efD >= 0 ? '+' : '';
         bullets.push({ t: efD >= 0 ? 'good' : (efD > -10 ? 'warn' : 'crit'),
-          txt: 'Eficiência ' + (efD >= 0 ? 'acima' : 'abaixo') + ' da meta (' + efSign + fN(efD, 1) + 'pp vs 96%)'});
+          txt: 'Independência de HE ' + (efD >= 0 ? 'acima' : 'abaixo') + ' da meta (' + efSign + fN(efD, 1) + 'pp vs ' + META_EF + '%)'});
       }
 
       /* Capacidade */
@@ -14784,9 +14569,9 @@ input:disabled, select:disabled {
 
       /* Absenteísmo */
       if (absMedia > 0) {
-        bullets.push({ t: absMedia <= 3 ? 'good' : absMedia <= 10 ? 'warn' : 'crit',
+        bullets.push({ t: absMedia <= META_ABS ? 'good' : absMedia <= ABS_ATENCAO ? 'warn' : 'crit',
           txt: 'Absenteísmo: ' + fN(absMedia, 2) + '%' +
-               (absMedia > 10 ? ' — acima do limite (10%)' : absMedia > 3 ? ' — acima da meta (3%)' : ' — dentro da meta')});
+               (absMedia > ABS_ATENCAO ? ' — acima do limite (' + ABS_ATENCAO + '%)' : absMedia > META_ABS ? ' — acima da meta (' + META_ABS + '%)' : ' — dentro da meta')});
       }
 
       /* Vendas vs produção */
@@ -14889,8 +14674,9 @@ input:disabled, select:disabled {
 
   /* ══ INICIALIZAÇÃO ══ */
   function _init() {
-    _watch('kv-ef',  function(){ set('mes-ef-val',  $v('kv-ef')  || '—', $c('kv-ef')  || DS.C.bom); });
-    _watch('kv-abs', function(){ set('mes-abs-val', $v('kv-abs') || '—', $c('kv-abs') || DS.C.alerta); });
+    /* Os observadores de kv-ef/kv-abs reescreviam estes cards com a MÉDIA
+       ARITMÉTICA dos cards ocultos, por cima do valor ponderado que render()
+       acabava de escrever — quem ganhava dependia da animação. Saíram. */
     _watch('kv-oee', function(){ set('mes-oee',     $v('kv-oee') || '—', $c('kv-oee') || DS.C.alerta); });
     _watch('kv-hfp', function(){ set('mes-hfp',     $v('kv-hfp') || '—', DS.C.ruim);              });
     /* Carrega dados reais já existentes no localStorage em vez de array vazio */
@@ -14983,7 +14769,7 @@ input:disabled, select:disabled {
       '</div>',
       '<div class="aaa-charts">',
         '<div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Produção por mês</div><canvas id="aaa-c-prod" height="160"></canvas><div class="aaa-legend" id="aaa-lg-prod"></div></div>',
-        '<div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Eficiência % por mês</div><canvas id="aaa-c-ef" height="160"></canvas><div class="aaa-legend" id="aaa-lg-ef"></div></div>',
+        '<div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Independência de HE % por mês</div><canvas id="aaa-c-ef" height="160"></canvas><div class="aaa-legend" id="aaa-lg-ef"></div></div>',
         '<div class="aaa-chart-box"><div class="aaa-chart-ttl">▸ Absenteísmo % por mês</div><canvas id="aaa-c-abs" height="160"></canvas><div class="aaa-legend" id="aaa-lg-abs"></div></div>',
       '</div>',
       '<div class="aaa-wrap"><table class="aaa-table"><thead id="aaa-thead"></thead><tbody id="aaa-tbody"></tbody></table></div>',
@@ -15091,7 +14877,7 @@ input:disabled, select:disabled {
     anos.forEach(function(a, i) {
       var cor = CORES[i % CORES.length];
       th += '<th style="color:'+cor+'">'+a+' Prod</th>';
-      th += '<th style="color:'+cor+'">'+a+' Ef%</th>';
+      th += '<th style="color:'+cor+'">'+a+' Ind.HE%</th>';
       th += '<th style="color:'+cor+'">'+a+' Abs%</th>';
       if (i < anos.length - 1) th += '<th class="aaa-sep" style="color:var(--t3)">Δ Prod%</th><th style="color:var(--t3)">Δ Ef pp</th>';
     });
@@ -15965,7 +15751,7 @@ input:disabled, select:disabled {
 
     /* ══ PÁG 3 — EFICIÊNCIA ══ */
     var p3 = pb()
-      + pgHdr('Efici\u00eancia', 'Desempenho produtivo vs. capacidade te\u00f3rica')
+      + pgHdr('Independ\u00eancia de HE', 'Produ\u00e7\u00e3o em jornada normal \u00f7 meta derivada da planilha')
       + secHdr('Indicadores de Efici\u00eancia')
       + kRow([
           {l:'Efici\u00eancia M\u00e9dia', v:txt('kv3-ef'),     cls:'v'},
@@ -16004,8 +15790,8 @@ input:disabled, select:disabled {
           {l:'Melhor M\u00eas',    v:txt('kv5-best'), cls:'v'}
         ])
       + kRow([
-          {l:'Meta Acumulada',    v:txt('kv5-meta'), cls:'b'},
-          {l:'Atingimento M\u00e9dio', v:txt('kv5-var'), cls:'v'}
+          {l:'Previsto (Plano Mestre)', v:txt('kv5-meta'), cls:'b'},
+          {l:'Ader\u00eancia ao plano c/ HE', v:txt('kv5-var'), cls:'v'}
         ],[2])
       + secHdr('Gr\u00e1ficos — Produ\u00e7\u00e3o')
       + gg([['cMetaReal','Meta vs. Real'],['cProd2','Produ\u00e7\u00e3o Mensal'],['cTkt2','Ticket M\u00e9dio'],['cDeltaProd','Varia\u00e7\u00e3o Produ\u00e7\u00e3o']])
@@ -17413,7 +17199,7 @@ function printAtiva(){
     });
     if(!d) return null;
     return { A:nm/d, B:rl/d, C:vn/d, dias:d,
-             abs: carga>0?falta/carga:0,          /* absenteísmo realizado */
+             abs: hn>0?falta/hn:0,                /* absenteísmo realizado — sobre h. normais, como no resto do painel */
              prodH: hn>0?nm/hn:0,                 /* peças por hora normal */
              hDia: hn/d,                          /* horas normais por dia */
              fatHE: nm>0?rl/nm:1 };               /* quanto a HE acrescenta hoje */
@@ -19267,7 +19053,7 @@ function printAtiva(){
         +'padding:8px 22px;border-top:1px solid #edf2f7;margin-top:8px}'
       +'</style></head><body>'
       +'<div class="hd"><div class="hdrow">'+(typeof logoImprimir==='function'?logoImprimir(30):'')+'<div>'
-      +'<div class="lb">PPCP · Capacidade &amp; Eficiência — Patrimar Móveis</div>'
+      +'<div class="lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
       +'<h1>Produção por Produto e Volumes — '+rotPer+'</h1>'
       +'<div class="sb">O que a fábrica fabricou, código a código · fonte: reporte mensal do ERP (transação 3)</div>'
       +'</div></div></div>'
@@ -19279,7 +19065,7 @@ function printAtiva(){
       +tabFam
       +listagem
       +'</div>'
-      +'<div class="ft"><span>Dashboard PPCP — Capacidade &amp; Eficiência</span>'
+      +'<div class="ft"><span>RitmoPatrimar Resultado — PPCP</span>'
       +'<span>Gerado em: '+hoje+'</span></div>'
       +'</body></html>');
     w.document.close();
@@ -19555,6 +19341,8 @@ function printAtiva(){
         +'<td class="reu-noprint" style="white-space:nowrap">'
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar">✎</button> '
           +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button> ':'')
+          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\')" title="Enviar por WhatsApp para o responsável">💬</button> '
+          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\')" title="Enviar por e-mail para o responsável">✉</button> '
           +'<button type="button" class="btn btn-r btn-sm" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)">🗑</button>'
         +'</td></tr>';
     }).join('');
@@ -19589,6 +19377,10 @@ function printAtiva(){
         +'<button type="button" class="btn btn-a btn-sm" onclick="reuAcaoNova()">+ Nova ação</button>'
         +'<label style="font-size:.66rem;color:var(--t3);display:inline-flex;align-items:center;gap:5px;cursor:pointer">'
           +'<input type="checkbox" '+(mostrarFechadas?'checked':'')+' onchange="reuAcaoMostrar(this.checked)" style="width:auto">mostrar concluídas e canceladas</label>'
+        +'<span style="font-size:.66rem;color:var(--t3)">Plano em aberto:</span>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'zap\')" title="Todas as ações em aberto numa mensagem de WhatsApp">💬 WhatsApp</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Todas as ações em aberto num e-mail (Gmail)">✉ E-mail</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'copiar\')" title="Copiar o plano em aberto como texto">📋 Copiar</button>'
         +'<span style="margin-left:auto;font-size:.62rem;color:var(--t3)">aba ACOES da planilha · cópia local para abrir offline</span>'
       +'</div>'
       +form
@@ -19888,11 +19680,11 @@ function printAtiva(){
         +'padding:8px 22px;border-top:1px solid #edf2f7;margin-top:10px}'
       +'</style></head><body>'
       +'<div class="hd"><div class="hdrow">'+(typeof logoImprimir==='function'?logoImprimir(30):'')+'<div>'
-      +'<div class="lb">PPCP · Capacidade &amp; Eficiência — Patrimar Móveis</div>'
+      +'<div class="lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
       +'<h1>Reunião do Mês — '+per+'</h1>'
       +'<div class="sb">Plano · entrega · capacidade · carteira · plano de ação</div></div></div></div>'
       +'<div class="bd">'+corpo.innerHTML+'</div>'
-      +'<div class="ft"><span>Dashboard PPCP — Capacidade &amp; Eficiência</span><span>Gerado em: '+hoje+'</span></div>'
+      +'<div class="ft"><span>RitmoPatrimar Resultado — PPCP</span><span>Gerado em: '+hoje+'</span></div>'
       +'</body></html>');
     w.document.close();
     w.addEventListener('afterprint', function(){ w.close(); });
@@ -20043,6 +19835,42 @@ function printAtiva(){
     if(typeof toast==='function') toast('Ação excluída.','ok');
   };
   window.reuAcaoMostrar=function(on){ mostrarFechadas=!!on; render(); };
+
+  /* ── Enviar ao responsável ──
+     Não guardamos telefone nem e-mail: o painel abre o WhatsApp (ou o Gmail)
+     já com o texto pronto e a pessoa escolhe o contato. Uma ação (id) ou o
+     plano em aberto inteiro (id null). Texto puro, sem formatação: é o que
+     chega igual no celular, no e-mail e na impressão. */
+  function textoAcao(a){
+    return '• ['+(a.prioridade||'—')+'] '+(a.kpi||'—')+(a.desvio?(' — '+a.desvio):'')
+      +'\n  Ação: '+(a.acao||'—')
+      +(a.causa?('\n  Causa: '+a.causa):'')
+      +'\n  Responsável: '+(a.responsavel||'—')+' · Prazo: '+fData(a.prazo)+' · '+(a.status||'Aberta');
+  }
+  function textoPlano(id){
+    var per=(document.getElementById('reu-per-lbl')||{}).textContent||'';
+    var lista=Acoes.lista().filter(function(a){ return a.status!=='Excluída'; });
+    var sel = id ? lista.filter(function(a){ return a.id===id; })
+                 : ordenarAcoes(lista).filter(function(a){ return !(a.status==='Concluída'||a.status==='Cancelada'); });
+    if(!sel.length) return null;
+    var titulo = id ? ('Ação da Reunião do Mês — '+per) : ('Plano de ação em aberto — Reunião do Mês '+per);
+    return { titulo: titulo,
+             corpo: 'PATRIMAR MÓVEIS · PPCP\n'+titulo+'\n\n'+sel.map(textoAcao).join('\n\n')
+                    +'\n\nRegra: nenhum indicador vermelho sem causa, ação, responsável e prazo.' };
+  }
+  window.reuAcaoEnviar=function(id, via){
+    var t=textoPlano(id);
+    if(!t){ if(typeof toast==='function') toast('Nenhuma ação em aberto para enviar.','wn'); return; }
+    if(via==='zap'){
+      window.open('https://wa.me/?text='+encodeURIComponent(t.corpo), '_blank');
+    } else if(via==='email'){
+      window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(t.titulo)+'&body='+encodeURIComponent(t.corpo), '_blank');
+    } else {
+      var ok=function(){ if(typeof toast==='function') toast('Plano copiado. Cole no e-mail, no WhatsApp ou onde precisar.','ok'); };
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t.corpo).then(ok, function(){ prompt('Copie o texto:', t.corpo); });
+      else prompt('Copie o texto:', t.corpo);
+    }
+  };
 
   /* A classe no body liga o CSS que faz a barra lateral rolar por dentro —
      só nesta tela, para não mexer no comportamento das outras. */
@@ -20303,9 +20131,22 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b72';
+var APP_VERSAO = 'b73';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b73', data:'10/09/2026', itens:[
+    'Nome: RitmoPatrimar Resultado. Entrada do app igual ao RitmoPatrimar Embalagem (logo, nome, pulso e frase). A Reuniao e a porta de entrada; ?aba=<id> abre outra, e o icone do app ganhou atalhos (Reuniao, Plano Mestre, Resumo, Briefing).',
+    'Auditoria de coerencia: 62 achados, 31 de severidade alta, em todas as abas. Regra unica: o mesmo indicador tem a mesma conta, o mesmo rotulo e a mesma regua em toda tela.',
+    '"Eficiencia" era o mesmo numero que a Reuniao chama de Independencia de HE (prod. em jornada normal ÷ meta derivada da planilha). Renomeado em Resumo, Visao Geral, Eficiencia & Horas, PPCP, Comparativo, Ano a Ano, Dados, Briefing, PDF e tooltips.',
+    'Ef. Ajustada (coluna da planilha, nao reproduzivel, b63) saiu dos graficos, dos titulos, do Comparativo, do Briefing e dos tooltips. Fica so na coluna bruta de Dados, rotulada.',
+    'Meta circular deixou de ser alvo: "Meta Acumulada"/"Atingimento" viraram Previsto (Plano Mestre)/Aderencia ao plano; o grafico Meta vs Realizado usa a previsao; o SWOT do Briefing parou de dizer "meta batida" com hora extra dentro; a coluna Ating. de Dados e aderencia ao plano em jornada normal.',
+    'Medias aritmeticas de percentual viraram razao de totais (DashUtils.periodo) nos cards ocultos, na aba Eficiencia, em Producao & Vendas, no rodape de Dados e na Visao Geral — o observador que sobrescrevia a Visao Geral com a media saiu.',
+    'Reguas unificadas: Independencia de HE 90/80; absenteismo 3/6 (havia 5 e 10); dependencia de HE 8/15 sobre VOLUME (o SWOT usava horas ÷ carga com o mesmo nome); aderencia ao plano 100/95 em toda parte; utilizacao com uma escala so.',
+    'Formulas: absenteismo do cadastro manual e dos cenarios do Plano Mestre sobre h. normais; "Capacidade Perdida" do PPCP (794.694 pc — horas-homem × ritmo da fabrica) virou Pecas Perdidas canonicas; tabela de dias uteis de fallback unica; cor das barras de producao pela mesma independencia de HE.',
+    'HTML congelado removido: veredito, indicadores industriais, semaforo, insights e analise do mes vinham commitados com numeros de outro periodo e apareciam com filtro vazio.',
+    'Aviso de atualizacao: checa a cada minuto e ao voltar ao app, diz qual versao chega, e nao avisa quando a pagina ja e a nova. Primeira instalacao nao recarrega mais a pagina.',
+    'META_TICKET unica (era R$ 250 cravado em seis lugares). Card de ticket mostra o ticket que cobriria a receita sem hora extra. Acoes do plano podem ser enviadas por WhatsApp, e-mail ou copiadas.'
+  ]},
   { v:'b72', data:'10/09/2026', itens:[
     'Descer da Reuniao pelo card "Dependencia de hora extra" (8,2% do VOLUME em AGO/26) caia em "% Extras / Carga" (8,0% das HORAS de carga) — bases diferentes, e a tela nao dizia. Parecia contradicao.',
     'A aba Eficiencia & Horas ganhou o card Dependencia de HE com a mesma conta e os mesmos limiares da Reuniao, e os cards de horas passam a declarar a base ("h. extras ÷ h. carga · base: horas, nao volume"). No Resumo, "% Horas Extras" virou "HE sobre horas totais" pelo mesmo motivo.',
@@ -20570,6 +20411,7 @@ var APP_HISTORICO = [
     var el = document.getElementById('app-version');
     if (!el) return;
     el.textContent = 'v' + APP_DATA.split('/').reverse().join('.') + ' · ' + APP_VERSAO;
+    var sv=document.getElementById('splash-ver'); if(sv) sv.textContent='v'+APP_DATA.split('/').reverse().join('.')+' · '+APP_VERSAO;
     el.title = 'Versão publicada — clique para ver o que mudou';
     el.style.pointerEvents = 'auto';
     el.style.cursor = 'pointer';
@@ -20618,7 +20460,7 @@ var APP_HISTORICO = [
      Antes a página recarregava sozinha quando um service worker novo assumia.
      Recarregar sem avisar no meio de uma reunião é pior que esperar: some
      filtro, some rolagem. Agora aparece um aviso e quem decide é o usuário. */
-  function avisarAtualizacao(aplicar){
+  function avisarAtualizacao(aplicar, versaoNova){
     if (document.getElementById('ver-update')) return;
     var box = document.createElement('div');
     box.id = 'ver-update';
@@ -20627,9 +20469,10 @@ var APP_HISTORICO = [
       + 'border-radius:8px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.55);'
       + 'font-size:.8rem;color:var(--t1);animation:fi .25s ease';
     box.innerHTML =
-      '<div style="font-weight:700;margin-bottom:5px;color:var(--cyan)">↻ Nova versão disponível</div>'
+      '<div style="font-weight:700;margin-bottom:5px;color:var(--cyan)">↻ Nova versão disponível'
+        + (versaoNova ? ' · <span style="font-family:var(--mono)">' + versaoNova + '</span>' : '') + '</div>'
       + '<div style="font-size:.74rem;color:var(--t2);line-height:1.5;margin-bottom:11px">'
-        + 'Atualizar recarrega a página. Os dados ficam salvos — só o que estiver '
+        + 'Você está na ' + APP_VERSAO + '. Atualizar recarrega a página. Os dados ficam salvos — só o que estiver '
         + 'em edição na tela se perde.</div>'
       + '<div style="display:flex;gap:8px">'
         + '<button id="ver-up-ok" style="flex:1;padding:7px 12px;border:1px solid var(--cyan);border-radius:5px;'
@@ -20650,27 +20493,49 @@ var APP_HISTORICO = [
 
   if (!('serviceWorker' in navigator)) return;
 
+  /* Versão publicada agora, lida do próprio index.html no servidor. Serve
+     para (a) escrever no aviso qual versão está chegando e (b) não avisar
+     quando a página já É a versão nova — o HTML é network-first, então um
+     recarregar já traz o b73 antes de o service worker novo instalar, e o
+     aviso "nova versão" aparecia para quem já estava nela. */
+  function versaoPublicada(){
+    return fetch('/index.html?_v=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.text(); })
+      .then(function(t){ var m = t.match(/var APP_VERSAO = '([^']+)'/); return m ? m[1] : null; })
+      .catch(function(){ return null; });
+  }
+
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/sw.js').then(function(reg){
-      /* Checa assim que abre — não espera o ciclo automático (~24h). */
-      reg.update().catch(function(){});
+      var silencioso = false;   /* SW novo assumindo sem recarregar: a página já é a versão nova */
+      /* Primeira visita: o worker instala, ativa e faz clients.claim() — isso
+         dispara controllerchange e a página recarregava sozinha uma vez, no
+         meio da entrada. Não há versão nova para carregar nesse caso. */
+      var tinhaController = !!navigator.serviceWorker.controller;
+
+      function tratarNovo(sw){
+        versaoPublicada().then(function(v){
+          if (v && v === APP_VERSAO) {
+            /* Já estamos na versão publicada: troca o worker por baixo, sem
+               aviso e sem recarregar. */
+            silencioso = true;
+            sw.postMessage({ tipo: 'ATIVAR_AGORA' });
+            return;
+          }
+          avisarAtualizacao(function(){ sw.postMessage({ tipo: 'ATIVAR_AGORA' }); }, v);
+        });
+      }
 
       function vigiar(sw){
         if (!sw) return;
         sw.addEventListener('statechange', function(){
           /* "installed" com um controller ativo = versão nova esperando. Sem
              controller é a primeira instalação, e aí não há o que avisar. */
-          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-            avisarAtualizacao(function(){
-              sw.postMessage({ tipo: 'ATIVAR_AGORA' });
-            });
-          }
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) tratarNovo(sw);
         });
       }
 
-      if (reg.waiting && navigator.serviceWorker.controller) {
-        avisarAtualizacao(function(){ reg.waiting.postMessage({ tipo: 'ATIVAR_AGORA' }); });
-      }
+      if (reg.waiting && navigator.serviceWorker.controller) tratarNovo(reg.waiting);
       vigiar(reg.installing);
       reg.addEventListener('updatefound', function(){ vigiar(reg.installing); });
 
@@ -20678,12 +20543,22 @@ var APP_HISTORICO = [
       var recarregando = false;
       navigator.serviceWorker.addEventListener('controllerchange', function(){
         if (recarregando) return;
+        if (!tinhaController) { tinhaController = true; return; }   /* primeira instalação */
+        if (silencioso) { silencioso = false; return; }
         recarregando = true;
         window.location.reload();
       });
 
-      /* O painel costuma ficar aberto o dia todo em TV/monitor. */
-      setInterval(function(){ reg.update().catch(function(){}); }, 5 * 60 * 1000);
+      /* Checa assim que abre — não espera o ciclo automático (~24h) —, a cada
+         minuto (o painel fica aberto o dia todo em TV) e sempre que a janela
+         volta ao foco: era aqui que o aviso "demorava a aparecer" — quem
+         voltava ao app esperava até 5 min pelo próximo ciclo. */
+      var checar = function(){ reg.update().catch(function(){}); };
+      checar();
+      setInterval(checar, 60 * 1000);
+      document.addEventListener('visibilitychange', function(){ if (!document.hidden) checar(); });
+      window.addEventListener('focus', checar);
+      window.checarAtualizacao = checar;
     }).catch(function(err){
       console.warn('SW falhou ao registrar (app continua funcionando normal):', err);
     });
