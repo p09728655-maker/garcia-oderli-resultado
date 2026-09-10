@@ -1062,33 +1062,43 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 </head>
 <body><div id="alertas-banner" style="display: none;"></div>
 <!-- ══ ENTRADA DO APP ══
-     Mesma entrada do RitmoPatrimar Embalagem: logo, nome, pulso e a frase.
-     Fica 1,4 s (ou até o clique) e some com fade. Não bloqueia nada: o
-     painel carrega por baixo. Em segunda abertura na mesma sessão não
-     aparece — só na entrada de verdade. -->
+     A mesma entrada do RitmoPatrimar Embalagem: logo (PNG transparente, sem
+     caixa branca), nome em Barlow Condensed, a batida traçada uma vez e a
+     frase. Sai sozinha em ~1,4 s ou no clique; só na primeira abertura da
+     sessão. Não bloqueia nada: o painel carrega por baixo. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=Inter:wght@700&display=swap" rel="stylesheet">
 <style>
-#splash{position:fixed;inset:0;z-index:200000;background:#0b0b0b;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:22px;cursor:pointer;transition:opacity .45s ease;
-  font-family:'Segoe UI',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+#splash{position:fixed;inset:0;z-index:200000;background:#0b0b0b;display:flex;align-items:center;justify-content:center;
+  padding:24px 24px calc(24px + min(9vh,80px));cursor:pointer;transition:opacity .4s ease;-webkit-font-smoothing:antialiased}
 #splash.off{opacity:0;pointer-events:none}
-#splash .sp-logo{width:220px;height:auto;background:#fff;border-radius:12px;padding:12px 18px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
-#splash .sp-nome{font-size:clamp(2.4rem,5.4vw,4.6rem);font-weight:900;letter-spacing:.14em;color:#fff;line-height:1;
-  font-family:'Bahnschrift','Arial Narrow','Segoe UI',Arial,sans-serif;text-transform:uppercase}
-#splash .sp-sub{font-size:clamp(1rem,2.2vw,1.7rem);font-weight:800;letter-spacing:.42em;color:#F5A623;margin-top:-10px;text-transform:uppercase}
-#splash .sp-pulso{width:min(300px,60vw);height:36px}
-#splash .sp-frase{font-size:1.15rem;font-weight:700;color:#e8e8e8;letter-spacing:.01em}
-#splash .sp-frase b{color:#FF5722}
-#splash .sp-ver{position:absolute;bottom:18px;font:600 11px Consolas,monospace;color:#5f6b78;letter-spacing:.06em}
-@media (prefers-reduced-motion: reduce){ #splash{transition:none} }
+#splash .sp-in{text-align:center;animation:spIn .45s cubic-bezier(.2,.7,.3,1) both}
+#splash .sp-logo{height:clamp(46px,4.6vw,76px);width:auto;max-width:56vw;object-fit:contain;display:block;margin:0 auto;opacity:.92}
+#splash .sp-marca{font-family:'Barlow Condensed','Arial Narrow','Segoe UI',Arial,sans-serif;font-size:clamp(30px,3.6vw,58px);font-weight:700;
+  letter-spacing:clamp(4px,.42vw,7px);color:#F5F5F5;margin-top:clamp(18px,1.9vw,30px);line-height:1;text-transform:uppercase}
+#splash .sp-sub{font-family:'Barlow Condensed','Arial Narrow','Segoe UI',Arial,sans-serif;font-size:clamp(14px,1.4vw,22px);font-weight:700;
+  letter-spacing:clamp(5px,.5vw,9px);color:#F5A623;margin-top:6px;line-height:1;text-transform:uppercase}
+#splash .sp-pulso{display:block;margin:clamp(14px,1.5vw,24px) auto 0;width:clamp(190px,21vw,330px);height:auto;overflow:visible}
+#splash .sp-pulso path{fill:none;stroke:#FF5C1F;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:100;stroke-dashoffset:100;animation:spTracar .7s cubic-bezier(.45,0,.2,1) .2s forwards}
+#splash .sp-slogan{font-family:'Inter','Segoe UI',Arial,sans-serif;font-size:clamp(15px,1.45vw,23px);font-weight:700;letter-spacing:-0.3px;
+  color:#E8E8E8;margin-top:clamp(12px,1.2vw,19px);line-height:1.3}
+#splash .sp-slogan span{color:#FF5C1F}
+#splash .sp-ver{position:absolute;bottom:18px;left:0;right:0;text-align:center;font:600 11px Consolas,monospace;color:#5f6b78;letter-spacing:.06em}
+@keyframes spIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes spTracar{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){ #splash .sp-in{animation:none} #splash{transition:none} }
 </style>
 <div id="splash" onclick="this.classList.add('off')" aria-label="Entrada">
-  <img class="sp-logo" src="logo-patrimar.jpg" alt="Patrimar Móveis" onerror="this.style.display='none'">
-  <div class="sp-nome">RitmoPatrimar</div>
-  <div class="sp-sub">Resultado</div>
-  <svg class="sp-pulso" viewBox="0 0 300 36" fill="none" stroke="#FF5722" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M0 18 H120 L138 18 L150 4 L162 32 L174 18 H300"/>
-  </svg>
-  <div class="sp-frase">O resultado do mês, em uma tela<b>.</b></div>
+  <div class="sp-in">
+    <img class="sp-logo" src="/patrimar-logo.png" alt="" onerror="this.style.display='none'">
+    <div class="sp-marca">RitmoPatrimar</div>
+    <div class="sp-sub">Resultado</div>
+    <svg class="sp-pulso" viewBox="0 0 160 26" role="presentation" focusable="false">
+      <path pathLength="100" d="M2 13 H69 l5 -10 l6 20 l6 -13 l4 3 H158"/>
+    </svg>
+    <div class="sp-slogan">O resultado do mês, em uma tela<span>.</span></div>
+  </div>
   <div class="sp-ver" id="splash-ver"></div>
 </div>
 <script>
@@ -1193,6 +1203,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <button class="sBtn" onclick="exportCSV()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"></path></svg>Exportar CSV</button>
     <button class="sBtn" onclick="printAtiva()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"></path></svg>Imprimir</button>
     <button class="sBtn" style="color:var(--amber);border-color:rgba(255,152,0,.4);background:rgba(255,152,0,.05)" onclick="brfgImprimir()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"></path></svg>Briefing</button>
+    <button class="sBtn" style="color:#F5A623;border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)" onclick="abrirMetas()" title="Metas oficiais (aba METAS da planilha): ver e alterar com origem e vigência">🎯 Metas oficiais</button>
 
     <div id="acoes-admin-toggle" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--b)">
       <button class="sBtn" style="font-size:.62rem;color:var(--t3);border-color:var(--b);background:transparent;padding:5px 8px" onclick="document.getElementById('acoes-admin-box').style.display='flex';this.parentElement.style.display='none'">⚙ Modo edição (manutenção de dados)</button>
@@ -4367,6 +4378,86 @@ function aplicarMetas(m, avisar){
 }
 /* Cópia local, antes de qualquer render. */
 (function(){ try{ var c=JSON.parse(localStorage.getItem('dash_metas_sheet_v1')); if(c) aplicarMetas(c,false); }catch(e){} })();
+
+/* ── EDITOR DE METAS (grava na aba METAS pelo Web App) ─────────────────────
+   Regra de governança: só salva linha com ORIGEM e VIGÊNCIA preenchidas —
+   meta sem dono e sem data não existe. O Apps Script recusa chave
+   desconhecida e valor ≤ 0, e carimba alteradoEm. O que o usuário salva
+   aqui vale na hora (aplicarMetas) e chega na planilha em segundos. */
+var METAS_ROTULOS = {
+  META_EF:     ['Independência de HE mínima', '%',   'prod. em jornada normal ÷ meta derivada'],
+  META_ABS:    ['Absenteísmo — meta',          '%',   'faltas + atrasos ÷ h. normais; até este valor é verde'],
+  ABS_ATENCAO: ['Absenteísmo — crítico acima de', '%', 'acima disto o card fica vermelho'],
+  META_DEP_HE: ['Dependência de hora extra máxima', '% do volume', 'parcela da entrega que pode vir de HE'],
+  META_TICKET: ['Ticket médio mínimo',         'R$',  'R$ por peça faturada'],
+  DUTEIS:      ['Dias úteis de referência',    'dias','capacidade teórica e carteira em dias']
+};
+function abrirMetas(){
+  if(document.getElementById('metas-overlay')) return;
+  var esc=function(v){ return String(v===null||v===undefined?'':v).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+  var inp='style="width:100%;font-size:.78rem;padding:6px 8px"';
+  var linhas=METAS_CHAVES.map(function(k){
+    var r=METAS_ORIGEM[k]||{}, rot=METAS_ROTULOS[k]||[k,'',''];
+    return '<tr data-chave="'+k+'">'
+      +'<td style="padding:8px 6px"><b>'+esc(rot[0])+'</b><div style="font-size:.66rem;color:var(--t3)">'+esc(rot[2])+' · <span style="font-family:var(--mono)">'+k+'</span></div></td>'
+      +'<td style="padding:8px 6px;white-space:nowrap"><input type="number" step="0.1" min="0.1" class="mt-valor" value="'+esc(window[k])+'" '+inp+'> <span style="font-size:.7rem;color:var(--t3)">'+esc(r.unidade||rot[1])+'</span></td>'
+      +'<td style="padding:8px 6px"><input type="text" class="mt-vigencia" placeholder="AAAA-MM" value="'+esc(r.vigencia||'')+'" '+inp+'></td>'
+      +'<td style="padding:8px 6px"><input type="text" class="mt-origem" placeholder="quem definiu" value="'+esc(r.origem||'')+'" '+inp+'></td>'
+      +'<td style="padding:8px 6px"><input type="text" class="mt-obs" placeholder="por quê" value="'+esc(r.observacao||'')+'" '+inp+'></td>'
+      +'<td style="padding:8px 6px;font-size:.64rem;color:var(--t3);white-space:nowrap">'+(r.alteradoEm?esc(String(r.alteradoEm).slice(0,10)):'—')+'</td>'
+      +'</tr>';
+  }).join('');
+  var ov=document.createElement('div'); ov.id='metas-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(6,14,26,.9);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML='<div style="background:var(--panel);border:1px solid var(--b);border-top:3px solid #F5A623;border-radius:8px;width:100%;max-width:1100px;max-height:88vh;overflow:auto;padding:22px 24px;color:var(--t1)">'
+    +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px">'
+      +'<div style="font-size:.95rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase">🎯 Metas oficiais</div>'
+      +'<button onclick="document.getElementById(\'metas-overlay\').remove()" style="background:none;border:none;color:var(--t3);font-size:1.2rem;cursor:pointer;line-height:1">✕</button></div>'
+    +'<div style="font-size:.72rem;color:var(--t3);margin-bottom:14px;line-height:1.5">Fonte: aba <b>METAS</b> da planilha. Alterar aqui grava lá, com data. '
+      +'<b>Origem e vigência são obrigatórias</b> em toda linha alterada — meta sem dono e sem data não entra. Vale na hora para todo o painel.</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem">'
+      +'<thead><tr style="text-align:left;color:var(--t3);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase"><th style="padding:6px">Meta</th><th style="padding:6px">Valor</th><th style="padding:6px">Vigência</th><th style="padding:6px">Origem</th><th style="padding:6px">Observação</th><th style="padding:6px">Alterada</th></tr></thead>'
+      +'<tbody>'+linhas+'</tbody></table></div>'
+    +'<div style="display:flex;gap:8px;margin-top:14px;align-items:center">'
+      +'<button type="button" class="btn btn-c btn-sm" onclick="salvarMetas()">Salvar na planilha</button>'
+      +'<button type="button" class="btn btn-g btn-sm" onclick="document.getElementById(\'metas-overlay\').remove()">Cancelar</button>'
+      +'<span id="metas-erro" style="font-size:.7rem;color:#F44336"></span></div>'
+    +'</div>';
+  document.body.appendChild(ov);
+}
+function salvarMetas(){
+  var ov=document.getElementById('metas-overlay'); if(!ov) return;
+  var alteradas=[], erros=[], local={};
+  ov.querySelectorAll('tbody tr[data-chave]').forEach(function(tr){
+    var k=tr.getAttribute('data-chave');
+    var v=parseFloat(String(tr.querySelector('.mt-valor').value).replace(',','.'));
+    var vig=tr.querySelector('.mt-vigencia').value.trim(), ori=tr.querySelector('.mt-origem').value.trim(), obs=tr.querySelector('.mt-obs').value.trim();
+    var ant=METAS_ORIGEM[k]||{};
+    var mudou = (isFinite(v) && v!==Number(window[k])) || vig!==(ant.vigencia||'') || ori!==(ant.origem||'') || obs!==(ant.observacao||'');
+    if(!mudou) return;
+    if(!(v>0)){ erros.push(METAS_ROTULOS[k][0]+': valor inválido'); return; }
+    if(!vig||!ori){ erros.push(METAS_ROTULOS[k][0]+': origem e vigência obrigatórias'); return; }
+    var rec={ chave:k, valor:v, unidade:(ant.unidade||METAS_ROTULOS[k][1]), vigencia:vig, origem:ori, observacao:obs };
+    alteradas.push(rec); local[k]=Object.assign({}, ant, rec, { alteradoEm:new Date().toISOString() });
+  });
+  var e=document.getElementById('metas-erro');
+  if(erros.length){ if(e) e.textContent=erros.join(' · '); return; }
+  if(!alteradas.length){ if(e) e.textContent='Nada foi alterado.'; return; }
+  /* aplica já e grava na planilha (no-cors: sem resposta, como o resto do app) */
+  var todas={}; METAS_CHAVES.forEach(function(k){ todas[k]=local[k]||METAS_ORIGEM[k]||{valor:window[k]}; });
+  aplicarMetas(todas, true);
+  if(typeof SHEETS_WEBAPP_URL!=='undefined' && SHEETS_WEBAPP_URL){
+    try{
+      fetch(SHEETS_WEBAPP_URL,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ secret: SHEETS_SECRET, metas: alteradas }) })
+      .catch(function(err){ console.warn('Sync METAS falhou (vale localmente):', err); });
+    }catch(x){}
+  }
+  ov.remove();
+  if(typeof render==='function') render();
+  if(window.DashBus) window.DashBus.emit('dados:salvos', (typeof load==='function')?load():[]);
+}
 var ORDEM   = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
 /* ── DADOS DA PLANILHA (100% real — extraídos de ANALISE_CAPACIDADE_E_EFICIENCIA.xlsx) ──
@@ -20198,9 +20289,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b75';
+var APP_VERSAO = 'b76';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b76', data:'10/09/2026', itens:[
+    'Metas oficiais editaveis pelo app: botao "Metas oficiais" na barra lateral abre as seis metas com valor, vigencia, origem e observacao. Salvar grava na aba METAS (com data) e vale na hora em todo o painel.',
+    'Governanca: origem e vigencia obrigatorias em toda linha alterada; o Apps Script recusa chave desconhecida e valor ≤ 0. Republicar o Apps Script.'
+  ]},
   { v:'b75', data:'10/09/2026', itens:[
     'Aba METAS na planilha: chave, valor, unidade, vigencia, origem e observacao. O painel le junto com o HISTORICO e sobrescreve META_EF, META_ABS, ABS_ATENCAO, META_DEP_HE, META_TICKET e DUTEIS. Meta se muda na planilha, com dono e vigencia — nao no codigo.',
     'Rode criarAbaMetas() no Apps Script uma vez: a aba nasce com os valores que estavam no codigo. O app nao escreve nela.',
