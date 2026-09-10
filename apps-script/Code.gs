@@ -21,6 +21,12 @@
  *   na coluna de previsão nem na aba PLANO MESTRE: o plano é do planejamento,
  *   e deixar o app sobrescrevê-lo permitiria apagar o plano sem querer.
  *
+ * METAS — uma linha por meta (chave | valor | unidade | vigencia | origem |
+ *   observacao). doGet devolve em `metas`; o painel sobrescreve as constantes
+ *   META_EF, META_ABS, ABS_ATENCAO, META_DEP_HE, META_TICKET e DUTEIS com o
+ *   que estiver aqui. O app NÃO escreve nesta aba: meta se muda na planilha,
+ *   com origem e vigência, não no navegador. Rode criarAbaMetas() uma vez.
+ *
  * ACOES — plano de ação da Reunião do Mês (uma linha por ação/decisão).
  *   doGet devolve a aba inteira em `acoes`; doPost aceita { secret, acoes:[…] }
  *   e casa cada item pelo `id`. Quem tem `atualizadoEm` mais novo vence: dois
@@ -44,6 +50,17 @@ var LINHA_VOLUMES = 'TOTAL VOLUMES';
 var ABA_REPORTE = 'REPORTE_VOLUMES';
 /* Aba do plano de ação da Reunião do Mês. Uma linha por ação ou decisão. */
 var ABA_ACOES = 'ACOES';
+/* Aba de metas oficiais. Chaves = nomes das constantes do painel. */
+var ABA_METAS = 'METAS';
+var METAS_PADRAO = [
+  ['chave','valor','unidade','vigencia','origem','observacao'],
+  ['META_EF',     90,  '%',   '2026-01', 'PPCP',      'Independência de HE mínima: produção em jornada normal ÷ meta derivada da planilha'],
+  ['META_ABS',    3,   '%',   '2026-01', 'RH',        'Absenteísmo (faltas + atrasos ÷ h. normais): dentro da meta até este valor. Histórico 2025-26: 9% a 17%'],
+  ['ABS_ATENCAO', 6,   '%',   '2026-01', 'RH',        'Absenteísmo acima disto é crítico'],
+  ['META_DEP_HE', 8,   '%',   '2026-01', 'PPCP',      'Máximo do volume entregue que pode vir de hora extra'],
+  ['META_TICKET', 250, 'R$',  '2026-01', 'Comercial', 'Ticket médio mínimo (R$ por peça faturada). 250 é a média histórica dos 18 meses (R$ 247,69), não uma meta decidida'],
+  ['DUTEIS',      22,  'dias','2026-01', 'PPCP',      'Dias úteis de referência por mês (capacidade teórica e carteira em dias)']
+];
 var ACOES_CAMPOS = ['id','tipo','prioridade','kpi','desvio','causa','acao',
   'responsavel','prazo','status','mesRef','criadoEm','atualizadoEm'];
 
@@ -70,6 +87,7 @@ function doGet() {
               planoVolumes: plano.volumes, planoLotes: plano.lotes,
               producaoItens: lerReporteVolumes(ss),
               acoes: lerAcoes(ss),
+              metas: lerMetas(ss),
               geradoEm: new Date().toISOString() };
   } catch (e) {
     saida = { ok: false, erro: String(e && e.message || e) };
@@ -357,6 +375,49 @@ function aplicarPlano(dados, plano) {
   });
 }
 
+/* ══ METAS ══
+   Devolve { META_EF: { valor: 90, unidade: '%', vigencia: '2026-01', origem: 'PPCP',
+   observacao: '…' }, … }. Só chaves com valor numérico entram — célula vazia ou
+   texto é ignorada e o painel fica com o padrão do código. Aba ausente → {}. */
+function lerMetas(ss) {
+  var aba = ss.getSheetByName(ABA_METAS);
+  if (!aba || aba.getLastRow() < 2) return {};
+  var linhas = aba.getDataRange().getValues();
+  var cab = linhas[0].map(function (c) { return normaliza(c); });
+  var iChave = cab.indexOf('chave'), iValor = cab.indexOf('valor');
+  if (iChave < 0 || iValor < 0) return {};
+  var out = {};
+  for (var r = 1; r < linhas.length; r++) {
+    var chave = txt(linhas[r][iChave]);
+    if (!chave) continue;
+    var v = num(linhas[r][iValor]);
+    if (!(v > 0)) continue;
+    var rec = { valor: v };
+    for (var c = 0; c < cab.length; c++) {
+      if (c === iChave || c === iValor || !cab[c]) continue;
+      rec[cab[c]] = acaoTxt(linhas[r][c]);
+    }
+    out[chave] = rec;
+  }
+  return out;
+}
+
+/* Cria a aba METAS com os valores que hoje estão no código do painel.
+   Rode uma vez (Executar › criarAbaMetas). Se a aba já existir, não mexe. */
+function criarAbaMetas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(ABA_METAS)) {
+    SpreadsheetApp.getUi().alert('Aba ' + ABA_METAS + ' já existe — nada foi alterado.');
+    return;
+  }
+  var aba = ss.insertSheet(ABA_METAS);
+  aba.getRange(1, 1, METAS_PADRAO.length, METAS_PADRAO[0].length).setValues(METAS_PADRAO);
+  aba.setFrozenRows(1);
+  aba.getRange(1, 1, 1, METAS_PADRAO[0].length).setFontWeight('bold');
+  aba.setColumnWidth(6, 520);
+  try { SpreadsheetApp.getUi().alert('Aba ' + ABA_METAS + ' criada com os valores atuais do painel. Ao mudar um valor aqui, o painel aplica na próxima abertura.'); } catch (e) {}
+}
+
 /* ══ ACOES (plano de ação da Reunião do Mês) ══
    Tudo é texto: id, datas em ISO (AAAA-MM-DD) e status por extenso. O Sheets
    converte "2026-09-30" em Data sozinho, por isso a leitura devolve Data como
@@ -501,6 +562,10 @@ function testeManual() {
   var dados = lerHistorico(ss);
   aplicarPlano(dados, plano);
   Logger.log('Meses no ' + ABA_HISTORICO + ': ' + dados.length);
+  var metas = lerMetas(ss);
+  Logger.log('Metas na ' + ABA_METAS + ': ' + (Object.keys(metas).length
+    ? Object.keys(metas).map(function (k) { return k + '=' + metas[k].valor; }).join(', ')
+    : 'aba ausente — rode criarAbaMetas(); o painel usa os padrões do código'));
   var acoes = lerAcoes(ss);
   Logger.log('Ações na ' + ABA_ACOES + ': ' + acoes.length
     + (acoes.length ? ' (' + acoes.filter(function (a) { return a.status !== 'Concluída' && a.status !== 'Cancelada'; }).length + ' em aberto)' : ' — aba ausente ou vazia, criada na primeira gravação'));
