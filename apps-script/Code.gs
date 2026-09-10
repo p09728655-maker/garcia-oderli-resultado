@@ -111,9 +111,11 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var recebidos = corpo.dados;
     var acoes = corpo.acoes;
+    var metas = corpo.metas;
     var temDados = recebidos && recebidos.length;
     var temAcoes = acoes && acoes.length;
-    if (!temDados && !temAcoes) throw new Error('Nada para gravar.');
+    var temMetas = metas && metas.length;
+    if (!temDados && !temAcoes && !temMetas) throw new Error('Nada para gravar.');
 
     saida = { ok: true };
     if (temDados) {
@@ -124,6 +126,10 @@ function doPost(e) {
       var ra = gravarAcoes(ss, acoes);
       saida.acoesAtualizadas = ra.atualizados; saida.acoesIncluidas = ra.incluidas;
       saida.acoesIgnoradas = ra.ignoradas;
+    }
+    if (temMetas) {
+      var rm = gravarMetas(ss, metas);
+      saida.metasAtualizadas = rm.atualizadas; saida.metasRecusadas = rm.recusadas;
     }
   } catch (err) {
     saida = { ok: false, erro: String(err && err.message || err) };
@@ -378,7 +384,12 @@ function aplicarPlano(dados, plano) {
 /* ══ METAS ══
    Devolve { META_EF: { valor: 90, unidade: '%', vigencia: '2026-01', origem: 'PPCP',
    observacao: '…' }, … }. Só chaves com valor numérico entram — célula vazia ou
-   texto é ignorada e o painel fica com o padrão do código. Aba ausente → {}. */
+   texto é ignorada e o painel fica com o padrão do código. Aba ausente → {}.
+
+   O painel TAMBÉM grava (doPost { secret, metas:[{chave, valor, vigencia,
+   origem, observacao}] }), com regra: só as chaves de METAS_PADRAO, valor
+   numérico > 0, e origem + vigência obrigatórias — meta sem dono e sem data
+   não entra. A linha ganha `alteradoEm` (ISO) para rastro. */
 function lerMetas(ss) {
   var aba = ss.getSheetByName(ABA_METAS);
   if (!aba || aba.getLastRow() < 2) return {};
@@ -400,6 +411,53 @@ function lerMetas(ss) {
     out[chave] = rec;
   }
   return out;
+}
+
+function gravarMetas(ss, recebidas) {
+  var aba = ss.getSheetByName(ABA_METAS);
+  if (!aba) {
+    aba = ss.insertSheet(ABA_METAS);
+    aba.getRange(1, 1, METAS_PADRAO.length, METAS_PADRAO[0].length).setValues(METAS_PADRAO);
+    aba.setFrozenRows(1);
+  }
+  var permitidas = METAS_PADRAO.slice(1).map(function (l) { return l[0]; });
+  var linhas = aba.getDataRange().getValues();
+  var cab = linhas[0].map(function (c) { return normaliza(c); });
+  /* garante a coluna alteradoEm */
+  if (cab.indexOf('alteradoem') < 0) {
+    aba.getRange(1, cab.length + 1).setValue('alteradoEm');
+    linhas = aba.getDataRange().getValues();
+    cab = linhas[0].map(function (c) { return normaliza(c); });
+  }
+  var col = {}; cab.forEach(function (n, i) { if (n && col[n] === undefined) col[n] = i; });
+  var mapa = {};
+  for (var r = 1; r < linhas.length; r++) { var k = txt(linhas[r][col.chave]); if (k) mapa[k] = r; }
+
+  var atualizadas = 0, recusadas = [];
+  recebidas.forEach(function (m) {
+    if (!m || !m.chave) return;
+    var chave = String(m.chave).trim();
+    var v = num(m.valor);
+    if (permitidas.indexOf(chave) < 0) { recusadas.push(chave + ': chave desconhecida'); return; }
+    if (!(v > 0))                       { recusadas.push(chave + ': valor inválido'); return; }
+    if (!txt(m.origem) || !txt(m.vigencia)) { recusadas.push(chave + ': origem e vigência são obrigatórias'); return; }
+    var idx = mapa[chave];
+    var linha;
+    if (idx === undefined) { linha = new Array(cab.length).fill(''); linhas.push(linha); idx = linhas.length - 1; mapa[chave] = idx; }
+    else linha = linhas[idx];
+    linha[col.chave] = chave;
+    linha[col.valor] = v;
+    if (col.unidade !== undefined && txt(m.unidade)) linha[col.unidade] = txt(m.unidade);
+    if (col.vigencia !== undefined) linha[col.vigencia] = txt(m.vigencia);
+    if (col.origem !== undefined) linha[col.origem] = txt(m.origem);
+    if (col.observacao !== undefined && m.observacao !== undefined) linha[col.observacao] = txt(m.observacao);
+    linha[col.alteradoem] = new Date().toISOString();
+    atualizadas++;
+  });
+  var largura = cab.length;
+  var bloco = linhas.slice(1).map(function (l) { var o = l.slice(0, largura); while (o.length < largura) o.push(''); return o; });
+  if (bloco.length) aba.getRange(2, 1, bloco.length, largura).setValues(bloco);
+  return { atualizadas: atualizadas, recusadas: recusadas };
 }
 
 /* Cria a aba METAS com os valores que hoje estão no código do painel.
