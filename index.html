@@ -19713,6 +19713,9 @@ function printAtiva(){
       +(!anoTodo&&pm&&pm.ano===ano?(' · no ano '+fi(pm.ritmoDem)+' vs '+fi(pm.ritmoExig)):'')
       +(pm&&pm.ano===ano&&pm.planoAberto>0?('<br>falta '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'):'');
 
+    var perdPc   = (A._P.pecasPerdidas!==null && A._P.pecasPerdidas!==undefined) ? A._P.pecasPerdidas : null;
+    var perdDias = (perdPc!==null && A._P.prodDia>0) ? perdPc/A._P.prodDia : null;
+
     var b2=card('Aderência ao plano de '+(anoTodo?ano:mes)+' · s/ HE', aderSE!==null?(fd(aderSE,1)+'%'):'—',
                 aderSE!==null ? ('com hora extra '+fd(ader,1)+'%<br>previsto '+fi(planoRef)+' pç')
                               : 'sem previsão lançada no Plano Mestre',
@@ -19724,7 +19727,13 @@ function printAtiva(){
              +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%')),
              A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), false, 'eficiencia')
       +card('Absenteísmo', fd(A.absMed,1)+'%',
-             (anoTodo?'':('ano '+fd(Y.absMed,1)+'% · '))+'meta '+META_ABS_+'%<br>faltas + atrasos ÷ horas normais',
+             /* A tradução que a diretoria entende: horas perdidas ao ritmo da
+                jornada normal do próprio período = peças que não saíram, e
+                quantos dias de fábrica isso representa. Mesma conta da aba
+                Eficiência & Horas (DashUtils.pecasPerdidas). */
+             (perdPc!==null ? (fi(A._P.hPerdidas)+' h de falta e atraso = '+fi(perdPc)+' pç'
+                               +(perdDias!==null?(' · '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de produção'):'')+'<br>') : '')
+             +(anoTodo?'':('ano '+fd(Y.absMed,1)+'% · '))+'meta '+META_ABS_+'%',
              corMeta(A.absMed,META_ABS_,true), false, 'pessoas');
 
     /* ── 3 · entrega e carteira ──
@@ -19779,7 +19788,8 @@ function printAtiva(){
     /* Respostas das faixas — a história em três frases, na cor do veredito. */
     var r1 = aderSE===null ? 'sem plano lançado'
            : (aderSE>=100?'Sim':'Não')+': '+fd(aderSE,1)+'% do plano em jornada normal'
-             +(folga!==null?(' · ritmo '+pct(folga)):'');
+             +(folga!==null?(' · ritmo '+pct(folga)):'')
+             +(perdPc>0?(' · '+fi(perdPc)+' pç perdidas por falta e atraso'):'');
     var c1 = aderSE===null?'var(--t2)':corMeta(aderSE,100);
     var r2 = fi(A.prod)+' pç entregues'+(ader!==null?(', '+fd(ader,1)+'% do plano com hora extra'):'')
            +(diasCart!==null?(' · carteira de '+fi(diasCart)+' dias úteis'):'');
@@ -20258,9 +20268,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b70';
+var APP_VERSAO = 'b71';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b71', data:'10/09/2026', itens:[
+    'Pecas perdidas por falta e atraso entram na Reuniao, dentro do card de absenteismo: "2.050 h de falta e atraso = 4.195 pc · 3,0 dias de producao" (AGO/26). E a traducao que a diretoria entende; 14,1% sozinho nao decide nada.',
+    'Nao virou card proprio de proposito: e o mesmo problema do absenteismo em outra unidade, e como card separado entraria duas vezes na regra "vermelho sem acao". A resposta da faixa 1 tambem passa a citar as pecas perdidas.'
+  ]},
   { v:'b70', data:'10/09/2026', itens:[
     'Botao de excluir acao no plano de acao, com confirmacao. A acao some de toda lista e contagem; a linha fica na planilha com status "Excluida", entao teste apagado nao vira fantasma e acao apagada por engano se recupera na aba ACOES.'
   ]},
