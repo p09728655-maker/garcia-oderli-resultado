@@ -20778,6 +20778,10 @@ var APP_HISTORICO = [
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/sw.js').then(function(reg){
       var silencioso = false;   /* SW novo assumindo sem recarregar: a página já é a versão nova */
+      /* Primeira visita: o worker instala, ativa e faz clients.claim() — isso
+         dispara controllerchange e a página recarregava sozinha uma vez, no
+         meio da entrada. Não há versão nova para carregar nesse caso. */
+      var tinhaController = !!navigator.serviceWorker.controller;
 
       function tratarNovo(sw){
         versaoPublicada().then(function(v){
@@ -20809,6 +20813,7 @@ var APP_HISTORICO = [
       var recarregando = false;
       navigator.serviceWorker.addEventListener('controllerchange', function(){
         if (recarregando) return;
+        if (!tinhaController) { tinhaController = true; return; }   /* primeira instalação */
         if (silencioso) { silencioso = false; return; }
         recarregando = true;
         window.location.reload();
