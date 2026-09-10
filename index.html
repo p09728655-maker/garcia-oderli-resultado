@@ -19622,7 +19622,7 @@ function printAtiva(){
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar">✎</button> '
           +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button> ':'')
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\')" title="Enviar por WhatsApp para o responsável">💬</button> '
-          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\')" title="Enviar por e-mail para o responsável">✉</button> '
+          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\')" title="Enviar por e-mail para o responsável (pela conta do PPCP)">✉</button> '
           +'<button type="button" class="btn btn-r btn-sm" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)">🗑</button>'
         +'</td></tr>';
     }).join('');
@@ -20265,6 +20265,25 @@ function printAtiva(){
      já com o texto pronto e a pessoa escolhe o contato. Uma ação (id) ou o
      plano em aberto inteiro (id null). Texto puro, sem formatação: é o que
      chega igual no celular, no e-mail e na impressão. */
+
+  /* Conta que envia (Gmail `authuser`). A cobrança de uma ação sai da caixa
+     do setor, não da conta pessoal de quem clicou: quem responder, responde
+     para o PPCP, e a conversa fica onde o setor consegue achar depois.
+     O destinatário continua em branco — é quem clica que escolhe o
+     responsável, porque o painel não guarda e-mail de ninguém.
+     '' = abre na conta que estiver logada (comportamento anterior).
+     Exige que ppcp@ seja uma CONTA Google logada no navegador. Se for grupo
+     ou caixa compartilhada sem login próprio, o Gmail cai no seletor de
+     contas — nesse caso deixe '' aqui e use o alias "Enviar como". */
+  var MAIL_CONTA_PPCP = 'ppcp@patrimarmoveis.com.br';
+
+  /* Monta o link de composição do Gmail. `conta` vazia = conta logada. */
+  function gmailURL(titulo, corpo, conta){
+    return 'https://mail.google.com/mail/?'
+      + (conta ? 'authuser=' + encodeURIComponent(conta) + '&' : '')
+      + 'view=cm&fs=1&su=' + encodeURIComponent(titulo)
+      + '&body=' + encodeURIComponent(corpo);
+  }
   function textoAcao(a){
     return '• ['+(a.prioridade||'—')+'] '+(a.kpi||'—')+(a.desvio?(' — '+a.desvio):'')
       +'\n  Ação: '+(a.acao||'—')
@@ -20288,7 +20307,10 @@ function printAtiva(){
     if(via==='zap'){
       window.open('https://wa.me/?text='+encodeURIComponent(t.corpo), '_blank');
     } else if(via==='email'){
-      window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(t.titulo)+'&body='+encodeURIComponent(t.corpo), '_blank');
+      /* Ação individual sai pela conta do PPCP; o plano inteiro continua na
+         conta logada (é leitura do grupo, não cobrança de uma pessoa). Para
+         mandar o plano pela mesma caixa, passe MAIL_CONTA_PPCP aqui também. */
+      window.open(gmailURL(t.titulo, t.corpo, id ? MAIL_CONTA_PPCP : ''), '_blank');
     } else {
       var ok=function(){ if(typeof toast==='function') toast('Plano copiado. Cole no e-mail, no WhatsApp ou onde precisar.','ok'); };
       if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t.corpo).then(ok, function(){ prompt('Copie o texto:', t.corpo); });
@@ -20560,9 +20582,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b81';
+var APP_VERSAO = 'b82';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b82', data:'10/09/2026', itens:[
+    'Cobranca de acao da Reuniao sai pela caixa do setor: o botao de e-mail de uma acao abre o Gmail ja na conta ppcp@patrimarmoveis.com.br. Quem responder responde para o PPCP, nao para a conta pessoal de quem clicou. O destinatario continua em branco (o painel nao guarda e-mail de ninguem) e o plano inteiro segue na conta logada.'
+  ]},
   { v:'b81', data:'10/09/2026', itens:[
     'Trilha: os passos 3 e 4 (Eficiencia & Horas, Pessoas) apareciam rotulados como Pergunta 1, igual ao passo 2. Agora sao Causa 1 (hora extra) e Causa 2 (absenteismo).'
   ]},
