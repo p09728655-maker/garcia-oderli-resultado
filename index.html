@@ -4935,13 +4935,42 @@ function _traduzirCampos(r){
   return out;
 }
 
+/* ── Resposta do Web App ──
+   O Code.gs SEMPRE devolve JSON, até quando dá erro (doGet e doPost têm
+   try/catch em volta de tudo). Então uma página HTML no lugar do JSON só tem
+   uma origem: o Apps Script recusou rodar o script — a implantação foi
+   republicada com código que pede permissão nova (o envio pela caixa do PPCP
+   usa o Gmail) e ninguém autorizou, ou a conta dona não pode conceder esse
+   acesso. "Unexpected token '<'" na tela não diz nada disso; aqui diz. */
+var _WEBAPP_AJUDA = 'O Web App do Apps Script devolveu uma página em vez de JSON: '
+  +'o Code.gs não chegou a rodar. Quase sempre é permissão pendente — a versão '
+  +'nova do script usa o Gmail e precisa ser autorizada uma vez pela conta dona '
+  +'da planilha.\n\nComo resolver: abra o editor do Apps Script, rode testeEnvio() '
+  +'(Executar), aceite a autorização, e republique em Implantar › Gerenciar '
+  +'implantações › editar › Nova versão. Enquanto isso o painel também não lê a '
+  +'planilha: está mostrando os dados guardados neste navegador.';
+function _lerRespostaWebApp(txt, status){
+  var j = null;
+  try { j = JSON.parse(txt); } catch (e) {}
+  if (j !== null && typeof j === 'object') return j;
+  var e2;
+  if (/^\s*</.test(String(txt||''))) {
+    e2 = new Error(_WEBAPP_AJUDA);
+    e2.scriptNaoRodou = true;
+  } else {
+    e2 = new Error('resposta ilegível do Web App (HTTP ' + status + ').');
+  }
+  throw e2;
+}
+
+var _avisouWebApp = false;
 function _carregarDoSheetsAoAbrir(){
   if (!SHEETS_WEBAPP_URL) return;
   /* cache-busting: sem isso, o navegador pode reutilizar uma resposta antiga
      do Apps Script em vez de buscar a versão mais recente da planilha */
   var url = SHEETS_WEBAPP_URL + (SHEETS_WEBAPP_URL.indexOf('?')>=0?'&':'?') + '_ts=' + Date.now();
   fetch(url, { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+    .then(function(r){ return r.text().then(function(txt){ return _lerRespostaWebApp(txt, r.status); }); })
     .then(function(json){
       if (!json || !json.ok || !json.dados || !json.dados.length) return;
       var dados = json.dados.map(function(r){
@@ -4971,6 +5000,13 @@ function _carregarDoSheetsAoAbrir(){
     })
     .catch(function(err){
       console.warn('Não foi possível buscar dados do Sheets (usando dados locais):', err);
+      /* Antes isso morria no console e o painel abria com dado velho sem
+         ninguém saber. Se o Web App não rodou, quem está olhando precisa
+         saber que o número na tela não veio da planilha. */
+      if (err && err.scriptNaoRodou && !_avisouWebApp && typeof toast === 'function') {
+        _avisouWebApp = true;
+        toast('Planilha não respondeu: o Web App do Apps Script precisa ser autorizado e republicado. Mostrando dados locais.', 'wn');
+      }
     });
 }
 window.addEventListener('load', function(){ setTimeout(_carregarDoSheetsAoAbrir, 300); });
@@ -20363,7 +20399,7 @@ function printAtiva(){
         headers:{'Content-Type':'text/plain;charset=utf-8'},
         body: JSON.stringify({ secret: SHEETS_SECRET,
           email: { assunto: t.titulo, corpo: t.corpo, acoes: t.ids } }) })
-      .then(function(r){ return r.json(); })
+      .then(function(r){ return r.text().then(function(txt){ return _lerRespostaWebApp(txt, r.status); }); })
       .then(function(j){
         if(!j || !j.ok) throw new Error((j && j.erro) || 'resposta inesperada do Web App.');
         var n = (j.enviadoPara||[]).length;
@@ -20373,9 +20409,16 @@ function printAtiva(){
         render();
       })
       .catch(function(err){
-        /* Falha de rede não prova que o e-mail não saiu — a resposta pode ter
-           se perdido depois do envio. Reenviar às cegas duplicaria a cobrança
-           na caixa de sete pessoas, então aqui manda conferir, não repetir. */
+        /* Dois casos, duas mensagens. Se o Web App devolveu uma página em vez
+           de JSON, o Code.gs nem rodou: o e-mail não saiu e o conserto é no
+           Apps Script, não aqui. Já uma falha de rede não prova que não saiu —
+           a resposta pode ter se perdido depois do envio. Reenviar às cegas
+           duplicaria a cobrança na caixa de sete pessoas, então nesse caso
+           manda conferir, não repetir. */
+        if(err && err.scriptNaoRodou){
+          alert('O e-mail NÃO saiu.\n\n'+err.message);
+          return;
+        }
         alert('Não deu para confirmar o envio.\n\nMotivo: '+((err && err.message) || err)
           +'\n\nConfira os Enviados da caixa do PPCP ANTES de clicar de novo: '
           +'se o e-mail já saiu, reenviar duplica a cobrança.');
@@ -20661,9 +20704,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b84';
-var APP_DATA   = '10/09/2026';
+var APP_VERSAO = 'b85';
+var APP_DATA   = '11/09/2026';
 var APP_HISTORICO = [
+  { v:'b85', data:'11/09/2026', itens:[
+    'Envio do plano de acao: quando o Web App do Apps Script devolve uma pagina em vez de JSON (o script nao rodou — em geral permissao do Gmail pendente depois de republicar), o painel diz isso e diz o que fazer, em vez de mostrar \"Unexpected token <\". Nesse caso tambem afirma que o e-mail NAO saiu, para ninguem ficar conferindo Enviados a toa.',
+    'Mesma leitura na abertura: se a planilha nao responde pelo mesmo motivo, aparece um aviso de que o painel esta com dados locais. Antes o erro ia so para o console e a tela abria com numero velho sem ninguem saber.'
+  ]},
   { v:'b84', data:'10/09/2026', itens:[
     'Plano de acao passa a ser ENVIADO pelo Apps Script, pela caixa ppcp@patrimarmoveis.com.br, e nao mais aberto no Gmail da maquina. O remetente vira regra do sistema: nao depende de quem clicou nem de qual navegador. Se a conta dona da planilha nao tiver ppcp@ liberado como \"Enviar e-mail como\", o envio e RECUSADO com o motivo — mandar em nome errado seria pior que nao mandar.',
     'Destinatarios saem da aba EMAIL da planilha (email | nome | ativo | observacao): tirar alguem da lista e apagar um S, nao mexer em codigo. Rode criarAbaEmail() e testeEnvio() no Apps Script antes de usar. Republicar o Web App.',
