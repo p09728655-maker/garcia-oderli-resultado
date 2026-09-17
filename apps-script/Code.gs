@@ -573,6 +573,18 @@ function gravarMetas(ss, recebidas) {
   return { atualizadas: atualizadas, recusadas: recusadas };
 }
 
+/* Menu 🎯 Metas → Produção pelo ERP desde 2025: grava PROD_ERP_DESDE = 2025
+   na aba METAS pela mesma regra do painel (gravarMetas), com origem, vigência
+   e alteradoEm. A aba manda sobre o padrão do código, por isso mudar o
+   Code.gs não basta para quem já tem a aba. Rodar uma vez. */
+function producaoPeloErpDesde2025() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var r = gravarMetas(ss, [{ chave: 'PROD_ERP_DESDE', valor: 2025, unidade: 'ano', vigencia: '2025-01', origem: 'PPCP',
+    observacao: 'A partir deste ano, producaoReal = produtosReportados (total do relatório REPORTE do ERP, produtos acabados). Antes disso vale o digitado. Os 12 meses de 2025 têm o REPORTE; de MAI a DEZ/25 o ERP fica de 0,3% a 10% acima do digitado.' }]);
+  var msg = r.atualizadas ? 'METAS: PROD_ERP_DESDE = 2025 gravado. No painel: recarregar e, na Reunião, "Gravar cálculos na planilha" para 2025 ser recalculado.' : 'Nada gravado: ' + r.recusadas.join('; ');
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); }
+}
+
 /* Cria a aba METAS com os valores que hoje estão no código do painel.
    Rode uma vez (Executar › criarAbaMetas). Se a aba já existir, não mexe. */
 function criarAbaMetas() {
