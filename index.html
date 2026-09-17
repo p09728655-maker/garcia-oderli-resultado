@@ -4516,11 +4516,11 @@ function abrirMetas(){
   var linhas=METAS_CHAVES.map(function(k){
     var r=METAS_ORIGEM[k]||{}, rot=METAS_ROTULOS[k]||[k,'',''];
     return '<tr data-chave="'+k+'">'
-      +'<td style="padding:8px 6px"><b>'+esc(rot[0])+'</b><div style="font-size:.66rem;color:var(--t3)">'+esc(rot[2])+' · <span style="font-family:var(--mono)">'+k+'</span></div></td>'
+      +'<td style="padding:8px 6px"><b>'+esc(rot[0])+'</b><div style="font-size:.66rem;color:var(--t3);max-width:340px;white-space:normal;line-height:1.35">'+esc(rot[2])+' · <span style="font-family:var(--mono)">'+k+'</span></div></td>'
       +'<td style="padding:8px 6px;white-space:nowrap;min-width:132px"><input type="number" step="'+((r.unidade||rot[1])==='ano'?'1':'0.1')+'" min="0.1" class="mt-valor" value="'+esc(window[k])+'" style="width:88px;font-size:.78rem;padding:6px 8px;font-family:var(--mono)"> <span style="font-size:.7rem;color:var(--t3)">'+esc(r.unidade||rot[1])+'</span></td>'
       +'<td style="padding:8px 6px;min-width:96px"><input type="text" class="mt-vigencia" placeholder="AAAA-MM" value="'+esc(r.vigencia||'')+'" '+inp+'></td>'
       +'<td style="padding:8px 6px;min-width:120px"><input type="text" class="mt-origem" placeholder="quem definiu" value="'+esc(r.origem||'')+'" '+inp+'></td>'
-      +'<td style="padding:8px 6px;min-width:220px;width:30%"><input type="text" class="mt-obs" placeholder="por quê" value="'+esc(r.observacao||'')+'" '+inp+'></td>'
+      +'<td style="padding:8px 6px;min-width:150px"><input type="text" class="mt-obs" placeholder="por quê" value="'+esc(r.observacao||'')+'" '+inp+'></td>'
       +'<td style="padding:8px 6px;font-size:.64rem;color:var(--t3);white-space:nowrap">'+(r.alteradoEm?esc(String(r.alteradoEm).slice(0,10)):'—')+'</td>'
       +'</tr>';
   }).join('');
