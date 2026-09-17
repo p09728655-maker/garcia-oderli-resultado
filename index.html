@@ -20141,11 +20141,15 @@ function printAtiva(){
     /* Ritmo do PERÍODO mostrado (mês: 1.414 vs 1.467 em AGO/26), com o do
        ano na linha de apoio — o do ano é o da manchete. Mostrar só o do ano
        sob o rótulo "Produção de AGO" fazia 1.300 ser lido como agosto. */
-    var ritDem = anoTodo ? (pm&&pm.ano===ano?pm.ritmoDem:null) : (diasMes>0?DashUtils.getProd(rMes)/diasMes:null);
-    var ritExg = anoTodo ? (pm&&pm.ano===ano?pm.ritmoExig:null) : (diasMes>0&&planoMes>0?planoMes/diasMes:null);
+    /* Ano sem Plano Mestre apurado (2025, ou qualquer ano fechado): o ritmo
+       sai do acumulado da HISTORICO — jornada normal ÷ dias trabalhados, e
+       exigido = previsto ÷ dias. Antes o card ficava em "—" nesses anos. */
+    var pmAno = pm&&pm.ano===ano;
+    var ritDem = anoTodo ? (pmAno?pm.ritmoDem:(A.dias>0?A.normal/A.dias:null)) : (diasMes>0?DashUtils.getProd(rMes)/diasMes:null);
+    var ritExg = anoTodo ? (pmAno?pm.ritmoExig:(A.dias>0&&A.plano>0?A.plano/A.dias:null)) : (diasMes>0&&planoMes>0?planoMes/diasMes:null);
     var folga  = (ritDem!==null&&ritExg>0) ? ((ritDem/ritExg)-1)*100 : null;
     var corRit = folga===null?'#00E5FF':(folga>=0?'#4CAF50':(folga>-5?'#FF9800':'#F44336'));
-    var subRit = (ritExg!==null?('exigido '+fi(ritExg)+' pç/dia'):'sem plano no mês')
+    var subRit = (ritExg!==null?('exigido '+fi(ritExg)+' pç/dia'+(anoTodo&&!pmAno?' · '+fi(A.dias)+' dias trabalhados':'')):('sem plano no '+(anoTodo?'ano':'mês')))
       +(!anoTodo&&pm&&pm.ano===ano?(' · no ano '+fi(pm.ritmoDem)+' vs '+fi(pm.ritmoExig)):'')
       +(pm&&pm.ano===ano&&pm.planoAberto>0?('<br>falta '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'):'');
 
@@ -21317,9 +21321,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b91.3';
+var APP_VERSAO = 'b91.4';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b91.4', data:'17/09/2026', itens:[
+    'Reuniao, Ano todo: Ritmo demonstrado no ano ficava em — para ano sem Plano Mestre apurado (2025). Agora sai do acumulado da HISTORICO: jornada normal ÷ dias trabalhados, exigido = previsto ÷ dias. 2025: 1.362 vs 1.532 pc/dia.'
+  ]},
   { v:'b91.3', data:'17/09/2026', itens:[
     'Gravar calculos na planilha fica sempre visivel dentro do bloco de integridade da Reuniao, com explicacao. Antes so aparecia quando o ano selecionado acusava planilha desatualizada: depois de mudar uma meta, o ano verde escondia o botao.'
   ]},
