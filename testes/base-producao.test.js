@@ -300,8 +300,12 @@ afirma('não altera o objeto de entrada',            ENT.horasTotais === undefin
 afirma('JUN/26: produção vem do ERP (30.851, não 30.451) e derivadas seguem',
   (() => { const j = U.normalizar({ ano:2026, mes:'JUN', horasCarga:14792, faltas:1532, atraso:0, horasNormais:14388, extra50:1545, extra100:44, producaoReal:30451, produtosReportados:30851 });
            return j.producaoReal === 30851 && Math.abs(j.prodSemExtras - 27444) <= 1 && Math.abs(j.meta - 30008) <= 1; })());
-afirma('2025 fica com o digitado (erpDesde padrão 2026)',
-  U.normalizar({ ano:2025, mes:'MAI', horasNormais:14400, horasCarga:15008, producaoReal:36450, produtosReportados:38729 }).producaoReal === 36450);
+afirma('2025 usa o ERP (erpDesde padrão 2025 desde b91)',
+  U.normalizar({ ano:2025, mes:'MAI', horasNormais:14400, horasCarga:15008, producaoReal:36450, produtosReportados:38729 }).producaoReal === 38729);
+afirma('2024 fica com o digitado',
+  U.normalizar({ ano:2024, mes:'MAI', horasNormais:14400, horasCarga:15008, producaoReal:36450, produtosReportados:38729 }).producaoReal === 36450);
+afirma('erpDesde 2026 mantém 2025 no digitado',
+  U.normalizar({ ano:2025, mes:'MAI', horasNormais:14400, horasCarga:15008, producaoReal:36450, produtosReportados:38729 }, { erpDesde:2026 }).producaoReal === 36450);
 afirma('erpDesde 2025 aplica o ERP também em 2025',
   U.normalizar({ ano:2025, mes:'MAI', horasNormais:14400, horasCarga:15008, producaoReal:36450, produtosReportados:38729 }, { erpDesde:2025 }).producaoReal === 38729);
 afirma('sem reporte do ERP vale o digitado',

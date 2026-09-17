@@ -66,7 +66,7 @@ var METAS_PADRAO = [
   ['META_DEP_HE', 8,   '%',   '2026-01', 'PPCP',      'Máximo do volume entregue que pode vir de hora extra'],
   ['META_TICKET', 250, 'R$',  '2026-01', 'Comercial', 'Ticket médio mínimo (R$ por peça faturada). 250 é a média histórica dos 18 meses (R$ 247,69), não uma meta decidida'],
   ['DUTEIS',      22,  'dias','2026-01', 'PPCP',      'Dias úteis de referência por mês (capacidade teórica e carteira em dias)'],
-  ['PROD_ERP_DESDE', 2026, 'ano', '2026-01', 'PPCP',   'A partir deste ano, producaoReal = produtosReportados (total do relatório REPORTE do ERP, produtos acabados). Antes disso vale o digitado.']
+  ['PROD_ERP_DESDE', 2025, 'ano', '2025-01', 'PPCP',   'A partir deste ano, producaoReal = produtosReportados (total do relatório REPORTE do ERP, produtos acabados). Antes disso vale o digitado.']
 ];
 
 /* ══ DICIONARIO ══
