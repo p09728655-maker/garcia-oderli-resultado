@@ -63,6 +63,7 @@ var PR_PASTA        = 'PONTO RH';
 var PR_PROCESSADOS  = 'PROCESSADOS';
 var PR_ABA_FUNC     = 'FUNCIONARIOS';
 var PR_ABA_LOG      = 'PONTO';
+var PR_ABA_LOG_AUS  = 'AUSENCIAS';   /* log do controle de faltas */
 var PR_ABA_HISTORICO = 'HISTORICO';
 var PR_MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 /* Setores que contam como produção direta — a mesma régua para horas do ponto
@@ -220,6 +221,7 @@ function prLancarHistorico(ss, mes, ano, a) {
     if (col[n] === undefined) {
       while (largura > 0 && !String(linhas[iCab][largura - 1] || '').trim()) largura--;
       aba.getRange(iCab + 1, largura + 1).setValue(nome);
+      linhas[iCab][largura] = nome;   /* a cópia precisa ver a coluna nova, senão a próxima cai no mesmo lugar */
       col[n] = largura; largura++;
     }
   });
@@ -319,7 +321,11 @@ function prProcessarControle(ss, arq, doc, base) {
   var atualizou = dp ? prAtualizarFuncionarios(ss, dp) : 0;
   var func = prLerFuncionarios(ss);
   if (!func) throw new Error('aba ' + PR_ABA_FUNC + ' ausente — a DP do controle não foi encontrada para gerá-la');
-  var disp = base.getDataRange().getDisplayValues();
+  /* getValues, não getDisplayValues: DATA é data de verdade e o texto exibido
+     na cópia convertida sai no formato da conta (mês/dia/ano) — lido como
+     dia/mês virava meses de 2027 e 2028. Horas vêm como Date (hh:mm) ou
+     fração de dia; prHoras trata os dois. */
+  var disp = base.getDataRange().getValues();
   var cab = disp[0].map(prNormaliza), col = {};
   cab.forEach(function (c, i) {
     if (c === 'data') col.data = i; else if (c === 'cod' || c === 'codigo') col.cod = i;
@@ -328,25 +334,35 @@ function prProcessarControle(ss, arq, doc, base) {
   });
   if (col.data === undefined || col.cod === undefined || col.status === undefined || col.hf === undefined)
     throw new Error('BASE sem as colunas DATA, COD, STATUS e HORAS FALTA');
-  var meses = {};
+  var meses = {}, anos = {}, foraDoIntervalo = 0, desconhecidos = {}, ignorados = 0;
+  var limite = new Date(); limite.setDate(limite.getDate() + 45);
   for (var i = 1; i < disp.length; i++) {
     var l = disp[i], d = prData(l[col.data]);
     if (!d) continue;
+    if (d.getFullYear() < 2000 || d > limite) { foraDoIntervalo++; continue; }   /* trava: nunca cria mês no futuro */
     var cod = String(l[col.cod] || '').trim().replace(/\.0$/, '');
     var f = func.mapa[cod];
     if (!f || !f.direto) continue;
     var chave = PR_MESES[d.getMonth()] + '/' + d.getFullYear();
     var m = meses[chave] || (meses[chave] = { mes: PR_MESES[d.getMonth()], ano: d.getFullYear(), falta: 0, atestado: 0, afastado: 0, atraso: 0, ferias: 0, registros: 0 });
-    var st = prNormaliza(l[col.status]), hf = prHoras(l[col.hf]), hfe = col.hfe !== undefined ? prHoras(l[col.hfe]) : 0;
+    anos[d.getFullYear()] = true;
+    var stBruto = String(l[col.status] || '').trim(), st = prStatusAusencia(stBruto), hf = prHoras(l[col.hf]), hfe = col.hfe !== undefined ? prHoras(l[col.hfe]) : 0;
     m.registros++;
-    if (st === 'falta') m.falta += hf;
-    else if (st === 'atestado') m.atestado += hf;
-    else if (st === 'afastado') m.afastado += hf;
-    else if (st === 'atraso') m.atraso += hf;
-    else if (st === 'ferias') m.ferias += hfe || hf;
-    else m.falta += hf;                       /* status desconhecido: conta como falta e fica visível na soma */
+    if (st === 'ferias') m.ferias += hfe || hf;
+    else if (st === 'ignorar') ignorados++;
+    else {
+      if (st === 'desconhecido') { desconhecidos[stBruto] = (desconhecidos[stBruto] || 0) + hf; st = 'falta'; }   /* vira falta e aparece no aviso */
+      m[st] += hf;
+    }
   }
+  /* o controle do ano é a fonte do ano inteiro: zera as ausências dos meses
+     do ano antes de gravar, para valor de rodada errada não sobreviver */
+  Object.keys(anos).forEach(function (ano) { prLimparAusencias(ss, parseInt(ano, 10)); });
   var chaves = Object.keys(meses), lancados = [];
+  var descL = Object.keys(desconhecidos);
+  if (descL.length) lancados.push('status fora da lista, contados como falta: ' + descL.map(function (k) { return k + ' (' + Math.round(desconhecidos[k]) + ' h)'; }).join(', '));
+  if (ignorados) lancados.push(ignorados + ' registro(s) de banco de horas ignorados (folga compensada não é falta)');
+  if (foraDoIntervalo) lancados.push(foraDoIntervalo + ' registro(s) com data fora do intervalo ignorados');
   chaves.forEach(function (k) {
     var m = meses[k];
     var criou = prLancarAusencias(ss, m);
@@ -359,8 +375,9 @@ function prProcessarControle(ss, arq, doc, base) {
 
 /* Regrava a FUNCIONARIOS a partir da aba DP do controle (Cód | Nome | Setor |
    Departamento | STATUS | DT. ADMISSÃO | DT. DEMISSÃO). direto = setor está
-   em PR_SETORES_DIRETOS. Inativo entra com N e a data de demissão — assim o
-   histórico continua conferindo. */
+   em PR_SETORES_DIRETOS, independente do STATUS: quem foi desligado em agosto
+   faltou como direto até o desligamento, e o extrato de ponto só traz quem
+   estava na folha no mês. A demissão fica na aba, para conferência. */
 function prAtualizarFuncionarios(ss, dp) {
   var v = dp.getDataRange().getValues(), iCab = -1, col = {};
   for (var i = 0; i < Math.min(v.length, 10) && iCab < 0; i++) {
@@ -380,7 +397,7 @@ function prAtualizarFuncionarios(ss, dp) {
     if (!/^\d+$/.test(cod)) continue;
     var setor = String(v[r][col.setor] || '').trim();
     var inativo = /inativo/i.test(String(col.status !== undefined ? v[r][col.status] : ''));
-    var direto = !inativo && PR_SETORES_DIRETOS.indexOf(setor) >= 0;
+    var direto = PR_SETORES_DIRETOS.indexOf(setor) >= 0;
     var fmt = function (x) { var d = prData(x); return d ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd/MM/yyyy') : ''; };
     linhas.push([cod, String(v[r][col.nome] || '').trim(), setor, direto ? 'S' : 'N',
                  col.adm !== undefined ? fmt(v[r][col.adm]) : '', col.dem !== undefined ? fmt(v[r][col.dem]) : '', inativo ? 'inativo na DP' : '']);
@@ -391,6 +408,38 @@ function prAtualizarFuncionarios(ss, dp) {
   aba.getRange(1, 1, 1, 7).setValues([['codigo', 'nome', 'setor', 'direto', 'admissao', 'demissao', 'observacao']]).setFontWeight('bold');
   aba.getRange(2, 1, linhas.length, 7).setValues(linhas);
   return linhas.length;
+}
+
+/* STATUS da BASE → categoria. O RH escreve variações; o que não estiver
+   aqui vira falta e aparece no aviso, para entrar na lista. */
+function prStatusAusencia(st) {
+  var s = prNormaliza(st);
+  if (!s) return 'desconhecido';
+  if (s === 'falta') return 'falta';
+  if (s === 'ferias') return 'ferias';
+  if (/^atest|^just/.test(s)) return 'atestado';            /* ATESTADO, ATEST. OB., JUST., JUSTIFICATIVA */
+  if (/^afast|^lic/.test(s)) return 'afastado';             /* AFASTADO, LIC. MAT. */
+  if (/^atras|^tarde/.test(s)) return 'atraso';             /* ATRASO, TARDE */
+  if (/^banco/.test(s)) return 'ignorar';                   /* BANCO H.: folga compensada */
+  return 'desconhecido';
+}
+
+/* Zera ausFalta, ausAtestado, ausAfastado, ausAtraso e horasFerias de todos
+   os meses do ano na HISTORICO (só onde as colunas existem). */
+function prLimparAusencias(ss, ano) {
+  var aba = ss.getSheetByName(PR_ABA_HISTORICO);
+  if (!aba) return;
+  var linhas = aba.getDataRange().getValues(), iCab = -1, col = {};
+  for (var i = 0; i < Math.min(linhas.length, 20) && iCab < 0; i++) {
+    var norm = linhas[i].map(prNormaliza);
+    if (norm.indexOf('mes') >= 0 && norm.indexOf('ano') >= 0) { iCab = i; norm.forEach(function (n, c) { if (col[n] === undefined) col[n] = c; }); }
+  }
+  if (iCab < 0) return;
+  var cols = ['ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias'].map(function (n) { return col[prNormaliza(n)]; }).filter(function (c) { return c !== undefined; });
+  for (var r = iCab + 1; r < linhas.length; r++) {
+    if (parseInt(linhas[r][col.ano], 10) !== ano) continue;
+    cols.forEach(function (c) { aba.getRange(r + 1, c + 1).setValue(0); });
+  }
 }
 
 function prLancarAusencias(ss, m) {
@@ -407,7 +456,9 @@ function prLancarAusencias(ss, m) {
     var n = prNormaliza(nome);
     if (col[n] === undefined) {
       while (largura > 0 && !String(linhas[iCab][largura - 1] || '').trim()) largura--;
-      aba.getRange(iCab + 1, largura + 1).setValue(nome); col[n] = largura; largura++;
+      aba.getRange(iCab + 1, largura + 1).setValue(nome);
+      linhas[iCab][largura] = nome;   /* idem: a cópia precisa ver a coluna nova */
+      col[n] = largura; largura++;
     }
   });
   var linha = -1;
@@ -423,10 +474,39 @@ function prLancarAusencias(ss, m) {
   return criou;
 }
 
+/* Log em aba própria (AUSENCIAS): as colunas são outras, e na aba PONTO o
+   registro saía desalinhado sob o cabeçalho do extrato. */
 function prLogAus(ss, arquivo, m, criou) {
-  var aba = ss.getSheetByName(PR_ABA_LOG) || ss.insertSheet(PR_ABA_LOG);
-  if (aba.getLastRow() === 0) aba.appendRow(['processadoEm', 'arquivo', 'mes', 'ano', 'registros', 'ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias', 'linhaCriada']);
-  aba.appendRow([new Date(), arquivo + ' (ausências)', m.mes, m.ano, m.registros, m.falta, m.atestado, m.afastado, m.atraso, m.ferias, criou ? 'sim' : 'não']);
+  var aba = ss.getSheetByName(PR_ABA_LOG_AUS) || ss.insertSheet(PR_ABA_LOG_AUS);
+  if (aba.getLastRow() === 0) {
+    aba.appendRow(['processadoEm', 'arquivo', 'mes', 'ano', 'registros', 'ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias', 'linhaCriada']);
+    aba.getRange(1, 1, 1, 11).setFontWeight('bold');
+  }
+  aba.appendRow([new Date(), arquivo, m.mes, m.ano, m.registros, Math.round(m.falta * 10) / 10, Math.round(m.atestado * 10) / 10, Math.round(m.afastado * 10) / 10, Math.round(m.atraso * 10) / 10, Math.round(m.ferias * 10) / 10, criou ? 'sim' : 'não']);
+}
+
+/* Apaga da HISTORICO linhas de anos futuros sem produção, sem horas e sem
+   plano — as que uma rodada com data lida errada criou (2027/2028). Menu
+   👥 Ponto → Apagar meses futuros criados por engano. */
+function apagarMesesFuturos() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), aba = ss.getSheetByName(PR_ABA_HISTORICO);
+  if (!aba) return prErro('aba ' + PR_ABA_HISTORICO + ' não encontrada');
+  var linhas = aba.getDataRange().getValues(), iCab = -1, col = {};
+  for (var i = 0; i < Math.min(linhas.length, 20) && iCab < 0; i++) {
+    var norm = linhas[i].map(prNormaliza);
+    if (norm.indexOf('mes') >= 0 && norm.indexOf('ano') >= 0) { iCab = i; norm.forEach(function (n, c) { if (col[n] === undefined) col[n] = c; }); }
+  }
+  if (iCab < 0) return prErro('cabeçalho com "mes" e "ano" não encontrado');
+  var anoAtual = new Date().getFullYear(), vazio = function (l, nome) { var c = col[prNormaliza(nome)]; return c === undefined || !(parseFloat(l[c]) > 0); };
+  var apagar = [];
+  for (var r = iCab + 1; r < linhas.length; r++) {
+    var l = linhas[r], ano = parseInt(l[col.ano], 10);
+    if (ano > anoAtual && vazio(l, 'producaoReal') && vazio(l, 'horasNormais') && vazio(l, 'horasCarga') && vazio(l, 'previsaoProducao') && vazio(l, 'planoNaHistorico'))
+      apagar.push({ linha: r + 1, rotulo: String(l[col.mes]) + '/' + ano });
+  }
+  if (!apagar.length) return prAvisar('Nenhuma linha de ano futuro sem dados na ' + PR_ABA_HISTORICO + '.');
+  for (var k = apagar.length - 1; k >= 0; k--) aba.deleteRow(apagar[k].linha);   /* de baixo para cima */
+  prAvisar('Apagadas ' + apagar.length + ' linha(s): ' + apagar.map(function (a) { return a.rotulo; }).join(', '));
 }
 
 /* Copia o xlsx como Planilha Google (o Drive converte), lê e apaga a cópia.

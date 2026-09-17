@@ -21317,9 +21317,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b90';
+var APP_VERSAO = 'b90.1';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b90.1', data:'17/09/2026', itens:[
+    'Correcao do PontoRH.gs no controle de faltas: a coluna DATA passa a ser lida como data (getValues), nao como texto exibido — na copia convertida o texto sai mes/dia/ano e, lido como dia/mes, virou meses de 2027 e 2028 na HISTORICO. Trava: nunca cria mes mais de 45 dias no futuro. Menu 👥 Ponto → Apagar meses futuros criados por engano remove as linhas dessa rodada.',
+    'Colunas novas na HISTORICO eram criadas todas na mesma posicao (a copia do cabecalho nao via a coluna recem-criada); valia a ultima. Corrigido nas duas gravacoes. STATUS do RH fora da lista tratados: LIC. MAT. = afastado, TARDE = atraso, JUST./ATEST. OB. = atestado, BANCO H. ignorado; o resto vira falta e aparece no aviso. Direto = setor, independente do status na DP. Log do controle em aba propria (AUSENCIAS). O controle do ano zera e regrava as ausencias do ano inteiro.'
+  ]},
   { v:'b90', data:'17/09/2026', itens:[
     'Controle de faltas do RH entra sozinho: PontoRH.gs le a CONTROLE_FALTAS_aaaa.xlsx salva na pasta PONTO RH, regrava a aba FUNCIONARIOS a partir da DP dela (direto = setor entre os 11 diretos) e soma, mes a mes e so dos diretos, as horas por STATUS na HISTORICO: ausFalta, ausAtestado, ausAfastado, ausAtraso e horasFerias.',
     'Regra de faltas: com o controle, faltas = falta + atestado + afastado (mesma base das horas do ponto; ate SET/26 as faltas vinham do departamento 2-PRODUCAO inteiro, 18 setores, e as horas dos 11 diretos). Atraso = atrasos do ponto, que mede o relogio; sem ponto, o do controle. Sem controle vale a regra do ponto; sem os dois, o digitado. AGO/26 sai de 14,1% para cerca de 12,4%.',
