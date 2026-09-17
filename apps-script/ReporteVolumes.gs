@@ -242,6 +242,14 @@ function onOpen() {
     .addItem('Instalar processamento diário', 'instalarProcessamentoDiario')
     .addItem('Criar linha TOTAL VOLUMES no plano mestre', 'criarLinhaTotalVolumes')
     .addToUi();
+  /* Ponto do RH (PontoRH.gs): extrato de totais → HISTORICO */
+  SpreadsheetApp.getUi().createMenu('👥 Ponto')
+    .addItem('Processar extratos da pasta do Drive', 'processarPontoDrive')
+    .addItem('Ensaio sem gravar (ver Registro)', 'testePonto')
+    .addSeparator()
+    .addItem('Criar aba FUNCIONARIOS', 'criarAbaFuncionarios')
+    .addItem('Instalar processamento diário', 'instalarProcessamentoPonto')
+    .addToUi();
 }
 
 function processarReportesDrive() {

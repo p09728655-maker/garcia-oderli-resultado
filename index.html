@@ -4328,6 +4328,7 @@ body.lid-on{overflow:hidden}
       <div class="fg">
         <label class="lbl">Faltas (h)</label>
         <input type="number" id="fFaltas" min="0" step="0.1" placeholder="Ex: 1200">
+        <div id="fFaltasHint" style="font-size:.62rem;color:var(--t3);margin-top:3px;line-height:1.35"></div>
       </div>
       <div class="fg">
         <label class="lbl">Atraso (h)</label>
@@ -4937,7 +4938,8 @@ var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFal
   'absenteismo','horasNormais','extra50','extra100','totalExtras','horasTotais',
   'producaoReal','prodSemExtras','meta','eficiencia','eficienciaAdj','margem',
   'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao','horasFerias',
-  'produtosReportados','volumesProduzidos','quilosProduzidos','planoNaHistorico'];
+  'produtosReportados','volumesProduzidos','quilosProduzidos','planoNaHistorico',
+  'naoTrabalhadas','faltasPonto','atrasosPonto'];
 
 /* ── TRADUÇÃO DE CABEÇALHO ──
    Quase toda coluna da planilha já usa o nome do campo (producaoReal,
@@ -5522,6 +5524,8 @@ window.DashUtils = (function() {
       /* 3 · contra as outras fontes */
       if (r.produtosReportados > 0 && pctDif(P, r.produtosReportados) > tolErp)
         add(r, 'atencao', 'erp', (r.ano >= erpDesde ? 'Planilha desatualizada: produção real difere do reporte do ERP (o painel usa o ERP)' : 'Produção real difere do reporte do ERP'), P, r.produtosReportados);
+      if (r.naoTrabalhadas > 0 && !(r.horasFerias > 0))
+        add(r, 'atencao', 'ferias', 'Ponto lançado sem horas de férias: as faltas ficam superestimadas até lançar as férias do mês', r.naoTrabalhadas, null);
       if (r.qtdeFaturado > 0 && P === r.qtdeFaturado)
         add(r, 'atencao', 'copia', 'Produção real igual ao faturado: conferir com o reporte do ERP', P, r.produtosReportados > 0 ? r.produtosReportados : null);
       if (r.planoNaHistorico > 0 && r.previsaoProducao > 0 && dif(r.planoNaHistorico, r.previsaoProducao, 0.5))
@@ -5545,6 +5549,13 @@ window.DashUtils = (function() {
        producaoReal     = produtosReportados (total do relatório REPORTE do
                           ERP, produtos acabados) a partir de cfg.erpDesde;
                           antes disso vale o digitado
+       atraso           = atrasosPonto, quando o ponto foi lançado (PontoRH.gs)
+       faltas           = naoTrabalhadas − horasFerias − atraso, idem. O ponto
+                          não enxerga falta justificada (atestado, afastamento
+                          e licença reduzem a Carga), então "falta" aqui é tudo
+                          que não foi trabalhado, tirando férias — a conta que
+                          era feita na mão (AGO/26: 2.050 h). Sem ponto lançado,
+                          vale o digitado
        totalFaltaAtraso = faltas + atraso
        totalExtras      = extra50 + extra100
        horasTotais      = horasNormais + totalExtras
@@ -5568,6 +5579,10 @@ window.DashUtils = (function() {
     var r1 = function (v) { return Math.round(v * 10) / 10; };
     var r2 = function (v) { return Math.round(v * 100) / 100; };
     if (n(o.produtosReportados) > 0 && n(o.ano) >= desde) o.producaoReal = Math.round(o.produtosReportados);
+    if (n(o.naoTrabalhadas) > 0) {
+      o.atraso = r1(n(o.atrasosPonto));
+      o.faltas = r1(Math.max(0, n(o.naoTrabalhadas) - n(o.horasFerias) - o.atraso));
+    }
     if (n(o.faltas) > 0 || n(o.atraso) > 0 || n(o.horasNormais) > 0) o.totalFaltaAtraso = r1(n(o.faltas) + n(o.atraso));
     if (n(o.extra50) > 0 || n(o.extra100) > 0 || n(o.horasNormais) > 0) o.totalExtras = r1(n(o.extra50) + n(o.extra100));
     var H = n(o.horasNormais), K = n(o.totalExtras), F = n(o.totalFaltaAtraso), P = n(o.producaoReal), C = n(o.horasCarga);
@@ -6684,6 +6699,7 @@ function limparForm(){
   ['fMes','fAno','fColabs','fCarga','fHN','fFaltas','fAtraso','fE50','fE100','fFerias','fDias','fProd','fTkt','fVend','fFat']
     .forEach(function(id){document.getElementById(id).value=''});
   var h0=document.getElementById('fProdHint'); if(h0) h0.textContent='';
+  var h1=document.getElementById('fFaltasHint'); if(h1) h1.textContent='';
   ['pHT','pPS','pMeta','pEf','pAb','pHE'].forEach(function(id){
     var el=document.getElementById(id); el.textContent='--'; el.className='pv'
   })
@@ -6719,6 +6735,12 @@ function calcPrev(){
   pSet('pEf',   (rec.eficiencia>0)?f(rec.eficiencia)+'%':'--', rec.eficiencia>=90?'v2':rec.eficiencia>=80?'y2':'r2');
   pSet('pAb',   H>0?f(rec.absenteismo)+'%':'--', rec.absenteismo>absCrit?'r2':rec.absenteismo>absMeta?'y2':'v2');
   pSet('pHE',   he!==null?f(he)+'%':'--', he===null?'':(he<=lim?'v2':he<=15?'y2':'r2'));
+  var hf=document.getElementById('fFaltasHint');
+  if(hf){
+    hf.textContent=(rec.naoTrabalhadas>0)
+      ? 'Vem do ponto: '+fi(rec.naoTrabalhadas)+' h não trabalhadas − '+fi(rec.horasFerias||0)+' h de férias − '+fi(rec.atraso||0)+' h de atrasos = '+fi(rec.faltas||0)+' h. O que for digitado em faltas e atrasos é ignorado.'+(!(rec.horasFerias>0)?' Lance as férias.':'')
+      : 'Sem ponto lançado para este mês: vale o digitado. Falta = tudo que não foi trabalhado, tirando férias.';
+  }
   var hint=document.getElementById('fProdHint');
   if(hint){
     var desde=(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2026;
@@ -20513,6 +20535,7 @@ function printAtiva(){
     return { mes:r.mes, ano:r.ano, plano:plano, P:P, Q:Q, heP:P-Q, hePct:P>0?(P-Q)/P*100:0,
              heH:HE, H:H, HT:HT, pcH:HT>0?P/HT:0, dias:dias, pcDia:dias>0?P/dias:0,
              abs:abs, F:F, colab:r.colaboradores||0, fat:r.qtdeFaturado||0, ven:r.qtdeVendida||0,
+             fPonto:r.faltasPonto||0, aPonto:r.atrasosPonto||0, temPonto:(r.naoTrabalhadas||0)>0,
              cumpriu:plano>0&&P>=plano, at:plano>0?P/plano*100:null };
   }
   function lidModelo(){
@@ -20707,6 +20730,7 @@ function printAtiva(){
       +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:[{nome:'Faltas '+anoS,cor:LID_COR.falta,v:ms.map(function(m){ return m.abs; })}],barLabels:true,fmtBar:function(v){ return fd(v,1)+'%'; },h:560})+'</div>'
       +'<div><div class="lid-grid2">'+lidCard('Horas perdidas',fi(ref.F)+' h','com falta, em '+ref2,'#F44336')+lidCard('Horas extras feitas',fi(ref.heH)+' h','para cobrir parte do buraco','#FF9800')+'</div>'
       +'<div class="lid-p lid-small"><b>'+(cobre>100?'A hora extra passou do que a falta tirou ('+fd(cobre,0)+'%)':'A hora extra cobriu '+fd(cobre,0)+'% do que a falta tirou')+', e cada hora dessas custa pelo menos 50% a mais.</b> Reduzir falta é o jeito mais barato de produzir mais: cada 1% a menos são '+fi(ref.H/100)+' horas por mês, quase '+fi(M.ganhoPP)+' peças no ritmo de '+ref2+'.</div>'
+      +(ref.temPonto?'<div class="lid-p lid-small">Das '+fi(ref.F)+' h não trabalhadas, '+fi(ref.fPonto)+' h são faltas sem justificativa e '+fi(ref.aPonto)+' h atrasos. O resto, '+fi(Math.max(0,ref.F-ref.fPonto-ref.aPonto))+' h, é atestado, afastamento e licença: pesa igual na produção, mas pede outra conversa.</div>':'')
       +'<div class="lid-p lid-small">Presença é o indicador que mais depende de quem está na linha todo dia: acompanhar, conversar, ajustar escala.'+(melhores.length?' '+lidLista(melhores).replace(/^./,function(c){ return c.toUpperCase(); })+' ('+melhores.map(function(m){ return fd(m.abs,1)+'%'; }).join(' e ')+') '+(melhores.length>1?'mostraram':'mostrou')+' que dá.':'')+'</div></div></div>'+rod);
     /* 6 · peças por hora */
     var prox=M.abertos[0]||null, hNec=prox&&ref.pcH>0?prox.plano/ref.pcH:null;
@@ -21270,9 +21294,14 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b88';
+var APP_VERSAO = 'b89';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b89', data:'17/09/2026', itens:[
+    'Ponto do RH entra sozinho: PontoRH.gs le o Extrato de Totais salvo na pasta PONTO RH do Drive, cruza o No Folha com a aba FUNCIONARIOS (quem e direto), soma o grupo e lanca na HISTORICO colaboradores, carga, normais, extras e tres colunas brutas: naoTrabalhadas, faltasPonto, atrasosPonto.',
+    'Regra de faltas escrita no painel: atraso = atrasos do ponto; faltas = nao trabalhadas − ferias − atrasos. O ponto nao enxerga falta justificada (atestado, afastamento e licenca reduzem a Carga), entao "falta" e tudo que nao foi trabalhado, tirando ferias — a mesma conta que era feita na mao. Confirmado no extrato de AGO/26: Carga = horas escaladas, Normais = Carga − Faltas − Atrasos.',
+    'Integridade avisa quando o ponto foi lancado sem ferias (faltas superestimadas). Formulario mostra a conta sob o campo Faltas. Apresentacao para lideres separa falta sem justificativa e atraso de atestado e afastamento.'
+  ]},
   { v:'b88', data:'17/09/2026', itens:[
     'Botao Importar Excel sai da tela: o Excel deixou de ser fonte em b87 e o botao era a porta por onde uma segunda fonte voltaria. A importacao continua no codigo, para emergencia.',
     'Eficiencia Ajustada (eficienciaAdj) aposentada: a formula herdada do Excel subtraia horas de pecas. Sai da tabela de Eficiencia & Horas, das somas e da regra de calculo. A coluna fica na planilha so como historico.'

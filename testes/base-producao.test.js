@@ -309,6 +309,19 @@ afirma('sem reporte do ERP vale o digitado',
 afirma('sem horas normais nada é derivado',
   (() => { const z = U.normalizar({ ano:2026, mes:'SET', producaoReal:200, horasCarga:100 }); return z.meta === undefined && z.absenteismo === undefined; })());
 afirma('null não quebra',                            U.normalizar(null) === null);
+/* Ponto do RH: AGO/26 — 95 diretos, jornada cheia 184,8 h, normais 14.514,8,
+   faltas do ponto 184,8, atrasos 207,6, férias 1.091. naoTrabalhadas =
+   95 × 184,8 − 14.514,8 = 3.041,2. faltas = 3.041,2 − 1.091 − 207,6 = 1.742,6. */
+const PONTO = U.normalizar({ ano:2026, mes:'AGO', horasCarga:14907.2, horasNormais:14514.8, extra50:1182, extra100:11.17,
+  naoTrabalhadas:3041.2, faltasPonto:184.8, atrasosPonto:207.6, horasFerias:1091, producaoReal:32364, faltas:2050, atraso:0 });
+ok('ponto: atraso = atrasos do ponto',        PONTO.atraso, 207.6, 0.05);
+ok('ponto: faltas = nãoTrab − férias − atraso', PONTO.faltas, 1742.6, 0.05);
+ok('ponto: totalFaltaAtraso',                 PONTO.totalFaltaAtraso, 1950.2, 0.05);
+ok('ponto: absenteísmo %',                    PONTO.absenteismo, 13.44, 0.01);
+afirma('ponto ausente: faltas e atraso digitados ficam',
+  (() => { const z = U.normalizar({ ano:2026, mes:'SET', horasNormais:14000, horasCarga:14400, faltas:2000, atraso:100 }); return z.faltas === 2000 && z.atraso === 100; })());
+afirma('ponto sem férias lançadas → integridade avisa (atenção férias)',
+  U.integridade([Object.assign({}, PONTO, { horasFerias:0, faltas:2950.2 })]).itens.some(i => i.tipo === 'ferias' && i.nivel === 'atencao'));
 afirma('dataset embutido: normalizar() reproduz eficiência da planilha em 18 de 18 meses (±0,05)',
   REGS.every(r => Math.abs(U.normalizar(r).eficiencia - r.eficiencia) <= 0.05));
 afirma('dataset embutido: normalizar() reproduz absenteísmo em 18 de 18 meses (±0,02)',
