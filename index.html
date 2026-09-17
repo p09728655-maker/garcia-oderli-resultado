@@ -132,6 +132,13 @@ h1 span{color:var(--cyan)}
 .btn-g:hover{border-color:var(--cyan);color:var(--cyan)}
 .btn-r{background:transparent;border-color:var(--red);color:var(--red)}
 .btn-r:hover{background:rgba(244,67,54,.08)}
+/* b92.5: excluir só fica vermelho ao passar o mouse; WhatsApp e e-mail num menu só */
+.reu-del:hover{border-color:var(--red);color:var(--red);background:rgba(244,67,54,.08)}
+.reu-envio{display:inline-block;position:relative;vertical-align:middle}
+.reu-envio>summary{list-style:none;cursor:pointer}
+.reu-envio>summary::-webkit-details-marker{display:none}
+.reu-envio[open]>summary{border-color:var(--cyan);color:var(--cyan)}
+.reu-envio-menu{position:absolute;right:calc(100% + 4px);top:50%;transform:translateY(-50%);z-index:20;display:flex;gap:4px;background:var(--card);border:1px solid var(--b2);border-radius:var(--r);padding:4px;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.45)}   /* abre para o lado: a tabela corta o que desce */
 .btn-sm{padding:4px 10px;font-size:.69rem}
 
 /* ─── ABAS ANO ─── */
@@ -1159,10 +1166,10 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     </button>
   </div>
   <button id="btn-abrir-metas" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path></svg>Metas <span id="metas-badge-cnt" class="metas-badge inativa">padrão</span></button><button id="btn-abrir-alertas" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path></svg>Alertas <span id="alertas-badge" class="alertas-badge ativo">2 ativos</span></button><button class="btn btn-g" id="btnSidebar" onclick="toggleSidebar()" title="Ocultar/mostrar painel lateral" style="padding:9px 11px;flex-shrink:0">
-    <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1zm5 2H5v12h4V6zm2 0v12h9V6h-9z"></path></svg>
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1zm5 2H5v12h4V6zm2 0v12h9V6h-9z"></path></svg><span style="font-size:.68rem;letter-spacing:.04em">Lateral</span>
   </button>
   <button class="btn btn-g" id="btnTV" onclick="toggleTVMode()" title="Modo TV — fontes grandes para telão" style="padding:9px 11px;flex-shrink:0">
-    <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"></path></svg>
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"></path></svg><span style="font-size:.68rem;letter-spacing:.04em">Modo TV</span>
   </button>
 </header>
 
@@ -19972,9 +19979,11 @@ function printAtiva(){
         +'<td class="reu-noprint" style="white-space:nowrap">'
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar">✎</button> '
           +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button> ':'')
-          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\')" title="Enviar por WhatsApp para o responsável">💬</button> '
-          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\')" title="Enviar esta ação agora, pela caixa do PPCP, para a lista da aba EMAIL">✉</button> '
-          +'<button type="button" class="btn btn-r btn-sm" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)">🗑</button>'
+          +'<details class="reu-envio"><summary class="btn btn-g btn-sm" title="Enviar esta ação">✉ Enviar</summary><div class="reu-envio-menu">'
+            +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\');this.closest(\'details\').open=false" title="Enviar por WhatsApp para o responsável">💬 WhatsApp</button>'
+            +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\');this.closest(\'details\').open=false" title="Enviar agora, pela caixa do PPCP, para a lista da aba EMAIL">✉ E-mail</button>'
+          +'</div></details> '
+          +'<button type="button" class="btn btn-g btn-sm reu-del" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)">🗑</button>'
         +'</td></tr>';
     }).join('');
     var vazio='<tr><td colspan="9" style="color:var(--t3);padding:14px 8px;text-align:center">'
@@ -20260,12 +20269,16 @@ function printAtiva(){
         ? ' → com absenteísmo na meta de '+META_ABS_+'% recuperaria '+fi(recup)+' pç: caberia sem hora extra'
         : ' → mesmo com absenteísmo na meta de '+META_ABS_+'% (recupera '+fi(recup)+' pç) faltariam '+fi(gapSE-recup)+' pç: é capacidade';
     }
-    var r1 = aderSE===null ? 'sem plano lançado'
+    /* b92.5: a faixa leva só o veredito (uma frase); o custo da falta e o
+       "seria capacidade ou absenteísmo?" vão para uma linha sob os cards.
+       Antes eram 170 caracteres em vermelho de ponta a ponta: ninguém lia. */
+    var r1Curta = aderSE===null ? 'sem plano lançado'
            : (aderSE>=100?'Sim':'Não')+': '+fd(aderSE,1)+'% do plano em jornada normal'
-             +(gapSE!==null?(gapSE>0?(' · faltaram '+fi(gapSE)+' pç'):(' · sobraram '+fi(-gapSE)+' pç')):'')
-             +(perdPc>0?(' · falta e atraso custaram '+fi(perdPc)+' pç'
-                          +(perdDias!==null?(' = '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de fábrica'):'')):'')
-             +vered;
+             +(gapSE!==null?(gapSE>0?(' · faltaram '+fi(gapSE)+' pç'):(' · sobraram '+fi(-gapSE)+' pç')):'');
+    var r1Detalhe = (perdPc>0?('Falta e atraso custaram '+fi(perdPc)+' pç'
+                          +(perdDias!==null?(' = '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de fábrica'):'')+'.'):'')
+             +(vered?(' '+vered.replace(/^\s*→\s*/,'').replace(/^./,function(c){ return c.toUpperCase(); })+'.'):'');
+    var r1 = r1Curta + (r1Detalhe?(' · '+r1Detalhe):'');   /* a narração (Apresentar) continua completa */
     var c1 = aderSE===null?'var(--t2)':corMeta(aderSE,100);
     var r2 = fi(A.prod)+' pç entregues'+(ader!==null?(', '+fd(ader,1)+'% do plano com hora extra'):'')
            +(diasCart!==null?(' · carteira de '+fi(diasCart)+' dias úteis'):'');
@@ -20296,7 +20309,8 @@ function printAtiva(){
     var bruto=(typeof loadBruto==='function')?loadBruto().filter(function(r){ return r.ano===ano; }):doAno;
     corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025}), ano)
       +manchete
-      +faixa('1','O plano cabe sem hora extra?', r1, c1, b2)
+      +faixa('1','O plano cabe sem hora extra?', r1Curta, c1, b2,
+             r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
       +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
              '<div class="reu-row3" style="display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:8px;align-items:start">'
@@ -21342,9 +21356,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b92.4';
+var APP_VERSAO = 'b92.5';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b92.5', data:'17/09/2026', itens:[
+    'Reuniao, faixa 1: a resposta na faixa fica so com o veredito (Nao: 91,4% do plano em jornada normal · faltaram 31.296 pc). O custo da falta e o "e capacidade ou absenteismo?" vao para uma linha sob os cards. A narracao do Apresentar continua completa.',
+    'Plano de acao: WhatsApp e e-mail viram um menu Enviar; o excluir fica cinza e so avermelha ao passar o mouse. Cabecalho: os icones de painel lateral e Modo TV ganham rotulo.'
+  ]},
   { v:'b92.4', data:'17/09/2026', itens:[
     'Reuniao: os filtros Ano, Trimestre e Mes da lateral somem nessa aba, no lugar entra uma nota dizendo que o periodo e escolhido no topo da tela. Antes a lateral ficava acesa em 2026/AGO com a Reuniao mostrando 2025, e quem olhava a lateral lia o numero errado. Nas outras abas nada muda.',
     'Contraste: o cinza de apoio (--t3) sobe de #4D4D4D para #757575, de 2,0:1 para 3,7:1 sobre o painel; era a cor da explicacao da integridade, dos titulos da lateral e de 130 outros textos, invisivel no telao. --t2 sobe para #9E9E9E para manter o degrau.'
