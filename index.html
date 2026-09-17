@@ -26,7 +26,7 @@
   --amber:#FF9800; --amber2:#F57C00;
   --green:#4CAF50; --red:#F44336; --yellow:#FFCC80;
   --purple:#78909C; --pink:#E57373;
-  --t1:#F5F5F5; --t2:#888888; --t3:#4D4D4D;
+  --t1:#F5F5F5; --t2:#9E9E9E; --t3:#757575;   /* b92.4: t3 era #4D4D4D, 2,0:1 sobre o painel — ilegível no telão; agora 3,7:1. t2 sobe um degrau para manter a hierarquia */
   --mono:'Consolas','Courier New',monospace;
   --sans:'Segoe UI',Arial,sans-serif;
   --r:6px; --tr:.18s ease;
@@ -88,6 +88,10 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   transition:all var(--tr);background:rgba(245,166,35,.04);text-align:center;margin-bottom:8px}
 .sBtnAll:hover{border-color:var(--cyan);color:var(--cyan)}
 .sCnt{font-family:var(--mono);font-size:.65rem;color:var(--t3);text-align:center;margin-top:8px;padding-top:6px;border-top:1px solid var(--b)}
+/* b92.4: a Reunião tem seletor próprio de período; os filtros da lateral ficavam acesos em outro ano e induziam leitura errada */
+.sb-periodo-nota{display:none}
+body.pg-reuniao .sb-periodo{display:none}
+body.pg-reuniao .sb-periodo-nota{display:block}
 
 @media(max-width:860px){
   .layout{flex-direction:column}
@@ -1183,13 +1187,13 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 
 <!-- ══ SIDEBAR FILTROS ══ -->
 <aside class="sidebar">
-  <!-- Filtro Ano -->
-  <div class="sBox">
+  <!-- Filtro Ano (some na Reunião: lá o período é escolhido na própria tela) -->
+  <div class="sBox sb-periodo">
     <div class="sTitle">▸ Ano</div>
     <div id="sbAno"><button class="sBtn on">Todos</button><button class="sBtn">2025</button><button class="sBtn">2026</button></div>
   </div>
   <!-- Filtro Trimestre -->
-  <div class="sBox">
+  <div class="sBox sb-periodo">
     <div class="sTitle">▸ Trimestre</div>
     <div class="mesGrid" id="sbTri" style="grid-template-columns:repeat(2,1fr)">
       <button class="mBtn" id="qBtn-Q1" onclick="filtroTrimestre('Q1')" title="Clique para selecionar Q1" style="opacity: 1;">Q1</button>
@@ -1200,11 +1204,15 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <button class="sBtnAll" onclick="filtroMesTodos()" style="margin-top:5px">Limpar trimestre</button>
   </div>
   <!-- Filtro Mês -->
-  <div class="sBox">
+  <div class="sBox sb-periodo">
     <div class="sTitle">▸ Mês</div>
     <button class="sBtnAll" id="sbMesAll" onclick="filtroMesTodos()">Todos os Meses</button>
     <div class="mesGrid" id="sbMes"><button class="mBtn">JAN</button><button class="mBtn">FEV</button><button class="mBtn">MAR</button><button class="mBtn">ABR</button><button class="mBtn">MAI</button><button class="mBtn">JUN</button><button class="mBtn">JUL</button><button class="mBtn">AGO</button><button class="mBtn">SET</button><button class="mBtn">OUT</button><button class="mBtn">NOV</button><button class="mBtn">DEZ</button></div>
     <div class="sCnt" id="sbCnt">18 mêses</div>
+  </div>
+  <div class="sBox sb-periodo-nota">
+    <div class="sTitle">▸ Período</div>
+    <div style="font-size:.7rem;color:var(--t2);line-height:1.45">Na Reunião o ano e o mês são escolhidos no topo da própria tela. Os filtros da lateral valem para as outras abas.</div>
   </div>
   <!-- Botões de ação -->
   <div class="sBox">
@@ -7300,9 +7308,12 @@ function bindCardTooltips(dados){
    NAVEGAÇÃO POR ABAS
 ════════════════════════════════════════════════════════════ */
 var paginaAtiva='reuniao';   /* a Reunião é a porta de entrada */
+if(document.body) document.body.classList.add('pg-'+paginaAtiva);
 
 function mudarPagina(id, btn){
   paginaAtiva=id;
+  document.body.className=document.body.className.replace(/\bpg-[\w-]+/g,'').trim();
+  document.body.classList.add('pg-'+id);
   document.querySelectorAll('.page').forEach(function(el){el.classList.remove('on')});
   document.querySelectorAll('.pTab').forEach(function(el){el.classList.remove('on')});
   var p=document.getElementById('page-'+id);
@@ -21331,9 +21342,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b92.3';
+var APP_VERSAO = 'b92.4';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b92.4', data:'17/09/2026', itens:[
+    'Reuniao: os filtros Ano, Trimestre e Mes da lateral somem nessa aba, no lugar entra uma nota dizendo que o periodo e escolhido no topo da tela. Antes a lateral ficava acesa em 2026/AGO com a Reuniao mostrando 2025, e quem olhava a lateral lia o numero errado. Nas outras abas nada muda.',
+    'Contraste: o cinza de apoio (--t3) sobe de #4D4D4D para #757575, de 2,0:1 para 3,7:1 sobre o painel; era a cor da explicacao da integridade, dos titulos da lateral e de 130 outros textos, invisivel no telao. --t2 sobe para #9E9E9E para manter o degrau.'
+  ]},
   { v:'b92.3', data:'17/09/2026', itens:[
     'Botao Mudar cor do fundo sai do cabecalho e o tema salvo por navegador deixa de ser aplicado: o painel tem um fundo so, o mesmo em toda maquina e no telao. O modal fica no codigo, desligado.'
   ]},
