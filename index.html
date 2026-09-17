@@ -1223,7 +1223,10 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 
     <div id="acoes-admin-box" style="display:none;flex-direction:column;gap:6px;margin-top:6px">
       <button class="sBtn" onclick="abrirNovo()">＋ Novo Mês</button>
-      <button class="sBtn" style="color:var(--green);border-color:rgba(76,175,80,.4);background:rgba(76,175,80,.05)" onclick="document.getElementById('inputXlsx').click()">⬆ Importar Excel</button>
+      <!-- b88: o botão "Importar Excel" saiu da tela. O Excel deixou de ser fonte
+           em b87 (fonte única: HISTORICO + regra do painel); o botão era a porta
+           por onde uma segunda fonte voltaria. O input e importarExcel() ficam
+           para emergência: document.getElementById('inputXlsx').click() no console. -->
       <input type="file" id="inputXlsx" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
       <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)" onclick="salvarJSON()">💾 Salvar JSON</button>
       <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.03)" onclick="document.getElementById('inputJSON').click()">📂 Carregar JSON</button>
@@ -2803,7 +2806,6 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 Mede o % da jornada perdida por ausências">Abs. %</th>
           <th title="Dependência de HE = (Produção − Prod. s/ Extras) ÷ Produção × 100
 Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">Dep. HE %</th>
-          <th title="Coluna eficienciaAdj da planilha: vem pronta e não é reproduzível por fórmula nenhuma (b63). Só referência — o painel usa Peças Perdidas no lugar.">Ef. Aj. % (planilha)</th>
           <th title="Total de peças produzidas no mês (incluindo hora extra)">Produção</th>
           <th title="Prod. s/ Extra: peças produzidas apenas nas horas normais
 ▶ Meta: coluna derivada da planilha (= produção real × h. normais ÷ h. carga). Não é capacidade nem alvo.">S/ Extra / Meta</th>
@@ -5550,9 +5552,9 @@ window.DashUtils = (function() {
        prodSemExtras    = producaoReal × (1 − totalExtras ÷ horasNormais)
        meta             = producaoReal × horasNormais ÷ horasCarga
        eficiencia       = prodSemExtras ÷ meta × 100
-       eficienciaAdj    = prodSemExtras ÷ (meta − faltas − atraso) × 100 —
-                          herdada da planilha, subtrai horas de peças; fica
-                          por compatibilidade até ser aposentada
+       eficienciaAdj    — aposentada em b88: subtraía horas de peças. Não é
+                          calculada nem exibida; a coluna fica na planilha só
+                          como histórico
        margem           = (metaEf − eficiencia) ÷ metaEf × 100, metaEf = 90
        custoCap         = totalFaltaAtraso × (producaoReal ÷ horasNormais) × ticketMedio
      Entrada ausente → a derivada correspondente fica como estava. Não muda
@@ -5577,8 +5579,6 @@ window.DashUtils = (function() {
         if (C > 0) {
           o.meta = Math.round(P * H / C);
           o.eficiencia = r2(o.prodSemExtras / o.meta * 100);
-          var den = o.meta - n(o.faltas) - n(o.atraso);
-          o.eficienciaAdj = den > 0 ? r2(o.prodSemExtras / den * 100) : 0;
           o.margem = r2((metaEf - o.eficiencia) / metaEf * 100);
         }
         if (n(o.ticketMedio) > 0) o.custoCap = r2(F * (P / H) * n(o.ticketMedio));
@@ -5776,15 +5776,10 @@ function render(){
       +'= ('+fi(r.producaoReal||0)+' − '+fi(r.prodSemExtras||0)+') ÷ '+fi(r.producaoReal||0)+' × 100\n'
       +'= '+(depR===null?'—':f(depR)+'%')+'\n'
       +'Meta: ≤ '+META_DEP_HE+'% do volume';
-    /* A coluna eficienciaAdj continua na tabela por ser dado da planilha, mas o
-       tooltip parou de afirmar uma fórmula: testei sete famílias contra os 18
-       meses e nenhuma reproduz (melhor erro médio 2,89 p.p.). Ela também passa
-       de 100% em 3 meses e correlaciona -0,42 com o ritmo real. */
-    var tipEfAdj = r.mes+'/'+r.ano+' — Ef. Ajustada: '+f(r.eficienciaAdj)+'%\n'
-      +'Valor vem pronto da planilha (coluna eficienciaAdj).\n'
-      +'A fórmula não é reproduzível a partir dos outros campos, e o indicador\n'
-      +'passa de 100% em alguns meses. Use "Peças perdidas" para medir o\n'
-      +'impacto das horas de falta e atraso.';
+    /* eficienciaAdj aposentada em b88: a fórmula herdada do Excel subtraía
+       horas de peças. A coluna fica na planilha só como histórico; o painel
+       não a calcula, não a exibe e não a soma. Peças perdidas mede o impacto
+       das horas de falta e atraso. */
     var tipAt = at!==null?(r.mes+'/'+r.ano+' — Aderência ao plano (jornada normal)\n'
       +'Fórmula: Prod. s/ Extras ÷ Previsão (Plano Mestre) × 100\n'
       +'= '+fi(r.prodSemExtras||0)+' ÷ '+fi(r.previsaoProducao)+' × 100\n'
@@ -5807,7 +5802,6 @@ function render(){
       '<td class="cNum" title="'+tipAbs+'">'+f(r.absenteismo)+'%</td>'+
       '<td title="'+tipEf+'"><div class="pw"><span class="bef '+efCl+'"><span class="dot"></span>'+(depR===null?'—':f(depR)+'%')+'</span>'+
         '<div class="pb"><div class="pf" style="width:'+efBw+'%;background:'+efBc+'"></div></div></div></td>'+
-      '<td class="cNum" title="'+tipEfAdj+'">'+f(r.eficienciaAdj)+'%</td>'+
       '<td class="cNum">'+fi(r.producaoReal)+'</td>'+
       '<td class="cNum">'+(r.meta>0?
         '<span style="font-size:1rem;font-weight:700;color:var(--cyan)">'+fi(r.prodSemExtras||0)+'</span>'+
@@ -5914,14 +5908,14 @@ function renderKPIs(d){
     document.getElementById('blocoAnalise').style.display='none'; return
   }
 
-  var tHT=0,tHN=0,tExt=0,tAbs=0,tEf=0,tEfAdj=0,tProd=0,tTkt=0,nTkt=0,tCarga=0;
+  var tHT=0,tHN=0,tExt=0,tAbs=0,tEf=0,tProd=0,tTkt=0,nTkt=0,tCarga=0;
   d.forEach(function(r){
     tHT+=r.horasTotais; tHN+=r.horasNormais; tExt+=r.totalExtras; tAbs+=r.absenteismo;
-    tEf+=r.eficiencia; tEfAdj+=r.eficienciaAdj; tProd+=r.producaoReal;
+    tEf+=r.eficiencia; tProd+=r.producaoReal;
     tCarga+=r.horasCarga||0;
     if(r.ticketMedio>0){tTkt+=r.ticketMedio;nTkt++}
   });
-  var ef=tEf/d.length, efAdj=tEfAdj/d.length, ab=tAbs/d.length;
+  var ef=tEf/d.length, ab=tAbs/d.length;
 
   s('kv-cap',   fi(tHT)+' h');
   s('kv-carga', fi(tCarga)+' h');
@@ -7285,18 +7279,17 @@ function renderKPIsExtras(d){
     return
   }
 
-  var tHT=0,tHN=0,tExt=0,tF=0,tA=0,tAbs=0,tOEE=0,tEfAdj=0,tProd=0,tTkt=0,nTkt=0,tCarga2=0;
+  var tHT=0,tHN=0,tExt=0,tF=0,tA=0,tAbs=0,tOEE=0,tProd=0,tTkt=0,nTkt=0,tCarga2=0;
   var bestProd=0,bestMes='';
   d.forEach(function(r){
     tHT+=r.horasTotais; tHN+=r.horasNormais; tExt+=r.totalExtras; tCarga2+=(r.horasCarga||0);
     tF+=r.faltas; tA+=r.atraso; tAbs+=r.absenteismo;
-    tOEE+=r.eficiencia; tEfAdj+=r.eficienciaAdj;
+    tOEE+=r.eficiencia;
     tProd+=r.producaoReal;
     if(r.ticketMedio>0){tTkt+=r.ticketMedio;nTkt++}
     if(r.producaoReal>bestProd){bestProd=r.producaoReal;bestMes=r.mes+'/'+r.ano}
   });
   var ef=tOEE/d.length;
-  var oee=tEfAdj/d.length;
   var ab=tAbs/d.length;
   /* meses com dependência de HE dentro da meta (peças de HE ÷ entregues ≤ META_DEP_HE) */
   var acima90=d.filter(function(r){var v=depHE(r); return v!==null&&v<=META_DEP_HE}).length;
@@ -21277,9 +21270,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b87';
+var APP_VERSAO = 'b88';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b88', data:'17/09/2026', itens:[
+    'Botao Importar Excel sai da tela: o Excel deixou de ser fonte em b87 e o botao era a porta por onde uma segunda fonte voltaria. A importacao continua no codigo, para emergencia.',
+    'Eficiencia Ajustada (eficienciaAdj) aposentada: a formula herdada do Excel subtraia horas de pecas. Sai da tabela de Eficiencia & Horas, das somas e da regra de calculo. A coluna fica na planilha so como historico.'
+  ]},
   { v:'b87', data:'17/09/2026', itens:[
     'Fonte unica de dados: as colunas calculadas (totais de horas, absenteismo, producao sem extras, capacidade teorica, eficiencia, margem, custo) deixam de vir da planilha e passam a sair de DashUtils.normalizar, a cada leitura e a cada gravacao, pela mesma formula que o Excel usava. O Excel sai do fluxo: a HISTORICO guarda so o que nasce fora do painel (horas do RH, vendido, faturado, ticket, dias) e o reporte do ERP.',
     'Producao Real passa a ser o total do relatorio REPORTE do ERP (produtosReportados) a partir do ano em PROD_ERP_DESDE (meta nova, padrao 2026). Antes disso vale o digitado.',

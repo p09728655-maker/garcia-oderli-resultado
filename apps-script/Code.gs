@@ -97,7 +97,7 @@ var DICIONARIO_LINHAS = [
   ['prodSemExtras', 'calculado', 'painel', 'producaoReal × (1 − totalExtras ÷ horasNormais)'],
   ['meta', 'calculado', 'painel', 'producaoReal × horasNormais ÷ horasCarga (capacidade teórica; derivada do realizado, não é alvo)'],
   ['eficiencia', 'calculado', 'painel', 'prodSemExtras ÷ meta × 100'],
-  ['eficienciaAdj', 'calculado', 'painel', 'prodSemExtras ÷ (meta − faltas − atraso) × 100. Fórmula herdada do Excel: subtrai horas de peças. Mantida por compatibilidade; não usar em decisão.'],
+  ['eficienciaAdj', 'aposentada', 'histórico', 'Aposentada em b88. A fórmula herdada do Excel subtraía horas de peças. O painel não calcula nem exibe; a coluna fica só como histórico. Use Peças perdidas.'],
   ['margem', 'calculado', 'painel', '(90 − eficiencia) ÷ 90 × 100'],
   ['custoCap', 'calculado', 'painel', 'totalFaltaAtraso × (producaoReal ÷ horasNormais) × ticketMedio'],
   ['(todas as calculadas)', 'regra', 'painel', 'O painel refaz estas colunas a cada leitura e gravação (DashUtils.normalizar) e as grava de volta na HISTORICO ao sincronizar, para o Power BI e a planilha lerem o mesmo número. Não digitar.']
