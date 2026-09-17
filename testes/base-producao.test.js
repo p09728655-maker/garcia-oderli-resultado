@@ -235,17 +235,19 @@ const AGO26 = { mes:'AGO', ano:2026, colaboradores:95, horasCarga:14907, faltas:
 const caso = (extra) => U.integridade([Object.assign({}, AGO26, extra)]);
 const tipos = (I) => I.itens.map(i => i.nivel + ':' + i.tipo).sort().join(',');
 afirma('AGO/26 consistente: nenhum item, nível ok',    caso({}).itens.length === 0 && caso({}).nivel === 'ok');
-afirma('JUL/26 horas totais 18.222 (certo 18.822) → erro horas',
+afirma('JUL/26 horas totais 18.222 (certo 18.822) → planilha desatualizada (horas)',
   tipos(caso({ horasNormais:16871, totalExtras:1951, extra50:1627, extra100:324, horasTotais:18222,
                faltas:1897, totalFaltaAtraso:1897, absenteismo:11.24, horasCarga:17284,
                producaoReal:33291, prodSemExtras:29441.15, meta:32495.51, eficiencia:90.60, margem:-0.67,
-               qtdeFaturado:33658, produtosReportados:33291 })) === 'erro:horas');
+               qtdeFaturado:33658, produtosReportados:33291 })) === 'atencao:horas');
 const JUN = caso({ mes:'JUN', horasNormais:14388, horasCarga:14792, totalExtras:1589, extra50:1545, extra100:44,
   horasTotais:15977, faltas:1532, totalFaltaAtraso:1532, absenteismo:10.65, producaoReal:30851,
   prodSemExtras:27088, meta:29619, eficiencia:91.45, margem:-1.62, qtdeFaturado:30451, produtosReportados:30851 });
-afirma('JUN/26 produção do ERP + derivadas de 30.451 → 2 erros de derivada', tipos(JUN) === 'erro:derivada,erro:derivada');
-afirma('JUN/26 nível erro',                              JUN.nivel === 'erro' && JUN.erros === 2 && JUN.atencoes === 0);
-afirma('AGO/26 margem -4,47 (certo -4,74) → erro derivada', tipos(caso({ margem:-4.47 })) === 'erro:derivada');
+afirma('JUN/26 produção do ERP + derivadas de 30.451 → 2 planilha desatualizada', tipos(JUN) === 'atencao:derivada,atencao:derivada');
+afirma('JUN/26 nível atenção (o painel refaz a conta)',    JUN.nivel === 'atencao' && JUN.erros === 0 && JUN.atencoes === 2);
+afirma('AGO/26 margem -4,47 (certo -4,74) → planilha desatualizada', tipos(caso({ margem:-4.47 })) === 'atencao:derivada');
+afirma('mês com produção e sem horas normais → erro de entrada', tipos(caso({ horasNormais:0, horasTotais:0, absenteismo:0, prodSemExtras:0, meta:0, eficiencia:0, margem:0 })).indexOf('erro:entrada') === 0);
+afirma('faltas maiores que as horas normais → erro de entrada', tipos(caso({ faltas:20000, totalFaltaAtraso:20000, absenteismo:0, margem:0 })).indexOf('erro:entrada') >= 0);
 afirma('AGO/26 previsão 32.435 na HISTORICO → atenção plano', tipos(caso({ planoNaHistorico:32435 })) === 'atencao:plano');
 afirma('JAN/26 produção igual ao faturado → atenção cópia', tipos(caso({ qtdeFaturado:32364 })) === 'atencao:copia');
 afirma('produção 8% abaixo do reporte do ERP → atenção erp', tipos(caso({ produtosReportados:35000 })) === 'atencao:erp');
@@ -259,8 +261,8 @@ afirma('null não quebra',                                U.integridade(null).ni
    JAN, FEV e JUN/26 com a produção copiada do faturado (FEV e JUN já foram
    corrigidos na planilha viva; JAN segue a confirmar no ERP). */
 const IE = U.integridade(REGS);
-afirma('dataset embutido: único erro é a margem de DEZ/25',
-  IE.erros === 1 && IE.itens.filter(i => i.nivel === 'erro').every(i => i.mes === 'DEZ' && i.ano === 2025 && i.tipo === 'derivada'));
+afirma('dataset embutido: nenhum erro de entrada; a margem de DEZ/25 é planilha desatualizada',
+  IE.erros === 0 && IE.itens.filter(i => i.tipo === 'derivada').map(i => i.mes + '/' + i.ano).join(',') === 'DEZ/2025');
 afirma('dataset embutido: produção = faturado em JAN, FEV e JUN/26',
   IE.itens.filter(i => i.tipo === 'copia').map(i => i.mes + '/' + i.ano).join(',') === 'JAN/2026,FEV/2026,JUN/2026');
 afirma('dataset embutido: nenhuma soma de horas quebrada',
@@ -279,6 +281,38 @@ afirma('3,5% com limite 8 → dentro',        U.faixaLimite(3.5, 8).nivel === 'd
 afirma('14,1% com limite 6 → acima',        U.faixaLimite(14.1, 6).nivel === 'acima');
 afirma('limite 0 não quebra',               U.faixaLimite(5, 0).nivel === 'sem');
 afirma('valor inválido não quebra',         U.faixaLimite(NaN, 8).nivel === 'sem');
+
+/* ══ FONTE ÚNICA — normalizar() refaz as colunas calculadas pela regra ══ */
+sec('normalizar() — colunas calculadas saem da regra, não da planilha');
+const ENT = { mes:'AGO', ano:2026, colaboradores:95, horasCarga:14907, faltas:2050, atraso:0, horasNormais:14514,
+              extra50:1182, extra100:11.17, producaoReal:32364, ticketMedio:261.48, qtdeFaturado:31192, produtosReportados:32364 };
+const N = U.normalizar(ENT);
+ok('totalFaltaAtraso',     N.totalFaltaAtraso, 2050, 0.05);
+ok('totalExtras',          N.totalExtras,     1193.17, 0.05);
+ok('horasTotais',          N.horasTotais,     15707.17, 0.05);
+ok('absenteismo %',        N.absenteismo,     14.12, 0.01);
+ok('prodSemExtras',        N.prodSemExtras,   29703, 1);
+ok('meta (cap. teórica)',  N.meta,            31511, 1);
+ok('eficiencia %',         N.eficiencia,      94.26, 0.02);
+ok('margem %',             N.margem,          -4.74, 0.02);
+ok('custoCap R$',          N.custoCap,        1195289, 400);
+afirma('não altera o objeto de entrada',            ENT.horasTotais === undefined && ENT.meta === undefined);
+afirma('JUN/26: produção vem do ERP (30.851, não 30.451) e derivadas seguem',
+  (() => { const j = U.normalizar({ ano:2026, mes:'JUN', horasCarga:14792, faltas:1532, atraso:0, horasNormais:14388, extra50:1545, extra100:44, producaoReal:30451, produtosReportados:30851 });
+           return j.producaoReal === 30851 && Math.abs(j.prodSemExtras - 27444) <= 1 && Math.abs(j.meta - 30008) <= 1; })());
+afirma('2025 fica com o digitado (erpDesde padrão 2026)',
+  U.normalizar({ ano:2025, mes:'MAI', horasNormais:14400, horasCarga:15008, producaoReal:36450, produtosReportados:38729 }).producaoReal === 36450);
+afirma('erpDesde 2025 aplica o ERP também em 2025',
+  U.normalizar({ ano:2025, mes:'MAI', horasNormais:14400, horasCarga:15008, producaoReal:36450, produtosReportados:38729 }, { erpDesde:2025 }).producaoReal === 38729);
+afirma('sem reporte do ERP vale o digitado',
+  U.normalizar({ ano:2026, mes:'SET', horasNormais:100, horasCarga:110, producaoReal:200 }).producaoReal === 200);
+afirma('sem horas normais nada é derivado',
+  (() => { const z = U.normalizar({ ano:2026, mes:'SET', producaoReal:200, horasCarga:100 }); return z.meta === undefined && z.absenteismo === undefined; })());
+afirma('null não quebra',                            U.normalizar(null) === null);
+afirma('dataset embutido: normalizar() reproduz eficiência da planilha em 18 de 18 meses (±0,05)',
+  REGS.every(r => Math.abs(U.normalizar(r).eficiencia - r.eficiencia) <= 0.05));
+afirma('dataset embutido: normalizar() reproduz absenteísmo em 18 de 18 meses (±0,02)',
+  REGS.every(r => Math.abs(U.normalizar(r).absenteismo - r.absenteismo) <= 0.02));
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

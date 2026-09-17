@@ -4317,7 +4317,11 @@ body.lid-on{overflow:hidden}
       </div>
       <div class="fg">
         <label class="lbl">Horas Carga (h)</label>
-        <input type="number" id="fCarga" min="0" step="0.1" placeholder="Ex: 16000">
+        <input type="number" id="fCarga" min="0" step="0.1" placeholder="Ex: 14900">
+      </div>
+      <div class="fg">
+        <label class="lbl">Horas Normais trabalhadas (h) *</label>
+        <input type="number" id="fHN" min="0" step="0.1" placeholder="Ex: 14500">
       </div>
       <div class="fg">
         <label class="lbl">Faltas (h)</label>
@@ -4336,26 +4340,39 @@ body.lid-on{overflow:hidden}
         <input type="number" id="fE100" min="0" step="0.1" placeholder="Ex: 500">
       </div>
       <div class="fg">
+        <label class="lbl">Horas de Férias (h)</label>
+        <input type="number" id="fFerias" min="0" step="0.1" placeholder="Ex: 1000">
+      </div>
+      <div class="fg">
+        <label class="lbl">Dias Trabalhados</label>
+        <input type="number" id="fDias" min="0" max="31" step="1" placeholder="Ex: 21">
+      </div>
+      <div class="fg">
         <label class="lbl">Produção Real (peças)</label>
         <input type="number" id="fProd" min="0" step="1" placeholder="Ex: 30000">
+        <div id="fProdHint" style="font-size:.62rem;color:var(--t3);margin-top:3px;line-height:1.35"></div>
       </div>
       <div class="fg">
         <label class="lbl">Ticket Médio (R$)</label>
         <input type="number" id="fTkt" min="0" step="0.01" placeholder="Ex: 250.00">
       </div>
-      <div class="fg full">
-        <label class="lbl">Meta Mensal (peças)</label>
-        <input type="number" id="fMeta" min="0" step="1" placeholder="Ex: 32000 — opcional">
+      <div class="fg">
+        <label class="lbl">Qtde Vendida (peças)</label>
+        <input type="number" id="fVend" min="0" step="1" placeholder="Ex: 35000">
+      </div>
+      <div class="fg">
+        <label class="lbl">Qtde Faturada (peças)</label>
+        <input type="number" id="fFat" min="0" step="1" placeholder="Ex: 31000">
       </div>
       <div class="fg full">
-        <label class="lbl">Cálculos Automáticos</label>
+        <label class="lbl">Calculado pela regra do painel (não se digita)</label>
         <div class="pGrid">
-          <div class="pi"><label class="lbl">H. Normais</label><div class="pv" id="pHN">--</div></div>
           <div class="pi"><label class="lbl">H. Totais</label><div class="pv" id="pHT">--</div></div>
+          <div class="pi"><label class="lbl">Prod. s/ extras</label><div class="pv" id="pPS">--</div></div>
+          <div class="pi"><label class="lbl">Cap. teórica</label><div class="pv" id="pMeta">--</div></div>
           <div class="pi"><label class="lbl">Eficiência</label><div class="pv" id="pEf">--</div></div>
           <div class="pi"><label class="lbl">Absenteísmo</label><div class="pv" id="pAb">--</div></div>
-          <div class="pi"><label class="lbl">Atingimento</label><div class="pv" id="pAt">--</div></div>
-          <div class="pi"><label class="lbl">H. Perdidas</label><div class="pv" id="pHF">--</div></div>
+          <div class="pi"><label class="lbl">% na hora extra</label><div class="pv" id="pHE">--</div></div>
         </div>
       </div>
     </div>
@@ -4435,6 +4452,7 @@ var SK      = 'dash_v3';
 var META_ABS    = 3;   /* dentro da meta                */
 var ABS_ATENCAO = 6;   /* acima disto, crítico          */
 var META_DEP_HE = 8;   /* % do volume vindo de hora extra */
+var PROD_ERP_DESDE = 2026;   /* a partir deste ano producaoReal = total do reporte do ERP (produtosReportados) */
 /* Ticket médio (R$ por peça faturada). Os R$ 250 estavam cravados em seis
    lugares do Resumo. Registro: a média ponderada dos 18 meses fechados é
    R$ 247,69 — ou seja, 250 é a média histórica, não uma meta decidida.
@@ -4456,7 +4474,7 @@ var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
    localStorage para a primeira pintura não sair com o padrão e depois trocar.
    Chaves aceitas: só as constantes abaixo, para uma célula errada não virar
    variável solta. */
-var METAS_CHAVES = ['META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS'];   /* META_EF aposentada com a Independência de HE */
+var METAS_CHAVES = ['META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS','PROD_ERP_DESDE'];   /* META_EF aposentada com a Independência de HE */
 var METAS_ORIGEM = {};   /* chave → { valor, unidade, vigencia, origem, observacao } */
 function aplicarMetas(m, avisar){
   if(!m || typeof m!=='object') return 0;
@@ -4485,7 +4503,8 @@ var METAS_ROTULOS = {
   ABS_ATENCAO: ['Absenteísmo — crítico acima de', '%', 'acima disto o card fica vermelho'],
   META_DEP_HE: ['Dependência de hora extra máxima', '% do volume', 'parcela da entrega que pode vir de HE'],
   META_TICKET: ['Ticket médio mínimo',         'R$',  'R$ por peça faturada'],
-  DUTEIS:      ['Dias úteis de referência',    'dias','capacidade teórica e carteira em dias']
+  DUTEIS:      ['Dias úteis de referência',    'dias','capacidade teórica e carteira em dias'],
+  PROD_ERP_DESDE: ['Produção pelo reporte do ERP desde', 'ano', 'a partir deste ano a Produção Real é o total do relatório REPORTE (produtos acabados); antes vale o digitado']
 };
 function abrirMetas(){
   if(document.getElementById('metas-overlay')) return;
@@ -4824,8 +4843,18 @@ function _tryRestoreFromIDB(onDone){
 }
 
 /* ── STORAGE (API pública — mesma interface de antes) ── */
-function load(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
+/* Fonte única: tudo que sai do armazenamento passa por DashUtils.normalizar,
+   e tudo que entra também. As colunas calculadas nunca vêm da planilha —
+   vêm da regra. loadBruto() existe só para a conferência de integridade
+   dizer quando a planilha está desatualizada em relação à regra. */
+function normalizarRegistro(r){
+  if(!(window.DashUtils&&DashUtils.normalizar)) return r;
+  return DashUtils.normalizar(r,{ metaEf:90, erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2026 });
+}
+function loadBruto(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
+function load(){ return loadBruto().map(normalizarRegistro); }
 function save(d){
+  d=(d||[]).map(normalizarRegistro);
   localStorage.setItem(SK,JSON.stringify(d));
   _idbSave(d); /* backup persistente no IndexedDB */
   /* Notifica todos os módulos registrados que os dados mudaram */
@@ -4905,7 +4934,8 @@ function _syncStatus(estado){
 var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFaltaAtraso',
   'absenteismo','horasNormais','extra50','extra100','totalExtras','horasTotais',
   'producaoReal','prodSemExtras','meta','eficiencia','eficienciaAdj','margem',
-  'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao','horasFerias'];
+  'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao','horasFerias',
+  'produtosReportados','volumesProduzidos','quilosProduzidos','planoNaHistorico'];
 
 /* ── TRADUÇÃO DE CABEÇALHO ──
    Quase toda coluna da planilha já usa o nome do campo (producaoReal,
@@ -5451,6 +5481,7 @@ window.DashUtils = (function() {
     opts = opts || {};
     var metaEf = opts.metaEf > 0 ? opts.metaEf : 90;   /* a planilha fixa 90% na coluna Margem */
     var tolErp = opts.tolErp >= 0 ? opts.tolErp : 1;    /* % de diferença tolerada contra o ERP */
+    var erpDesde = opts.erpDesde > 0 ? opts.erpDesde : 2026;
     var itens = [], meses = 0, comItem = {};
     function add(r, nivel, tipo, msg, encontrado, esperado) {
       itens.push({ mes:r.mes, ano:r.ano, nivel:nivel, tipo:tipo, msg:msg,
@@ -5464,27 +5495,31 @@ window.DashUtils = (function() {
       meses++;
       var P = r.producaoReal || 0, H = r.horasNormais || 0, K = r.totalExtras || 0,
           C = r.horasCarga || 0, F = r.totalFaltaAtraso || 0;
-      /* 1 · somas da própria linha */
+      /* 0 · entrada impossível: isto o painel não tem como consertar sozinho */
+      if (H <= 0) add(r, 'erro', 'entrada', 'Mês com produção e sem horas normais: lançar as horas do RH', H, null);
+      if (H > 0 && F >= H) add(r, 'erro', 'entrada', 'Faltas + atrasos maiores que as horas normais', F, H);
+      /* 1 · somas da própria linha — com a conta no painel (DashUtils.normalizar),
+         divergência aqui é planilha desatualizada, não número errado na tela */
       if (r.horasTotais > 0 && dif(r.horasTotais, H + K, 1))
-        add(r, 'erro', 'horas', 'Horas totais ≠ horas normais + extras', r.horasTotais, H + K);
+        add(r, 'atencao', 'horas', 'Planilha desatualizada: horas totais ≠ horas normais + extras', r.horasTotais, H + K);
       if (K > 0 && (r.extra50 > 0 || r.extra100 > 0) && dif(K, (r.extra50 || 0) + (r.extra100 || 0), 1))
-        add(r, 'erro', 'horas', 'Total de extras ≠ extras 50% + 100%', K, (r.extra50 || 0) + (r.extra100 || 0));
+        add(r, 'atencao', 'horas', 'Planilha desatualizada: total de extras ≠ extras 50% + 100%', K, (r.extra50 || 0) + (r.extra100 || 0));
       if (F > 0 && (r.faltas > 0 || r.atraso > 0) && dif(F, (r.faltas || 0) + (r.atraso || 0), 1))
-        add(r, 'erro', 'horas', 'Faltas + atrasos ≠ total lançado', F, (r.faltas || 0) + (r.atraso || 0));
-      /* 2 · colunas derivadas, refeitas a partir dos inputs pelo método da planilha */
+        add(r, 'atencao', 'horas', 'Planilha desatualizada: faltas + atrasos ≠ total lançado', F, (r.faltas || 0) + (r.atraso || 0));
+      /* 2 · colunas derivadas gravadas na planilha, contra a regra do painel */
       if (H > 0 && r.absenteismo > 0 && dif(r.absenteismo, F / H * 100, 0.05))
-        add(r, 'erro', 'derivada', 'Absenteísmo ≠ (faltas + atrasos) ÷ horas normais', r.absenteismo, F / H * 100);
+        add(r, 'atencao', 'derivada', 'Planilha desatualizada: absenteísmo ≠ (faltas + atrasos) ÷ horas normais', r.absenteismo, F / H * 100);
       if (H > 0 && r.prodSemExtras > 0 && pctDif(r.prodSemExtras, P * (1 - K / H)) > 0.5)
-        add(r, 'erro', 'derivada', 'Produção sem extras calculada sobre outra produção', r.prodSemExtras, P * (1 - K / H));
+        add(r, 'atencao', 'derivada', 'Planilha desatualizada: produção sem extras calculada sobre outra produção', r.prodSemExtras, P * (1 - K / H));
       if (H > 0 && C > 0 && r.meta > 0 && pctDif(r.meta, P * H / C) > 0.5)
-        add(r, 'erro', 'derivada', 'Capacidade teórica (meta) calculada sobre outra produção', r.meta, P * H / C);
+        add(r, 'atencao', 'derivada', 'Planilha desatualizada: capacidade teórica (meta) calculada sobre outra produção', r.meta, P * H / C);
       if (r.meta > 0 && r.prodSemExtras > 0 && r.eficiencia > 0 && dif(r.eficiencia, r.prodSemExtras / r.meta * 100, 0.05))
-        add(r, 'erro', 'derivada', 'Eficiência ≠ produção sem extras ÷ meta', r.eficiencia, r.prodSemExtras / r.meta * 100);
+        add(r, 'atencao', 'derivada', 'Planilha desatualizada: eficiência ≠ produção sem extras ÷ meta', r.eficiencia, r.prodSemExtras / r.meta * 100);
       if (r.eficiencia > 0 && typeof r.margem === 'number' && r.margem !== 0 && dif(r.margem, (metaEf - r.eficiencia) / metaEf * 100, 0.05))
-        add(r, 'erro', 'derivada', 'Margem ≠ (' + metaEf + '% − eficiência) ÷ ' + metaEf + '%', r.margem, (metaEf - r.eficiencia) / metaEf * 100);
+        add(r, 'atencao', 'derivada', 'Planilha desatualizada: margem ≠ (' + metaEf + '% − eficiência) ÷ ' + metaEf + '%', r.margem, (metaEf - r.eficiencia) / metaEf * 100);
       /* 3 · contra as outras fontes */
       if (r.produtosReportados > 0 && pctDif(P, r.produtosReportados) > tolErp)
-        add(r, 'atencao', 'erp', 'Produção real difere do reporte do ERP', P, r.produtosReportados);
+        add(r, 'atencao', 'erp', (r.ano >= erpDesde ? 'Planilha desatualizada: produção real difere do reporte do ERP (o painel usa o ERP)' : 'Produção real difere do reporte do ERP'), P, r.produtosReportados);
       if (r.qtdeFaturado > 0 && P === r.qtdeFaturado)
         add(r, 'atencao', 'copia', 'Produção real igual ao faturado: conferir com o reporte do ERP', P, r.produtosReportados > 0 ? r.produtosReportados : null);
       if (r.planoNaHistorico > 0 && r.previsaoProducao > 0 && dif(r.planoNaHistorico, r.previsaoProducao, 0.5))
@@ -5494,6 +5529,62 @@ window.DashUtils = (function() {
     return { itens:itens, erros:erros, atencoes:itens.length - erros, meses:meses,
              mesesComItem:Object.keys(comItem).length,
              nivel: erros > 0 ? 'erro' : (itens.length ? 'atencao' : 'ok') };
+  }
+
+  /* ── FONTE ÚNICA: as colunas calculadas saem daqui ────────────────────────
+     A HISTORICO guarda o que nasce fora do painel: horas do RH, produção
+     reportada pelo ERP, vendido, faturado, ticket, dias. Tudo o que é conta
+     (totais de horas, absenteísmo, produção sem extras, capacidade teórica,
+     eficiência, margem, custo) é refeito aqui, a cada leitura e a cada
+     gravação, pelo método que a planilha ANALISE usava — a mesma fórmula, num
+     lugar só. Antes as contas viviam no Excel e eram coladas no Sheets:
+     JUN/26 ficou com a produção de uma base e as derivadas de outra, e três
+     pessoas não viram. Com a conta no painel, esse erro deixa de existir.
+       producaoReal     = produtosReportados (total do relatório REPORTE do
+                          ERP, produtos acabados) a partir de cfg.erpDesde;
+                          antes disso vale o digitado
+       totalFaltaAtraso = faltas + atraso
+       totalExtras      = extra50 + extra100
+       horasTotais      = horasNormais + totalExtras
+       absenteismo      = totalFaltaAtraso ÷ horasNormais × 100
+       prodSemExtras    = producaoReal × (1 − totalExtras ÷ horasNormais)
+       meta             = producaoReal × horasNormais ÷ horasCarga
+       eficiencia       = prodSemExtras ÷ meta × 100
+       eficienciaAdj    = prodSemExtras ÷ (meta − faltas − atraso) × 100 —
+                          herdada da planilha, subtrai horas de peças; fica
+                          por compatibilidade até ser aposentada
+       margem           = (metaEf − eficiencia) ÷ metaEf × 100, metaEf = 90
+       custoCap         = totalFaltaAtraso × (producaoReal ÷ horasNormais) × ticketMedio
+     Entrada ausente → a derivada correspondente fica como estava. Não muda
+     o objeto recebido: devolve uma cópia. */
+  function normalizar(r, cfg) {
+    if (!r) return r;
+    cfg = cfg || {};
+    var metaEf = cfg.metaEf > 0 ? cfg.metaEf : 90, desde = cfg.erpDesde > 0 ? cfg.erpDesde : 2026;
+    var o = {}; for (var k in r) o[k] = r[k];
+    var n  = function (v) { return (typeof v === 'number' && isFinite(v)) ? v : 0; };
+    var r1 = function (v) { return Math.round(v * 10) / 10; };
+    var r2 = function (v) { return Math.round(v * 100) / 100; };
+    if (n(o.produtosReportados) > 0 && n(o.ano) >= desde) o.producaoReal = Math.round(o.produtosReportados);
+    if (n(o.faltas) > 0 || n(o.atraso) > 0 || n(o.horasNormais) > 0) o.totalFaltaAtraso = r1(n(o.faltas) + n(o.atraso));
+    if (n(o.extra50) > 0 || n(o.extra100) > 0 || n(o.horasNormais) > 0) o.totalExtras = r1(n(o.extra50) + n(o.extra100));
+    var H = n(o.horasNormais), K = n(o.totalExtras), F = n(o.totalFaltaAtraso), P = n(o.producaoReal), C = n(o.horasCarga);
+    if (H > 0) {
+      o.horasTotais = r1(H + K);
+      o.absenteismo = r2(F / H * 100);
+      if (P > 0) {
+        o.prodSemExtras = Math.round(P * (1 - K / H));
+        if (C > 0) {
+          o.meta = Math.round(P * H / C);
+          o.eficiencia = r2(o.prodSemExtras / o.meta * 100);
+          var den = o.meta - n(o.faltas) - n(o.atraso);
+          o.eficienciaAdj = den > 0 ? r2(o.prodSemExtras / den * 100) : 0;
+          o.margem = r2((metaEf - o.eficiencia) / metaEf * 100);
+        }
+        if (n(o.ticketMedio) > 0) o.custoCap = r2(F * (P / H) * n(o.ticketMedio));
+      }
+    }
+    return o;
   }
 
   /* ── FAIXA CONTRA UM LIMITE ──────────────────────────────────────────────
@@ -5511,7 +5602,7 @@ window.DashUtils = (function() {
   return { getDias:getDias, getFat:getFat, getProd:getProd,
            periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
-           integridade:integridade, faixaLimite:faixaLimite,
+           integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
 
@@ -6578,13 +6669,17 @@ function editarReg(id){
   document.getElementById('fAno').value   =r.ano;
   document.getElementById('fColabs').value=r.colaboradores||'';
   document.getElementById('fCarga').value =r.horasCarga||'';
+  document.getElementById('fHN').value    =r.horasNormais||'';
   document.getElementById('fFaltas').value=r.faltas||'';
   document.getElementById('fAtraso').value=r.atraso||'';
   document.getElementById('fE50').value   =r.extra50||'';
   document.getElementById('fE100').value  =r.extra100||'';
+  document.getElementById('fFerias').value=r.horasFerias||'';
+  document.getElementById('fDias').value  =r.diasTrabalhados||'';
   document.getElementById('fProd').value  =r.producaoReal||'';
   document.getElementById('fTkt').value   =r.ticketMedio||'';
-  document.getElementById('fMeta').value  =r.meta||'';
+  document.getElementById('fVend').value  =r.qtdeVendida||'';
+  document.getElementById('fFat').value   =r.qtdeFaturado||'';
   calcPrev();
   document.getElementById('modForm').classList.add('on')
 }
@@ -6592,93 +6687,71 @@ function editarReg(id){
 function fecharModal(){document.getElementById('modForm').classList.remove('on')}
 
 function limparForm(){
-  ['fMes','fAno','fColabs','fCarga','fFaltas','fAtraso','fE50','fE100','fProd','fTkt','fMeta']
+  ['fMes','fAno','fColabs','fCarga','fHN','fFaltas','fAtraso','fE50','fE100','fFerias','fDias','fProd','fTkt','fVend','fFat']
     .forEach(function(id){document.getElementById(id).value=''});
-  ['pHN','pHT','pEf','pAb','pAt','pHF'].forEach(function(id){
+  var h0=document.getElementById('fProdHint'); if(h0) h0.textContent='';
+  ['pHT','pPS','pMeta','pEf','pAb','pHE'].forEach(function(id){
     var el=document.getElementById(id); el.textContent='--'; el.className='pv'
   })
 }
 
+/* Lê as entradas do formulário como um registro. Ao editar, parte do
+   registro existente para não perder o que não está no formulário
+   (produtosReportados, previsão, volumes). */
+function _formRegistro(){
+  var g=function(id,inteiro){ var v=document.getElementById(id).value; var n=inteiro?parseInt(v,10):parseFloat(v); return isFinite(n)?n:0; };
+  var base=(editMode&&editId)?(loadBruto().find(function(x){ return x.id===editId; })||{}):{};
+  var rec={}; for(var k in base) rec[k]=base[k];
+  rec.id=editId||rec.id||uid();
+  rec.mes=document.getElementById('fMes').value.trim();
+  rec.ano=parseInt(document.getElementById('fAno').value,10)||0;
+  rec.colaboradores=g('fColabs',true); rec.horasCarga=g('fCarga'); rec.horasNormais=g('fHN');
+  rec.faltas=g('fFaltas'); rec.atraso=g('fAtraso'); rec.extra50=g('fE50'); rec.extra100=g('fE100');
+  rec.horasFerias=g('fFerias'); rec.diasTrabalhados=g('fDias',true); rec.producaoReal=g('fProd',true);
+  rec.ticketMedio=g('fTkt'); rec.qtdeVendida=g('fVend',true); rec.qtdeFaturado=g('fFat',true);
+  return rec;
+}
 function calcPrev(){
-  var carga  = parseFloat(document.getElementById('fCarga').value)||0;
-  var faltas = parseFloat(document.getElementById('fFaltas').value)||0;
-  var atraso = parseFloat(document.getElementById('fAtraso').value)||0;
-  var e50    = parseFloat(document.getElementById('fE50').value)||0;
-  var e100   = parseFloat(document.getElementById('fE100').value)||0;
-  var prod   = parseFloat(document.getElementById('fProd').value)||0;
-  var meta   = parseFloat(document.getElementById('fMeta').value)||0;
-  var colabs = parseFloat(document.getElementById('fColabs').value)||0;
-
-  var hn  = Math.max(0, carga - faltas - atraso);
-  var tot = hn + e50 + e100;
-  var ef  = tot>0?(hn/tot)*100:0;
-  var ab  = carga>0?((faltas+atraso)/carga)*100:0;
-  var at  = meta>0?(prod/meta)*100:null;
-  var hfp = (faltas+atraso)>0?(faltas+atraso):null;
-
+  var rec=normalizarRegistro(_formRegistro());
   function pSet(id,val,cls){
-    var el=document.getElementById(id); el.textContent=val; el.className='pv '+(cls||'')
+    var el=document.getElementById(id); if(!el) return; el.textContent=val; el.className='pv '+(cls||'');
   }
-  pSet('pHN', hn>0?fi(hn)+' h':'--', '');
-  pSet('pHT', tot>0?fi(tot)+' h':'--', '');
-  pSet('pEf', tot>0?f(ef)+'%':'--', ef>=90?'v2':ef>=80?'y2':'r2');
-  pSet('pAb', carga>0?f(ab)+'%':'--', ab>6?'r2':ab>3?'y2':'v2');
-  pSet('pAt', at!==null?f(at)+'%':'--', at!==null?(at>=100?'ok2':'nok2'):'');
-  pSet('pHF', hfp!==null?(fi(hfp)+' h'):'--',
-    hfp!==null?(hfp===0?'v2':tot>0&&(hfp/tot)*100>10?'r2':tot>0&&(hfp/tot)*100>5?'y2':'v2'):'')
+  var H=rec.horasNormais||0, P=rec.producaoReal||0;
+  var he=(P>0&&rec.prodSemExtras>0)?((P-rec.prodSemExtras)/P)*100:null;
+  var lim=(typeof META_DEP_HE!=='undefined')?META_DEP_HE:8, absCrit=(typeof ABS_ATENCAO!=='undefined')?ABS_ATENCAO:6, absMeta=(typeof META_ABS!=='undefined')?META_ABS:3;
+  pSet('pHT',   H>0?fi(rec.horasTotais)+' h':'--','');
+  pSet('pPS',   (H>0&&P>0)?fi(rec.prodSemExtras)+' pç':'--','');
+  pSet('pMeta', (H>0&&P>0&&rec.horasCarga>0)?fi(rec.meta)+' pç':'--','');
+  pSet('pEf',   (rec.eficiencia>0)?f(rec.eficiencia)+'%':'--', rec.eficiencia>=90?'v2':rec.eficiencia>=80?'y2':'r2');
+  pSet('pAb',   H>0?f(rec.absenteismo)+'%':'--', rec.absenteismo>absCrit?'r2':rec.absenteismo>absMeta?'y2':'v2');
+  pSet('pHE',   he!==null?f(he)+'%':'--', he===null?'':(he<=lim?'v2':he<=15?'y2':'r2'));
+  var hint=document.getElementById('fProdHint');
+  if(hint){
+    var desde=(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2026;
+    hint.textContent=(rec.produtosReportados>0&&rec.ano>=desde)
+      ? 'Vem do reporte do ERP: '+fi(rec.produtosReportados)+' peças. O que for digitado aqui é ignorado.'
+      : (rec.ano>=desde ? 'Sem reporte do ERP para este mês ainda: vale o digitado até o reporte entrar.' : 'Antes de '+desde+' vale o digitado.');
+  }
 }
 
 function salvarForm(){
-  var mes   = document.getElementById('fMes').value.trim();
-  var ano   = parseInt(document.getElementById('fAno').value);
-  var colabs= parseInt(document.getElementById('fColabs').value)||0;
-  var carga = parseFloat(document.getElementById('fCarga').value)||0;
-  var faltas= parseFloat(document.getElementById('fFaltas').value)||0;
-  var atraso= parseFloat(document.getElementById('fAtraso').value)||0;
-  var e50   = parseFloat(document.getElementById('fE50').value)||0;
-  var e100  = parseFloat(document.getElementById('fE100').value)||0;
-  var prod  = parseInt(document.getElementById('fProd').value)||0;
-  var tkt   = parseFloat(document.getElementById('fTkt').value)||0;
-  var meta  = parseInt(document.getElementById('fMeta').value)||0;
-
-  if(!mes){toast('Selecione o mês.','er');return}
-  if(!ano||ano<2020){toast('Ano inválido.','er');return}
-  if(carga<=0){toast('Horas Carga é obrigatório.','er');return}
-
-  var hn  = Math.max(0,carga-faltas-atraso);
-  var tot = hn+e50+e100;
-  /* Mesmas contas do importador e do DashUtils: absenteísmo sobre h. NORMAIS;
-     sem hora extra a produção inteira é jornada normal, senão não há como
-     separar e a base "sem extras" fica em branco (o painel avisa). */
-  var pSem = (e50+e100)>0 ? 0 : prod;
-  var ef  = (meta>0&&pSem>0)?(pSem/meta)*100:0;
-  var ab  = hn>0?((faltas+atraso)/hn)*100:0;
-  var dados=load();
-
-  if(dados.find(function(r){return r.mes===mes&&r.ano===ano&&r.id!==editId})){
-    toast(mes+'/'+ano+' já cadastrado.','wn'); return
+  var rec=_formRegistro();
+  if(!rec.mes){toast('Selecione o mês.','er');return}
+  if(!rec.ano||rec.ano<2020){toast('Ano inválido.','er');return}
+  if(rec.horasNormais<=0){toast('Horas Normais trabalhadas é obrigatório: é a base do absenteísmo e das peças por hora.','er');return}
+  if(rec.horasCarga<=0){toast('Horas Carga é obrigatório.','er');return}
+  if(rec.faltas+rec.atraso>=rec.horasNormais){toast('Faltas + atrasos não podem ser maiores que as horas normais.','er');return}
+  var dados=loadBruto();
+  if(dados.find(function(r){return r.mes===rec.mes&&r.ano===rec.ano&&r.id!==editId})){
+    toast(rec.mes+'/'+rec.ano+' já cadastrado.','wn'); return
   }
-
-  var rec={
-    id:editId||uid(), mes:mes, ano:ano, colaboradores:colabs,
-    horasCarga:carga, faltas:faltas, atraso:atraso,
-    totalFaltaAtraso:faltas+atraso,
-    absenteismo:parseFloat(ab.toFixed(2)),
-    horasNormais:parseFloat(hn.toFixed(1)),
-    extra50:e50, extra100:e100,
-    totalExtras:parseFloat((e50+e100).toFixed(1)),
-    horasTotais:parseFloat(tot.toFixed(1)),
-    producaoReal:prod, prodSemExtras:pSem, meta:meta,
-    eficiencia:parseFloat(ef.toFixed(2)),
-    eficienciaAdj:0,
-    margem:0, ticketMedio:tkt, custoCap:0
-  };
-
+  /* As derivadas saem de normalizarRegistro() dentro de save(): não há
+     segunda conta aqui. */
   if(editMode){
     dados=dados.map(function(r){return r.id===editId?rec:r});
-    toast(mes+'/'+ano+' atualizado.','ok')
+    toast(rec.mes+'/'+rec.ano+' atualizado.','ok')
   } else {
-    dados.push(rec); toast(mes+'/'+ano+' adicionado.','ok')
+    dados.push(rec); toast(rec.mes+'/'+rec.ano+' adicionado.','ok')
   }
   save(sortD(dados)); fecharModal(); render()
 }
@@ -6746,8 +6819,8 @@ function resetDados(){
 /* ── EVENTOS ── */
 document.getElementById('modForm').addEventListener('click',function(e){if(e.target===this)fecharModal()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')fecharModal()});
-['fCarga','fFaltas','fAtraso','fE50','fE100','fProd','fMeta','fColabs']
-  .forEach(function(id){document.getElementById(id).addEventListener('input',calcPrev)});
+['fAno','fColabs','fCarga','fHN','fFaltas','fAtraso','fE50','fE100','fFerias','fDias','fProd','fTkt','fVend','fFat']
+  .forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('input',calcPrev); });
 var rsz;
 /* Redesenha a página ativa por completo (evita canvas esticado/borrado ao mudar de largura) */
 function _redesenharPaginaAtiva(){
@@ -19659,9 +19732,12 @@ function printAtiva(){
       +';border-radius:var(--r);padding:7px 12px;margin-bottom:8px;font-size:.78rem;color:var(--t1)"'+(I.nivel==='erro'?' open':'')+'>'
       +'<summary style="cursor:pointer;font-weight:700;color:'+cor+'">'+titulo+'</summary>'
       +(I.itens.length
-        ? '<div style="color:var(--t3);margin:6px 0 4px;line-height:1.4">Conferido contra a própria linha (somas e colunas calculadas), '
-          +'o reporte do ERP e o Plano Mestre. Erro se corrige no Excel e reexporta; ponto de atenção pede conferência na origem. '
-          +'Não apresente com erro em aberto.</div>'
+        ? '<div style="color:var(--t3);margin:6px 0 4px;line-height:1.4">Conferido contra a própria linha, o reporte do ERP e o Plano Mestre. '
+          +'As colunas calculadas saem da regra do painel; "planilha desatualizada" significa que a HISTORICO ainda guarda a conta antiga. '
+          +'Erro é entrada impossível: corrige na HISTORICO. Não apresente com erro em aberto.</div>'
+          +(I.itens.some(function(i){ return i.tipo==='horas'||i.tipo==='derivada'||(i.tipo==='erp'&&/desatualizada/.test(i.msg)); })
+            ? '<button type="button" class="btn btn-g btn-sm reu-noprint" style="margin:2px 0 8px" onclick="reuGravarCalculos()" title="Recalcula todos os meses pela regra do painel e envia para a HISTORICO">Gravar cálculos na planilha</button>'
+            : '')
           +'<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:.74rem">'
           +'<thead><tr style="color:var(--t3);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;text-align:left">'
           +'<th style="padding:3px 6px">Mês</th><th style="padding:3px 6px">Nível</th><th style="padding:3px 6px">O que não fecha</th>'
@@ -20157,7 +20233,8 @@ function printAtiva(){
 
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
-    corpo.innerHTML=blocoIntegridade(DashUtils.integridade(doAno), ano)
+    var bruto=(typeof loadBruto==='function')?loadBruto().filter(function(r){ return r.ano===ano; }):doAno;
+    corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2026}), ano)
       +manchete
       +faixa('1','O plano cabe sem hora extra?', r1, c1, b2)
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
@@ -20711,6 +20788,14 @@ function printAtiva(){
     ov.querySelector('#lid-prev').disabled=_lidIdx===0;
     ov.querySelector('#lid-next').disabled=_lidIdx===_lidSlides.length-1;
   }
+  /* Recalcula tudo pela regra e manda para a HISTORICO: save() normaliza e
+     sincroniza. Depois disso a planilha e o painel dizem o mesmo número. */
+  window.reuGravarCalculos=function(){
+    if(typeof save!=='function'||typeof load!=='function') return;
+    save(load());
+    if(typeof toast==='function') toast('Cálculos refeitos pela regra do painel e enviados à planilha.','ok');
+    try{ render(); }catch(e){}
+  };
   window.reuLideres=function(){
     var M=lidModelo();
     if(!M){ if(typeof toast==='function') toast('Nenhum mês fechado para apresentar.','wn'); return; }
@@ -21192,9 +21277,15 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b86';
+var APP_VERSAO = 'b87';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b87', data:'17/09/2026', itens:[
+    'Fonte unica de dados: as colunas calculadas (totais de horas, absenteismo, producao sem extras, capacidade teorica, eficiencia, margem, custo) deixam de vir da planilha e passam a sair de DashUtils.normalizar, a cada leitura e a cada gravacao, pela mesma formula que o Excel usava. O Excel sai do fluxo: a HISTORICO guarda so o que nasce fora do painel (horas do RH, vendido, faturado, ticket, dias) e o reporte do ERP.',
+    'Producao Real passa a ser o total do relatorio REPORTE do ERP (produtosReportados) a partir do ano em PROD_ERP_DESDE (meta nova, padrao 2026). Antes disso vale o digitado.',
+    'Formulario de mes so com entradas: ganha Horas Normais (obrigatorio), ferias, dias, vendido e faturado; perde Meta Mensal. O bloco calculado mostra o que a regra vai gravar e avisa quando a producao vem do ERP.',
+    'Integridade: divergencia em coluna calculada vira "planilha desatualizada" (amarelo) com o botao Gravar calculos na planilha, que recalcula tudo e sincroniza. Erro (vermelho) fica para entrada impossivel: mes sem horas normais, faltas maiores que as horas.'
+  ]},
   { v:'b86', data:'17/09/2026', itens:[
     'Apresentacao para lideres embutida: botao Lideres na Reuniao abre dez telas geradas dos dados do mes na hora — resumo, mes a mes, hora extra, faltas, pecas por hora, vendido x produzido x faturado, plano dos meses abertos, simulacao de presenca e fechamento em tres linhas. Setas navegam, ESC sai, Baixar PDF gera a versao em papel, uma tela por pagina.',
     'Cada frase e uma regra sobre o dado, nao texto fixo: meses com plano cumprido sao contados; "dentro / bem perto / acima do limite" sai de DashUtils.faixaLimite; "melhor do ano" so e dito na dimensao em que e verdade; a simulacao de falta e linear e diz isso na tela. Substitui o deck montado a mao que saiu com quatro frases sem base em SET/26.'

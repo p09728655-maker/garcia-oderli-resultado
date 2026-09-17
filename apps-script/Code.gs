@@ -65,8 +65,56 @@ var METAS_PADRAO = [
   ['ABS_ATENCAO', 6,   '%',   '2026-01', 'RH',        'Absenteísmo acima disto é crítico'],
   ['META_DEP_HE', 8,   '%',   '2026-01', 'PPCP',      'Máximo do volume entregue que pode vir de hora extra'],
   ['META_TICKET', 250, 'R$',  '2026-01', 'Comercial', 'Ticket médio mínimo (R$ por peça faturada). 250 é a média histórica dos 18 meses (R$ 247,69), não uma meta decidida'],
-  ['DUTEIS',      22,  'dias','2026-01', 'PPCP',      'Dias úteis de referência por mês (capacidade teórica e carteira em dias)']
+  ['DUTEIS',      22,  'dias','2026-01', 'PPCP',      'Dias úteis de referência por mês (capacidade teórica e carteira em dias)'],
+  ['PROD_ERP_DESDE', 2026, 'ano', '2026-01', 'PPCP',   'A partir deste ano, producaoReal = produtosReportados (total do relatório REPORTE do ERP, produtos acabados). Antes disso vale o digitado.']
 ];
+
+/* ══ DICIONARIO ══
+   O que cada coluna da HISTORICO é, de onde vem e o que o painel calcula.
+   Existe porque três definições de "horas normais" e duas de "produção"
+   conviveram até SET/26 sem ninguém escrever qual valia. Rode uma vez
+   (Executar › criarAbaDicionario); se a aba já existir, não mexe. */
+var DICIONARIO_LINHAS = [
+  ['campo', 'tipo', 'origem', 'regra'],
+  ['mes / ano', 'entrada', 'PPCP', 'Competência do fechamento.'],
+  ['colaboradores', 'entrada', 'RH', 'Colaboradores diretos no mês.'],
+  ['horasCarga', 'entrada', 'RH', 'Horas de carga do mês, como o relatório do ponto traz. A CONFIRMAR com o RH: contratada, prevista ou trabalhada.'],
+  ['horasNormais', 'entrada', 'RH', 'Horas trabalhadas na jornada normal (critério do RH). Base do absenteísmo e das peças por hora. Obrigatória.'],
+  ['faltas / atraso', 'entrada', 'RH', 'Horas de falta e de atraso no mês.'],
+  ['extra50 / extra100', 'entrada', 'RH', 'Horas extras com adicional de 50% e de 100%.'],
+  ['horasFerias', 'entrada', 'RH', 'Horas de férias no mês.'],
+  ['diasTrabalhados', 'entrada', 'PPCP', 'Dias úteis efetivamente trabalhados.'],
+  ['produtosReportados', 'automático', 'ERP', 'Total de produtos acabados do relatório Mensal por Transação (3 REPORTE), lançado pelo ReporteVolumes.gs a partir do PDF na pasta REPORTES DE VOLUMES.'],
+  ['volumesProduzidos / quilosProduzidos', 'automático', 'ERP', 'Mesmo relatório: volumes e quilos.'],
+  ['producaoReal', 'calculado', 'painel', '= produtosReportados a partir do ano em PROD_ERP_DESDE (aba METAS). Antes disso, o digitado.'],
+  ['qtdeVendida / qtdeFaturado', 'entrada', 'Comercial', 'Peças vendidas e faturadas no mês.'],
+  ['ticketMedio', 'entrada', 'Comercial', 'R$ por peça faturada.'],
+  ['Previsão de Produção', 'calculado', 'Plano Mestre', 'Linha TOTAL GERAL da aba PLANO MESTRE. O painel ignora esta coluna e avisa quando ela diverge do plano.'],
+  ['totalFaltaAtraso', 'calculado', 'painel', '= faltas + atraso'],
+  ['totalExtras', 'calculado', 'painel', '= extra50 + extra100'],
+  ['horasTotais', 'calculado', 'painel', '= horasNormais + totalExtras'],
+  ['absenteismo', 'calculado', 'painel', '= totalFaltaAtraso ÷ horasNormais × 100'],
+  ['prodSemExtras', 'calculado', 'painel', '= producaoReal × (1 − totalExtras ÷ horasNormais)'],
+  ['meta', 'calculado', 'painel', '= producaoReal × horasNormais ÷ horasCarga (capacidade teórica; derivada do realizado, não é alvo)'],
+  ['eficiencia', 'calculado', 'painel', '= prodSemExtras ÷ meta × 100'],
+  ['eficienciaAdj', 'calculado', 'painel', '= prodSemExtras ÷ (meta − faltas − atraso) × 100. Fórmula herdada do Excel: subtrai horas de peças. Mantida por compatibilidade; não usar em decisão.'],
+  ['margem', 'calculado', 'painel', '= (90 − eficiencia) ÷ 90 × 100'],
+  ['custoCap', 'calculado', 'painel', '= totalFaltaAtraso × (producaoReal ÷ horasNormais) × ticketMedio'],
+  ['(todas as calculadas)', 'regra', 'painel', 'O painel refaz estas colunas a cada leitura e gravação (DashUtils.normalizar) e as grava de volta na HISTORICO ao sincronizar, para o Power BI e a planilha lerem o mesmo número. Não digitar.']
+];
+function criarAbaDicionario() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName('DICIONARIO')) {
+    try { SpreadsheetApp.getUi().alert('Aba DICIONARIO já existe — nada foi alterado.'); } catch (e) {}
+    return;
+  }
+  var aba = ss.insertSheet('DICIONARIO');
+  aba.getRange(1, 1, DICIONARIO_LINHAS.length, 4).setValues(DICIONARIO_LINHAS);
+  aba.getRange(1, 1, 1, 4).setFontWeight('bold');
+  aba.setColumnWidth(1, 220); aba.setColumnWidth(2, 90); aba.setColumnWidth(3, 110); aba.setColumnWidth(4, 720);
+  aba.getRange(2, 4, DICIONARIO_LINHAS.length - 1, 1).setWrap(true);
+  try { SpreadsheetApp.getUi().alert('Aba DICIONARIO criada com a definição de cada coluna e as regras de cálculo do painel.'); } catch (e) {}
+}
 var ACOES_CAMPOS = ['id','tipo','prioridade','kpi','desvio','causa','acao',
   'responsavel','prazo','status','mesRef','criadoEm','atualizadoEm',
   'enviadoEm','enviadoPara'];
