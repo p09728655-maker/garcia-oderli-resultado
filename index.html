@@ -4517,10 +4517,10 @@ function abrirMetas(){
     var r=METAS_ORIGEM[k]||{}, rot=METAS_ROTULOS[k]||[k,'',''];
     return '<tr data-chave="'+k+'">'
       +'<td style="padding:8px 6px"><b>'+esc(rot[0])+'</b><div style="font-size:.66rem;color:var(--t3)">'+esc(rot[2])+' · <span style="font-family:var(--mono)">'+k+'</span></div></td>'
-      +'<td style="padding:8px 6px;white-space:nowrap"><input type="number" step="0.1" min="0.1" class="mt-valor" value="'+esc(window[k])+'" '+inp+'> <span style="font-size:.7rem;color:var(--t3)">'+esc(r.unidade||rot[1])+'</span></td>'
-      +'<td style="padding:8px 6px"><input type="text" class="mt-vigencia" placeholder="AAAA-MM" value="'+esc(r.vigencia||'')+'" '+inp+'></td>'
-      +'<td style="padding:8px 6px"><input type="text" class="mt-origem" placeholder="quem definiu" value="'+esc(r.origem||'')+'" '+inp+'></td>'
-      +'<td style="padding:8px 6px"><input type="text" class="mt-obs" placeholder="por quê" value="'+esc(r.observacao||'')+'" '+inp+'></td>'
+      +'<td style="padding:8px 6px;white-space:nowrap;min-width:132px"><input type="number" step="'+((r.unidade||rot[1])==='ano'?'1':'0.1')+'" min="0.1" class="mt-valor" value="'+esc(window[k])+'" style="width:88px;font-size:.78rem;padding:6px 8px;font-family:var(--mono)"> <span style="font-size:.7rem;color:var(--t3)">'+esc(r.unidade||rot[1])+'</span></td>'
+      +'<td style="padding:8px 6px;min-width:96px"><input type="text" class="mt-vigencia" placeholder="AAAA-MM" value="'+esc(r.vigencia||'')+'" '+inp+'></td>'
+      +'<td style="padding:8px 6px;min-width:120px"><input type="text" class="mt-origem" placeholder="quem definiu" value="'+esc(r.origem||'')+'" '+inp+'></td>'
+      +'<td style="padding:8px 6px;min-width:220px;width:30%"><input type="text" class="mt-obs" placeholder="por quê" value="'+esc(r.observacao||'')+'" '+inp+'></td>'
       +'<td style="padding:8px 6px;font-size:.64rem;color:var(--t3);white-space:nowrap">'+(r.alteradoEm?esc(String(r.alteradoEm).slice(0,10)):'—')+'</td>'
       +'</tr>';
   }).join('');
@@ -21317,9 +21317,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b91.1';
+var APP_VERSAO = 'b91.2';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b91.2', data:'17/09/2026', itens:[
+    'Metas oficiais: o campo de valor tinha largura de dois digitos e cortava o ano (202…). Valor com 88px e fonte mono, passo 1 para metas em ano, larguras minimas para vigencia, origem e observacao.'
+  ]},
   { v:'b91.1', data:'17/09/2026', itens:[
     'Menu 🎯 Metas na planilha: Produção pelo ERP desde 2025 grava PROD_ERP_DESDE = 2025 na aba METAS pela mesma regra do painel (origem, vigencia, alteradoEm), sem digitar. Criar aba METAS tambem fica no menu.'
   ]},
