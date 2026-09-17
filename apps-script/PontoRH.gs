@@ -31,6 +31,26 @@
  * não depende de calendário de feriados. naoTrabalhadas = jornada cheia ×
  * diretos − Normais (inclui férias; o painel desconta as férias lançadas).
  *
+ * CONTROLE DE FALTAS (o outro arquivo da mesma pasta)
+ *   A planilha CONTROLE_FALTAS_aaaa.xlsx do RH tem a aba BASE, um registro
+ *   por pessoa por dia com STATUS (FALTA, ATESTADO, AFASTADO, ATRASO, FÉRIAS),
+ *   HORAS FALTA e HORAS FÉRIAS, e a aba DP com a lista de funcionários
+ *   (Cód, Nome, Setor, STATUS, DT. ADMISSÃO, DT. DEMISSÃO). Salva na mesma
+ *   pasta, o script:
+ *     • atualiza a aba FUNCIONARIOS a partir da DP (direto = setor está em
+ *       PR_SETORES_DIRETOS), para ninguém manter lista na mão;
+ *     • soma, mês a mês e só para os diretos, as horas por status e grava na
+ *       HISTORICO: ausFalta, ausAtestado, ausAfastado, ausAtraso e
+ *       horasFerias. O painel deriva faltas = ausFalta + ausAtestado +
+ *       ausAfastado e atraso = atrasosPonto (o ponto mede o relógio; o
+ *       controle só tem o que o líder anota: AGO/26 207,6 h × 12,3 h), ou
+ *       ausAtraso sem ponto — a mesma conta que era feita na mão,
+ *       mas na MESMA base das horas (até SET/26 as faltas vinham do
+ *       departamento 2-PRODUÇÃO inteiro, 18 setores, e as horas dos 11
+ *       diretos: o absenteísmo dividia uma coisa pela outra).
+ *   Quando as ausências existem, elas mandam; o naoTrabalhadas do ponto vira
+ *   conferência (integridade avisa se divergirem demais).
+ *
  * Aba FUNCIONARIOS: codigo | nome | setor | direto (S/N) | admissao | obs.
  * Rode criarAbaFuncionarios() uma vez e cole a lista. Código do extrato
  * que não estiver na aba entra como pendência no aviso e NÃO é somado —
@@ -45,15 +65,19 @@ var PR_ABA_FUNC     = 'FUNCIONARIOS';
 var PR_ABA_LOG      = 'PONTO';
 var PR_ABA_HISTORICO = 'HISTORICO';
 var PR_MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+/* Setores que contam como produção direta — a mesma régua para horas do ponto
+   e para faltas do controle. Mude aqui se um setor entrar ou sair da fábrica. */
+var PR_SETORES_DIRETOS = ['1-USINAGEM','2-EMBALAGEM','3-ACABAMENTO','6-PINTURA DE BORDA','7-LINHA DE PINTURA',
+  '16-COLAGEM DE BORDA','17-FURAÇÃO','21-GERAL','29-CORTE','25-MONTAGEM','35-CONTROLE DE PRODUÇÃO'];
 
 /* ══ 1 · FUNCIONARIOS ══ */
 function criarAbaFuncionarios() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (ss.getSheetByName(PR_ABA_FUNC)) { prAvisar('Aba ' + PR_ABA_FUNC + ' já existe — nada foi alterado.'); return; }
   var aba = ss.insertSheet(PR_ABA_FUNC);
-  aba.getRange(1, 1, 1, 6).setValues([['codigo', 'nome', 'setor', 'direto', 'admissao', 'observacao']]).setFontWeight('bold');
-  aba.getRange(2, 1, 1, 6).setValues([['', '', '', '', '', 'Uma linha por pessoa. codigo = Nº Folha do ponto. direto = S entra na soma da HISTORICO; N não entra. Quem sai da empresa pode ficar com N ou ser apagado.']]);
-  aba.setColumnWidth(2, 260); aba.setColumnWidth(3, 200); aba.setColumnWidth(6, 520);
+  aba.getRange(1, 1, 1, 7).setValues([['codigo', 'nome', 'setor', 'direto', 'admissao', 'demissao', 'observacao']]).setFontWeight('bold');
+  aba.getRange(2, 1, 1, 7).setValues([['', '', '', '', '', '', 'Uma linha por pessoa. codigo = Nº Folha do ponto. direto = S entra na soma da HISTORICO. A aba é regravada a partir da DP do CONTROLE FALTAS quando ele é processado.']]);
+  aba.setColumnWidth(2, 260); aba.setColumnWidth(3, 200); aba.setColumnWidth(7, 520);
   prAvisar('Aba ' + PR_ABA_FUNC + ' criada. Cole a lista (codigo, nome, setor, direto S/N) a partir da linha 2.');
 }
 
@@ -70,7 +94,8 @@ function prLerFuncionarios(ss) {
     if (!cod) continue;
     var direto = /^s/i.test(String(v[i][col.direto] || '').trim());
     mapa[cod] = { nome: String(v[i][col.nome] || ''), setor: String(v[i][col.setor] || ''), direto: direto,
-                  admissao: col.admissao !== undefined ? prData(v[i][col.admissao]) : null };
+                  admissao: col.admissao !== undefined ? prData(v[i][col.admissao]) : null,
+                  demissao: col.demissao !== undefined ? prData(v[i][col.demissao]) : null };
     if (direto) diretos++;
   }
   return { mapa: mapa, diretos: diretos };
@@ -234,50 +259,174 @@ function prLog(ss, arquivo, ext, a, criou) {
 /* ══ 5 · DRIVE → HISTORICO ══ */
 function processarPontoDrive() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var func = prLerFuncionarios(ss);
-  if (!func) return prErro('Aba ' + PR_ABA_FUNC + ' ausente ou vazia — rode criarAbaFuncionarios() e cole a lista com codigo e direto.');
   var pastas = DriveApp.getFoldersByName(PR_PASTA);
   if (!pastas.hasNext()) return prErro('Pasta "' + PR_PASTA + '" não encontrada no Drive — crie a pasta e solte o extrato do ponto nela.');
   var pasta = pastas.next();
-  var arquivos = pasta.getFiles(), feitos = [], falhas = [], pend = [];
-  while (arquivos.hasNext()) {
-    var arq = arquivos.next();
-    if (!/\.xlsx?$/i.test(arq.getName()) && arq.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
+  /* o controle de faltas vai primeiro: ele regrava a FUNCIONARIOS que o extrato usa */
+  var todos = [], it = pasta.getFiles();
+  while (it.hasNext()) { var f0 = it.next(); if (/\.xlsx?$/i.test(f0.getName()) || f0.getMimeType() === MimeType.GOOGLE_SHEETS) todos.push(f0); }
+  todos.sort(function (a, b) { var ca = /controle/i.test(a.getName()) ? 0 : 1, cb = /controle/i.test(b.getName()) ? 0 : 1; return ca - cb; });
+  var feitos = [], falhas = [], pend = [];
+  todos.forEach(function (arq) {
     try {
+      var func = prLerFuncionarios(ss);
+      if (!func && !/controle/i.test(arq.getName())) throw new Error('aba ' + PR_ABA_FUNC + ' ausente ou vazia — processe o CONTROLE FALTAS primeiro ou rode criarAbaFuncionarios() e cole a lista');
       var r = prProcessarArquivo(ss, arq, func);
-      feitos.push(arq.getName() + ' → ' + r.ext.mes + '/' + r.ext.ano + ': ' + r.a.n + ' diretos, ' + Math.round(r.a.normais) + ' h normais, ' + Math.round(r.a.naoTrabalhadas) + ' h não trabalhadas');
-      if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
-      if (r.a.admitidosDepois.length) feitos.push('   admitidos depois de ' + r.ext.mes + '/' + r.ext.ano + ', não contam neste mês: ' + r.a.admitidosDepois.join(', '));
+      if (r.tipo === 'controle') {
+        feitos.push(arq.getName() + ' → ausências de ' + r.meses + ' mês(es)' + (r.funcionarios ? '; FUNCIONARIOS regravada com ' + r.funcionarios + ' pessoas' : '') + ':\n   ' + r.lancados.join('\n   '));
+      } else {
+        feitos.push(arq.getName() + ' → ' + r.ext.mes + '/' + r.ext.ano + ': ' + r.a.n + ' diretos, ' + Math.round(r.a.normais) + ' h normais, ' + Math.round(r.a.naoTrabalhadas) + ' h não trabalhadas');
+        if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
+        if (r.a.admitidosDepois.length) feitos.push('   admitidos depois de ' + r.ext.mes + '/' + r.ext.ano + ', não contam neste mês: ' + r.a.admitidosDepois.join(', '));
+      }
       var sub = pasta.getFoldersByName(PR_PROCESSADOS);
       arq.moveTo(sub.hasNext() ? sub.next() : pasta.createFolder(PR_PROCESSADOS));
     } catch (e) {
       falhas.push(arq.getName() + ': ' + (e && e.message || e));
     }
-  }
+  });
   prAvisar((feitos.length ? 'Lançado na ' + PR_ABA_HISTORICO + ':\n' + feitos.join('\n') : 'Nenhum extrato novo na pasta "' + PR_PASTA + '".')
     + (pend.length ? '\n\nFORA da FUNCIONARIOS (não somados — cadastre e rode de novo se forem diretos):\n' + pend.join('\n') : '')
     + (falhas.length ? '\n\nFalhas:\n' + falhas.join('\n') : '')
-    + '\n\nO painel deriva faltas e atraso destas somas; lance as horas de férias do mês no painel. O dashboard pega no próximo sync.');
+    + '\n\nO painel deriva faltas e atraso das ausências do controle (ou, sem elas, do ponto). O dashboard pega no próximo sync.');
 }
 
 function prProcessarArquivo(ss, arq, func) {
-  var sheet, tmpId = null;
+  var doc, tmpId = null;
   if (arq.getMimeType() === MimeType.GOOGLE_SHEETS) {
-    sheet = SpreadsheetApp.openById(arq.getId()).getSheets()[0];
+    doc = SpreadsheetApp.openById(arq.getId());
   } else {
     tmpId = prConverterParaSheets(arq.getId());
-    sheet = SpreadsheetApp.openById(tmpId).getSheets()[0];
+    doc = SpreadsheetApp.openById(tmpId);
   }
   try {
-    var ext = prExtrair(sheet);
+    var base = doc.getSheetByName('BASE');
+    if (base) return prProcessarControle(ss, arq, doc, base);   /* CONTROLE DE FALTAS */
+    var ext = prExtrair(doc.getSheets()[0]);                     /* Extrato de Totais */
     var a = prAgregar(ext, func);
     if (!a.n) throw new Error('nenhum direto encontrado: confira a coluna direto (S/N) na ' + PR_ABA_FUNC);
     var criou = prLancarHistorico(ss, ext.mes, ext.ano, a);
     prLog(ss, arq.getName(), ext, a, criou);
-    return { ext: ext, a: a };
+    return { tipo: 'ponto', ext: ext, a: a };
   } finally {
     if (tmpId) { try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (ignore) {} }
   }
+}
+
+/* ══ 6 · CONTROLE DE FALTAS → FUNCIONARIOS + ausências na HISTORICO ══ */
+function prProcessarControle(ss, arq, doc, base) {
+  var dp = doc.getSheetByName('DP');
+  var atualizou = dp ? prAtualizarFuncionarios(ss, dp) : 0;
+  var func = prLerFuncionarios(ss);
+  if (!func) throw new Error('aba ' + PR_ABA_FUNC + ' ausente — a DP do controle não foi encontrada para gerá-la');
+  var disp = base.getDataRange().getDisplayValues();
+  var cab = disp[0].map(prNormaliza), col = {};
+  cab.forEach(function (c, i) {
+    if (c === 'data') col.data = i; else if (c === 'cod' || c === 'codigo') col.cod = i;
+    else if (c === 'status') col.status = i; else if (c === 'horas falta') col.hf = i;
+    else if (c === 'horas ferias') col.hfe = i;
+  });
+  if (col.data === undefined || col.cod === undefined || col.status === undefined || col.hf === undefined)
+    throw new Error('BASE sem as colunas DATA, COD, STATUS e HORAS FALTA');
+  var meses = {};
+  for (var i = 1; i < disp.length; i++) {
+    var l = disp[i], d = prData(l[col.data]);
+    if (!d) continue;
+    var cod = String(l[col.cod] || '').trim().replace(/\.0$/, '');
+    var f = func.mapa[cod];
+    if (!f || !f.direto) continue;
+    var chave = PR_MESES[d.getMonth()] + '/' + d.getFullYear();
+    var m = meses[chave] || (meses[chave] = { mes: PR_MESES[d.getMonth()], ano: d.getFullYear(), falta: 0, atestado: 0, afastado: 0, atraso: 0, ferias: 0, registros: 0 });
+    var st = prNormaliza(l[col.status]), hf = prHoras(l[col.hf]), hfe = col.hfe !== undefined ? prHoras(l[col.hfe]) : 0;
+    m.registros++;
+    if (st === 'falta') m.falta += hf;
+    else if (st === 'atestado') m.atestado += hf;
+    else if (st === 'afastado') m.afastado += hf;
+    else if (st === 'atraso') m.atraso += hf;
+    else if (st === 'ferias') m.ferias += hfe || hf;
+    else m.falta += hf;                       /* status desconhecido: conta como falta e fica visível na soma */
+  }
+  var chaves = Object.keys(meses), lancados = [];
+  chaves.forEach(function (k) {
+    var m = meses[k];
+    var criou = prLancarAusencias(ss, m);
+    lancados.push(k + ': falta ' + Math.round(m.falta) + ' · atestado ' + Math.round(m.atestado) + ' · afastado ' + Math.round(m.afastado)
+      + ' · atraso ' + Math.round(m.atraso) + ' · férias ' + Math.round(m.ferias) + (criou ? ' (linha criada)' : ''));
+    prLogAus(ss, arq.getName(), m, criou);
+  });
+  return { tipo: 'controle', meses: chaves.length, lancados: lancados, funcionarios: atualizou };
+}
+
+/* Regrava a FUNCIONARIOS a partir da aba DP do controle (Cód | Nome | Setor |
+   Departamento | STATUS | DT. ADMISSÃO | DT. DEMISSÃO). direto = setor está
+   em PR_SETORES_DIRETOS. Inativo entra com N e a data de demissão — assim o
+   histórico continua conferindo. */
+function prAtualizarFuncionarios(ss, dp) {
+  var v = dp.getDataRange().getValues(), iCab = -1, col = {};
+  for (var i = 0; i < Math.min(v.length, 10) && iCab < 0; i++) {
+    var norm = v[i].map(prNormaliza);
+    if (norm.indexOf('cod') >= 0 && norm.indexOf('nome') >= 0) {
+      iCab = i;
+      norm.forEach(function (n, c) {
+        if (n === 'cod') col.cod = c; else if (n === 'nome') col.nome = c; else if (n === 'setor') col.setor = c;
+        else if (n === 'status') col.status = c; else if (n.indexOf('admiss') >= 0) col.adm = c; else if (n.indexOf('demiss') >= 0) col.dem = c;
+      });
+    }
+  }
+  if (iCab < 0) return 0;
+  var linhas = [];
+  for (var r = iCab + 1; r < v.length; r++) {
+    var cod = String(v[r][col.cod] || '').trim().replace(/\.0$/, '');
+    if (!/^\d+$/.test(cod)) continue;
+    var setor = String(v[r][col.setor] || '').trim();
+    var inativo = /inativo/i.test(String(col.status !== undefined ? v[r][col.status] : ''));
+    var direto = !inativo && PR_SETORES_DIRETOS.indexOf(setor) >= 0;
+    var fmt = function (x) { var d = prData(x); return d ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd/MM/yyyy') : ''; };
+    linhas.push([cod, String(v[r][col.nome] || '').trim(), setor, direto ? 'S' : 'N',
+                 col.adm !== undefined ? fmt(v[r][col.adm]) : '', col.dem !== undefined ? fmt(v[r][col.dem]) : '', inativo ? 'inativo na DP' : '']);
+  }
+  if (!linhas.length) return 0;
+  var aba = ss.getSheetByName(PR_ABA_FUNC) || ss.insertSheet(PR_ABA_FUNC);
+  aba.clear();
+  aba.getRange(1, 1, 1, 7).setValues([['codigo', 'nome', 'setor', 'direto', 'admissao', 'demissao', 'observacao']]).setFontWeight('bold');
+  aba.getRange(2, 1, linhas.length, 7).setValues(linhas);
+  return linhas.length;
+}
+
+function prLancarAusencias(ss, m) {
+  var aba = ss.getSheetByName(PR_ABA_HISTORICO);
+  if (!aba) throw new Error('aba ' + PR_ABA_HISTORICO + ' não encontrada');
+  var linhas = aba.getDataRange().getValues(), iCab = -1, col = {};
+  for (var i = 0; i < Math.min(linhas.length, 20) && iCab < 0; i++) {
+    var norm = linhas[i].map(prNormaliza);
+    if (norm.indexOf('mes') >= 0 && norm.indexOf('ano') >= 0) { iCab = i; norm.forEach(function (n, c) { if (col[n] === undefined) col[n] = c; }); }
+  }
+  if (iCab < 0) throw new Error('cabeçalho com "mes" e "ano" não encontrado na ' + PR_ABA_HISTORICO);
+  var largura = linhas[iCab].length;
+  ['ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias'].forEach(function (nome) {
+    var n = prNormaliza(nome);
+    if (col[n] === undefined) {
+      while (largura > 0 && !String(linhas[iCab][largura - 1] || '').trim()) largura--;
+      aba.getRange(iCab + 1, largura + 1).setValue(nome); col[n] = largura; largura++;
+    }
+  });
+  var linha = -1;
+  for (var r = iCab + 1; r < linhas.length; r++) {
+    var mm = String(linhas[r][col.mes] || '').trim().toUpperCase().slice(0, 3);
+    if (mm === m.mes && parseInt(linhas[r][col.ano], 10) === m.ano) { linha = r + 1; break; }
+  }
+  var criou = false;
+  if (linha < 0) { linha = aba.getLastRow() + 1; aba.getRange(linha, col.mes + 1).setValue(m.mes); aba.getRange(linha, col.ano + 1).setValue(m.ano); criou = true; }
+  var grava = function (nome, v) { var c = col[prNormaliza(nome)]; if (c !== undefined) aba.getRange(linha, c + 1).setValue(Math.round(v * 100) / 100); };
+  grava('ausFalta', m.falta); grava('ausAtestado', m.atestado); grava('ausAfastado', m.afastado); grava('ausAtraso', m.atraso);
+  grava('horasFerias', m.ferias);
+  return criou;
+}
+
+function prLogAus(ss, arquivo, m, criou) {
+  var aba = ss.getSheetByName(PR_ABA_LOG) || ss.insertSheet(PR_ABA_LOG);
+  if (aba.getLastRow() === 0) aba.appendRow(['processadoEm', 'arquivo', 'mes', 'ano', 'registros', 'ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias', 'linhaCriada']);
+  aba.appendRow([new Date(), arquivo + ' (ausências)', m.mes, m.ano, m.registros, m.falta, m.atestado, m.afastado, m.atraso, m.ferias, criou ? 'sim' : 'não']);
 }
 
 /* Copia o xlsx como Planilha Google (o Drive converte), lê e apaga a cópia.
