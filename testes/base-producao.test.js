@@ -269,5 +269,16 @@ afirma('contagem: meses conferidos e meses com item',
   (() => { const I = U.integridade([Object.assign({}, AGO26, { margem:-4.47 }), Object.assign({}, AGO26, { mes:'JUL' })]);
            return I.meses === 2 && I.mesesComItem === 1; })());
 
+/* ══ FAIXA CONTRA UM LIMITE — a regra de redação da apresentação ══ */
+sec('faixaLimite() — dentro / bem perto / acima');
+afirma('8,0% com limite 8 → dentro',        U.faixaLimite(8.0, 8).nivel === 'dentro');
+afirma('8,2% com limite 8 → bem perto',     U.faixaLimite(8.2, 8).nivel === 'perto' && U.faixaLimite(8.2, 8).texto === 'bem perto do limite de 8%');
+afirma('8,8% com limite 8 → ainda perto',   U.faixaLimite(8.8, 8).nivel === 'perto');
+afirma('8,9% com limite 8 → acima',         U.faixaLimite(8.9, 8).nivel === 'acima');
+afirma('3,5% com limite 8 → dentro',        U.faixaLimite(3.5, 8).nivel === 'dentro');
+afirma('14,1% com limite 6 → acima',        U.faixaLimite(14.1, 6).nivel === 'acima');
+afirma('limite 0 não quebra',               U.faixaLimite(5, 0).nivel === 'sem');
+afirma('valor inválido não quebra',         U.faixaLimite(NaN, 8).nivel === 'sem');
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
