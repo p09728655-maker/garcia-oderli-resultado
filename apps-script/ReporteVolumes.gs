@@ -249,6 +249,7 @@ function onOpen() {
     .addSeparator()
     .addItem('Criar aba FUNCIONARIOS', 'criarAbaFuncionarios')
     .addItem('Instalar processamento diário', 'instalarProcessamentoPonto')
+    .addItem('Apagar meses futuros criados por engano', 'apagarMesesFuturos')
     .addToUi();
 }
 
