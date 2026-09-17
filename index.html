@@ -20828,7 +20828,7 @@ function printAtiva(){
           +lidCard('kg por peça em '+ref2,fd(ref.kgPc,1)+' kg',baseCmp?(baseN+': '+fd(baseCmp.kgPc,1)+' kg'):'sem base de comparação',LID_COR.feito)
           +lidCard('Peças por hora em '+ref2,fd(ref.pcH,2),baseCmp?(baseN+': '+fd(baseCmp.pcH,2)):'',LID_COR.cinza)+'</div>'
         +'<div class="lid-p"><b>Peças por hora medem quantas saíram. Quilos por hora medem quanto material a fábrica transformou.</b> Juntos, separam ritmo de tamanho: quando as peças caem e os quilos não, foi o mix que ficou maior, não a linha que rendeu menos.</div>'
-        +'<div class="lid-p lid-small">Peso corrige tamanho, não complexidade: um móvel com muita usinagem pesa pouco e demora. Para isso a medida é pontos por produto, que está sendo montada.</div></div></div>'+rod);
+        +'</div></div>'+rod);
     }
     /* 7 · vendido, produzido, faturado */
     var vp=M.tot.ven-M.tot.P;
@@ -21383,9 +21383,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b93';
+var APP_VERSAO = 'b93.1';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b93.1', data:'17/09/2026', itens:[
+    'Slide de quilos por hora sem a nota sobre complexidade e pontos por produto: fica so a frase que separa ritmo de tamanho.'
+  ]},
   { v:'b93', data:'17/09/2026', itens:[
     'Apresentacao para lideres ganha o slide de quilos por hora, depois do de pecas por hora: barras do ano e do ano anterior mes a mes, kg por peca e pecas por hora do mes contra o mesmo mes do ano anterior, e a frase que separa ritmo de tamanho. Responde a objecao "produto maior da mais trabalho" com o quilosProduzidos que ja vem do REPORTE do ERP. So entra quando ha quilos no mes. Nota no slide: peso corrige tamanho, nao complexidade.'
   ]},
