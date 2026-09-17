@@ -21317,9 +21317,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b91';
+var APP_VERSAO = 'b91.1';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b91.1', data:'17/09/2026', itens:[
+    'Menu 🎯 Metas na planilha: Produção pelo ERP desde 2025 grava PROD_ERP_DESDE = 2025 na aba METAS pela mesma regra do painel (origem, vigencia, alteradoEm), sem digitar. Criar aba METAS tambem fica no menu.'
+  ]},
   { v:'b91', data:'17/09/2026', itens:[
     'Producao pelo ERP desde 2025: PROD_ERP_DESDE passa a 2025 (padrao do painel e da aba METAS nova). Os 12 meses de 2025 tem o total do REPORTE; de MAI a DEZ/25 o ERP fica de 0,3% a 10% acima do digitado, entao a comparacao 2026 x 2025 estava em bases diferentes. Quem ja tem a aba METAS precisa trocar o valor la (botao Metas oficiais → Salvar na planilha), porque a planilha manda sobre o padrao.'
   ]},

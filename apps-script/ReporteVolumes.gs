@@ -251,6 +251,11 @@ function onOpen() {
     .addItem('Instalar processamento diário', 'instalarProcessamentoPonto')
     .addItem('Apagar meses futuros criados por engano', 'apagarMesesFuturos')
     .addToUi();
+  /* Metas oficiais (Code.gs): aba METAS manda sobre o padrão do painel */
+  SpreadsheetApp.getUi().createMenu('🎯 Metas')
+    .addItem('Criar aba METAS (se não existir)', 'criarAbaMetas')
+    .addItem('Produção pelo ERP desde 2025', 'producaoPeloErpDesde2025')
+    .addToUi();
 }
 
 function processarReportesDrive() {
