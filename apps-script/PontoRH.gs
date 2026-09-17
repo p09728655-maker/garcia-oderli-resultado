@@ -124,8 +124,12 @@ function prHoras(v) {
   if (!s) return 0;
   m = s.match(/^(\d+)\s*days?,\s*(.*)$/i);
   if (m) { d = parseInt(m[1], 10); s = m[2]; }
-  m = s.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/);
-  if (m) return d * 24 + parseInt(m[1], 10) + parseInt(m[2], 10) / 60 + (m[3] ? parseInt(m[3], 10) / 3600 : 0);
+  m = s.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?(?:\s*([AaPp])\.?[Mm]\.?)?$/);
+  if (m) {
+    var h = parseInt(m[1], 10);
+    if (m[4]) { var pm = /p/i.test(m[4]); if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; }   /* "8:48 AM" (formato de hora em inglês) */
+    return d * 24 + h + parseInt(m[2], 10) / 60 + (m[3] ? parseInt(m[3], 10) / 3600 : 0);
+  }
   var n = parseFloat(s.replace(',', '.'));
   return isNaN(n) ? 0 : n;
 }
@@ -300,6 +304,10 @@ function prProcessarArquivo(ss, arq, func) {
   } else {
     tmpId = prConverterParaSheets(arq.getId());
     doc = SpreadsheetApp.openById(tmpId);
+    /* a cópia nasce no fuso padrão da conta (GMT−8), o script roda no seu:
+       uma hora 8:48 lida como Date chegava como 13:41 — 4,9 h a mais em cada
+       linha. Igualar o fuso antes de ler resolve datas e horas de uma vez. */
+    try { doc.setSpreadsheetTimeZone(Session.getScriptTimeZone()); } catch (ignore) {}
   }
   try {
     var base = doc.getSheetByName('BASE');
@@ -325,7 +333,7 @@ function prProcessarControle(ss, arq, doc, base) {
      na cópia convertida sai no formato da conta (mês/dia/ano) — lido como
      dia/mês virava meses de 2027 e 2028. Horas vêm como Date (hh:mm) ou
      fração de dia; prHoras trata os dois. */
-  var disp = base.getDataRange().getValues();
+  var rng = base.getDataRange(), disp = rng.getValues(), texto = rng.getDisplayValues();
   var cab = disp[0].map(prNormaliza), col = {};
   cab.forEach(function (c, i) {
     if (c === 'data') col.data = i; else if (c === 'cod' || c === 'codigo') col.cod = i;
@@ -346,7 +354,9 @@ function prProcessarControle(ss, arq, doc, base) {
     var chave = PR_MESES[d.getMonth()] + '/' + d.getFullYear();
     var m = meses[chave] || (meses[chave] = { mes: PR_MESES[d.getMonth()], ano: d.getFullYear(), falta: 0, atestado: 0, afastado: 0, atraso: 0, ferias: 0, registros: 0 });
     anos[d.getFullYear()] = true;
-    var stBruto = String(l[col.status] || '').trim(), st = prStatusAusencia(stBruto), hf = prHoras(l[col.hf]), hfe = col.hfe !== undefined ? prHoras(l[col.hfe]) : 0;
+    /* horas pelo texto formatado ("8:48"), que não depende de fuso; a data pelo valor */
+    var stBruto = String(l[col.status] || '').trim(), st = prStatusAusencia(stBruto), hf = prHoras(texto[i][col.hf]), hfe = col.hfe !== undefined ? prHoras(texto[i][col.hfe]) : 0;
+    if (!stBruto && !hf && !hfe) continue;   /* linha sem status e sem horas: não é registro */
     m.registros++;
     if (st === 'ferias') m.ferias += hfe || hf;
     else if (st === 'ignorar') ignorados++;
