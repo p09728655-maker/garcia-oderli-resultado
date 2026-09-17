@@ -21321,9 +21321,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b92';
+var APP_VERSAO = 'b92.1';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b92.1', data:'17/09/2026', itens:[
+    'Plano Mestre derivado: as colunas novas copiam o formato das de 2026 (cabecalho jan./25, milhar, largura). Menu 📋 Plano Mestre → Formatar colunas de 2025 como as de 2026, para o bloco ja criado.'
+  ]},
   { v:'b92', data:'17/09/2026', itens:[
     'Plano Mestre derivado para 2025: menu 📋 Plano Mestre → Derivar 2025 de 2026 (−5%) cria, a direita do TOTAL ANO, as colunas jan./25 a dez./25 e TOTAL ANO 2025 com cada lote × 0,95, TOTAL GERAL por soma e nota em cada cabecalho dizendo que e derivado. Pedido do PPCP: nao e o plano que valia em 2025; a previsao da epoca fica em planoNaHistorico e a integridade avisa onde divergem. Idempotente. A matriz de 2026 nao muda.'
   ]},

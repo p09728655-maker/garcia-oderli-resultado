@@ -335,6 +335,7 @@ function derivarPlanoAnoAnterior(anoOrigem, anoDestino, fator) {
     for (var j3 = 0; j3 < 12; j3++) { var vv = cargaNum(valores[iVol - 1][origem[j3].col - 1]); vol.push(vv > 0 ? Math.round(vv * fator) : CARGA_VAZIO); }
     aba.getRange(iVol, col0, 1, 12).setValues([vol]);
   }
+  cargaCopiarFormato(aba, mapa, origem[0].col, col0, iVol);
   var total = somas.reduce(function (s, x) { return s + x; }, 0);
   var msg = CARGA_ABA + ': colunas ' + cargaLetra(col0) + '..' + cargaLetra(colTotal) + ' criadas para ' + anoDestino
     + ' = ' + anoOrigem + ' × ' + String(fator).replace('.', ',') + '. ' + bloco.length + ' lotes, total do ano ' + cargaMil(total) + ' pç.'
@@ -345,6 +346,36 @@ function derivarPlanoAnoAnterior(anoOrigem, anoDestino, fator) {
 }
 
 function derivarPlano2025De2026() { return derivarPlanoAnoAnterior(2026, 2025, 0.95); }
+
+/* Formato das colunas novas igual ao das de origem (cabeçalho "jan./25",
+   números com separador de milhar, larguras). Só formato: não mexe em valor. */
+function cargaCopiarFormato(aba, mapa, colOrigem, colDestino, iVol) {
+  var ultima = Math.max(mapa.linhaTotal, iVol > 0 ? iVol : 0);
+  var linhas = ultima - mapa.linhaCab + 1;
+  var de = aba.getRange(mapa.linhaCab, colOrigem, linhas, 13);        /* 12 meses + TOTAL ANO */
+  var para = aba.getRange(mapa.linhaCab, colDestino, linhas, 13);
+  de.copyTo(para, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  for (var k = 0; k < 13; k++) aba.setColumnWidth(colDestino + k, aba.getColumnWidth(colOrigem + k));
+}
+
+/* Menu 📋 Plano Mestre → Formatar colunas de 2025 como as de 2026: para o
+   bloco derivado que já foi criado antes de o script copiar o formato. */
+function formatarPlanoDerivado2025() {
+  var aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CARGA_ABA);
+  if (!aba) return cargaErro('Aba "' + CARGA_ABA + '" não encontrada.');
+  var mapa = cargaLocalizar(aba);
+  if (mapa.erro) return cargaErro(mapa.erro);
+  var valores = aba.getDataRange().getValues(), cab = valores[mapa.linhaCab - 1], c26 = 0, c25 = 0, iVol = -1;
+  for (var c = 0; c < cab.length; c++) {
+    var mv = cargaMesEAno(cab[c]);
+    if (mv && mv.idx === 0 && mv.ano === 2026 && !c26) c26 = c + 1;
+    if (mv && mv.idx === 0 && mv.ano === 2025 && !c25) c25 = c + 1;
+  }
+  for (var r = 0; r < valores.length; r++) if (cargaNormaliza(valores[r][0]) === cargaNormaliza('TOTAL VOLUMES')) iVol = r + 1;
+  if (!c26 || !c25) return cargaErro('Não achei as colunas de janeiro de 2026 e de 2025 no cabeçalho.');
+  cargaCopiarFormato(aba, mapa, c26, c25, iVol);
+  cargaAvisar('Colunas de 2025 formatadas como as de 2026.');
+}
 
 /* "jan./26", "JAN/2026", "jan-26", Date → { mes, ano, idx }. Mesma regra
    do mesEAno do Code.gs, com o índice do mês para ordenar. */
