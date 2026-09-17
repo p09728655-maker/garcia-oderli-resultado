@@ -268,7 +268,7 @@ function cargaAvisar(msg) {
 
    Idempotente: se já houver coluna de mês do ano destino, não faz nada.
    Menu 📋 Plano Mestre → Derivar 2025 de 2026 (−5%). */
-function derivarPlanoAnoAnterior(anoOrigem, anoDestino, fator) {
+function derivarPlanoAnoAnterior(anoOrigem, anoDestino, fator, sobrescrever) {
   anoOrigem  = anoOrigem  || 2026;
   anoDestino = anoDestino || (anoOrigem - 1);
   fator      = (fator > 0) ? fator : 0.95;
@@ -280,21 +280,24 @@ function derivarPlanoAnoAnterior(anoOrigem, anoDestino, fator) {
 
   var valores = aba.getDataRange().getValues();
   var cab = valores[mapa.linhaCab - 1];
-  var origem = [], jaTem = false, ultima = 0;
+  var origem = [], destino = [], ultima = 0;
   for (var c = 0; c < cab.length; c++) {
     var mv = cargaMesEAno(cab[c]);
     if (!mv) continue;
     ultima = Math.max(ultima, c + 1);
     if (mv.ano === anoOrigem)  origem.push({ col: c + 1, mes: mv.mes, idx: mv.idx, rotulo: cab[c] });
-    if (mv.ano === anoDestino) jaTem = true;
+    if (mv.ano === anoDestino) destino.push({ col: c + 1, idx: mv.idx });
   }
-  if (jaTem) return cargaErro('Já existem colunas de ' + anoDestino + ' no ' + CARGA_ABA + ' — nada foi alterado.');
+  var jaTem = destino.length > 0;
+  if (jaTem && !sobrescrever) return cargaErro('Já existem colunas de ' + anoDestino + ' no ' + CARGA_ABA + ' — nada foi alterado. Para refazer com outro fator, use "Refazer com outro fator".');
+  if (jaTem && destino.length !== 12) return cargaErro('Achei ' + destino.length + ' colunas de ' + anoDestino + ' no cabeçalho; esperava 12 contíguas (jan..dez).');
   if (origem.length !== 12) return cargaErro('Esperava 12 colunas de meses de ' + anoOrigem + ' no cabeçalho, achei ' + origem.length + '.');
   origem.sort(function (a, b) { return a.idx - b.idx; });
 
   /* destino começa depois da última coluna usada (TOTAL ANO de 2026 incluído) */
+  destino.sort(function (a, b) { return a.idx - b.idx; });
   var ultimaUsada = Math.max(aba.getLastColumn(), ultima);
-  var col0 = ultimaUsada + 1;                          /* jan do destino */
+  var col0 = jaTem ? destino[0].col : ultimaUsada + 1;   /* jan do destino: reaproveita o bloco ou abre um novo */
   var colTotal = col0 + 12;                            /* TOTAL ANO do destino */
   var iVol = -1;
   for (var r = 0; r < valores.length; r++) if (cargaNormaliza(valores[r][0]) === cargaNormaliza('TOTAL VOLUMES')) iVol = r + 1;
@@ -337,7 +340,7 @@ function derivarPlanoAnoAnterior(anoOrigem, anoDestino, fator) {
   }
   cargaCopiarFormato(aba, mapa, origem[0].col, col0, iVol);
   var total = somas.reduce(function (s, x) { return s + x; }, 0);
-  var msg = CARGA_ABA + ': colunas ' + cargaLetra(col0) + '..' + cargaLetra(colTotal) + ' criadas para ' + anoDestino
+  var msg = CARGA_ABA + ': colunas ' + cargaLetra(col0) + '..' + cargaLetra(colTotal) + (jaTem ? ' refeitas' : ' criadas') + ' para ' + anoDestino
     + ' = ' + anoOrigem + ' × ' + String(fator).replace('.', ',') + '. ' + bloco.length + ' lotes, total do ano ' + cargaMil(total) + ' pç.'
     + '\n\nÉ um plano DERIVADO, não o da época (nota nos cabeçalhos). O painel passa a usá-lo como previsão de ' + anoDestino
     + ' na próxima abertura e avisa, na integridade, onde ele difere da previsão que a HISTORICO guardava.';
@@ -346,6 +349,22 @@ function derivarPlanoAnoAnterior(anoOrigem, anoDestino, fator) {
 }
 
 function derivarPlano2025De2026() { return derivarPlanoAnoAnterior(2026, 2025, 0.95); }
+
+/* Menu 📋 Plano Mestre → Refazer 2025 de 2026 com outro fator: pergunta o
+   fator (1 = igual a 2026; 0,95 = −5%) e regrava o bloco de 2025 já
+   existente, notas incluídas — para o registro de origem bater com o que
+   está na aba. Se alguém copiou 2026 em 2025 na mão, rodar com 1. */
+function refazerPlano2025De2026() {
+  var fator = 1;
+  try {
+    var ui = SpreadsheetApp.getUi();
+    var r = ui.prompt('Refazer 2025 a partir de 2026', 'Fator (1 = igual a 2026; 0,95 = 5% a menos):', ui.ButtonSet.OK_CANCEL);
+    if (r.getSelectedButton() !== ui.Button.OK) return;
+    fator = parseFloat(String(r.getResponseText()).trim().replace(',', '.'));
+  } catch (e) { fator = 1; }
+  if (!(fator > 0 && fator <= 2)) return cargaErro('Fator inválido: use um número entre 0,01 e 2 (ex.: 1 ou 0,95).');
+  return derivarPlanoAnoAnterior(2026, 2025, fator, true);
+}
 
 /* Formato das colunas novas igual ao das de origem (cabeçalho "jan./25",
    números com separador de milhar, larguras). Só formato: não mexe em valor. */

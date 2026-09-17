@@ -256,6 +256,7 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('📋 Plano Mestre')
     .addItem('Validar matriz (TOTAL ANO × lotes)', 'validarPlanoMestre')
     .addItem('Derivar 2025 de 2026 (−5%) — plano derivado, não o da época', 'derivarPlano2025De2026')
+    .addItem('Refazer 2025 de 2026 com outro fator…', 'refazerPlano2025De2026')
     .addItem('Formatar colunas de 2025 como as de 2026', 'formatarPlanoDerivado2025')
     .addToUi();
   SpreadsheetApp.getUi().createMenu('🎯 Metas')

@@ -5534,13 +5534,21 @@ window.DashUtils = (function() {
       }
       if (r.qtdeFaturado > 0 && P === r.qtdeFaturado)
         add(r, 'atencao', 'copia', 'Produção real igual ao faturado: conferir com o reporte do ERP', P, r.produtosReportados > 0 ? r.produtosReportados : null);
+      /* nota, não atenção: a coluna de previsão da HISTORICO é protegida (o
+         painel nunca a sobrescreve) e guarda a previsão da época; o painel
+         usa o Plano Mestre. Divergir é esperado num ano com plano derivado
+         (2025 = 2026 copiado). Fica registrado sem pintar a barra. */
       if (r.planoNaHistorico > 0 && r.previsaoProducao > 0 && dif(r.planoNaHistorico, r.previsaoProducao, 0.5))
-        add(r, 'atencao', 'plano', 'Previsão na HISTORICO difere do Plano Mestre (o painel usa o Plano Mestre)', r.planoNaHistorico, r.previsaoProducao);
+        add(r, 'info', 'plano', 'Previsão na HISTORICO (da época) difere do Plano Mestre em uso', r.planoNaHistorico, r.previsaoProducao);
     });
     var erros = itens.filter(function (i) { return i.nivel === 'erro'; }).length;
-    return { itens:itens, erros:erros, atencoes:itens.length - erros, meses:meses,
-             mesesComItem:Object.keys(comItem).length,
-             nivel: erros > 0 ? 'erro' : (itens.length ? 'atencao' : 'ok') };
+    var atencoes = itens.filter(function (i) { return i.nivel === 'atencao'; }).length;
+    var notas = itens.length - erros - atencoes;
+    var comProblema = {};
+    itens.forEach(function (i) { if (i.nivel !== 'info') comProblema[i.mes + '/' + i.ano] = true; });
+    return { itens:itens, erros:erros, atencoes:atencoes, notas:notas, meses:meses,
+             mesesComItem:Object.keys(comProblema).length,
+             nivel: erros > 0 ? 'erro' : (atencoes ? 'atencao' : 'ok') };
   }
 
   /* ── FONTE ÚNICA: as colunas calculadas saem daqui ────────────────────────
@@ -19747,18 +19755,19 @@ function printAtiva(){
   function blocoIntegridade(I, ano){
     if(!I || !I.meses) return '';
     var cor = I.nivel==='erro'?'#F44336':(I.nivel==='atencao'?'#FF9800':'#4CAF50');
+    var notasTxt = I.notas ? (' · '+I.notas+' nota'+(I.notas>1?'s':'')) : '';
     var titulo = I.nivel==='ok'
-      ? ('Integridade dos dados · '+I.meses+' meses de '+ano+' conferidos, sem divergência')
+      ? ('Integridade dos dados · '+I.meses+' meses de '+ano+' conferidos, sem divergência'+notasTxt)
       : ('Integridade dos dados · '
          +(I.erros?(I.erros+' erro'+(I.erros>1?'s':'')):'')
          +(I.erros&&I.atencoes?' · ':'')
          +(I.atencoes?(I.atencoes+' ponto'+(I.atencoes>1?'s':'')+' de atenção'):'')
-         +' em '+I.mesesComItem+' de '+I.meses+' meses de '+ano);
+         +' em '+I.mesesComItem+' de '+I.meses+' meses de '+ano+notasTxt);
     function num(v){ return (v===null||v===undefined)?'—':(Math.abs(v)>=1000?fi(v):fd(v,2)); }
     var linhas=I.itens.map(function(i){
-      var c=i.nivel==='erro'?'#F44336':'#FF9800';
-      return '<tr><td style="padding:3px 6px;white-space:nowrap">'+i.mes+'/'+String(i.ano).slice(2)+'</td>'
-        +'<td style="padding:3px 6px;font-weight:700;color:'+c+'">'+(i.nivel==='erro'?'ERRO':'ATENÇÃO')+'</td>'
+      var c=i.nivel==='erro'?'#F44336':(i.nivel==='atencao'?'#FF9800':'var(--t3)');
+      return '<tr'+(i.nivel==='info'?' style="color:var(--t3)"':'')+'><td style="padding:3px 6px;white-space:nowrap">'+i.mes+'/'+String(i.ano).slice(2)+'</td>'
+        +'<td style="padding:3px 6px;font-weight:700;color:'+c+'">'+(i.nivel==='erro'?'ERRO':(i.nivel==='atencao'?'ATENÇÃO':'NOTA'))+'</td>'
         +'<td style="padding:3px 6px">'+i.msg+'</td>'
         +'<td style="padding:3px 6px;text-align:right;font-family:var(--mono)">'+num(i.encontrado)+'</td>'
         +'<td style="padding:3px 6px;text-align:right;font-family:var(--mono);color:var(--t3)">'+num(i.esperado)+'</td></tr>';
@@ -19772,7 +19781,8 @@ function printAtiva(){
       +(I.itens.length
         ? '<div style="color:var(--t3);margin:6px 0 4px;line-height:1.4">Conferido contra a própria linha, o reporte do ERP e o Plano Mestre. '
           +'As colunas calculadas saem da regra do painel; "planilha desatualizada" significa que a HISTORICO ainda guarda a conta antiga. '
-          +'Erro é entrada impossível: corrige na HISTORICO. Não apresente com erro em aberto.</div>'
+          +'Erro é entrada impossível: corrige na HISTORICO. Não apresente com erro em aberto.'
+          +(I.notas?' Nota é registro, não pendência: a previsão da época fica guardada na HISTORICO enquanto o painel usa o Plano Mestre.':'')+'</div>'
           +'<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:.74rem">'
           +'<thead><tr style="color:var(--t3);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;text-align:left">'
           +'<th style="padding:3px 6px">Mês</th><th style="padding:3px 6px">Nível</th><th style="padding:3px 6px">O que não fecha</th>'
@@ -21321,9 +21331,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b92.1';
+var APP_VERSAO = 'b92.2';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b92.2', data:'17/09/2026', itens:[
+    'Integridade: "Previsao na HISTORICO difere do Plano Mestre" deixa de ser atencao e vira nota. A coluna de previsao da HISTORICO e protegida (o painel nunca a sobrescreve) e guarda a previsao da epoca; o painel usa o Plano Mestre. Num ano com plano derivado (2025) a diferenca e esperada nos 12 meses e nao pode pintar a barra. A nota continua listada, em cinza, e o titulo mostra a contagem.',
+    'Plano Mestre: menu → Refazer 2025 de 2026 com outro fator pergunta o fator (1 = igual; 0,95 = −5%) e regrava o bloco de 2025 existente, notas incluidas, para o registro de origem bater com o que esta na aba.'
+  ]},
   { v:'b92.1', data:'17/09/2026', itens:[
     'Plano Mestre derivado: as colunas novas copiam o formato das de 2026 (cabecalho jan./25, milhar, largura). Menu 📋 Plano Mestre → Formatar colunas de 2025 como as de 2026, para o bloco ja criado.'
   ]},
