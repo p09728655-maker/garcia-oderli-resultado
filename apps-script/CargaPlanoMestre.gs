@@ -252,3 +252,118 @@ function cargaErro(msg) {
 function cargaAvisar(msg) {
   try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); }
 }
+
+
+/* ══ PLANO DERIVADO ═══════════════════════════════════════════════════════════
+   derivarPlanoAnoAnterior(): copia as colunas de meses de um ano (padrão
+   2026) para um ano anterior (padrão 2025) com um fator (padrão 0,95),
+   em colunas novas à direita do TOTAL ANO — a matriz de 2026 (B..N) fica
+   intocada, e o Code.gs lê as colunas novas pelo cabeçalho (mesEAno).
+
+   AVISO DE ORIGEM: o resultado NÃO é o plano que valia em 2025. É 2026 ×
+   0,95, pedido pelo PPCP em 17/09/2026 para ter um alvo por lote no ano
+   fechado. A previsão real de 2025 continua na HISTORICO, coluna
+   planoNaHistorico (o painel avisa quando os dois divergem). Cada cabeçalho
+   novo recebe uma nota dizendo isso.
+
+   Idempotente: se já houver coluna de mês do ano destino, não faz nada.
+   Menu 📋 Plano Mestre → Derivar 2025 de 2026 (−5%). */
+function derivarPlanoAnoAnterior(anoOrigem, anoDestino, fator) {
+  anoOrigem  = anoOrigem  || 2026;
+  anoDestino = anoDestino || (anoOrigem - 1);
+  fator      = (fator > 0) ? fator : 0.95;
+  var ss  = SpreadsheetApp.getActiveSpreadsheet();
+  var aba = ss.getSheetByName(CARGA_ABA);
+  if (!aba) return cargaErro('Aba "' + CARGA_ABA + '" não encontrada.');
+  var mapa = cargaLocalizar(aba);
+  if (mapa.erro) return cargaErro(mapa.erro);
+
+  var valores = aba.getDataRange().getValues();
+  var cab = valores[mapa.linhaCab - 1];
+  var origem = [], jaTem = false, ultima = 0;
+  for (var c = 0; c < cab.length; c++) {
+    var mv = cargaMesEAno(cab[c]);
+    if (!mv) continue;
+    ultima = Math.max(ultima, c + 1);
+    if (mv.ano === anoOrigem)  origem.push({ col: c + 1, mes: mv.mes, idx: mv.idx, rotulo: cab[c] });
+    if (mv.ano === anoDestino) jaTem = true;
+  }
+  if (jaTem) return cargaErro('Já existem colunas de ' + anoDestino + ' no ' + CARGA_ABA + ' — nada foi alterado.');
+  if (origem.length !== 12) return cargaErro('Esperava 12 colunas de meses de ' + anoOrigem + ' no cabeçalho, achei ' + origem.length + '.');
+  origem.sort(function (a, b) { return a.idx - b.idx; });
+
+  /* destino começa depois da última coluna usada (TOTAL ANO de 2026 incluído) */
+  var ultimaUsada = Math.max(aba.getLastColumn(), ultima);
+  var col0 = ultimaUsada + 1;                          /* jan do destino */
+  var colTotal = col0 + 12;                            /* TOTAL ANO do destino */
+  var iVol = -1;
+  for (var r = 0; r < valores.length; r++) if (cargaNormaliza(valores[r][0]) === cargaNormaliza('TOTAL VOLUMES')) iVol = r + 1;
+
+  /* cabeçalho: mesmo formato do de origem, com o ano trocado */
+  var cabNovo = origem.map(function (o) { return cargaTrocarAno(o.rotulo, anoOrigem, anoDestino, o.idx); });
+  cabNovo.push('TOTAL ANO ' + anoDestino);
+  aba.getRange(mapa.linhaCab, col0, 1, 13).setValues([cabNovo]);
+  var nota = 'DERIVADO: ' + anoOrigem + ' × ' + String(fator).replace('.', ',') + ', gerado em '
+    + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy') + '. Não é o plano que valia em '
+    + anoDestino + '; a previsão da época está na HISTORICO (planoNaHistorico).';
+  for (var k = 0; k < 13; k++) aba.getRange(mapa.linhaCab, col0 + k).setNote(nota);
+
+  /* lotes: valor × fator, arredondado; vazio/traço continua traço */
+  var ini = mapa.primeiroLote, fim = mapa.linhaTotal - 1, bloco = [], somas = [];
+  for (var m = 0; m < 12; m++) somas.push(0);
+  for (var l = ini; l <= fim; l++) {
+    var linha = [];
+    for (var j = 0; j < 12; j++) {
+      var v = cargaNum(valores[l - 1][origem[j].col - 1]);
+      if (v > 0) { var d = Math.round(v * fator); linha.push(d); somas[j] += d; } else linha.push(CARGA_VAZIO);
+    }
+    bloco.push(linha);
+  }
+  if (bloco.length) aba.getRange(ini, col0, bloco.length, 12).setValues(bloco);
+
+  /* TOTAL GERAL do destino = soma das colunas; TOTAL ANO por linha = soma da linha */
+  var fTot = [];
+  for (var j2 = 0; j2 < 12; j2++) { var L = cargaLetra(col0 + j2); fTot.push('=SUM(' + L + ini + ':' + L + fim + ')'); }
+  aba.getRange(mapa.linhaTotal, col0, 1, 12).setFormulas([fTot]);
+  var fAno = [], a = cargaLetra(col0), z = cargaLetra(col0 + 11);
+  for (var l2 = ini; l2 <= mapa.linhaTotal; l2++) fAno.push(['=SUM(' + a + l2 + ':' + z + l2 + ')']);
+  aba.getRange(ini, colTotal, fAno.length, 1).setFormulas(fAno);
+
+  /* TOTAL VOLUMES (se existir): valor × fator */
+  if (iVol > 0) {
+    var vol = [];
+    for (var j3 = 0; j3 < 12; j3++) { var vv = cargaNum(valores[iVol - 1][origem[j3].col - 1]); vol.push(vv > 0 ? Math.round(vv * fator) : CARGA_VAZIO); }
+    aba.getRange(iVol, col0, 1, 12).setValues([vol]);
+  }
+  var total = somas.reduce(function (s, x) { return s + x; }, 0);
+  var msg = CARGA_ABA + ': colunas ' + cargaLetra(col0) + '..' + cargaLetra(colTotal) + ' criadas para ' + anoDestino
+    + ' = ' + anoOrigem + ' × ' + String(fator).replace('.', ',') + '. ' + bloco.length + ' lotes, total do ano ' + cargaMil(total) + ' pç.'
+    + '\n\nÉ um plano DERIVADO, não o da época (nota nos cabeçalhos). O painel passa a usá-lo como previsão de ' + anoDestino
+    + ' na próxima abertura e avisa, na integridade, onde ele difere da previsão que a HISTORICO guardava.';
+  cargaAvisar(msg);
+  return { ok: true, col0: col0, lotes: bloco.length, total: total };
+}
+
+function derivarPlano2025De2026() { return derivarPlanoAnoAnterior(2026, 2025, 0.95); }
+
+/* "jan./26", "JAN/2026", "jan-26", Date → { mes, ano, idx }. Mesma regra
+   do mesEAno do Code.gs, com o índice do mês para ordenar. */
+var CARGA_MES_TXT = { jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5, jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11 };
+function cargaMesEAno(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]') return { mes: v.getMonth(), idx: v.getMonth(), ano: v.getFullYear() };
+  var s = cargaNormaliza(v);
+  var m = s.match(/^([a-z]{3})[a-z]*\.?[\/\-\s]?(\d{2,4})?/);
+  if (!m || CARGA_MES_TXT[m[1]] === undefined) return null;
+  var ano = m[2] ? parseInt(m[2], 10) : new Date().getFullYear();
+  if (ano < 100) ano += 2000;
+  return { mes: CARGA_MES_TXT[m[1]], idx: CARGA_MES_TXT[m[1]], ano: ano };
+}
+
+/* Cabeçalho novo no formato do antigo: Date vira Date do ano destino; texto
+   troca "26"/"2026" por "25"/"2025". */
+function cargaTrocarAno(rotulo, de, para, idxMes) {
+  if (Object.prototype.toString.call(rotulo) === '[object Date]') return new Date(para, idxMes, 1);
+  var s = String(rotulo);
+  if (s.indexOf(String(de)) >= 0) return s.replace(String(de), String(para));
+  return s.replace(String(de).slice(2), String(para).slice(2));
+}
