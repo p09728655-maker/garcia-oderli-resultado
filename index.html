@@ -21317,9 +21317,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b90.1';
+var APP_VERSAO = 'b90.2';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b90.2', data:'17/09/2026', itens:[
+    'PontoRH.gs: a copia convertida do xlsx nasce no fuso padrao da conta (GMT−8) e o script roda no fuso do projeto; cada hora lida como Date chegava 4,9 h maior (AGO/26 foi a 19,5%). Agora o script iguala o fuso da copia ao seu antes de ler e soma as horas pelo texto formatado (8:48), que nao depende de fuso. Validado em Node com o arquivo real e o deslocamento simulado: AGO/26 falta 684,8 · atestado 285,6 · afastado 624,8 · atraso 12,3 · ferias 844,8.'
+  ]},
   { v:'b90.1', data:'17/09/2026', itens:[
     'Correcao do PontoRH.gs no controle de faltas: a coluna DATA passa a ser lida como data (getValues), nao como texto exibido — na copia convertida o texto sai mes/dia/ano e, lido como dia/mes, virou meses de 2027 e 2028 na HISTORICO. Trava: nunca cria mes mais de 45 dias no futuro. Menu 👥 Ponto → Apagar meses futuros criados por engano remove as linhas dessa rodada.',
     'Colunas novas na HISTORICO eram criadas todas na mesma posicao (a copia do cabecalho nao via a coluna recem-criada); valia a ultima. Corrigido nas duas gravacoes. STATUS do RH fora da lista tratados: LIC. MAT. = afastado, TARDE = atraso, JUST./ATEST. OB. = atestado, BANCO H. ignorado; o resto vira falta e aparece no aviso. Direto = setor, independente do status na DP. Log do controle em aba propria (AUSENCIAS). O controle do ano zera e regrava as ausencias do ano inteiro.'
