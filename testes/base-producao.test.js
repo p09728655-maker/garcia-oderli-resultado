@@ -248,7 +248,9 @@ afirma('JUN/26 nível atenção (o painel refaz a conta)',    JUN.nivel === 'ate
 afirma('AGO/26 margem -4,47 (certo -4,74) → planilha desatualizada', tipos(caso({ margem:-4.47 })) === 'atencao:derivada');
 afirma('mês com produção e sem horas normais → erro de entrada', tipos(caso({ horasNormais:0, horasTotais:0, absenteismo:0, prodSemExtras:0, meta:0, eficiencia:0, margem:0 })).indexOf('erro:entrada') === 0);
 afirma('faltas maiores que as horas normais → erro de entrada', tipos(caso({ faltas:20000, totalFaltaAtraso:20000, absenteismo:0, margem:0 })).indexOf('erro:entrada') >= 0);
-afirma('AGO/26 previsão 32.435 na HISTORICO → atenção plano', tipos(caso({ planoNaHistorico:32435 })) === 'atencao:plano');
+afirma('AGO/26 previsão 32.435 na HISTORICO → nota plano (não pinta a barra)', tipos(caso({ planoNaHistorico:32435 })) === 'info:plano');
+afirma('nota plano não conta como atenção: nível ok, 1 nota',
+  (() => { const I = caso({ planoNaHistorico:32435 }); return I.nivel === 'ok' && I.atencoes === 0 && I.notas === 1 && I.mesesComItem === 0; })());
 afirma('JAN/26 produção igual ao faturado → atenção cópia', tipos(caso({ qtdeFaturado:32364 })) === 'atencao:copia');
 afirma('produção 8% abaixo do reporte do ERP → atenção erp', tipos(caso({ produtosReportados:35000 })) === 'atencao:erp');
 afirma('diferença de 0,5% contra o ERP não acusa',       caso({ produtosReportados:32500 }).itens.length === 0);
