@@ -4170,6 +4170,53 @@ body.tv-mode #reu-trilha .rt-dica { font-size:.85rem; }
 body.tv-mode #reu-trilha .rt-btn { width:54px; height:54px; font-size:1.6rem; }
 @media (max-width: 760px) { #reu-trilha .rt-dots, #reu-trilha .rt-dica { display:none; } }
 @media print { #reu-trilha { display:none !important; } }
+/* Apresentação para líderes: overlay em tela cheia, 16:9, fonte escalada
+   pela largura para caber na TV e no notebook sem quebrar. */
+#lid-ov{position:fixed;inset:0;z-index:9500;background:#0d0d0d;display:none;flex-direction:column;align-items:center;justify-content:center;padding:2vh 2vw}
+#lid-ov.on{display:flex}
+body.lid-on{overflow:hidden}
+#lid-ov .lid-stage{width:min(96vw,calc(86vh*16/9));aspect-ratio:16/9;background:#161616;border:1px solid #2A2A2A;border-radius:10px;padding:2.2% 2.8%;display:flex;flex-direction:column;font-size:clamp(10px,1.1vw,22px);color:#F5F5F5;overflow:hidden}
+.lid-h{font-size:1.65em;font-weight:800;line-height:1.25;margin:0 0 .3em}
+.lid-sub{color:#888;font-size:.8em;margin-bottom:.7em}
+.lid-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:.8em}
+.lid-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:.8em}
+.lid-grid2{display:grid;grid-template-columns:1fr 1fr;gap:.8em}
+.lid-card{background:#1F1F1F;border:1px solid #2A2A2A;border-top:4px solid #888;border-radius:8px;padding:1em 1.1em}
+.lid-clbl{font-size:.72em;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em}
+.lid-cval{font-family:var(--mono);font-size:2.5em;font-weight:800;margin:.15em 0;line-height:1.05}
+.lid-csub{font-size:.82em;color:#bbb;line-height:1.4}
+.lid-p{font-size:1.02em;line-height:1.5;margin-top:.8em}
+.lid-small{font-size:.8em}
+.lid-resumo{background:#1F1F1F;border:1px solid #2A2A2A;border-radius:8px;padding:.7em 1em}
+.lid-2col{display:grid;grid-template-columns:1.3fr 1fr;gap:1.2em;flex:1;min-height:0;align-items:start}
+.lid-2col-w{grid-template-columns:1.5fr 1fr}
+.lid-box{background:#1F1F1F;border:1px solid #2A2A2A;border-radius:8px;padding:.8em 1em;font-size:.9em;line-height:1.45}
+.lid-box p{margin:0 0 .6em}
+.lid-k2{font-weight:800;font-size:.85em;margin-bottom:.5em;color:#F5A623}
+.lid-tab{width:100%;border-collapse:collapse;font-size:.8em}
+.lid-tab th{text-align:left;font-size:.7em;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:.25em .4em;border-bottom:1px solid #2A2A2A}
+.lid-tab td{padding:.25em .4em;border-top:1px solid #222}
+.lid-tab td:nth-child(n+2){font-family:var(--mono);text-align:right}
+.lid-tab td.lid-tx{text-align:left;font-family:inherit}
+.lid-tot td{font-weight:800}
+.lid-dest td{color:#F5A623;font-weight:700}
+.lid-svg{width:100%;height:auto;display:block}
+.lid-lbl{font-size:22px;fill:#F5F5F5}.lid-lbl-b{font-weight:700}.lid-cat{font-size:24px;fill:#aaa}
+.lid-lbl-g{font-size:30px}.lid-cat-g{font-size:32px;fill:#ddd}
+.lid-leg{display:flex;gap:1.2em;font-size:.75em;color:#aaa;margin-top:.2em}
+.lid-leg i{display:inline-block;width:14px;height:9px;margin-right:5px;border-radius:2px;vertical-align:middle}
+.lid-capa{display:flex;flex-direction:column;justify-content:center;flex:1;gap:.5em}
+.lid-capa h1{font-size:3.2em;margin:0;line-height:1.1}
+.lid-capa-s{font-size:1.5em;color:#bbb}.lid-capa-r{font-size:.8em;color:#888;margin-top:1.2em}
+.lid-k{font-size:.75em;letter-spacing:.14em;text-transform:uppercase;color:#F5A623;font-weight:700}
+.lid-linha{display:flex;gap:.8em;align-items:flex-start;font-size:1.35em;line-height:1.4;margin:.4em 0}
+.lid-n{flex:none;width:1.6em;height:1.6em;border-radius:50%;background:#D9342B;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:.85em}
+.lid-foot{margin-top:auto;display:flex;justify-content:space-between;font-size:.65em;color:#666;padding-top:.5em;border-top:1px solid #2A2A2A}
+#lid-ov .lid-bar{display:flex;gap:10px;align-items:center;margin-top:12px;color:#aaa;font-family:var(--mono);font-size:.8rem}
+#lid-ov .lid-bar button{width:40px;height:40px;border-radius:8px;border:1px solid rgba(245,166,35,.5);background:rgba(245,166,35,.12);color:#F5A623;font-size:1.2rem;cursor:pointer}
+#lid-ov .lid-bar button:disabled{opacity:.3;cursor:default}
+#lid-ov .lid-bar button.lid-x{width:auto;padding:0 14px;font-size:.78rem;font-family:inherit;border-color:#3A3A3A;background:transparent;color:#aaa}
+@media print { #lid-ov { display:none !important; } }
 </style>
 <div class="page on" id="page-reuniao">
   <div class="pageHdr">
@@ -4202,6 +4249,13 @@ body.tv-mode #reu-trilha .rt-btn { width:54px; height:54px; font-size:1.6rem; }
         text-transform:uppercase;letter-spacing:.05em;cursor:pointer;white-space:nowrap">
         <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"></path></svg>
         Relatório
+      </button>
+      <button onclick="reuLideres()" id="reu-btn-lid" title="Apresentação para a liderança de produção: dez telas geradas dos dados do mês, na hora. Setas ← → avançam, ESC sai, Baixar PDF gera a versão em papel."
+        style="display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border:1px solid #F5A623;
+        border-radius:6px;background:rgba(245,166,35,.08);color:#F5A623;font-size:.76rem;font-weight:700;
+        text-transform:uppercase;letter-spacing:.05em;cursor:pointer;white-space:nowrap">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"></path></svg>
+        Líderes
       </button>
     </div>
   </div>
@@ -5442,10 +5496,22 @@ window.DashUtils = (function() {
              nivel: erros > 0 ? 'erro' : (itens.length ? 'atencao' : 'ok') };
   }
 
+  /* ── FAIXA CONTRA UM LIMITE ──────────────────────────────────────────────
+     A regra de redação das apresentações. "8,2% está dentro do limite de 8%"
+     foi dito em reunião; não está. Aqui a frase sai do número: dentro
+     (≤ limite), bem perto (≤ limite × 1,1), acima. Uma regra, um lugar. */
+  function faixaLimite(v, lim) {
+    if (!isFinite(v) || !(lim > 0)) return { nivel:'sem', texto:'sem limite definido', curto:'' };
+    var l = String(lim).replace('.', ',');
+    if (v <= lim)       return { nivel:'dentro', texto:'dentro do limite de ' + l + '%',    curto:'dentro do limite' };
+    if (v <= lim * 1.1) return { nivel:'perto',  texto:'bem perto do limite de ' + l + '%', curto:'bem perto do limite' };
+    return                     { nivel:'acima',  texto:'acima do limite de ' + l + '%',     curto:'acima do limite' };
+  }
+
   return { getDias:getDias, getFat:getFat, getProd:getProd,
            periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
-           integridade:integridade,
+           integridade:integridade, faixaLimite:faixaLimite,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
 
@@ -20351,6 +20417,362 @@ function printAtiva(){
     else if(e.key==='Escape'){ e.preventDefault(); reuTrilhaFechar(); }
   });
 
+  /* ── APRESENTAÇÃO PARA LÍDERES ───────────────────────────────────────────
+     Dez telas geradas dos mesmos registros da Reunião, na hora de apresentar.
+     Nasceu do deck de AGO/26 montado à mão a partir do painel: quatro frases
+     fortes sem base ("6 dos 8 meses", "primeiro mês com HE no limite",
+     "melhor mês do ano", "dentro do limite" com 8,2%) e dois números
+     herdados de digitação errada no Sheets. Aqui cada frase é uma regra
+     sobre o dado, não texto fixo — se o número muda, a frase muda junto:
+       • meses com plano cumprido = real ≥ plano, contado, nunca digitado;
+       • "dentro / bem perto / acima do limite" sai de DashUtils.faixaLimite;
+       • "melhor do ano" só é dito na dimensão em que é verdade;
+       • a simulação de falta é linear e diz isso na tela.
+     Ano = o da Reunião; mês de referência = o escolhido ou o último fechado.
+     Setas navegam, ESC sai, "Baixar PDF" abre a versão em papel, uma tela
+     por página. Não grava nada. */
+  var NOME_MES={JAN:'Janeiro',FEV:'Fevereiro',MAR:'Março',ABR:'Abril',MAI:'Maio',JUN:'Junho',
+                JUL:'Julho',AGO:'Agosto',SET:'Setembro',OUT:'Outubro',NOV:'Novembro',DEZ:'Dezembro'};
+  var MES_MIN={JAN:'jan',FEV:'fev',MAR:'mar',ABR:'abr',MAI:'mai',JUN:'jun',JUL:'jul',AGO:'ago',
+               SET:'set',OUT:'out',NOV:'nov',DEZ:'dez'};
+  function lidMes(r){
+    var P=r.producaoReal||0, Q=DashUtils.getProd(r), H=r.horasNormais||0, HE=r.totalExtras||0;
+    var HT=(r.horasTotais>0)?r.horasTotais:(H+HE);
+    var F=r.totalFaltaAtraso||0, dias=DashUtils.getDias(r), plano=r.previsaoProducao||0;
+    var abs=(r.absenteismo>0)?r.absenteismo:(H>0?F/H*100:0);
+    return { mes:r.mes, ano:r.ano, plano:plano, P:P, Q:Q, heP:P-Q, hePct:P>0?(P-Q)/P*100:0,
+             heH:HE, H:H, HT:HT, pcH:HT>0?P/HT:0, dias:dias, pcDia:dias>0?P/dias:0,
+             abs:abs, F:F, colab:r.colaboradores||0, fat:r.qtdeFaturado||0, ven:r.qtdeVendida||0,
+             cumpriu:plano>0&&P>=plano, at:plano>0?P/plano*100:null };
+  }
+  function lidModelo(){
+    var todos=load();
+    var ano=reuAno||((typeof anoAtivo!=='undefined'&&anoAtivo)?anoAtivo:null);
+    if(!ano){
+      var anos=todos.filter(function(r){ return (r.producaoReal||0)>0; }).map(function(r){ return r.ano; });
+      ano=anos.length?Math.max.apply(null,anos):new Date().getFullYear();
+    }
+    var fech=todos.filter(function(r){ return r.ano===ano&&(r.producaoReal||0)>0; })
+      .sort(function(a,b){ return ORDEM_M.indexOf(a.mes)-ORDEM_M.indexOf(b.mes); });
+    if(!fech.length) return null;
+    var refR=(reuMes&&fech.filter(function(r){ return r.mes===reuMes; })[0])||fech[fech.length-1];
+    var meses=fech.filter(function(r){ return ORDEM_M.indexOf(r.mes)<=ORDEM_M.indexOf(refR.mes); }).map(lidMes);
+    var ref=meses[meses.length-1];
+    var M={ ano:ano, meses:meses, ref:ref, n:meses.length,
+            limHE:(typeof META_DEP_HE!=='undefined')?META_DEP_HE:8,
+            metaAbs:(typeof META_ABS!=='undefined')?META_ABS:3,
+            absCrit:(typeof ABS_ATENCAO!=='undefined')?ABS_ATENCAO:6 };
+    var s=function(k){ return meses.reduce(function(a,m){ return a+(m[k]||0); },0); };
+    M.tot={ plano:s('plano'), P:s('P'), Q:s('Q'), heP:s('heP'), heH:s('heH'), HT:s('HT'), H:s('H'),
+            dias:s('dias'), fat:s('fat'), ven:s('ven'), F:s('F') };
+    M.tot.hePct=M.tot.P>0?M.tot.heP/M.tot.P*100:0;
+    M.tot.pcH=M.tot.HT>0?M.tot.P/M.tot.HT:0;
+    M.tot.pcDia=M.tot.dias>0?M.tot.P/M.tot.dias:0;
+    M.cumpriram=meses.filter(function(m){ return m.cumpriu; });
+    M.comPlano=meses.filter(function(m){ return m.plano>0; });
+    M.cumpriuNoLimite=M.cumpriram.filter(function(m){ return m.hePct<=M.limHE; });
+    /* meses abertos com plano: do Plano Mestre, pela mesma tabela da aba Mestre */
+    var pm=(typeof window.pmApurado==='function')?window.pmApurado():null;
+    M.abertos=[];
+    if(pm&&pm.ano===ano&&pm.meses){
+      M.abertos=pm.meses.filter(function(x){ return x.plano>0&&!(x.real>0)&&ORDEM_M.indexOf(x.mes)>ORDEM_M.indexOf(ref.mes); })
+        .map(function(x){ return { mes:x.mes, plano:x.plano, dias:x.dias||0 }; });
+    }
+    M.planoAberto=M.abertos.reduce(function(a,x){ return a+x.plano; },0);
+    M.diasAbertos=M.abertos.reduce(function(a,x){ return a+x.dias; },0);
+    M.ritmoExig=M.diasAbertos>0?M.planoAberto/M.diasAbertos:null;
+    M.gapDia=M.ritmoExig!==null?M.ritmoExig-ref.pcDia:null;
+    M.periodo=M.abertos.length?(MES_MIN[M.abertos[0].mes]+'–'+MES_MIN[M.abertos[M.abertos.length-1].mes]):'';
+    /* simulação linear de falta: horas recuperadas × pç/h do mês de referência */
+    M.ganhoPP=ref.H/100*ref.pcH;                       /* peças por mês por ponto percentual */
+    M.sim=[10,M.absCrit].filter(function(t,i,a){ return a.indexOf(t)===i&&t<ref.abs; }).sort(function(a,b){ return b-a; })
+      .map(function(t){
+        var pp=ref.abs-t, h=ref.H*pp/100, pc=h*ref.pcH;
+        return { alvo:t, pp:pp, h:h, pc:pc, dia:ref.dias>0?pc/ref.dias:0, fora:ref.colab*t/100 };
+      });
+    M.foraHoje=ref.colab*ref.abs/100;
+    /* ritmos do ano até o mês de referência (base dos cenários) */
+    M.cen={ A:M.tot.dias>0?M.tot.Q/M.tot.dias:0, B:M.tot.pcDia, C:M.tot.dias>0?M.tot.ven/M.tot.dias:0 };
+    M.carteira=M.tot.ven-M.tot.fat;
+    M.carteiraDias=ref.pcDia>0?M.carteira/ref.pcDia:null;
+    return M;
+  }
+  /* frases-regra */
+  function lidFaixa(v,lim){ return DashUtils.faixaLimite(v,lim); }
+  function lidMelhorEm(meses,k,ref,maior){
+    var best=meses.reduce(function(a,m){ return (a===null||(maior?m[k]>a[k]:m[k]<a[k]))?m:a; },null);
+    return best&&best.mes===ref.mes;
+  }
+  function lidMenorDesde(meses,ref){
+    var i=meses.length-1; var ant=null;
+    for(var j=i-1;j>=0;j--){ if(meses[j].hePct<ref.hePct){ ant=meses[j]; break; } }
+    return ant?('menor desde '+MES_MIN[ant.mes]):'menor do ano';
+  }
+  function lidRankAbs(meses,ref){
+    var ord=meses.slice().sort(function(a,b){ return b.abs-a.abs; });
+    var pos=ord.indexOf(ord.filter(function(m){ return m.mes===ref.mes; })[0])+1;
+    if(pos===1) return 'pior mês do ano';
+    if(pos===meses.length) return 'melhor mês do ano';
+    return pos+'º pior mês do ano';
+  }
+  function lidLista(ms){ return ms.map(function(m){ return NOME_MES[m.mes].toLowerCase(); }).join(', ').replace(/, ([^,]*)$/,' e $1'); }
+
+  /* gráficos em SVG: barras + linha no eixo direito, ou só linha */
+  var LID_COR={plano:'#E8B84A',feito:'#D9342B',linha:'#F5F5F5',limite:'#E8B84A',falta:'#D9342B',cinza:'#8A8A8A'};
+  function lidChart(o){
+    var W=1000,Hh=o.h||360,top=34,bot=44,left=64,right=o.line?64:20;
+    var n=o.cats.length, ih=Hh-top-bot, iw=W-left-right, gw=iw/n;
+    var bars=o.bars||[], vmax=0;
+    bars.forEach(function(b){ b.v.forEach(function(v){ if(v>vmax) vmax=v; }); });
+    vmax=vmax*1.15||1;
+    var lmax=0; if(o.line){ o.line.v.forEach(function(v){ if(v>lmax) lmax=v; }); lmax=Math.max((o.line.max||0),lmax*1.3)||1; }
+    var out='<svg viewBox="0 0 '+W+' '+Hh+'" class="lid-svg" role="img" aria-label="'+(o.aria||'')+'">';
+    for(var g=0; g<=4; g++){ var y=top+ih-ih*g/4; out+='<line x1="'+left+'" x2="'+(W-right)+'" y1="'+y+'" y2="'+y+'" stroke="rgba(128,128,128,.25)" stroke-width="1"/>'; }
+    var bw=bars.length?Math.min(gw*0.32, 60):0;
+    bars.forEach(function(b,bi){
+      for(var i=0;i<n;i++){
+        var v=b.v[i]||0, h=v/vmax*ih, x=left+gw*i+gw/2-(bars.length*bw)/2+bi*bw;
+        out+='<rect x="'+x+'" y="'+(top+ih-h)+'" width="'+(bw-3)+'" height="'+h+'" fill="'+b.cor+'" rx="2"/>';
+        if(o.barLabels) out+='<text x="'+(x+(bw-3)/2)+'" y="'+(top+ih-h-6)+'" text-anchor="middle" class="lid-lbl">'+(o.fmtBar?o.fmtBar(v):fi(v))+'</text>';
+      }
+    });
+    if(o.line){
+      var pts=o.line.v.map(function(v,i){ return [left+gw*i+gw/2, top+ih-(v/lmax)*ih]; });
+      if(o.line.ref!==undefined){ var yr=top+ih-(o.line.ref/lmax)*ih; out+='<line x1="'+left+'" x2="'+(W-right)+'" y1="'+yr+'" y2="'+yr+'" stroke="'+LID_COR.limite+'" stroke-width="3" stroke-dasharray="10 6"/>'
+        +'<text x="'+(W-right+6)+'" y="'+(yr+5)+'" class="lid-lbl" fill="'+LID_COR.limite+'">'+o.line.refLbl+'</text>'; }
+      out+='<polyline fill="none" stroke="'+o.line.cor+'" stroke-width="4" points="'+pts.map(function(p){ return p.join(','); }).join(' ')+'"/>';
+      pts.forEach(function(p,i){ out+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="7" fill="'+o.line.cor+'"/>'
+        +'<text x="'+p[0]+'" y="'+(p[1]-14)+'" text-anchor="middle" class="lid-lbl lid-lbl-b">'+(o.line.fmt?o.line.fmt(o.line.v[i]):fd(o.line.v[i],1))+'</text>'; });
+    }
+    for(var c=0;c<n;c++) out+='<text x="'+(left+gw*c+gw/2)+'" y="'+(Hh-18)+'" text-anchor="middle" class="lid-cat">'+o.cats[c]+'</text>';
+    out+='</svg>';
+    var leg=[].concat(bars.map(function(b){ return '<span><i style="background:'+b.cor+'"></i>'+b.nome+'</span>'; }),
+                      o.line?['<span><i style="background:'+o.line.cor+';height:4px"></i>'+o.line.nome+'</span>']:[]);
+    return out+(leg.length?'<div class="lid-leg">'+leg.join('')+'</div>':'');
+  }
+  function lidBarrasH(items){
+    var vmax=Math.max.apply(null,items.map(function(i){ return i.v; }))*1.18||1, W=1000, rh=120, Hh=items.length*rh+10;
+    var out='<svg viewBox="0 0 '+W+' '+Hh+'" class="lid-svg">';
+    items.forEach(function(it,i){
+      var y=i*rh+8, w=it.v/vmax*(W-300);
+      out+='<text x="0" y="'+(y+rh/2)+'" class="lid-cat lid-cat-g" dominant-baseline="middle">'+it.nome+'</text>'
+        +'<rect x="170" y="'+(y+14)+'" width="'+w+'" height="'+(rh-40)+'" fill="'+it.cor+'" rx="4"/>'
+        +'<text x="'+(180+w)+'" y="'+(y+rh/2)+'" class="lid-lbl lid-lbl-b lid-lbl-g" dominant-baseline="middle">'+fi(it.v)+'</text>';
+    });
+    return out+'</svg>';
+  }
+  function lidCard(lbl,val,sub,cor){
+    return '<div class="lid-card" style="border-top-color:'+cor+'"><div class="lid-clbl">'+lbl+'</div>'
+      +'<div class="lid-cval" style="color:'+cor+'">'+val+'</div><div class="lid-csub">'+sub+'</div></div>';
+  }
+  function lidSlides(M){
+    var ref=M.ref, ms=M.meses, cats=ms.map(function(m){ return MES_MIN[m.mes]; });
+    var mesNome=NOME_MES[ref.mes], anoS=String(M.ano), ref2=mesNome.toLowerCase();
+    var fxHE=lidFaixa(ref.hePct,M.limHE), fxAbs=lidFaixa(ref.abs,M.absCrit);
+    var corHE=fxHE.nivel==='dentro'?'#4CAF50':(fxHE.nivel==='perto'?'#FF9800':'#F44336');
+    var corAbs=fxAbs.nivel==='dentro'?'#4CAF50':(fxAbs.nivel==='perto'?'#FF9800':'#F44336');
+    var melhorPcH=lidMelhorEm(ms,'pcH',ref,true), melhorVol=lidMelhorEm(ms,'P',ref,true);
+    var acima=ref.at!==null&&ref.at>=100;
+    var passaram=M.ritmoExig!==null?ms.filter(function(m){ return m.pcDia>=M.ritmoExig; }):[];
+    var rod='<div class="lid-foot"><span>Como foi a produção · '+mesNome+'/'+anoS+' · PPCP</span>'
+      +'<span>Fonte: HISTORICO do painel (ERP Lógica e RH) · gerado em '+new Date().toLocaleDateString('pt-BR')+'</span></div>';
+    var S=[];
+    /* 1 · capa */
+    S.push('<div class="lid-capa"><div class="lid-k">PATRIMAR MÓVEIS · PPCP</div><h1>Como foi a produção</h1>'
+      +'<div class="lid-capa-s">'+mesNome+' de '+anoS+(M.abertos.length?' e o que vem até '+NOME_MES[M.abertos[M.abertos.length-1].mes].toLowerCase():'')+'</div>'
+      +'<div class="lid-capa-r">Reunião com a liderança de produção · dados fechados até '+mesNome.toLowerCase()+'/'+anoS+'</div></div>');
+    /* 2 · resumo */
+    var h2=mesNome+': '+(acima?'acima do plano':'abaixo do plano')+', hora extra '+fxHE.curto
+      +(melhorPcH?' e o melhor rendimento por hora do ano.':' e '+fd(ref.pcH,2)+' peças por hora.')
+      +(M.abertos.length?(passaram.length?' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede mais, e dá para chegar.':' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede um ritmo que o ano ainda não fez.'):'');
+    var resumo='<b>Resumindo:</b> a equipe entregou '+(acima?'acima':'abaixo')+' do plano ('+fd(ref.at,1)+'%), com a hora extra '+fxHE.texto
+      +(melhorPcH?' e o melhor rendimento por hora do ano.':'.')
+      +(M.gapDia!==null?(M.gapDia>0?' O desafio agora é transformar isso em padrão por '+M.abertos.length+' meses e subir '+fi(M.gapDia)+' peças por dia.'
+                                 :' O ritmo de '+ref2+' já cobre o que o plano pede até o fim do ano: o desafio é manter.'):'')
+      +(passaram.length&&M.gapDia>0?' Em '+lidLista(passaram)+' já passamos desse ritmo.':'')
+      +(ref.abs>M.absCrit?' Boa parte da diferença está nas horas perdidas com falta: para cada '+fi(100/ref.abs)+' horas trabalhadas, 1 foi perdida.':'');
+    S.push('<h1 class="lid-h">'+h2+'</h1><div class="lid-grid4">'
+      +lidCard('Produção',fi(ref.P),'peças · o plano era '+fi(ref.plano)+'<br>'+(acima?fi(ref.P-ref.plano)+' peças acima do plano':fi(ref.plano-ref.P)+' peças abaixo do plano'),acima?'#4CAF50':'#F44336')
+      +lidCard('Feito na hora extra',fd(ref.hePct,1)+'%','da produção do mês · limite '+M.limHE+'%<br>'+lidMenorDesde(ms,ref),corHE)
+      +lidCard('Faltas',fd(ref.abs,1)+'%','das horas trabalhadas na jornada normal (critério do RH) · limite '+M.absCrit+'%<br>'+lidRankAbs(ms,ref),corAbs)
+      +lidCard('Ritmo',fi(ref.pcDia),'peças por dia'+(M.ritmoExig!==null?' · '+M.periodo+' pede '+fi(M.ritmoExig)+'<br>'+(M.gapDia>0?'faltam '+fi(M.gapDia)+' por dia ('+fd(M.gapDia/ref.pcDia*100,1)+'%)':'ritmo já suficiente'):''),M.gapDia===null?'#F5A623':(M.gapDia<=0?'#4CAF50':'#FF9800'))
+      +'</div><div class="lid-p lid-resumo">'+resumo+'</div>'+rod);
+    /* 3 · mês a mês */
+    var nC=M.cumpriram.length, nP=M.comPlano.length;
+    var h3='Cumprimos o plano em '+nC+' de '+nP+' meses. '
+      +(M.cumpriuNoLimite.length?('Só '+lidLista(M.cumpriuNoLimite)+' '+(M.cumpriuNoLimite.length>1?'fizeram':'fez')+' isso com a hora extra dentro do limite.')
+                                :'Nenhum fez isso com a hora extra dentro do limite'+(ref.cumpriu?'; '+ref2+' ficou a '+fd(ref.hePct-M.limHE,1)+' p.p.':'.'))
+      +' É esse o padrão a repetir.';
+    var comHE=M.cumpriram.filter(function(m){ return m.hePct>M.limHE&&m.mes!==ref.mes; });
+    var abaixo=M.comPlano.filter(function(m){ return !m.cumpriu&&m.mes!==ref.mes; });
+    var t3=(comHE.length?lidLista(comHE).replace(/^./,function(c){ return c.toUpperCase(); })+' '+(comHE.length>1?'bateram':'bateu')+' o plano, mas com '+(function(){ var lo=fd(Math.min.apply(null,comHE.map(function(m){ return m.hePct; })),0), hi=fd(Math.max.apply(null,comHE.map(function(m){ return m.hePct; })),0); return lo===hi?lo+'%':lo+'% a '+hi+'%'; })()+' da produção feita na hora extra. ':'')
+      +(abaixo.length?lidLista(abaixo).replace(/^./,function(c){ return c.toUpperCase(); })+' '+(abaixo.length>1?'ficaram':'ficou')+' abaixo do plano. ':'')
+      +mesNome+' '+(ref.cumpriu?'bateu':'não bateu')+' o plano, com '+fd(ref.hePct,1)+'% na hora extra, '+fxHE.texto+'.';
+    var tab='<table class="lid-tab"><thead><tr><th>Mês</th><th>Plano</th><th>Feito</th><th>% plano</th><th>HE (h)</th><th>% na HE</th></tr></thead><tbody>'
+      +ms.map(function(m){ var f=lidFaixa(m.hePct,M.limHE); return '<tr><td>'+MES_MIN[m.mes]+'</td><td>'+fi(m.plano)+'</td><td>'+fi(m.P)+'</td>'
+        +'<td style="color:'+(m.at===null?'inherit':(m.at>=100?'#4CAF50':'#F44336'))+'">'+(m.at===null?'—':fd(m.at,0)+'%')+'</td><td>'+fi(m.heH)+'</td>'
+        +'<td style="color:'+(f.nivel==='dentro'?'#4CAF50':(f.nivel==='perto'?'#FF9800':'#F44336'))+'">'+fd(m.hePct,1)+'%</td></tr>'; }).join('')
+      +'<tr class="lid-tot"><td>Ano</td><td>'+fi(M.tot.plano)+'</td><td>'+fi(M.tot.P)+'</td><td>'+(M.tot.plano>0?fd(M.tot.P/M.tot.plano*100,0)+'%':'—')+'</td><td>'+fi(M.tot.heH)+'</td><td>'+fd(M.tot.hePct,1)+'%</td></tr></tbody></table>';
+    S.push('<h1 class="lid-h">'+h3+'</h1><div class="lid-sub">Colunas: plano e produzido (peças) · Linha: quanto da produção foi feita na hora extra · limite '+M.limHE+'%</div>'
+      +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Plano',cor:LID_COR.plano,v:ms.map(function(m){ return m.plano; })},{nome:'Produzido',cor:LID_COR.feito,v:ms.map(function(m){ return m.P; })}],
+          line:{nome:'Feito na hora extra (%)',cor:LID_COR.linha,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20},h:520})+'</div>'
+      +'<div>'+tab+'<div class="lid-p lid-small">'+t3+'</div></div></div>'+rod);
+    /* 4 · hora extra */
+    var m0=ms[0], minHE=ms.reduce(function(a,m){ return m.hePct<a.hePct?m:a; },ms[0]);
+    var m0N=NOME_MES[m0.mes].toLowerCase();
+    var h4=(ref.hePct<m0.hePct?'Conseguimos: a produção feita na hora extra caiu de '+fd(m0.hePct,0)+'% em '+m0N+' para '+fd(ref.hePct,1)+'% em '+ref2
+                              :'A produção feita na hora extra foi de '+fd(m0.hePct,0)+'% em '+m0N+' para '+fd(ref.hePct,1)+'% em '+ref2)
+      +', '+fxHE.texto+'.';
+    S.push('<h1 class="lid-h">'+h4+'</h1><div class="lid-sub">Quanto da produção do mês só saiu por causa da hora extra · limite '+M.limHE+'%</div>'
+      +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,line:{nome:anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20,ref:M.limHE,refLbl:'limite '+M.limHE+'%'},h:560})+'</div>'
+      +'<div class="lid-box"><div class="lid-k2">Na prática</div>'
+      +'<p>Em '+ref2+', '+fi(ref.heP)+' das '+fi(ref.P)+' peças saíram na hora extra ('+fi(ref.heH)+' horas).</p>'
+      +'<p>No ano: '+fi(M.tot.heH)+' horas extras, e '+fd(M.tot.hePct,1)+'% de tudo que produzimos saiu nelas.</p>'
+      +(minHE.mes!==ref.mes?'<p>'+NOME_MES[minHE.mes]+' teve a menor hora extra ('+fd(minHE.hePct,1)+'%)'+(lidMelhorEm(ms,'pcDia',minHE,false)?', mas também foi o mês de menor ritmo: '+fi(minHE.pcDia)+' peças por dia.':'.')+'</p>':'')
+      +'</div></div>'+rod);
+    /* 5 · faltas */
+    var cobre=ref.F>0?ref.heH/ref.F*100:0, melhores=ms.slice().sort(function(a,b){ return a.abs-b.abs; }).slice(0,2).filter(function(m){ return m.mes!==ref.mes; });
+    var h5='Falta é onde a liderança mais pode ajudar: '+fd(ref.abs,1)+'% em '+ref2+', o mesmo que '+fi(M.foraHoje)+' pessoas fora todo dia. Cada 1% a menos são '+fi(M.ganhoPP)+' peças no mês.';
+    S.push('<h1 class="lid-h">'+h5+'</h1><div class="lid-sub">Horas de falta e atraso sobre as horas trabalhadas na jornada normal (critério do RH) · '+anoS+' · limite '+M.absCrit+'%</div>'
+      +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:[{nome:'Faltas '+anoS,cor:LID_COR.falta,v:ms.map(function(m){ return m.abs; })}],barLabels:true,fmtBar:function(v){ return fd(v,1)+'%'; },h:560})+'</div>'
+      +'<div><div class="lid-grid2">'+lidCard('Horas perdidas',fi(ref.F)+' h','com falta, em '+ref2,'#F44336')+lidCard('Horas extras feitas',fi(ref.heH)+' h','para cobrir parte do buraco','#FF9800')+'</div>'
+      +'<div class="lid-p lid-small"><b>'+(cobre>100?'A hora extra passou do que a falta tirou ('+fd(cobre,0)+'%)':'A hora extra cobriu '+fd(cobre,0)+'% do que a falta tirou')+', e cada hora dessas custa pelo menos 50% a mais.</b> Reduzir falta é o jeito mais barato de produzir mais: cada 1% a menos são '+fi(ref.H/100)+' horas por mês, quase '+fi(M.ganhoPP)+' peças no ritmo de '+ref2+'.</div>'
+      +'<div class="lid-p lid-small">Presença é o indicador que mais depende de quem está na linha todo dia: acompanhar, conversar, ajustar escala.'+(melhores.length?' '+lidLista(melhores).replace(/^./,function(c){ return c.toUpperCase(); })+' ('+melhores.map(function(m){ return fd(m.abs,1)+'%'; }).join(' e ')+') '+(melhores.length>1?'mostraram':'mostrou')+' que dá.':'')+'</div></div></div>'+rod);
+    /* 6 · peças por hora */
+    var prox=M.abertos[0]||null, hNec=prox&&ref.pcH>0?prox.plano/ref.pcH:null;
+    var h6='Cada hora trabalhada '+(ref.pcH>m0.pcH?'está rendendo mais':'rende')+': de '+fd(m0.pcH,2)+' peça por hora em '+m0N+' para '+fd(ref.pcH,2)+' em '+ref2+'.'+(melhorPcH?' Foi a equipe que fez isso.':'');
+    S.push('<h1 class="lid-h">'+h6+'</h1><div class="lid-sub">Peças produzidas por hora trabalhada (normal e extra)</div>'
+      +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,line:{nome:anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.pcH; }),fmt:function(v){ return fd(v,2); },max:Math.max.apply(null,ms.map(function(m){ return m.pcH; }))*1.1},h:560})+'</div>'
+      +'<div class="lid-box"><div class="lid-k2">O que isso significa para '+(M.periodo||'o próximo mês')+'</div>'
+      +'<p>Em '+ref2+', '+fi(ref.HT)+' horas renderam '+fi(ref.P)+' peças.</p>'
+      +(prox&&hNec?'<p>Para as '+fi(prox.plano)+' de '+NOME_MES[prox.mes].toLowerCase()+', nesse rendimento, precisamos de '+fi(hNec)+' horas: '+(hNec>ref.HT?fi(hNec-ref.HT)+' a mais':fi(ref.HT-hNec)+' a menos')+'.</p><p>Essas horas vêm de menos falta ou de mais hora extra.</p>':'')
+      +'<p>Ainda não é meta: falta confirmar com o estudo de tempos.</p></div></div>'+rod);
+    /* 7 · vendido, produzido, faturado */
+    var vp=M.tot.ven-M.tot.P;
+    var h7=(M.tot.ven>0?'Tem pedido para todo mundo: vendemos '+fd(Math.abs(vp)/1000,0)+' mil peças a '+(vp>=0?'mais':'menos')+' do que produzimos no ano.':'')
+      +(M.carteira>0&&M.carteiraDias!==null?' Faltam faturar '+fd(M.carteira/1000,1)+' mil: '+fi(M.carteiraDias)+' dias de produção.':'');
+    S.push('<h1 class="lid-h">'+h7+'</h1><div class="lid-sub">'+MES_MIN[ms[0].mes]+' a '+MES_MIN[ref.mes]+' de '+anoS+' · peças</div>'
+      +'<div class="lid-2col"><div>'+lidBarrasH([{nome:'Vendido',v:M.tot.ven,cor:LID_COR.plano},{nome:'Produzido',v:M.tot.P,cor:LID_COR.feito},{nome:'Faturado',v:M.tot.fat,cor:LID_COR.cinza}])+'</div>'
+      +'<div><div class="lid-k2">Ritmo por dia (peças) · apurado em '+MES_MIN[ms[0].mes]+'–'+MES_MIN[ref.mes]+'</div>'
+      +'<table class="lid-tab"><thead><tr><th>Cenário</th><th>por dia</th><th>O que é</th></tr></thead><tbody>'
+      +'<tr><td>A · Sem hora extra</td><td>'+fi(M.cen.A)+'</td><td class="lid-tx">o que sai na jornada normal</td></tr>'
+      +'<tr><td>B · Como está hoje</td><td>'+fi(M.cen.B)+'</td><td class="lid-tx">com a hora extra de hoje</td></tr>'
+      +'<tr class="lid-dest"><td>C · Ritmo da venda</td><td>'+fi(M.cen.C)+'</td><td class="lid-tx">para os pedidos não acumularem</td></tr>'
+      +'<tr><td>'+mesNome+'</td><td>'+fi(ref.pcDia)+'</td><td class="lid-tx">'+(ref.pcDia>=M.cen.B?'melhor':'abaixo')+' que a média do ano</td></tr></tbody></table>'
+      +'<div class="lid-p lid-small">A venda varia muito de um mês para outro. Por isso olhamos o ano inteiro.'+(M.ritmoExig!==null?' O plano de '+M.periodo+' pede '+fi(M.ritmoExig)+' peças por dia.':'')+'</div></div></div>'+rod);
+    /* 8 · plano dos meses abertos e de onde tirar */
+    if(M.abertos.length){
+      var s6=M.sim.filter(function(x){ return x.alvo===M.absCrit; })[0]||M.sim[M.sim.length-1];
+      var cobreTxt=s6&&M.gapDia>0?(s6.dia>=M.gapDia?'cobre a diferença':(s6.dia>=0.8*M.gapDia?'cobre quase toda a diferença':'cobre parte da diferença')):'';
+      var melhorRit=passaram.filter(function(m){ return m.mes!==ref.mes; }).sort(function(a,b){ return b.pcDia-a.pcDia; })[0];
+      var h8=M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede '+fi(M.ritmoExig)+' peças por dia. '+mesNome+' fez '+fi(ref.pcDia)
+        +(M.gapDia>0&&melhorRit?' e '+NOME_MES[melhorRit.mes].toLowerCase()+' fez '+fi(melhorRit.pcDia):'')
+        +'. '+(M.gapDia>0?'A diferença é '+fi(M.gapDia)+' por dia, e a conta mostra de onde tirar.':'O ritmo de '+ref2+' já cobre o plano; a conta mostra a folga que a presença daria.');
+      S.push('<h1 class="lid-h">'+h8+'</h1><div class="lid-sub">Plano de '+NOME_MES[M.abertos[0].mes].toLowerCase()+' a '+NOME_MES[M.abertos[M.abertos.length-1].mes].toLowerCase()+' de '+anoS+' · Plano Mestre</div>'
+        +'<div class="lid-2col"><div><table class="lid-tab"><thead><tr><th>Mês</th><th>Dias</th><th>Plano (peças)</th><th>Por dia</th></tr></thead><tbody>'
+        +M.abertos.map(function(x){ return '<tr><td>'+NOME_MES[x.mes]+'</td><td>'+x.dias+'</td><td>'+fi(x.plano)+'</td><td>'+(x.dias>0?fi(x.plano/x.dias):'—')+'</td></tr>'; }).join('')
+        +'<tr class="lid-tot"><td>Total</td><td>'+M.diasAbertos+'</td><td>'+fi(M.planoAberto)+'</td><td>'+fi(M.ritmoExig)+'</td></tr></tbody></table>'
+        +'<div class="lid-p lid-small">Ritmo de '+anoS+' por mês (peças por dia): '+ms.map(function(m){ return MES_MIN[m.mes]+' '+fi(m.pcDia); }).join(' · ')+'. Média do ano: '+fi(M.tot.pcDia)+'.</div></div>'
+        +'<div class="lid-box"><div class="lid-k2">'+(M.gapDia>0?'De onde tirar as '+fi(M.gapDia)+' peças por dia que faltam':'O que a presença ainda pode dar')+'</div>'
+        +(s6?'<p>Se a falta cair de '+fd(ref.abs,0)+'% para '+s6.alvo+'%, sobram cerca de '+fi(s6.h)+' horas por mês.</p>'
+             +'<p>No rendimento de '+ref2+' ('+fd(ref.pcH,2)+' peças por hora), isso dá perto de '+fi(s6.pc)+' peças por mês: '+fi(s6.dia)+' por dia.</p>'
+             +'<p>'+(M.gapDia>0?'Ou seja: reduzir a falta '+cobreTxt+', sem aumentar a hora extra. O que faltar vem de processo estável, equipes balanceadas e menos perdas no turno.'
+                                 :'Ou seja: reduzir a falta é folga de '+fi(s6.dia)+' peças por dia sem aumentar a hora extra, e menos hora extra para entregar o mesmo.')+'</p>'
+            :'<p>A falta de '+ref2+' já está dentro do limite; a diferença vem de balanceamento, perdas no turno e capacidade.</p>')
+        +'<p class="lid-small">Conta aproximada, linear, feita com as horas e o rendimento de '+ref2+'.</p></div></div>'+rod);
+    }
+    /* 9 · presença */
+    if(M.sim.length){
+      var cards9=lidCard('Hoje · falta de '+fd(ref.abs,0)+'%',fi(M.foraHoje)+' fora','pessoas fora por dia<br>'+fi(ref.F)+' horas perdidas no mês<br>hora extra cobrindo o buraco','#F44336')
+        +M.sim.map(function(x){ var refM=ms.filter(function(m){ return m.abs<=x.alvo&&m.mes!==ref.mes; }).sort(function(a,b){ return a.abs-b.abs; })[0];
+            return lidCard('Se chegar a '+x.alvo+'%','+'+fi(x.pc),'peças a mais por mês (+'+fi(x.dia)+' por dia)<br>'+fi(x.fora)+' pessoas fora por dia<br>'
+              +(refM?NOME_MES[refM.mes].toLowerCase()+' já fez '+fd(refM.abs,1)+'%':(M.gapDia>0?(x.dia>=M.gapDia?'cobre a diferença de '+M.periodo:'cobre '+fi(x.dia)+' das '+fi(M.gapDia)+' que faltam'):'folga sobre o plano, sem hora extra')),x.alvo<=M.absCrit?'#4CAF50':'#FF9800'); }).join('');
+      S.push('<h1 class="lid-h">'+(M.abertos.length?'O desafio de '+M.periodo+' é presença. ':'')+'Cada ponto a menos de falta vira peça sem precisar de hora extra.</h1>'
+        +'<div class="lid-sub">Conta feita com as horas e o rendimento de '+ref2+' ('+fi(ref.colab)+' pessoas, '+fi(ref.H)+' horas trabalhadas na jornada normal, '+fd(ref.pcH,2)+' peças por hora)</div>'
+        +'<div class="lid-grid3">'+cards9+'</div>'
+        +'<div class="lid-p"><b>Presença é meta de linha, não só de RH.</b> Quem percebe primeiro que alguém vai faltar é o líder. A liderança é parte importante dessa melhoria: quanto mais cedo identificarmos falta, cobertura, balanceamento e gargalo, menor o impacto na produção e menos hora extra'+(M.abertos.length?' para fechar '+M.periodo:'')+'.</div>'+rod);
+    }
+    /* 10 · três linhas */
+    var l1=mesNome+' mostrou que dá: '+(acima?'acima do plano':fd(ref.at,0)+'% do plano')+', hora extra '+fxHE.curto+(melhorPcH?' e o melhor rendimento por hora do ano.':'.');
+    var l2=M.gapDia!==null?(M.gapDia>0?M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede '+fd(M.gapDia/ref.pcDia*100,0)+'% a mais por dia.'+(passaram.length?' Em '+lidLista(passaram)+' já fizemos isso.':'')+' Agora é fazer sem depender da hora extra.'
+                                          :'O ritmo já cobre o plano até o fim do ano. Agora é manter sem depender da hora extra.')
+                          :'O ano está fechado: a base para o próximo plano é o ritmo demonstrado, não o nominal.';
+    var l3=(ref.abs>M.absCrit?'Boa parte da diferença está na presença: cada 1% a menos de falta são '+fi(M.ganhoPP)+' peças no mês. ':'Presença dentro do limite: a próxima alavanca é balanceamento e perdas no turno. ')+'A liderança é parte importante disso.';
+    S.push('<div class="lid-capa lid-fim"><div class="lid-k">Em três linhas</div>'
+      +[l1,l2,l3].map(function(t,i){ return '<div class="lid-linha"><span class="lid-n">'+(i+1)+'</span><span>'+t+'</span></div>'; }).join('')
+      +'<div class="lid-capa-r">Fontes: HISTORICO do painel (ERP Lógica e RH) · Plano Mestre '+anoS+' · dados fechados em '+mesNome.toLowerCase()+'/'+anoS+'</div></div>');
+    return S;
+  }
+  var _lidIdx=0, _lidSlides=null;
+  function _lidPintar(){
+    var ov=document.getElementById('lid-ov'); if(!ov||!_lidSlides) return;
+    ov.querySelector('.lid-stage').innerHTML=_lidSlides[_lidIdx];
+    ov.querySelector('#lid-n').textContent=(_lidIdx+1)+' / '+_lidSlides.length;
+    ov.querySelector('#lid-prev').disabled=_lidIdx===0;
+    ov.querySelector('#lid-next').disabled=_lidIdx===_lidSlides.length-1;
+  }
+  window.reuLideres=function(){
+    var M=lidModelo();
+    if(!M){ if(typeof toast==='function') toast('Nenhum mês fechado para apresentar.','wn'); return; }
+    _lidSlides=lidSlides(M); _lidIdx=0;
+    var ov=document.getElementById('lid-ov');
+    if(!ov){
+      ov=document.createElement('div'); ov.id='lid-ov';
+      ov.innerHTML='<div class="lid-stage"></div>'
+        +'<div class="lid-bar"><button id="lid-prev" onclick="reuLideresIr(-1)" title="Anterior (←)">&#8592;</button>'
+        +'<span id="lid-n"></span><button id="lid-next" onclick="reuLideresIr(1)" title="Próximo (→)">&#8594;</button>'
+        +'<button class="lid-x" onclick="reuLideresPDF()" title="Abre a versão em papel, uma tela por página">&#9113; Baixar PDF</button>'
+        +'<button class="lid-x" onclick="reuLideresFechar()" title="Sair (ESC)">&#10005; sair</button></div>';
+      document.body.appendChild(ov);
+    }
+    ov.classList.add('on'); document.body.classList.add('lid-on');
+    _lidPintar();
+  };
+  window.reuLideresIr=function(d,abs){
+    if(!_lidSlides) return;
+    var i=(abs!==undefined)?abs:_lidIdx+d; if(i<0) i=0; if(i>=_lidSlides.length) i=_lidSlides.length-1;
+    _lidIdx=i; _lidPintar();
+  };
+  window.reuLideresFechar=function(){
+    var ov=document.getElementById('lid-ov'); if(ov) ov.classList.remove('on');
+    document.body.classList.remove('lid-on');
+  };
+  window.reuLideresPDF=function(){
+    if(!_lidSlides) return;
+    var w=window.open('','_blank','width=1100,height=800'); if(!w) return;
+    w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Apresentação para líderes</title><style>'
+      +'@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box;margin:0;padding:0}'
+      +'body{font-family:"Segoe UI",Arial,sans-serif;color:#1a1a2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+      +'.pg{page-break-after:always;padding:6mm 4mm;min-height:180mm;position:relative;font-size:11pt;display:flex;flex-direction:column}'
+      +'.pg:last-child{page-break-after:auto}'
+      +'.lid-h{font-size:19pt;font-weight:800;line-height:1.25;margin-bottom:6px}.lid-sub{color:#52606D;font-size:9.5pt;margin-bottom:8px}'
+      +'.lid-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.lid-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.lid-grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}'
+      +'.lid-card{border:1px solid #D3D8DE;border-top:4px solid #888;border-radius:6px;padding:8px 10px;background:#fff}'
+      +'.lid-clbl{font-size:8pt;font-weight:700;color:#52606D;text-transform:uppercase;letter-spacing:.06em}.lid-cval{font-size:22pt;font-weight:800;margin:4px 0}.lid-csub{font-size:8.5pt;color:#3E4C59;line-height:1.35}'
+      +'.lid-p{font-size:10.5pt;line-height:1.45;margin-top:8px}.lid-small{font-size:9pt}.lid-resumo{border:1px solid #D3D8DE;border-radius:6px;padding:8px 12px;margin-top:10px}'
+      +'.lid-2col{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-top:4px}.lid-2col-w{grid-template-columns:1.5fr 1fr}'
+      +'.lid-box{border:1px solid #D3D8DE;border-radius:6px;padding:10px 12px;font-size:10pt;line-height:1.45}.lid-box p{margin:0 0 7px}.lid-k2{font-weight:800;font-size:9.5pt;margin-bottom:6px;color:#1F2933}'
+      +'.lid-tab{width:100%;border-collapse:collapse;font-size:9pt}.lid-tab th{text-align:left;font-size:7.5pt;color:#52606D;text-transform:uppercase;padding:3px 5px;border-bottom:1px solid #D3D8DE}.lid-tab td{padding:3px 5px;border-top:1px solid #edf2f7}'
+      +'.lid-tab td:nth-child(n+2){font-family:Consolas,monospace;text-align:right}.lid-tab td.lid-tx{text-align:left;font-family:inherit}.lid-tot td{font-weight:800}.lid-dest td{color:#D9342B;font-weight:700}'
+      +'.lid-svg{width:100%;height:auto}.lid-lbl{font-size:22px;fill:#1F2933}.lid-lbl-b{font-weight:700}.lid-cat{font-size:24px;fill:#52606D}.lid-lbl-g{font-size:30px}.lid-cat-g{font-size:32px;fill:#1F2933}'
+      +'.lid-leg{display:flex;gap:16px;font-size:8.5pt;color:#52606D;margin-top:2px}.lid-leg i{display:inline-block;width:14px;height:9px;margin-right:5px;border-radius:2px;vertical-align:middle}'
+      +'.lid-capa{display:flex;flex-direction:column;justify-content:center;flex:1;gap:10px}.lid-capa h1{font-size:34pt}.lid-capa-s{font-size:18pt;color:#3E4C59}.lid-capa-r{font-size:9.5pt;color:#52606D;margin-top:14px}'
+      +'.lid-k{font-size:9pt;letter-spacing:.14em;text-transform:uppercase;color:#B8860B;font-weight:700}'
+      +'.lid-linha{display:flex;gap:12px;align-items:flex-start;font-size:15pt;line-height:1.4;margin:6px 0}.lid-n{flex:none;width:30px;height:30px;border-radius:50%;background:#D9342B;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:12pt}'
+      +'.lid-foot{margin-top:auto;display:flex;justify-content:space-between;font-size:7.5pt;color:#8a94a0;padding-top:6px;border-top:1px solid #edf2f7}'
+      +'</style></head><body>'+_lidSlides.map(function(s){ return '<div class="pg">'+s+'</div>'; }).join('')+'</body></html>');
+    w.document.close(); w.focus();
+    setTimeout(function(){ try{ w.print(); }catch(e){} },400);
+  };
+  document.addEventListener('keydown', function(e){
+    var ov=document.getElementById('lid-ov'); if(!ov||!ov.classList.contains('on')) return;
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){ e.preventDefault(); reuLideresIr(1); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); reuLideresIr(-1); }
+    else if(e.key==='Home'){ e.preventDefault(); reuLideresIr(0,0); }
+    else if(e.key==='End'){ e.preventDefault(); reuLideresIr(0,_lidSlides.length-1); }
+    else if(e.key==='Escape'){ e.preventDefault(); reuLideresFechar(); }
+  });
+
   /* ── handlers do plano de ação ── */
   window.reuFoco=function(sel){
     var el=document.querySelector(sel); if(!el) return;
@@ -20770,9 +21192,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b85';
+var APP_VERSAO = 'b86';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b86', data:'17/09/2026', itens:[
+    'Apresentacao para lideres embutida: botao Lideres na Reuniao abre dez telas geradas dos dados do mes na hora — resumo, mes a mes, hora extra, faltas, pecas por hora, vendido x produzido x faturado, plano dos meses abertos, simulacao de presenca e fechamento em tres linhas. Setas navegam, ESC sai, Baixar PDF gera a versao em papel, uma tela por pagina.',
+    'Cada frase e uma regra sobre o dado, nao texto fixo: meses com plano cumprido sao contados; "dentro / bem perto / acima do limite" sai de DashUtils.faixaLimite; "melhor do ano" so e dito na dimensao em que e verdade; a simulacao de falta e linear e diz isso na tela. Substitui o deck montado a mao que saiu com quatro frases sem base em SET/26.'
+  ]},
   { v:'b85', data:'17/09/2026', itens:[
     'Integridade dos dados: a Reuniao abre com uma conferencia automatica de cada mes fechado do ano — somas da linha (horas totais, extras, faltas), colunas calculadas refeitas a partir dos inputs (absenteismo, producao sem extras, meta, eficiencia, margem), producao contra o reporte do ERP, producao igual ao faturado e previsao da HISTORICO contra o Plano Mestre. Vermelho e erro (corrige no Excel e reexporta), amarelo e ponto de atencao. Teria pego os tres erros de SET/26: JUN com derivadas de outra producao, JUL com horas totais digitadas erradas, AGO com a margem trocada. Fica fora da impressao.',
     'Apps Script passa a enviar planoNaHistorico (a previsao como esta na HISTORICO, antes de o Plano Mestre sobrescrever) — reimplante o Web App para a conferencia de plano funcionar.'
