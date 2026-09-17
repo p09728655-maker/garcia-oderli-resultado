@@ -20595,6 +20595,7 @@ function printAtiva(){
              heH:HE, H:H, HT:HT, pcH:HT>0?P/HT:0, dias:dias, pcDia:dias>0?P/dias:0,
              abs:abs, F:F, colab:r.colaboradores||0, fat:r.qtdeFaturado||0, ven:r.qtdeVendida||0,
              fPonto:r.faltasPonto||0, aPonto:r.atrasosPonto||0, temPonto:(r.naoTrabalhadas||0)>0,
+             kg:r.quilosProduzidos||0, kgH:(HT>0?(r.quilosProduzidos||0)/HT:0), kgPc:(P>0?(r.quilosProduzidos||0)/P:0),
              temAus:(r.ausFalta>0||r.ausAtestado>0||r.ausAfastado>0||r.ausAtraso>0),
              aFalta:r.ausFalta||0, aAtest:r.ausAtestado||0, aAfast:r.ausAfastado||0, atraso:r.atraso||0,
              cumpriu:plano>0&&P>=plano, at:plano>0?P/plano*100:null };
@@ -20612,7 +20613,10 @@ function printAtiva(){
     var refR=(reuMes&&fech.filter(function(r){ return r.mes===reuMes; })[0])||fech[fech.length-1];
     var meses=fech.filter(function(r){ return ORDEM_M.indexOf(r.mes)<=ORDEM_M.indexOf(refR.mes); }).map(lidMes);
     var ref=meses[meses.length-1];
-    var M={ ano:ano, meses:meses, ref:ref, n:meses.length,
+    /* ano anterior, mês a mês: base do slide de quilos por hora */
+    var antPor={};
+    todos.filter(function(r){ return r.ano===ano-1&&(r.producaoReal||0)>0; }).forEach(function(r){ antPor[r.mes]=lidMes(r); });
+    var M={ ano:ano, meses:meses, ref:ref, n:meses.length, antPor:antPor,
             limHE:(typeof META_DEP_HE!=='undefined')?META_DEP_HE:8,
             metaAbs:(typeof META_ABS!=='undefined')?META_ABS:3,
             absCrit:(typeof ABS_ATENCAO!=='undefined')?ABS_ATENCAO:6 };
@@ -20803,6 +20807,29 @@ function printAtiva(){
       +'<p>Em '+ref2+', '+fi(ref.HT)+' horas renderam '+fi(ref.P)+' peças.</p>'
       +(prox&&hNec?'<p>Para as '+fi(prox.plano)+' de '+NOME_MES[prox.mes].toLowerCase()+', nesse rendimento, precisamos de '+fi(hNec)+' horas: '+(hNec>ref.HT?fi(hNec-ref.HT)+' a mais':fi(ref.HT-hNec)+' a menos')+'.</p><p>Essas horas vêm de menos falta ou de mais hora extra.</p>':'')
       +'<p>Ainda não é meta: falta confirmar com o estudo de tempos.</p></div></div>'+rod);
+    /* 6b · quilos por hora — responde "produto maior dá mais trabalho".
+       Peso corrige tamanho do mix, não complexidade; a nota final diz isso.
+       Só entra quando a HISTORICO tem quilosProduzidos (REPORTE do ERP). */
+    if(ref.kg>0&&ms.some(function(m){ return m.kg>0; })){
+      var anoAnt=String(M.ano-1), antM=M.antPor[ref.mes]||null, antKg=(antM&&antM.kg>0)?antM:null;
+      var kgHAnt=ms.map(function(m){ var a=M.antPor[m.mes]; return (a&&a.kg>0)?a.kgH:0; });
+      var temAnt=kgHAnt.some(function(v){ return v>0; });
+      var baseCmp=antKg||(m0.kg>0&&m0.mes!==ref.mes?m0:null);
+      var baseN=antKg?(ref2+' de '+anoAnt):(baseCmp?m0N:null);
+      var varMix=baseCmp?(ref.kgPc/baseCmp.kgPc-1)*100:0;
+      var h6b='Em '+ref2+' cada hora rendeu '+fd(ref.kgH,1)+' kg'
+        +(baseCmp?', '+(ref.kgH>=baseCmp.kgH?'mais':'menos')+' que os '+fd(baseCmp.kgH,1)+' kg de '+baseN:'')+'.'
+        +(baseCmp?' O produto médio ficou '+fd(Math.abs(varMix),0)+'% mais '+(varMix>=0?'pesado':'leve')+'.':'');
+      var barsKg=[]; if(temAnt) barsKg.push({nome:anoAnt,cor:LID_COR.cinza,v:kgHAnt});
+      barsKg.push({nome:anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.kgH; })});
+      S.push('<h1 class="lid-h">'+h6b+'</h1><div class="lid-sub">Quilos produzidos por hora trabalhada (normal e extra) · fonte: REPORTE do ERP</div>'
+        +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:barsKg,barLabels:true,fmtBar:function(v){ return v>0?fd(v,0):''; },h:560})+'</div>'
+        +'<div><div class="lid-grid2">'
+          +lidCard('kg por peça em '+ref2,fd(ref.kgPc,1)+' kg',baseCmp?(baseN+': '+fd(baseCmp.kgPc,1)+' kg'):'sem base de comparação',LID_COR.feito)
+          +lidCard('Peças por hora em '+ref2,fd(ref.pcH,2),baseCmp?(baseN+': '+fd(baseCmp.pcH,2)):'',LID_COR.cinza)+'</div>'
+        +'<div class="lid-p"><b>Peças por hora medem quantas saíram. Quilos por hora medem quanto material a fábrica transformou.</b> Juntos, separam ritmo de tamanho: quando as peças caem e os quilos não, foi o mix que ficou maior, não a linha que rendeu menos.</div>'
+        +'<div class="lid-p lid-small">Peso corrige tamanho, não complexidade: um móvel com muita usinagem pesa pouco e demora. Para isso a medida é pontos por produto, que está sendo montada.</div></div></div>'+rod);
+    }
     /* 7 · vendido, produzido, faturado */
     var vp=M.tot.ven-M.tot.P;
     var h7=(M.tot.ven>0?'Tem pedido para todo mundo: vendemos '+fd(Math.abs(vp)/1000,0)+' mil peças a '+(vp>=0?'mais':'menos')+' do que produzimos no ano.':'')
@@ -21356,9 +21383,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b92.5';
+var APP_VERSAO = 'b93';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b93', data:'17/09/2026', itens:[
+    'Apresentacao para lideres ganha o slide de quilos por hora, depois do de pecas por hora: barras do ano e do ano anterior mes a mes, kg por peca e pecas por hora do mes contra o mesmo mes do ano anterior, e a frase que separa ritmo de tamanho. Responde a objecao "produto maior da mais trabalho" com o quilosProduzidos que ja vem do REPORTE do ERP. So entra quando ha quilos no mes. Nota no slide: peso corrige tamanho, nao complexidade.'
+  ]},
   { v:'b92.5', data:'17/09/2026', itens:[
     'Reuniao, faixa 1: a resposta na faixa fica so com o veredito (Nao: 91,4% do plano em jornada normal · faltaram 31.296 pc). O custo da falta e o "e capacidade ou absenteismo?" vao para uma linha sob os cards. A narracao do Apresentar continua completa.',
     'Plano de acao: WhatsApp e e-mail viram um menu Enviar; o excluir fica cinza e so avermelha ao passar o mouse. Cabecalho: os icones de painel lateral e Modo TV ganham rotulo.'
