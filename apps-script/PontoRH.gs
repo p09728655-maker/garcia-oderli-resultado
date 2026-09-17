@@ -34,7 +34,10 @@
  * Aba FUNCIONARIOS: codigo | nome | setor | direto (S/N) | admissao | obs.
  * Rode criarAbaFuncionarios() uma vez e cole a lista. Código do extrato
  * que não estiver na aba entra como pendência no aviso e NÃO é somado —
- * melhor um aviso do que um número errado.
+ * melhor um aviso do que um número errado. A admissao é respeitada: quem
+ * foi admitido depois do último dia do mês do extrato não conta naquele
+ * mês (o ponto já lista a pessoa com carga zero assim que ela é
+ * cadastrada) e passa a contar sozinho no mês seguinte.
  */
 var PR_PASTA        = 'PONTO RH';
 var PR_PROCESSADOS  = 'PROCESSADOS';
@@ -66,10 +69,23 @@ function prLerFuncionarios(ss) {
     var cod = String(v[i][col.codigo] || '').trim().replace(/\.0$/, '');
     if (!cod) continue;
     var direto = /^s/i.test(String(v[i][col.direto] || '').trim());
-    mapa[cod] = { nome: String(v[i][col.nome] || ''), setor: String(v[i][col.setor] || ''), direto: direto };
+    mapa[cod] = { nome: String(v[i][col.nome] || ''), setor: String(v[i][col.setor] || ''), direto: direto,
+                  admissao: col.admissao !== undefined ? prData(v[i][col.admissao]) : null };
     if (direto) diretos++;
   }
   return { mapa: mapa, diretos: diretos };
+}
+
+/* Data em Date, "dd/mm/aaaa" ou "aaaa-mm-dd" → Date; senão null. */
+function prData(v) {
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  var s = String(v === null || v === undefined ? '' : v).trim(), m;
+  if (!s) return null;
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+  return null;
 }
 
 /* ══ 2 · LEITURA DO EXTRATO ══ */
@@ -134,16 +150,20 @@ function prExtrair(sheet) {
     });
   }
   if (!pessoas.length) throw new Error('extrato sem linhas de pessoa');
-  return { mes: mes, ano: ano, pessoas: pessoas };
+  /* último dia do mês do extrato: quem entrou depois disso não é deste mês */
+  var mesIdx = PR_MESES.indexOf(mes);
+  return { mes: mes, ano: ano, fim: new Date(ano, mesIdx + 1, 0), pessoas: pessoas };
 }
 
 /* ══ 3 · SOMA DOS DIRETOS ══ */
 function prAgregar(ext, func) {
-  var dir = [], pend = [];
+  var dir = [], pend = [], depois = [];
   ext.pessoas.forEach(function (p) {
     var f = func.mapa[p.codigo];
     if (!f) { pend.push(p.codigo + ' ' + p.nome); return; }
-    if (f.direto) dir.push(p);
+    if (!f.direto) return;
+    if (f.admissao && ext.fim && f.admissao > ext.fim) { depois.push(p.codigo + ' ' + p.nome); return; }
+    dir.push(p);
   });
   var soma = function (k) { return dir.reduce(function (a, p) { return a + p[k]; }, 0); };
   /* jornada cheia = carga mais frequente (arredondada a 0,1 h) */
@@ -153,6 +173,7 @@ function prAgregar(ext, func) {
             atrasosPonto: soma('atrasos'), e50: soma('e50'), e100: soma('e100'), jornada: jornada };
   a.naoTrabalhadas = Math.max(0, a.jornada * a.n - a.normais);
   a.pendentes = pend;
+  a.admitidosDepois = depois;   /* cadastrados no ponto antes de começar: ficam para o mês da admissão */
   return a;
 }
 
@@ -226,6 +247,7 @@ function processarPontoDrive() {
       var r = prProcessarArquivo(ss, arq, func);
       feitos.push(arq.getName() + ' → ' + r.ext.mes + '/' + r.ext.ano + ': ' + r.a.n + ' diretos, ' + Math.round(r.a.normais) + ' h normais, ' + Math.round(r.a.naoTrabalhadas) + ' h não trabalhadas');
       if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
+      if (r.a.admitidosDepois.length) feitos.push('   admitidos depois de ' + r.ext.mes + '/' + r.ext.ano + ', não contam neste mês: ' + r.a.admitidosDepois.join(', '));
       var sub = pasta.getFoldersByName(PR_PROCESSADOS);
       arq.moveTo(sub.hasNext() ? sub.next() : pasta.createFolder(PR_PROCESSADOS));
     } catch (e) {
@@ -297,7 +319,8 @@ function testePonto() {
         + ' | jornada cheia ' + a.jornada + ' | carga ' + a.carga.toFixed(1) + ' | normais ' + a.normais.toFixed(1)
         + ' | faltas(ponto) ' + a.faltasPonto.toFixed(1) + ' | atrasos ' + a.atrasosPonto.toFixed(1)
         + ' | e50 ' + a.e50.toFixed(1) + ' | e100 ' + a.e100.toFixed(2) + ' | naoTrabalhadas ' + a.naoTrabalhadas.toFixed(1)
-        + (a.pendentes.length ? ' | FORA da FUNCIONARIOS: ' + a.pendentes.join(', ') : ''));
+        + (a.pendentes.length ? ' | FORA da FUNCIONARIOS: ' + a.pendentes.join(', ') : '')
+        + (a.admitidosDepois.length ? ' | admitidos depois do mês (não contam): ' + a.admitidosDepois.join(', ') : ''));
     } finally { try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (ignore) {} }
     return;
   }
