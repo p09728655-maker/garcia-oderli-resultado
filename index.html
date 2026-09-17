@@ -4939,7 +4939,7 @@ var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFal
   'producaoReal','prodSemExtras','meta','eficiencia','eficienciaAdj','margem',
   'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao','horasFerias',
   'produtosReportados','volumesProduzidos','quilosProduzidos','planoNaHistorico',
-  'naoTrabalhadas','faltasPonto','atrasosPonto'];
+  'naoTrabalhadas','faltasPonto','atrasosPonto','ausFalta','ausAtestado','ausAfastado','ausAtraso'];
 
 /* ── TRADUÇÃO DE CABEÇALHO ──
    Quase toda coluna da planilha já usa o nome do campo (producaoReal,
@@ -5526,6 +5526,12 @@ window.DashUtils = (function() {
         add(r, 'atencao', 'erp', (r.ano >= erpDesde ? 'Planilha desatualizada: produção real difere do reporte do ERP (o painel usa o ERP)' : 'Produção real difere do reporte do ERP'), P, r.produtosReportados);
       if (r.naoTrabalhadas > 0 && !(r.horasFerias > 0))
         add(r, 'atencao', 'ferias', 'Ponto lançado sem horas de férias: as faltas ficam superestimadas até lançar as férias do mês', r.naoTrabalhadas, null);
+      var temAus = r.ausFalta > 0 || r.ausAtestado > 0 || r.ausAfastado > 0 || r.ausAtraso > 0;
+      if (r.naoTrabalhadas > 0 && temAus) {
+        var fecha = (r.faltas || 0) + (r.atraso || 0) + (r.horasFerias || 0);
+        if (pctDif(r.naoTrabalhadas, fecha) > 10)
+          add(r, 'atencao', 'ponto', 'Ponto e controle de faltas não fecham: não trabalhadas no ponto ≠ faltas + atrasos + férias do controle (diferença acima de 10%)', r.naoTrabalhadas, fecha);
+      }
       if (r.qtdeFaturado > 0 && P === r.qtdeFaturado)
         add(r, 'atencao', 'copia', 'Produção real igual ao faturado: conferir com o reporte do ERP', P, r.produtosReportados > 0 ? r.produtosReportados : null);
       if (r.planoNaHistorico > 0 && r.previsaoProducao > 0 && dif(r.planoNaHistorico, r.previsaoProducao, 0.5))
@@ -5549,13 +5555,20 @@ window.DashUtils = (function() {
        producaoReal     = produtosReportados (total do relatório REPORTE do
                           ERP, produtos acabados) a partir de cfg.erpDesde;
                           antes disso vale o digitado
-       atraso           = atrasosPonto, quando o ponto foi lançado (PontoRH.gs)
-       faltas           = naoTrabalhadas − horasFerias − atraso, idem. O ponto
-                          não enxerga falta justificada (atestado, afastamento
-                          e licença reduzem a Carga), então "falta" aqui é tudo
-                          que não foi trabalhado, tirando férias — a conta que
-                          era feita na mão (AGO/26: 2.050 h). Sem ponto lançado,
-                          vale o digitado
+       faltas           = ausFalta + ausAtestado + ausAfastado, quando o
+                          CONTROLE DE FALTAS do RH foi processado (PontoRH.gs):
+                          horas por STATUS, só dos diretos — a mesma base das
+                          horas do ponto. Sem controle, com ponto lançado:
+                          naoTrabalhadas − horasFerias − atraso (o ponto não
+                          enxerga falta justificada: atestado, afastamento e
+                          licença reduzem a Carga, então "falta" é tudo que não
+                          foi trabalhado, tirando férias). Sem os dois, vale o
+                          digitado
+       atraso           = atrasosPonto, quando o ponto foi lançado: o ponto mede
+                          o atraso no relógio; o controle só registra o que o
+                          líder anota (AGO/26: 207,6 h no ponto, 12,3 h no
+                          controle). Sem ponto: ausAtraso do controle. Sem os
+                          dois, o digitado
        totalFaltaAtraso = faltas + atraso
        totalExtras      = extra50 + extra100
        horasTotais      = horasNormais + totalExtras
@@ -5579,7 +5592,11 @@ window.DashUtils = (function() {
     var r1 = function (v) { return Math.round(v * 10) / 10; };
     var r2 = function (v) { return Math.round(v * 100) / 100; };
     if (n(o.produtosReportados) > 0 && n(o.ano) >= desde) o.producaoReal = Math.round(o.produtosReportados);
-    if (n(o.naoTrabalhadas) > 0) {
+    var temAus = n(o.ausFalta) > 0 || n(o.ausAtestado) > 0 || n(o.ausAfastado) > 0 || n(o.ausAtraso) > 0;
+    if (temAus) {
+      o.atraso = r1(n(o.naoTrabalhadas) > 0 ? n(o.atrasosPonto) : n(o.ausAtraso));
+      o.faltas = r1(n(o.ausFalta) + n(o.ausAtestado) + n(o.ausAfastado));
+    } else if (n(o.naoTrabalhadas) > 0) {
       o.atraso = r1(n(o.atrasosPonto));
       o.faltas = r1(Math.max(0, n(o.naoTrabalhadas) - n(o.horasFerias) - o.atraso));
     }
@@ -6737,7 +6754,10 @@ function calcPrev(){
   pSet('pHE',   he!==null?f(he)+'%':'--', he===null?'':(he<=lim?'v2':he<=15?'y2':'r2'));
   var hf=document.getElementById('fFaltasHint');
   if(hf){
-    hf.textContent=(rec.naoTrabalhadas>0)
+    var temAusF=(rec.ausFalta>0||rec.ausAtestado>0||rec.ausAfastado>0||rec.ausAtraso>0);
+    hf.textContent=temAusF
+      ? 'Vem do controle de faltas do RH: '+fi(rec.ausFalta||0)+' h falta + '+fi(rec.ausAtestado||0)+' h atestado + '+fi(rec.ausAfastado||0)+' h afastado = '+fi(rec.faltas||0)+' h. Atrasos: '+fi(rec.atraso||0)+' h '+(rec.naoTrabalhadas>0?'do ponto':'do controle')+'. O que for digitado em faltas e atrasos é ignorado.'
+      : (rec.naoTrabalhadas>0)
       ? 'Vem do ponto: '+fi(rec.naoTrabalhadas)+' h não trabalhadas − '+fi(rec.horasFerias||0)+' h de férias − '+fi(rec.atraso||0)+' h de atrasos = '+fi(rec.faltas||0)+' h. O que for digitado em faltas e atrasos é ignorado.'+(!(rec.horasFerias>0)?' Lance as férias.':'')
       : 'Sem ponto lançado para este mês: vale o digitado. Falta = tudo que não foi trabalhado, tirando férias.';
   }
@@ -20536,6 +20556,8 @@ function printAtiva(){
              heH:HE, H:H, HT:HT, pcH:HT>0?P/HT:0, dias:dias, pcDia:dias>0?P/dias:0,
              abs:abs, F:F, colab:r.colaboradores||0, fat:r.qtdeFaturado||0, ven:r.qtdeVendida||0,
              fPonto:r.faltasPonto||0, aPonto:r.atrasosPonto||0, temPonto:(r.naoTrabalhadas||0)>0,
+             temAus:(r.ausFalta>0||r.ausAtestado>0||r.ausAfastado>0||r.ausAtraso>0),
+             aFalta:r.ausFalta||0, aAtest:r.ausAtestado||0, aAfast:r.ausAfastado||0, atraso:r.atraso||0,
              cumpriu:plano>0&&P>=plano, at:plano>0?P/plano*100:null };
   }
   function lidModelo(){
@@ -20730,7 +20752,8 @@ function printAtiva(){
       +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:[{nome:'Faltas '+anoS,cor:LID_COR.falta,v:ms.map(function(m){ return m.abs; })}],barLabels:true,fmtBar:function(v){ return fd(v,1)+'%'; },h:560})+'</div>'
       +'<div><div class="lid-grid2">'+lidCard('Horas perdidas',fi(ref.F)+' h','com falta, em '+ref2,'#F44336')+lidCard('Horas extras feitas',fi(ref.heH)+' h','para cobrir parte do buraco','#FF9800')+'</div>'
       +'<div class="lid-p lid-small"><b>'+(cobre>100?'A hora extra passou do que a falta tirou ('+fd(cobre,0)+'%)':'A hora extra cobriu '+fd(cobre,0)+'% do que a falta tirou')+', e cada hora dessas custa pelo menos 50% a mais.</b> Reduzir falta é o jeito mais barato de produzir mais: cada 1% a menos são '+fi(ref.H/100)+' horas por mês, quase '+fi(M.ganhoPP)+' peças no ritmo de '+ref2+'.</div>'
-      +(ref.temPonto?'<div class="lid-p lid-small">Das '+fi(ref.F)+' h não trabalhadas, '+fi(ref.fPonto)+' h são faltas sem justificativa e '+fi(ref.aPonto)+' h atrasos. O resto, '+fi(Math.max(0,ref.F-ref.fPonto-ref.aPonto))+' h, é atestado, afastamento e licença: pesa igual na produção, mas pede outra conversa.</div>':'')
+      +(ref.temAus?'<div class="lid-p lid-small">Das '+fi(ref.F)+' h não trabalhadas, '+fi(ref.aFalta)+' h são faltas sem justificativa e '+fi(ref.atraso)+' h atrasos: é aí que a liderança age. As outras '+fi(ref.aAtest+ref.aAfast)+' h são atestado ('+fi(ref.aAtest)+' h) e afastamento ('+fi(ref.aAfast)+' h): pesam igual na produção, mas pedem outra conversa.</div>'
+      :ref.temPonto?'<div class="lid-p lid-small">Das '+fi(ref.F)+' h não trabalhadas, '+fi(ref.fPonto)+' h são faltas sem justificativa e '+fi(ref.aPonto)+' h atrasos. O resto, '+fi(Math.max(0,ref.F-ref.fPonto-ref.aPonto))+' h, é atestado, afastamento e licença: pesa igual na produção, mas pede outra conversa.</div>':'')
       +'<div class="lid-p lid-small">Presença é o indicador que mais depende de quem está na linha todo dia: acompanhar, conversar, ajustar escala.'+(melhores.length?' '+lidLista(melhores).replace(/^./,function(c){ return c.toUpperCase(); })+' ('+melhores.map(function(m){ return fd(m.abs,1)+'%'; }).join(' e ')+') '+(melhores.length>1?'mostraram':'mostrou')+' que dá.':'')+'</div></div></div>'+rod);
     /* 6 · peças por hora */
     var prox=M.abertos[0]||null, hNec=prox&&ref.pcH>0?prox.plano/ref.pcH:null;
@@ -21294,9 +21317,14 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b89';
-var APP_DATA   = '10/09/2026';
+var APP_VERSAO = 'b90';
+var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b90', data:'17/09/2026', itens:[
+    'Controle de faltas do RH entra sozinho: PontoRH.gs le a CONTROLE_FALTAS_aaaa.xlsx salva na pasta PONTO RH, regrava a aba FUNCIONARIOS a partir da DP dela (direto = setor entre os 11 diretos) e soma, mes a mes e so dos diretos, as horas por STATUS na HISTORICO: ausFalta, ausAtestado, ausAfastado, ausAtraso e horasFerias.',
+    'Regra de faltas: com o controle, faltas = falta + atestado + afastado (mesma base das horas do ponto; ate SET/26 as faltas vinham do departamento 2-PRODUCAO inteiro, 18 setores, e as horas dos 11 diretos). Atraso = atrasos do ponto, que mede o relogio; sem ponto, o do controle. Sem controle vale a regra do ponto; sem os dois, o digitado. AGO/26 sai de 14,1% para cerca de 12,4%.',
+    'Integridade confere ponto contra controle: avisa quando nao trabalhadas do ponto e faltas + atrasos + ferias do controle divergem mais de 10%. Slide de faltas e formulario abrem a conta por motivo.'
+  ]},
   { v:'b89', data:'17/09/2026', itens:[
     'Ponto do RH entra sozinho: PontoRH.gs le o Extrato de Totais salvo na pasta PONTO RH do Drive, cruza o No Folha com a aba FUNCIONARIOS (quem e direto), soma o grupo e lanca na HISTORICO colaboradores, carga, normais, extras e tres colunas brutas: naoTrabalhadas, faltasPonto, atrasosPonto.',
     'Regra de faltas escrita no painel: atraso = atrasos do ponto; faltas = nao trabalhadas − ferias − atrasos. O ponto nao enxerga falta justificada (atestado, afastamento e licenca reduzem a Carga), entao "falta" e tudo que nao foi trabalhado, tirando ferias — a mesma conta que era feita na mao. Confirmado no extrato de AGO/26: Carga = horas escaladas, Normais = Carga − Faltas − Atrasos.',

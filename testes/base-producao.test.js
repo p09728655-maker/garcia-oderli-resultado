@@ -322,6 +322,28 @@ afirma('ponto ausente: faltas e atraso digitados ficam',
   (() => { const z = U.normalizar({ ano:2026, mes:'SET', horasNormais:14000, horasCarga:14400, faltas:2000, atraso:100 }); return z.faltas === 2000 && z.atraso === 100; })());
 afirma('ponto sem férias lançadas → integridade avisa (atenção férias)',
   U.integridade([Object.assign({}, PONTO, { horasFerias:0, faltas:2950.2 })]).itens.some(i => i.tipo === 'ferias' && i.nivel === 'atencao'));
+/* Controle de faltas do RH (b90): AGO/26 nos 11 setores diretos — FALTA 684,8,
+   ATESTADO 285,6, AFASTADO 624,8, ATRASO 12,3, férias 844,8. Com o ponto de
+   93 diretos: naoTrabalhadas = 93 × 184,8 − 14.514,8 = 2.671,6; atrasos 207,6.
+   faltas = 684,8 + 285,6 + 624,8 = 1.595,2; atraso = 207,6 (ponto);
+   1.595,2 + 207,6 + 844,8 = 2.647,6 fecha com 2.671,6 (0,9%). */
+const CTRL = U.normalizar({ ano:2026, mes:'AGO', horasCarga:14907.2, horasNormais:14514.8, extra50:1182, extra100:11.17,
+  naoTrabalhadas:2671.6, faltasPonto:184.8, atrasosPonto:207.6, horasFerias:844.8,
+  ausFalta:684.8, ausAtestado:285.6, ausAfastado:624.8, ausAtraso:12.3, producaoReal:32364, faltas:2050, atraso:0 });
+ok('controle: faltas = falta + atestado + afastado', CTRL.faltas, 1595.2, 0.05);
+ok('controle com ponto: atraso = atrasos do ponto', CTRL.atraso, 207.6, 0.05);
+ok('controle: totalFaltaAtraso',                    CTRL.totalFaltaAtraso, 1802.8, 0.05);
+ok('controle: absenteísmo %',                       CTRL.absenteismo, 12.42, 0.01);
+afirma('controle sem ponto: atraso = ausAtraso',
+  (() => { const z = U.normalizar({ ano:2026, mes:'JUL', horasNormais:14000, horasCarga:14400, ausFalta:500, ausAtestado:200, ausAfastado:300, ausAtraso:12.3, faltas:9999, atraso:9999 }); return z.faltas === 1000 && z.atraso === 12.3; })());
+afirma('controle manda sobre a regra do ponto',
+  U.normalizar(Object.assign({}, PONTO, { ausFalta:100, ausAtestado:0, ausAfastado:0, ausAtraso:0 })).faltas === 100);
+afirma('ponto × controle fecham → integridade sem aviso "ponto"',
+  !U.integridade([CTRL]).itens.some(i => i.tipo === 'ponto'));
+afirma('ponto × controle divergem >10% → integridade avisa (atenção ponto)',
+  U.integridade([U.normalizar(Object.assign({}, CTRL, { naoTrabalhadas:3600 }))]).itens.some(i => i.tipo === 'ponto' && i.nivel === 'atencao'));
+afirma('controle sem ponto: nenhuma conferência ponto × controle',
+  !U.integridade([U.normalizar({ ano:2026, mes:'JUL', horasNormais:14000, horasCarga:14400, ausFalta:500, ausAtraso:12.3, horasFerias:100 })]).itens.some(i => i.tipo === 'ponto'));
 afirma('dataset embutido: normalizar() reproduz eficiência da planilha em 18 de 18 meses (±0,05)',
   REGS.every(r => Math.abs(U.normalizar(r).eficiencia - r.eficiencia) <= 0.05));
 afirma('dataset embutido: normalizar() reproduz absenteísmo em 18 de 18 meses (±0,02)',
