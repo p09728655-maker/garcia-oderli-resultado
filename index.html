@@ -4455,7 +4455,7 @@ var SK      = 'dash_v3';
 var META_ABS    = 3;   /* dentro da meta                */
 var ABS_ATENCAO = 6;   /* acima disto, crítico          */
 var META_DEP_HE = 8;   /* % do volume vindo de hora extra */
-var PROD_ERP_DESDE = 2026;   /* a partir deste ano producaoReal = total do reporte do ERP (produtosReportados) */
+var PROD_ERP_DESDE = 2025;   /* a partir deste ano producaoReal = total do reporte do ERP (produtosReportados) */
 /* Ticket médio (R$ por peça faturada). Os R$ 250 estavam cravados em seis
    lugares do Resumo. Registro: a média ponderada dos 18 meses fechados é
    R$ 247,69 — ou seja, 250 é a média histórica, não uma meta decidida.
@@ -4852,7 +4852,7 @@ function _tryRestoreFromIDB(onDone){
    dizer quando a planilha está desatualizada em relação à regra. */
 function normalizarRegistro(r){
   if(!(window.DashUtils&&DashUtils.normalizar)) return r;
-  return DashUtils.normalizar(r,{ metaEf:90, erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2026 });
+  return DashUtils.normalizar(r,{ metaEf:90, erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025 });
 }
 function loadBruto(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
 function load(){ return loadBruto().map(normalizarRegistro); }
@@ -5485,7 +5485,7 @@ window.DashUtils = (function() {
     opts = opts || {};
     var metaEf = opts.metaEf > 0 ? opts.metaEf : 90;   /* a planilha fixa 90% na coluna Margem */
     var tolErp = opts.tolErp >= 0 ? opts.tolErp : 1;    /* % de diferença tolerada contra o ERP */
-    var erpDesde = opts.erpDesde > 0 ? opts.erpDesde : 2026;
+    var erpDesde = opts.erpDesde > 0 ? opts.erpDesde : 2025;
     var itens = [], meses = 0, comItem = {};
     function add(r, nivel, tipo, msg, encontrado, esperado) {
       itens.push({ mes:r.mes, ano:r.ano, nivel:nivel, tipo:tipo, msg:msg,
@@ -5586,7 +5586,7 @@ window.DashUtils = (function() {
   function normalizar(r, cfg) {
     if (!r) return r;
     cfg = cfg || {};
-    var metaEf = cfg.metaEf > 0 ? cfg.metaEf : 90, desde = cfg.erpDesde > 0 ? cfg.erpDesde : 2026;
+    var metaEf = cfg.metaEf > 0 ? cfg.metaEf : 90, desde = cfg.erpDesde > 0 ? cfg.erpDesde : 2025;
     var o = {}; for (var k in r) o[k] = r[k];
     var n  = function (v) { return (typeof v === 'number' && isFinite(v)) ? v : 0; };
     var r1 = function (v) { return Math.round(v * 10) / 10; };
@@ -6763,7 +6763,7 @@ function calcPrev(){
   }
   var hint=document.getElementById('fProdHint');
   if(hint){
-    var desde=(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2026;
+    var desde=(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025;
     hint.textContent=(rec.produtosReportados>0&&rec.ano>=desde)
       ? 'Vem do reporte do ERP: '+fi(rec.produtosReportados)+' peças. O que for digitado aqui é ignorado.'
       : (rec.ano>=desde ? 'Sem reporte do ERP para este mês ainda: vale o digitado até o reporte entrar.' : 'Antes de '+desde+' vale o digitado.');
@@ -20269,7 +20269,7 @@ function printAtiva(){
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
     var bruto=(typeof loadBruto==='function')?loadBruto().filter(function(r){ return r.ano===ano; }):doAno;
-    corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2026}), ano)
+    corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025}), ano)
       +manchete
       +faixa('1','O plano cabe sem hora extra?', r1, c1, b2)
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
@@ -21317,9 +21317,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b90.2';
+var APP_VERSAO = 'b91';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b91', data:'17/09/2026', itens:[
+    'Producao pelo ERP desde 2025: PROD_ERP_DESDE passa a 2025 (padrao do painel e da aba METAS nova). Os 12 meses de 2025 tem o total do REPORTE; de MAI a DEZ/25 o ERP fica de 0,3% a 10% acima do digitado, entao a comparacao 2026 x 2025 estava em bases diferentes. Quem ja tem a aba METAS precisa trocar o valor la (botao Metas oficiais → Salvar na planilha), porque a planilha manda sobre o padrao.'
+  ]},
   { v:'b90.2', data:'17/09/2026', itens:[
     'PontoRH.gs: a copia convertida do xlsx nasce no fuso padrao da conta (GMT−8) e o script roda no fuso do projeto; cada hora lida como Date chegava 4,9 h maior (AGO/26 foi a 19,5%). Agora o script iguala o fuso da copia ao seu antes de ler e soma as horas pelo texto formatado (8:48), que nao depende de fuso. Validado em Node com o arquivo real e o deslocamento simulado: AGO/26 falta 684,8 · atestado 285,6 · afastado 624,8 · atraso 12,3 · ferias 844,8.'
   ]},
