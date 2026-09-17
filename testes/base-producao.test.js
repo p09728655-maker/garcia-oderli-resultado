@@ -221,5 +221,53 @@ afirma('demanda zero não quebra',            U.statusFabrica(0, 50).nivel === '
 ok('funcNecessarios 1.000/dia a 40 pç/colab', U.funcNecessarios(1000, 800, 20), 25, 0);
 afirma('funcNecessarios sem produção devolve colabs', U.funcNecessarios(1000, 0, 20) === 20);
 
+/* ══ INTEGRIDADE DOS DADOS — a conferência que faltou em SET/26 ══
+   Cada caso reproduz um erro real que passou por três pessoas e uma revisão:
+   JUN/26 (derivadas de outra produção), JUL/26 (horas totais digitadas
+   erradas no Sheets), AGO/26 (margem trocada), AGO/26 (previsão da HISTORICO
+   diferente do Plano Mestre), JAN/26 (produção igual ao faturado). */
+sec('integridade() — conferência automática');
+const AGO26 = { mes:'AGO', ano:2026, colaboradores:95, horasCarga:14907, faltas:2050, atraso:0,
+  totalFaltaAtraso:2050, absenteismo:14.12, horasNormais:14514, extra50:1182, extra100:11.17,
+  totalExtras:1193.17, horasTotais:15707.17, producaoReal:32364, prodSemExtras:29703.41,
+  meta:31510.77, eficiencia:94.26, margem:-4.74, qtdeFaturado:31192, produtosReportados:32364,
+  previsaoProducao:30800, planoNaHistorico:30800 };
+const caso = (extra) => U.integridade([Object.assign({}, AGO26, extra)]);
+const tipos = (I) => I.itens.map(i => i.nivel + ':' + i.tipo).sort().join(',');
+afirma('AGO/26 consistente: nenhum item, nível ok',    caso({}).itens.length === 0 && caso({}).nivel === 'ok');
+afirma('JUL/26 horas totais 18.222 (certo 18.822) → erro horas',
+  tipos(caso({ horasNormais:16871, totalExtras:1951, extra50:1627, extra100:324, horasTotais:18222,
+               faltas:1897, totalFaltaAtraso:1897, absenteismo:11.24, horasCarga:17284,
+               producaoReal:33291, prodSemExtras:29441.15, meta:32495.51, eficiencia:90.60, margem:-0.67,
+               qtdeFaturado:33658, produtosReportados:33291 })) === 'erro:horas');
+const JUN = caso({ mes:'JUN', horasNormais:14388, horasCarga:14792, totalExtras:1589, extra50:1545, extra100:44,
+  horasTotais:15977, faltas:1532, totalFaltaAtraso:1532, absenteismo:10.65, producaoReal:30851,
+  prodSemExtras:27088, meta:29619, eficiencia:91.45, margem:-1.62, qtdeFaturado:30451, produtosReportados:30851 });
+afirma('JUN/26 produção do ERP + derivadas de 30.451 → 2 erros de derivada', tipos(JUN) === 'erro:derivada,erro:derivada');
+afirma('JUN/26 nível erro',                              JUN.nivel === 'erro' && JUN.erros === 2 && JUN.atencoes === 0);
+afirma('AGO/26 margem -4,47 (certo -4,74) → erro derivada', tipos(caso({ margem:-4.47 })) === 'erro:derivada');
+afirma('AGO/26 previsão 32.435 na HISTORICO → atenção plano', tipos(caso({ planoNaHistorico:32435 })) === 'atencao:plano');
+afirma('JAN/26 produção igual ao faturado → atenção cópia', tipos(caso({ qtdeFaturado:32364 })) === 'atencao:copia');
+afirma('produção 8% abaixo do reporte do ERP → atenção erp', tipos(caso({ produtosReportados:35000 })) === 'atencao:erp');
+afirma('diferença de 0,5% contra o ERP não acusa',       caso({ produtosReportados:32500 }).itens.length === 0);
+afirma('sem produtosReportados nem planoNaHistorico não acusa', caso({ produtosReportados:0, planoNaHistorico:0 }).itens.length === 0);
+afirma('mês aberto (producaoReal 0) é ignorado',         U.integridade([{ mes:'SET', ano:2026, producaoReal:0 }]).meses === 0);
+afirma('null não quebra',                                U.integridade(null).nivel === 'ok');
+/* O dataset embutido é um retrato antigo da planilha e carrega erros reais
+   que a conferência tem de pegar: DEZ/25 com a margem digitada (-1,06 no
+   lugar de 11,51 — a célula W14 do Excel era um número, não fórmula) e
+   JAN, FEV e JUN/26 com a produção copiada do faturado (FEV e JUN já foram
+   corrigidos na planilha viva; JAN segue a confirmar no ERP). */
+const IE = U.integridade(REGS);
+afirma('dataset embutido: único erro é a margem de DEZ/25',
+  IE.erros === 1 && IE.itens.filter(i => i.nivel === 'erro').every(i => i.mes === 'DEZ' && i.ano === 2025 && i.tipo === 'derivada'));
+afirma('dataset embutido: produção = faturado em JAN, FEV e JUN/26',
+  IE.itens.filter(i => i.tipo === 'copia').map(i => i.mes + '/' + i.ano).join(',') === 'JAN/2026,FEV/2026,JUN/2026');
+afirma('dataset embutido: nenhuma soma de horas quebrada',
+  IE.itens.filter(i => i.tipo === 'horas').length === 0);
+afirma('contagem: meses conferidos e meses com item',
+  (() => { const I = U.integridade([Object.assign({}, AGO26, { margem:-4.47 }), Object.assign({}, AGO26, { mes:'JUL' })]);
+           return I.meses === 2 && I.mesesComItem === 1; })());
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

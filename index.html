@@ -5375,9 +5375,77 @@ window.DashUtils = (function() {
     return demDia / (prodDia / colabs);
   }
 
+  /* ── INTEGRIDADE DOS DADOS ────────────────────────────────────────────────
+     Conferência automática de cada mês fechado: as somas da própria linha,
+     as colunas calculadas refeitas a partir dos inputs pelo método da
+     planilha, e o cruzamento com as outras fontes que o painel já recebe
+     (reporte do ERP, Plano Mestre). Nasceu de três erros que passaram por
+     três pessoas e uma revisão em SET/26: JUN/26 com a produção do ERP mas
+     prodSemExtras e meta calculadas sobre outro número; JUL/26 com horas
+     totais digitadas erradas no Sheets (18.222 por 18.822); AGO/26 com a
+     margem trocada (-4,47 por -4,74). Nenhum aparece como erro na tela —
+     aparece como número plausível. Só conferência pega.
+       erro    → soma quebrada ou coluna derivada calculada sobre outra base:
+                 o dado está errado em algum lugar, e a correção é na fonte.
+       atencao → pode estar certo, mas precisa de olho humano: produção
+                 diferente do reporte do ERP, produção igual ao faturado
+                 (assinatura do erro de cópia de JUN/26), previsão da
+                 HISTORICO diferente do Plano Mestre.
+     Só meses com producaoReal > 0. Campo ausente não acusa nada, para o
+     dataset embutido e o .xlsx importado não acenderem falso vermelho. */
+  function integridade(regs, opts) {
+    opts = opts || {};
+    var metaEf = opts.metaEf > 0 ? opts.metaEf : 90;   /* a planilha fixa 90% na coluna Margem */
+    var tolErp = opts.tolErp >= 0 ? opts.tolErp : 1;    /* % de diferença tolerada contra o ERP */
+    var itens = [], meses = 0, comItem = {};
+    function add(r, nivel, tipo, msg, encontrado, esperado) {
+      itens.push({ mes:r.mes, ano:r.ano, nivel:nivel, tipo:tipo, msg:msg,
+                   encontrado:encontrado, esperado:esperado });
+      comItem[r.mes + '/' + r.ano] = true;
+    }
+    function dif(a, b, tol) { return Math.abs((a || 0) - (b || 0)) > tol; }
+    function pctDif(a, b) { return b > 0 ? Math.abs(a - b) / b * 100 : 0; }
+    (regs || []).forEach(function (r) {
+      if (!r || !(r.producaoReal > 0)) return;
+      meses++;
+      var P = r.producaoReal || 0, H = r.horasNormais || 0, K = r.totalExtras || 0,
+          C = r.horasCarga || 0, F = r.totalFaltaAtraso || 0;
+      /* 1 · somas da própria linha */
+      if (r.horasTotais > 0 && dif(r.horasTotais, H + K, 1))
+        add(r, 'erro', 'horas', 'Horas totais ≠ horas normais + extras', r.horasTotais, H + K);
+      if (K > 0 && (r.extra50 > 0 || r.extra100 > 0) && dif(K, (r.extra50 || 0) + (r.extra100 || 0), 1))
+        add(r, 'erro', 'horas', 'Total de extras ≠ extras 50% + 100%', K, (r.extra50 || 0) + (r.extra100 || 0));
+      if (F > 0 && (r.faltas > 0 || r.atraso > 0) && dif(F, (r.faltas || 0) + (r.atraso || 0), 1))
+        add(r, 'erro', 'horas', 'Faltas + atrasos ≠ total lançado', F, (r.faltas || 0) + (r.atraso || 0));
+      /* 2 · colunas derivadas, refeitas a partir dos inputs pelo método da planilha */
+      if (H > 0 && r.absenteismo > 0 && dif(r.absenteismo, F / H * 100, 0.05))
+        add(r, 'erro', 'derivada', 'Absenteísmo ≠ (faltas + atrasos) ÷ horas normais', r.absenteismo, F / H * 100);
+      if (H > 0 && r.prodSemExtras > 0 && pctDif(r.prodSemExtras, P * (1 - K / H)) > 0.5)
+        add(r, 'erro', 'derivada', 'Produção sem extras calculada sobre outra produção', r.prodSemExtras, P * (1 - K / H));
+      if (H > 0 && C > 0 && r.meta > 0 && pctDif(r.meta, P * H / C) > 0.5)
+        add(r, 'erro', 'derivada', 'Capacidade teórica (meta) calculada sobre outra produção', r.meta, P * H / C);
+      if (r.meta > 0 && r.prodSemExtras > 0 && r.eficiencia > 0 && dif(r.eficiencia, r.prodSemExtras / r.meta * 100, 0.05))
+        add(r, 'erro', 'derivada', 'Eficiência ≠ produção sem extras ÷ meta', r.eficiencia, r.prodSemExtras / r.meta * 100);
+      if (r.eficiencia > 0 && typeof r.margem === 'number' && r.margem !== 0 && dif(r.margem, (metaEf - r.eficiencia) / metaEf * 100, 0.05))
+        add(r, 'erro', 'derivada', 'Margem ≠ (' + metaEf + '% − eficiência) ÷ ' + metaEf + '%', r.margem, (metaEf - r.eficiencia) / metaEf * 100);
+      /* 3 · contra as outras fontes */
+      if (r.produtosReportados > 0 && pctDif(P, r.produtosReportados) > tolErp)
+        add(r, 'atencao', 'erp', 'Produção real difere do reporte do ERP', P, r.produtosReportados);
+      if (r.qtdeFaturado > 0 && P === r.qtdeFaturado)
+        add(r, 'atencao', 'copia', 'Produção real igual ao faturado: conferir com o reporte do ERP', P, r.produtosReportados > 0 ? r.produtosReportados : null);
+      if (r.planoNaHistorico > 0 && r.previsaoProducao > 0 && dif(r.planoNaHistorico, r.previsaoProducao, 0.5))
+        add(r, 'atencao', 'plano', 'Previsão na HISTORICO difere do Plano Mestre (o painel usa o Plano Mestre)', r.planoNaHistorico, r.previsaoProducao);
+    });
+    var erros = itens.filter(function (i) { return i.nivel === 'erro'; }).length;
+    return { itens:itens, erros:erros, atencoes:itens.length - erros, meses:meses,
+             mesesComItem:Object.keys(comItem).length,
+             nivel: erros > 0 ? 'erro' : (itens.length ? 'atencao' : 'ok') };
+  }
+
   return { getDias:getDias, getFat:getFat, getProd:getProd,
            periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
+           integridade:integridade,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
 
@@ -19497,6 +19565,46 @@ function printAtiva(){
       +(extra||'');
   }
 
+  /* Integridade dos dados — a porta de entrada da reunião. Se acende
+     vermelho, não se apresenta: corrige na fonte (Excel), reexporta e
+     reabre. Fica fora da impressão (reu-noprint): é conferência de quem
+     opera, não conteúdo para a diretoria. Aberto sozinho quando há erro;
+     fechado numa linha quando está tudo certo. */
+  function blocoIntegridade(I, ano){
+    if(!I || !I.meses) return '';
+    var cor = I.nivel==='erro'?'#F44336':(I.nivel==='atencao'?'#FF9800':'#4CAF50');
+    var titulo = I.nivel==='ok'
+      ? ('Integridade dos dados · '+I.meses+' meses de '+ano+' conferidos, sem divergência')
+      : ('Integridade dos dados · '
+         +(I.erros?(I.erros+' erro'+(I.erros>1?'s':'')):'')
+         +(I.erros&&I.atencoes?' · ':'')
+         +(I.atencoes?(I.atencoes+' ponto'+(I.atencoes>1?'s':'')+' de atenção'):'')
+         +' em '+I.mesesComItem+' de '+I.meses+' meses de '+ano);
+    function num(v){ return (v===null||v===undefined)?'—':(Math.abs(v)>=1000?fi(v):fd(v,2)); }
+    var linhas=I.itens.map(function(i){
+      var c=i.nivel==='erro'?'#F44336':'#FF9800';
+      return '<tr><td style="padding:3px 6px;white-space:nowrap">'+i.mes+'/'+String(i.ano).slice(2)+'</td>'
+        +'<td style="padding:3px 6px;font-weight:700;color:'+c+'">'+(i.nivel==='erro'?'ERRO':'ATENÇÃO')+'</td>'
+        +'<td style="padding:3px 6px">'+i.msg+'</td>'
+        +'<td style="padding:3px 6px;text-align:right;font-family:var(--mono)">'+num(i.encontrado)+'</td>'
+        +'<td style="padding:3px 6px;text-align:right;font-family:var(--mono);color:var(--t3)">'+num(i.esperado)+'</td></tr>';
+    }).join('');
+    return '<details class="reu-noprint" style="background:var(--panel);border:1px solid var(--b);border-left:4px solid '+cor
+      +';border-radius:var(--r);padding:7px 12px;margin-bottom:8px;font-size:.78rem;color:var(--t1)"'+(I.nivel==='erro'?' open':'')+'>'
+      +'<summary style="cursor:pointer;font-weight:700;color:'+cor+'">'+titulo+'</summary>'
+      +(I.itens.length
+        ? '<div style="color:var(--t3);margin:6px 0 4px;line-height:1.4">Conferido contra a própria linha (somas e colunas calculadas), '
+          +'o reporte do ERP e o Plano Mestre. Erro se corrige no Excel e reexporta; ponto de atenção pede conferência na origem. '
+          +'Não apresente com erro em aberto.</div>'
+          +'<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:.74rem">'
+          +'<thead><tr style="color:var(--t3);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;text-align:left">'
+          +'<th style="padding:3px 6px">Mês</th><th style="padding:3px 6px">Nível</th><th style="padding:3px 6px">O que não fecha</th>'
+          +'<th style="padding:3px 6px;text-align:right">Na planilha</th><th style="padding:3px 6px;text-align:right">Esperado</th></tr></thead>'
+          +'<tbody>'+linhas+'</tbody></table></div>'
+        : '')
+      +'</details>';
+  }
+
   /* Agregados do período — DashUtils.periodo(), a mesma base do Resumo
      Executivo e do veredito. Esta função somava producaoReal (COM hora
      extra) contra o.meta, e tirava média aritmética de percentuais entre
@@ -19983,7 +20091,8 @@ function printAtiva(){
 
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
-    corpo.innerHTML=manchete
+    corpo.innerHTML=blocoIntegridade(DashUtils.integridade(doAno), ano)
+      +manchete
       +faixa('1','O plano cabe sem hora extra?', r1, c1, b2)
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
       +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
@@ -20661,9 +20770,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b84';
+var APP_VERSAO = 'b85';
 var APP_DATA   = '10/09/2026';
 var APP_HISTORICO = [
+  { v:'b85', data:'17/09/2026', itens:[
+    'Integridade dos dados: a Reuniao abre com uma conferencia automatica de cada mes fechado do ano — somas da linha (horas totais, extras, faltas), colunas calculadas refeitas a partir dos inputs (absenteismo, producao sem extras, meta, eficiencia, margem), producao contra o reporte do ERP, producao igual ao faturado e previsao da HISTORICO contra o Plano Mestre. Vermelho e erro (corrige no Excel e reexporta), amarelo e ponto de atencao. Teria pego os tres erros de SET/26: JUN com derivadas de outra producao, JUL com horas totais digitadas erradas, AGO com a margem trocada. Fica fora da impressao.',
+    'Apps Script passa a enviar planoNaHistorico (a previsao como esta na HISTORICO, antes de o Plano Mestre sobrescrever) — reimplante o Web App para a conferencia de plano funcionar.'
+  ]},
   { v:'b84', data:'10/09/2026', itens:[
     'Plano de acao passa a ser ENVIADO pelo Apps Script, pela caixa ppcp@patrimarmoveis.com.br, e nao mais aberto no Gmail da maquina. O remetente vira regra do sistema: nao depende de quem clicou nem de qual navegador. Se a conta dona da planilha nao tiver ppcp@ liberado como \"Enviar e-mail como\", o envio e RECUSADO com o motivo — mandar em nome errado seria pior que nao mandar.',
     'Destinatarios saem da aba EMAIL da planilha (email | nome | ativo | observacao): tirar alguem da lista e apagar um S, nao mexer em codigo. Rode criarAbaEmail() e testeEnvio() no Apps Script antes de usar. Republicar o Web App.',

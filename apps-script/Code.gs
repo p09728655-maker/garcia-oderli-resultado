@@ -113,6 +113,7 @@ function doGet() {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var dados = lerHistorico(ss);
     var plano = lerPlanoMestre(ss);
+    guardarPlanoDaHistorico(dados);
     aplicarPlano(dados, plano);
     saida = { ok: true, dados: dados, plano: plano.produtos,
               planoVolumes: plano.volumes, planoLotes: plano.lotes,
@@ -411,6 +412,22 @@ function lerReporteVolumes(ss) {
     out.push([mes, ano, String(l[2] || '').trim(), String(l[3] || '').trim(), qtd]);
   });
   return out;
+}
+
+/* Antes de o Plano Mestre sobrescrever a previsão, guarda o que a HISTORICO
+   trazia em planoNaHistorico. O painel compara os dois e avisa quando
+   divergem: em SET/26 a HISTORICO dizia 32.435 para AGO/26 e o plano 30.800 —
+   o painel mostrava o certo, mas quem lia a planilha achava que agosto não
+   tinha cumprido o plano. Não escreve nada na planilha (gravarHistorico
+   ignora campo sem coluna). */
+function guardarPlanoDaHistorico(dados) {
+  dados.forEach(function (r) {
+    var k = Object.keys(r).filter(function (c) {
+      var n = normaliza(c);
+      return n.indexOf('previsao') === 0 && n.indexOf('volume') < 0;
+    })[0];
+    r.planoNaHistorico = k ? (num(r[k]) || 0) : 0;
+  });
 }
 
 /* Copia a previsão do plano para os registros do histórico. O plano manda:
