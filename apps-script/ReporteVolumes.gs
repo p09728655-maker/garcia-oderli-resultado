@@ -252,6 +252,11 @@ function onOpen() {
     .addItem('Apagar meses futuros criados por engano', 'apagarMesesFuturos')
     .addToUi();
   /* Metas oficiais (Code.gs): aba METAS manda sobre o padrão do painel */
+  /* Plano Mestre (CargaPlanoMestre.gs) */
+  SpreadsheetApp.getUi().createMenu('📋 Plano Mestre')
+    .addItem('Validar matriz (TOTAL ANO × lotes)', 'validarPlanoMestre')
+    .addItem('Derivar 2025 de 2026 (−5%) — plano derivado, não o da época', 'derivarPlano2025De2026')
+    .addToUi();
   SpreadsheetApp.getUi().createMenu('🎯 Metas')
     .addItem('Criar aba METAS (se não existir)', 'criarAbaMetas')
     .addItem('Produção pelo ERP desde 2025', 'producaoPeloErpDesde2025')

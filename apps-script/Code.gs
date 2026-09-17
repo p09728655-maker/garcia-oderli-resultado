@@ -93,6 +93,7 @@ var DICIONARIO_LINHAS = [
   ['qtdeVendida / qtdeFaturado', 'entrada', 'Comercial', 'Peças vendidas e faturadas no mês.'],
   ['ticketMedio', 'entrada', 'Comercial', 'R$ por peça faturada.'],
   ['Previsão de Produção', 'calculado', 'Plano Mestre', 'Linha TOTAL GERAL da aba PLANO MESTRE. O painel ignora esta coluna e avisa quando ela diverge do plano.'],
+  ['Previsão de Produção 2025', 'derivado', 'PPCP', 'As colunas de 2025 do PLANO MESTRE são o plano de 2026 × 0,95, geradas em 17/09/2026 a pedido do PPCP (menu Plano Mestre → Derivar). NÃO é o plano que valia em 2025: a previsão da época está em planoNaHistorico, e a integridade avisa onde os dois divergem.'],
   ['totalFaltaAtraso', 'calculado', 'painel', 'faltas + atraso'],
   ['totalExtras', 'calculado', 'painel', 'extra50 + extra100'],
   ['horasTotais', 'calculado', 'painel', 'horasNormais + totalExtras'],
