@@ -19766,13 +19766,13 @@ function printAtiva(){
     return '<details class="reu-noprint" style="background:var(--panel);border:1px solid var(--b);border-left:4px solid '+cor
       +';border-radius:var(--r);padding:7px 12px;margin-bottom:8px;font-size:.78rem;color:var(--t1)"'+(I.nivel==='erro'?' open':'')+'>'
       +'<summary style="cursor:pointer;font-weight:700;color:'+cor+'">'+titulo+'</summary>'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px">'
+        +'<button type="button" class="btn btn-g btn-sm reu-noprint" onclick="reuGravarCalculos()" title="Recalcula todos os meses, de todos os anos, pela regra do painel e envia para a HISTORICO">Gravar cálculos na planilha</button>'
+        +'<span style="font-size:.7rem;color:var(--t3)">Refaz as colunas calculadas de todos os anos pela regra atual (metas incluídas) e grava na HISTORICO, para a planilha e o Power BI lerem o mesmo número. Use depois de mudar uma meta ou corrigir uma entrada.</span></div>'
       +(I.itens.length
         ? '<div style="color:var(--t3);margin:6px 0 4px;line-height:1.4">Conferido contra a própria linha, o reporte do ERP e o Plano Mestre. '
           +'As colunas calculadas saem da regra do painel; "planilha desatualizada" significa que a HISTORICO ainda guarda a conta antiga. '
           +'Erro é entrada impossível: corrige na HISTORICO. Não apresente com erro em aberto.</div>'
-          +(I.itens.some(function(i){ return i.tipo==='horas'||i.tipo==='derivada'||(i.tipo==='erp'&&/desatualizada/.test(i.msg)); })
-            ? '<button type="button" class="btn btn-g btn-sm reu-noprint" style="margin:2px 0 8px" onclick="reuGravarCalculos()" title="Recalcula todos os meses pela regra do painel e envia para a HISTORICO">Gravar cálculos na planilha</button>'
-            : '')
           +'<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:.74rem">'
           +'<thead><tr style="color:var(--t3);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;text-align:left">'
           +'<th style="padding:3px 6px">Mês</th><th style="padding:3px 6px">Nível</th><th style="padding:3px 6px">O que não fecha</th>'
@@ -21317,9 +21317,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b91.2';
+var APP_VERSAO = 'b91.3';
 var APP_DATA   = '17/09/2026';
 var APP_HISTORICO = [
+  { v:'b91.3', data:'17/09/2026', itens:[
+    'Gravar calculos na planilha fica sempre visivel dentro do bloco de integridade da Reuniao, com explicacao. Antes so aparecia quando o ano selecionado acusava planilha desatualizada: depois de mudar uma meta, o ano verde escondia o botao.'
+  ]},
   { v:'b91.2', data:'17/09/2026', itens:[
     'Metas oficiais: o campo de valor tinha largura de dois digitos e cortava o ano (202…). Valor com 88px e fonte mono, passo 1 para metas em ano, larguras minimas para vigencia, origem e observacao.'
   ]},
