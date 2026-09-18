@@ -1268,9 +1268,16 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
            por onde uma segunda fonte voltaria. O input e importarExcel() ficam
            para emergência: document.getElementById('inputXlsx').click() no console. -->
       <input type="file" id="inputXlsx" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
-      <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)" onclick="salvarJSON()"><span class="ic ic-save"></span> Salvar JSON</button>
-      <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.03)" onclick="document.getElementById('inputJSON').click()"><span class="ic ic-load"></span> Carregar JSON</button>
-      <input type="file" id="inputJSON" accept=".json" style="display:none" onchange="carregarJSON(this)">
+      <!-- b95.1: "Salvar JSON" e "Carregar JSON" saíram. O Carregar chamava
+           save(), que sincroniza: abrir um arquivo antigo sobrescrevia a
+           planilha com ele, sem confirmação e sem desfazer — um JSON de março
+           apagaria as correções do ponto de agosto. Nasceram quando os dados
+           viviam só no navegador; hoje a planilha é a fonte. Restauração:
+           Arquivo › Histórico de versões, no próprio Google Sheets. Para tirar
+           dados do painel continua valendo o Exportar CSV. -->
+      <div style="font-size:.6rem;color:var(--t3);line-height:1.35;padding:2px 2px 4px">
+        Backup e restauração ficam na planilha: <b>Arquivo › Histórico de versões</b>.
+      </div>
       <button class="sBtn" style="color:var(--red);border-color:rgba(244,67,54,.3)" onclick="if(confirm('Isso apaga TODOS os dados. Tem certeza?'))resetDados()"><span class="ic ic-reset"></span> Resetar</button>
     </div>
   </div>
@@ -5309,18 +5316,6 @@ function _carregarDoSheetsAoAbrir(){
 window.addEventListener('load', function(){ setTimeout(_carregarDoSheetsAoAbrir, 300); });
 
 /* ── SALVAR / CARREGAR JSON ── */
-function salvarJSON(){
-  var d=load();
-  if(!d.length){toast('Sem dados para salvar.','wn');return}
-  var blob=new Blob([JSON.stringify({versao:'dash_v3',exportado:new Date().toISOString(),dados:d},null,2)],{type:'application/json'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='dashboard_dados_'+new Date().toISOString().slice(0,10)+'.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast('JSON salvo com sucesso!','ok')
-}
-
 /* ════════════════════════════════════════════════════════════
    SALVAR ARQUIVO HTML — Gera novo HTML com dados embutidos
    Os dados importados ficam permanentemente no código do arquivo.
@@ -5371,31 +5366,6 @@ function salvarArquivoHTML(){
     if(btn){btn.textContent='<span class="ic ic-save"></span> Salvar Arquivo';btn.disabled=false;}
     console.error(e);
   }
-}
-
-function carregarJSON(input){
-  var file=input.files[0];
-  if(!file){return}
-  input.value='';
-  var reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      var obj=JSON.parse(e.target.result);
-      /* Aceita tanto array direto quanto objeto com campo "dados" */
-      var dados=Array.isArray(obj)?obj:(obj.dados||null);
-      if(!dados||!dados.length){toast('JSON inválido ou sem dados.','er');return}
-      /* Valida campos mínimos */
-      var valido=dados.every(function(r){return r.mes&&r.ano&&r.horasCarga!==undefined});
-      if(!valido){toast('Estrutura do JSON inválida.','er');return}
-      save(sortD(dados));
-      render();
-      toast(dados.length+' registros carregados do JSON!','ok')
-    }catch(err){
-      toast('Erro ao ler JSON: '+err.message,'er');
-      console.error(err)
-    }
-  };
-  reader.readAsText(file,'UTF-8')
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -21772,9 +21742,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b95';
+var APP_VERSAO = 'b95.1';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b95.1', data:'18/09/2026', itens:[
+    'Botoes "Salvar JSON" e "Carregar JSON" saem do Modo edicao. O Carregar chamava a mesma gravacao que sincroniza com a planilha: abrir um arquivo antigo sobrescrevia a HISTORICO com ele, sem confirmacao e sem desfazer — um JSON de marco apagaria as correcoes do ponto de agosto. Os dois nasceram quando os dados viviam so no navegador; hoje a planilha e a fonte. Backup e restauracao passam a ser Arquivo > Historico de versoes, no proprio Google Sheets, que guarda data, hora e autor. Para tirar dados do painel continua valendo o Exportar CSV. O Resetar fica: ele so limpa o local e rele a planilha, nao grava nada nela.'
+  ]},
   { v:'b95', data:'18/09/2026', itens:[
     'Icones dos botoes viram SVG monocromatico: WhatsApp, e-mail, copiar, imprimir, salvar, carregar, metas, modo edicao, novo mes, resetar, recalcular, visao geral, resumo executivo, faturado, vendido, editar e excluir. Antes eram emoji — 💬 e 📋 saiam coloridos no Chrome, ✉ e ✎ monocromaticos, e o desenho mudava de sistema para sistema. Cada icone agora e uma mascara SVG que herda a cor do botao e fica igual em qualquer maquina.',
     'Os emoji que nomeiam menus da planilha (Volumes, Ponto, Plano Mestre, Metas) continuam como estao no texto: sao o nome real do menu no Google Sheets. As bolinhas de status verde, amarela e vermelha das legendas tambem ficam, porque a cor delas e o dado.'
