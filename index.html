@@ -1655,6 +1655,10 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       <div class="cEmpty" id="emDeltaEf" style="display: none;">Mínimo 2 meses de dados</div>
     </div>
   </div>
+  <!-- Hora extra por setor: aba PONTO_SETOR (PontoRH.gs). Só horas — a
+       produção não tem setor. Preenchido por renderSetoresHE. -->
+  <div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:20px 0 10px;padding-left:2px">▸ Hora extra por setor — último mês do período com ponto por setor</div>
+  <div class="cBox" id="ef-setores"><div class="cEmpty" style="display:block">Sem hora extra por setor: a aba PONTO_SETOR ainda não chegou da planilha (processe o extrato do ponto com o PontoRH.gs atual).</div></div>
 </div>
 
 <!-- ══ PÁGINA: PESSOAS ══ -->
@@ -4868,6 +4872,66 @@ function normalizarRegistro(r){
 }
 function loadBruto(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
 function load(){ return loadBruto().map(normalizarRegistro); }
+
+/* ── HORA EXTRA POR SETOR ─────────────────────────────────────────────────
+   Lê a aba PONTO_SETOR (PontoRH.gs) guardada em localStorage: uma linha por
+   mês/ano/setor com horas normais, extra50, extra100 e as ausências do
+   controle de faltas. Responde a pergunta que o total não responde: a hora
+   extra está cobrindo falta ou está no gargalo?
+     • HE do setor = extra50 + extra100 ÷ horas normais do setor;
+     • "alta" = acima da razão da fábrica (diretos) no mesmo mês, não de um
+       limite fixo — o limite de 8% do painel é sobre PEÇAS, e por setor só
+       há horas;
+     • falta do setor = (falta + atestado + afastado + atraso) ÷ h. normais,
+       contra ABS_ATENCAO, a mesma régua do card de faltas;
+     • leitura: HE alta + falta acima do limite = cobrindo falta;
+                HE alta + falta dentro = capacidade (gargalo);
+                HE abaixo da fábrica = sem leitura.
+   É hora por setor, não peça por setor; o setor é o atual da pessoa na
+   FUNCIONARIOS. Sem a aba, tudo devolve vazio e as telas não mostram nada. */
+window.SetorHE = (function(){
+  var SK_SET = 'dash_ponto_setor_v1';
+  function n(v){ if(typeof v==='number') return isFinite(v)?v:0; var x=parseFloat(String(v===null||v===undefined?'':v).replace(',','.')); return isFinite(x)?x:0; }
+  function carregar(){ try{ var a=JSON.parse(localStorage.getItem(SK_SET)); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function doMes(mes, ano){
+    mes=String(mes||'').trim().toUpperCase().slice(0,3); ano=parseInt(ano,10);
+    return carregar().filter(function(r){ return String(r.mes||'').trim().toUpperCase().slice(0,3)===mes && parseInt(r.ano,10)===ano; })
+      .map(function(r){
+        var he=n(r.totalExtras)||(n(r.extra50)+n(r.extra100)), hn=n(r.horasNormais);
+        var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+n(r.ausAtraso);
+        var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||n(r.ausAtraso)>0);
+        return { setor:String(r.setor||'').trim()||'(sem setor)', direto:/^s/i.test(String(r.direto||'')), pessoas:n(r.pessoas),
+                 hn:hn, he:he, e50:n(r.extra50), e100:n(r.extra100), hePct:hn>0?he/hn*100:0,
+                 aus:aus, absPct:(temAus&&hn>0)?aus/hn*100:null };
+      });
+  }
+  /* Nome curto para frase: "7-LINHA DE PINTURA" → "linha de pintura". */
+  function nome(setor){ return String(setor).replace(/^\d+\s*-\s*/,'').toLowerCase(); }
+  function resumo(mes, ano){
+    var lin=doMes(mes, ano);
+    if(!lin.length) return null;
+    var absCrit=(typeof ABS_ATENCAO!=='undefined')?ABS_ATENCAO:6;
+    var dir=lin.filter(function(x){ return x.direto; }), ind=lin.filter(function(x){ return !x.direto; });
+    var sum=function(a,k){ return a.reduce(function(t,x){ return t+x[k]; },0); };
+    var heDir=sum(dir,'he'), hnDir=sum(dir,'hn'), heInd=sum(ind,'he'), hnInd=sum(ind,'hn');
+    var ausDir=sum(dir,'aus'), temAusDir=dir.some(function(x){ return x.absPct!==null; });
+    var ref=hnDir>0?heDir/hnDir*100:0;   /* razão da fábrica (diretos) */
+    dir.forEach(function(x){
+      x.parte=heDir>0?x.he/heDir*100:0;
+      x.heAlta=x.he>0&&x.hePct>ref;
+      x.leitura=!x.heAlta?'':(x.absPct===null?'HE alta':(x.absPct>absCrit?'cobrindo falta':'capacidade'));
+    });
+    dir.sort(function(a,b){ return b.he-a.he; });
+    var top=dir.slice(0,3).filter(function(x){ return x.he>0; });
+    return { mes:mes, ano:ano, setores:dir, indiretos:ind, heDir:heDir, hnDir:hnDir, heInd:heInd, hnInd:hnInd,
+             refPct:ref, absDir:(temAusDir&&hnDir>0)?ausDir/hnDir*100:null, absCrit:absCrit,
+             top:top, topParte:top.reduce(function(t,x){ return t+x.parte; },0),
+             cobrindo:dir.filter(function(x){ return x.leitura==='cobrindo falta'; }),
+             capacidade:dir.filter(function(x){ return x.leitura==='capacidade'; }) };
+  }
+  function lista(arr){ var v=arr.map(function(x){ return nome(x.setor); }); return v.join(', ').replace(/, ([^,]*)$/,' e $1'); }
+  return { SK:SK_SET, carregar:carregar, doMes:doMes, resumo:resumo, nome:nome, lista:lista };
+})();
 function save(d){
   d=(d||[]).map(normalizarRegistro);
   localStorage.setItem(SK,JSON.stringify(d));
@@ -5063,6 +5127,29 @@ function _lerRespostaWebApp(txt, status){
   throw e2;
 }
 
+/* Tabela de hora extra por setor na aba Eficiência: último mês do período
+   filtrado que tenha linhas na PONTO_SETOR. Mesma leitura do slide do
+   briefing (SetorHE.resumo). */
+function renderSetoresHE(d){
+  var box=document.getElementById('ef-setores');
+  if(!box||!window.SetorHE) return;
+  var RS=null, i;
+  for(i=(d||[]).length-1;i>=0&&!RS;i--){ RS=SetorHE.resumo(d[i].mes,d[i].ano); if(RS&&!(RS.setores.length&&RS.heDir>0)) RS=null; }
+  if(!RS){ box.innerHTML='<div class="cEmpty" style="display:block">Sem hora extra por setor no período: a aba PONTO_SETOR não tem estes meses (processe o extrato do ponto com o PontoRH.gs atual).</div>'; return; }
+  var fi2=function(v){ return isFinite(v)?Math.round(v).toLocaleString('pt-BR'):'—'; };
+  var fd2=function(v,k){ return isFinite(v)?v.toLocaleString('pt-BR',{minimumFractionDigits:k,maximumFractionDigits:k}):'—'; };
+  var cor=function(x){ return x.leitura==='cobrindo falta'?'var(--red)':(x.leitura?'var(--amber)':'var(--t3)'); };
+  var linhas=RS.setores.map(function(x){
+    return '<tr><td>'+x.setor+'</td><td>'+fi2(x.pessoas)+'</td><td>'+fi2(x.he)+'</td><td'+(x.heAlta?' style="font-weight:700"':'')+'>'+fd2(x.hePct,1)+'%</td><td>'+fd2(x.parte,0)+'%</td>'
+      +'<td>'+(x.absPct===null?'—':fd2(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor(x)+'">'+(x.leitura||'—')+'</td></tr>';
+  }).join('');
+  if(RS.indiretos.length) linhas+='<tr><td class="lid-tx" style="color:var(--t3)">Indiretos ('+RS.indiretos.length+' setores, fora da dependência de HE)</td><td>'+fi2(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi2(RS.heInd)+'</td><td>'+(RS.hnInd>0?fd2(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>';
+  linhas+='<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi2(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi2(RS.heDir)+'</td><td>'+fd2(RS.refPct,1)+'%</td><td>100%</td><td>'+(RS.absDir===null?'—':fd2(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr>';
+  box.innerHTML='<div class="cHdr"><span class="cTtl">▸ '+RS.mes+'/'+String(RS.ano).slice(2)+' · '+fd2(RS.topParte,0)+'% da hora extra em '+SetorHE.lista(RS.top)+'</span></div>'
+    +'<table class="lid-tab" style="font-size:.72rem"><thead><tr><th>Setor</th><th>Pessoas</th><th>HE (h)</th><th title="extra50 + extra100 ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th><th title="Parte do setor nas horas extras dos diretos">% da HE</th><th title="falta + atestado + afastado + atraso ÷ horas normais do setor (controle do RH)">Falta</th><th title="Cobrindo falta: HE alta e falta acima de '+RS.absCrit+'%. Capacidade: HE alta com falta dentro do limite">Leitura</th></tr></thead><tbody>'+linhas+'</tbody></table>'
+    +'<div style="font-size:.62rem;color:var(--t3);margin-top:8px">Fonte: aba PONTO_SETOR (extrato do ponto + controle de faltas do RH). Hora por setor, não peça por setor: a produção é da fábrica inteira. Setor = o atual da pessoa na FUNCIONARIOS. HE "alta" = acima da razão da fábrica no mês ('+fd2(RS.refPct,1)+'%); o limite de 8% do painel é sobre peças e não se aplica por setor.</div>';
+}
+
 var _avisouWebApp = false;
 function _carregarDoSheetsAoAbrir(){
   if (!SHEETS_WEBAPP_URL) return;
@@ -5086,6 +5173,10 @@ function _carregarDoSheetsAoAbrir(){
       if (json.producaoItens && json.producaoItens.length) {
         try { localStorage.setItem('dash_prod_itens_v1', JSON.stringify(json.producaoItens)); } catch (e) {}
       }
+      /* Horas, hora extra e ausências por setor (aba PONTO_SETOR, PontoRH.gs).
+         A planilha é a fonte: lista vazia também grava, para não sobrar setor
+         de rodada antiga. Web App antigo não manda a chave e nada muda. */
+      if (json.setores) { try { localStorage.setItem(SetorHE.SK, JSON.stringify(json.setores)); } catch (e) {} }
       /* Plano de ação da Reunião (aba ACOES). Mescla com o local: a versão
          mais nova de cada ação vence, e o que só existe aqui é reenviado. */
       if (json.acoes && window.Acoes) { try { window.Acoes.mesclar(json.acoes); } catch (e) { console.warn('ACOES:', e); } }
@@ -7397,6 +7488,7 @@ function renderKPIsExtras(d){
   var acimaAbs=d.filter(function(r){return r.absenteismo>META_ABS}).length;
   var u=d[d.length-1], hfp=calcHFP(u);
 
+  try{ renderSetoresHE(d); }catch(e){ console.warn('SetorHE:', e); }
   // Capacidade
   s('kv2-cap', fi(tHT)+' h');
   s('kv2-hn',  fi(tHN)+' h');
@@ -20828,6 +20920,26 @@ function printAtiva(){
       +'<p>No ano: '+fi(M.tot.heH)+' horas extras, e '+fd(M.tot.hePct,1)+'% de tudo que produzimos saiu nelas.</p>'
       +(minHE.mes!==ref.mes?'<p>'+NOME_MES[minHE.mes]+' teve a menor hora extra ('+fd(minHE.hePct,1)+'%)'+(lidMelhorEm(ms,'pcDia',minHE,false)?', mas também foi o mês de menor ritmo: '+fi(minHE.pcDia)+' peças por dia com a hora extra, '+fi(minHE.pcDiaN)+' sem.':'.')+'</p>':'')
       +'</div></div>'+rod);
+    /* 4b · hora extra por setor (só quando a PONTO_SETOR tem o mês) */
+    var RS=(window.SetorHE&&SetorHE.resumo)?SetorHE.resumo(ref.mes,ref.ano):null;
+    if(RS&&RS.setores.length&&RS.heDir>0){
+      var h4b='Em '+ref2+', '+fd(RS.topParte,0)+'% da hora extra ficou em '+RS.top.length+(RS.top.length===1?' setor: ':' setores: ')+SetorHE.lista(RS.top)+'.'
+        +(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' a falta também passa de '+RS.absCrit+'%: hora extra cobrindo presença.':'')
+        +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro: é capacidade.':'');
+      var linhaSet=function(x){
+        var cor=x.leitura==='cobrindo falta'?'#F44336':(x.leitura==='capacidade'?'#FF9800':(x.leitura?'#FF9800':'#888'));
+        return '<tr><td>'+x.setor+'</td><td>'+fi(x.pessoas)+'</td><td>'+fi(x.he)+'</td><td'+(x.heAlta?' style="font-weight:800"':'')+'>'+fd(x.hePct,1)+'%</td><td>'+fd(x.parte,0)+'%</td>'
+          +'<td>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor+'">'+(x.leitura||'—')+'</td></tr>';
+      };
+      var tabSet='<table class="lid-tab"><thead><tr><th>Setor</th><th>Pessoas</th><th>HE (h)</th><th>HE ÷ normais</th><th>% da HE</th><th>Falta</th><th>Leitura</th></tr></thead><tbody>'
+        +RS.setores.map(linhaSet).join('')
+        +(RS.indiretos.length?'<tr><td class="lid-tx" style="color:#888">Indiretos ('+RS.indiretos.length+' setores, fora do '+fd(ref.hePct,1)+'%)</td><td>'+fi(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi(RS.heInd)+'</td><td>'+(RS.hnInd>0?fd(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>':'')
+        +'<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi(RS.heDir)+'</td><td>'+fd(RS.refPct,1)+'%</td><td>100%</td><td>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr></tbody></table>';
+      S.push('<h1 class="lid-h">'+h4b+'</h1><div class="lid-sub">Horas extras do ponto por setor · HE ÷ horas normais do setor, "alta" = acima da fábrica ('+fd(RS.refPct,1)+'%) · falta = falta, atestado, afastado e atraso ÷ horas normais · limite '+RS.absCrit+'%</div>'
+        +tabSet
+        +'<div class="lid-p lid-small">Cobrindo falta = hora extra alta num setor com falta acima do limite: a HE repõe presença. Capacidade = hora extra alta com falta dentro do limite: o setor não dá conta na jornada normal. '
+        +'É hora por setor, não peça por setor; a produção é da fábrica inteira. O setor é o atual da pessoa na lista do RH.</div>'+rod);
+    }
     /* 5 · faltas */
     var cobre=ref.F>0?ref.heH/ref.F*100:0, melhores=ms.slice().sort(function(a,b){ return a.abs-b.abs; }).slice(0,2).filter(function(m){ return m.mes!==ref.mes; });
     var h5='Falta é onde a liderança mais pode ajudar: '+fd(ref.abs,1)+'% em '+ref2+', o mesmo que '+fi(M.foraHoje)+' pessoas fora todo dia. Cada 1% a menos são '+fi(M.ganhoPP)+' peças no mês.';
@@ -21431,9 +21543,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b93.4';
+var APP_VERSAO = 'b93.5';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b93.5', data:'18/09/2026', itens:[
+    'Hora extra por setor, etapa 2 (painel): o Web App manda a aba PONTO_SETOR e o painel guarda. Apresentacao para lideres ganha o slide "hora extra por setor" depois do de hora extra, e a aba Eficiencia & Horas ganha a tabela no fim, para o ultimo mes do periodo com ponto por setor. Colunas: pessoas, HE em horas, HE sobre horas normais do setor, parte na HE da fabrica, falta do setor e a leitura: "cobrindo falta" (HE acima da fabrica e falta acima de 6%) ou "capacidade" (HE acima da fabrica com falta dentro). Indiretos aparecem numa linha so, fora da dependencia de HE. Sem a aba, nem o slide nem a tabela aparecem. E hora por setor, nao peca por setor.'
+  ]},
   { v:'b93.4', data:'18/09/2026', itens:[
     'Hora extra por setor, etapa 1 (planilha): PontoRH.gs passa a gravar a aba PONTO_SETOR, uma linha por mes e setor, diretos e indiretos: pessoas, horas de carga e normais, faltas e atrasos do ponto, extra50, extra100, total de HE e HE sobre horas normais do setor. O controle de faltas grava as ausencias por setor na mesma linha. A HISTORICO nao muda. O Web App devolve a aba em "setores"; o painel ainda nao mostra (etapa 2). E hora por setor, nao peca por setor; o setor e o atual da pessoa na FUNCIONARIOS; a serie comeca no primeiro extrato processado depois desta versao. Para AGO/26 entrar, mova o extrato e o CONTROLE_FALTAS de PROCESSADOS de volta para PONTO RH e rode Processar de novo.'
   ]},
