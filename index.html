@@ -21587,9 +21587,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b93.9';
+var APP_VERSAO = 'b94';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b94', data:'18/09/2026', itens:[
+    'aceitarPontoNaHistorico aceita o ano inteiro: digite 2026 e ele regrava todos os meses que tiverem extrato processado, na ordem do calendario. Em branco assume o ano corrente. Mes a mes obrigava a lembrar quais faltavam, e quem esquece um mes fica com o ano em duas reguas — foi o que aconteceu com MAR e JUN. Mes que ja estava igual ao ponto so e contado, nao polui o aviso, e o aviso termina dizendo para usar Gravar calculos na planilha.'
+  ]},
   { v:'b93.9', data:'18/09/2026', itens:[
     'Gravar calculos na planilha passa a reler a planilha antes de gravar. O botao enviava a copia local, e a copia podia estar mais velha que a planilha: em 18/09 o PontoRH corrigiu MAR e JUN as 13h11, o painel estava aberto desde as 13h08, e o clique as 13h16 devolveu os dois meses ao valor antigo, sem aviso. Se a releitura falhar, nao grava — perder o clique e melhor que desfazer uma correcao feita na planilha.'
   ]},
