@@ -5112,6 +5112,12 @@ function _carregarDoSheetsAoAbrir(){
       if (json.producaoItens && json.producaoItens.length) {
         try { localStorage.setItem('dash_prod_itens_v1', JSON.stringify(json.producaoItens)); } catch (e) {}
       }
+      /* Cadastro do comparativo de anos: grupos do ERP (aba GRUPOS) e peso
+         por produto (P B da PRODUTO_CODIGO). Vem mesmo vazio, para a aba
+         saber que a planilha respondeu e o que falta nela. */
+      if (json.cadastro) {
+        try { localStorage.setItem('dash_prod_cad_v1', JSON.stringify(json.cadastro)); } catch (e) {}
+      }
       /* Plano de ação da Reunião (aba ACOES). Mescla com o local: a versão
          mais nova de cada ação vence, e o que só existe aqui é reenviado. */
       if (json.acoes && window.Acoes) { try { window.Acoes.mesclar(json.acoes); } catch (e) { console.warn('ACOES:', e); } }
@@ -19770,8 +19776,23 @@ function printAtiva(){
 
    ENTRADA — as linhas cruas do reporte mensal do ERP (REPORTE_VOLUMES), como
    chegam do Web App: [mes, ano, codigo, descricao, qtd] ou, desde a coluna
-   PESO, [mes, ano, codigo, descricao, qtd, peso]. O peso é o total da linha
-   em kg; o unitário sai de peso ÷ qtd.
+   PESO, [mes, ano, codigo, descricao, qtd, peso] — e o CADASTRO, opcional:
+     { grupos:  {'100':'TOUCADORES'},            aba GRUPOS do Lógica
+       modelos: {'100.009':'TOUCADOR MAGIC NEW'},
+       pesos:   {'100.009.001': 16.6} }          kg/un = soma do P B das caixas
+
+   LINHA DE PRODUTO. O código do produto é GRUPO.SUBGRUPO.ITEM (100.009.001),
+   então a linha é o grupo do ERP, pelos três primeiros dígitos — exato, sem
+   casar nome. O campo continua chamado `familia` no resultado por herança
+   da aba Produção por Produto; sem a aba GRUPOS ele cai para a família
+   derivada da descrição, e `linha.origem` diz qual das duas valeu. Nunca
+   mistura as duas numa mesma apuração.
+
+   PESO. Prioridade para o cadastro (qtd × kg/un): é o que existe para os
+   dois anos hoje e não muda de um mês para o outro. O peso da linha do
+   reporte (coluna PESO) só entra para produto sem peso no cadastro. É peso
+   BRUTO (com embalagem): a conferência contra o quilosProduzidos diz se
+   bate com o que o ERP soma.
 
    TRÊS DECISÕES QUE MUDAM O NÚMERO NA TELA
    1. BASE DE COMPARAÇÃO. 2025 tem 12 meses fechados e 2026, em setembro,
@@ -19817,6 +19838,21 @@ window.CompAnos = (function () {
 
   function ehVolume(desc) { return RE_VOL.test(String(desc || '')); }
 
+  var RE_COD = /^(\d{3})\.(\d{3})\.\d{3}$/;
+  function temGrupos(cad) { return !!(cad && cad.grupos && Object.keys(cad.grupos).length); }
+  /* Grupo pelo código quando a aba GRUPOS existe; grupo sem nome na aba vira
+     "GRUPO 1xx" de propósito — é o jeito de a tela mostrar o buraco. */
+  function linhaDe(cod, desc, cad) {
+    var m = RE_COD.exec(String(cod || '').trim());
+    if (temGrupos(cad) && m) return cad.grupos[m[1]] || ('GRUPO ' + m[1]);
+    return familiaDe(desc);
+  }
+  function modeloDe(cod, cad) {
+    var m = RE_COD.exec(String(cod || '').trim());
+    if (!m || !cad || !cad.modelos) return '';
+    return cad.modelos[m[1] + '.' + m[2]] || '';
+  }
+
   /* Variação relativa com as regras da nota 2. */
   function variacao(a, b) {
     if (!(a > 0)) return null;          /* nasceu em B, ou zero nos dois */
@@ -19861,6 +19897,9 @@ window.CompAnos = (function () {
     opts = opts || {};
     itens = itens || [];
     regs  = regs  || [];
+    var cad = opts.cadastro || {};
+    var pesosCad = cad.pesos || {};
+    var usaGrupos = temGrupos(cad);
     var anoA = opts.anoA, anoB = opts.anoB;
     var base = opts.base === 'cheio' ? 'cheio' : 'comuns';
     var mesFiltro = opts.mes || '';
@@ -19887,19 +19926,28 @@ window.CompAnos = (function () {
     /* Agregação por código. A descrição fica a do ano mais recente em que o
        produto apareceu: cadastro renomeado não vira dois produtos. */
     var prod = {};
-    var comPeso = 0, semPeso = 0;   /* em QUANTIDADE, para a cobertura */
+    /* Em QUANTIDADE, para a cobertura: de onde veio o peso de cada peça. */
+    var fonte = { cadastro: 0, erp: 0, nenhuma: 0 };
+    var semGrupoNome = {};
     function acumula(r, lado) {
       var cod = String(r[2] || '').trim();
       if (!cod) return;
       var p = prod[cod] || (prod[cod] = {
-        cod: cod, desc: String(r[3] || '').trim(), familia: familiaDe(r[3]),
-        qtdA: 0, qtdB: 0, pesoA: 0, pesoB: 0, pesoConhecidoA: 0, pesoConhecidoB: 0
+        cod: cod, desc: String(r[3] || '').trim(),
+        familia: linhaDe(cod, r[3], cad), modelo: modeloDe(cod, cad),
+        qtdA: 0, qtdB: 0, pesoA: 0, pesoB: 0, pesoConhecidoA: 0, pesoConhecidoB: 0,
+        fontePeso: ''
       });
-      var peso = (r.length > 5 && r[5] > 0) ? r[5] : 0;
-      if (lado === 'B') { p.desc = String(r[3] || '').trim(); p.familia = familiaDe(r[3]); }
+      var kgCad = pesosCad[cod] > 0 ? pesosCad[cod] : 0;
+      var peso = kgCad > 0 ? r[4] * kgCad : ((r.length > 5 && r[5] > 0) ? r[5] : 0);
+      if (lado === 'B') { p.desc = String(r[3] || '').trim(); p.familia = linhaDe(cod, r[3], cad); }
+      if (p.familia.indexOf('GRUPO ') === 0) semGrupoNome[p.familia] = 1;
       p['qtd' + lado] += r[4];
-      if (peso > 0) { p['peso' + lado] += peso; p['pesoConhecido' + lado] += r[4]; comPeso += r[4]; }
-      else semPeso += r[4];
+      if (peso > 0) {
+        p['peso' + lado] += peso; p['pesoConhecido' + lado] += r[4];
+        if (kgCad > 0) { fonte.cadastro += r[4]; p.fontePeso = 'cadastro'; }
+        else { fonte.erp += r[4]; if (!p.fontePeso) p.fontePeso = 'erp'; }
+      } else fonte.nenhuma += r[4];
     }
     itens.forEach(function (r) {
       if (ehVolume(r[3]) || !(r[4] > 0)) return;
@@ -20005,9 +20053,15 @@ window.CompAnos = (function () {
       if (!(hist > 0) || !(soma > 0)) return null;
       return ((soma - hist) / hist) * 100;
     }
+    var totFonte = fonte.cadastro + fonte.erp + fonte.nenhuma;
     var peso = {
       temPeso:   totPA > 0 || totPB > 0,
-      cobertura: (comPeso + semPeso) > 0 ? (comPeso / (comPeso + semPeso)) * 100 : 0,
+      cobertura: totFonte > 0 ? ((fonte.cadastro + fonte.erp) / totFonte) * 100 : 0,
+      fonte: fonte,
+      /* Com peso do cadastro o kg/un de cada produto é constante: "produto
+         ficou mais pesado" não existe, só o mix muda. A tela precisa saber
+         para não desenhar um ranking de variação que é zero por construção. */
+      fonteCadastro: fonte.cadastro > 0 && fonte.erp === 0,
       somaA: totPA, somaB: totPB,
       histA: histA, histB: histB,
       difA: difPct(totPA, histA), difB: difPct(totPB, histB)
@@ -20050,6 +20104,10 @@ window.CompAnos = (function () {
       familias: familias,
       mix: mix,
       peso: peso,
+      linha: {
+        origem: usaGrupos ? 'grupo' : 'familia',
+        semNome: Object.keys(semGrupoNome).sort()
+      },
       limites: { estavel: LIM_ESTAVEL, material: LIM_MATERIAL }
     };
   }
@@ -20069,6 +20127,7 @@ window.CompAnos = (function () {
 
   return {
     apurar: apurar, filtrar: filtrar, familiaDe: familiaDe,
+    linhaDe: linhaDe, modeloDe: modeloDe,
     variacao: variacao, situacaoDe: situacaoDe, ehVolume: ehVolume,
     ROTULO_SITUACAO: ROTULO_SITUACAO, ORDEM_M: ORDEM_M
   };
@@ -20100,9 +20159,15 @@ window.CompAnos = (function () {
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function corVar(v){ return v===null?'var(--t3)':(v>=0?VERDE:VERM); }
+  /* Card tem ~190px: "1.483.535 kg" não cabe e um ano cheio passa de nove
+     milhões. Acima de 100 t o card mostra toneladas; a tabela de indicadores
+     logo abaixo continua em kg, para quem precisa do número inteiro. */
+  function fKg(n){ return n>=100000 ? fi(n/1000)+' <span style="font-size:.8rem">t</span>' : fi(n)+' <span style="font-size:.8rem">kg</span>'; }
 
   function itens(){ try{ return JSON.parse(localStorage.getItem('dash_prod_itens_v1'))||[] }catch(e){ return [] } }
   function regs(){ return (typeof load==='function')?load():[]; }
+  /* Grupos do ERP e peso por produto — chegam no mesmo sync dos itens. */
+  function cadastro(){ try{ return JSON.parse(localStorage.getItem('dash_prod_cad_v1'))||{} }catch(e){ return {} } }
 
   /* ── estado da tela (os filtros do item 8 do pedido) ── */
   var _base='comuns', _mes='', _familia='', _situacao='', _busca='', _ord='qtdB', _apuracao=null;
@@ -20291,7 +20356,7 @@ window.CompAnos = (function () {
     var anoB = anos[anos.length - 1], anoA = anoB - 1;
     if (anos.indexOf(anoA) < 0) anoA = anos[anos.length - 2];
 
-    var r = window.CompAnos.apurar(its, todos, { anoA: anoA, anoB: anoB, base: _base, mes: _mes });
+    var r = window.CompAnos.apurar(its, todos, { anoA: anoA, anoB: anoB, base: _base, mes: _mes, cadastro: cadastro() });
     _apuracao = r;
     if (lbl) lbl.textContent = anoA + ' × ' + anoB;
 
@@ -20346,15 +20411,25 @@ window.CompAnos = (function () {
         + r.base.usaB.length + '</b>. A diferença de totais embute os meses que ' + anoB
         + ' ainda não teve. Para medir mudança de mix, volte para <b>mesmos meses</b>.', LARANJA);
     }
+    if (r.linha.origem === 'familia') {
+      out += aviso('<b>Linha de produto derivada da descrição.</b> A aba <code>GRUPOS</code> (Relatório de Grupos do Lógica) '
+        + 'não está na planilha, então a linha é a família tirada do nome do item. Com a aba colada, a linha passa a ser '
+        + 'o grupo do ERP pelo código do produto (100 = TOUCADORES, 105 = RACKS…), sem depender do nome.', LARANJA);
+    } else if (r.linha.semNome.length) {
+      out += aviso('<b>Grupo sem nome na aba GRUPOS:</b> ' + r.linha.semNome.join(', ')
+        + '. O código do produto aponta para um grupo que não está na aba — o Relatório de Grupos pode estar desatualizado.', LARANJA);
+    }
     if (!r.peso.temPeso) {
-      out += aviso('<b>Sem peso por produto.</b> A coluna <code>PESO</code> da aba REPORTE_VOLUMES está vazia ou não existe, '
-        + 'então esta tela mede o mix só em peças. O peso vem no mesmo PDF do ERP que já alimenta os volumes — '
-        + 'com a coluna preenchida, aparecem aqui o peso por produto, o peso médio e a matriz volume × peso.', LARANJA);
+      out += aviso('<b>Sem peso por produto.</b> Nenhum produto do reporte casou com a coluna <code>P B</code> da '
+        + 'PRODUTO_CODIGO, e a coluna <code>PESO</code> da REPORTE_VOLUMES está vazia — esta tela mede o mix só em peças. '
+        + 'Com o peso, aparecem aqui o peso por produto, o peso médio e a matriz volume × peso.', LARANJA);
     } else {
       if (r.peso.cobertura < 95) {
-        out += aviso('<b>Peso informado em ' + fd(r.peso.cobertura, 1) + '% da quantidade produzida.</b> '
-          + 'Os totais de peso abaixo cobrem só essa parte — o resto do reporte veio sem a coluna. '
-          + 'Trate os kg como parciais até a cobertura fechar.', LARANJA);
+        var f = r.peso.fonte, tf = f.cadastro + f.erp + f.nenhuma;
+        out += aviso('<b>Peso conhecido para ' + fd(r.peso.cobertura, 1) + '% das peças</b> ('
+          + fd(tf ? f.cadastro / tf * 100 : 0, 0) + '% pelo cadastro, ' + fd(tf ? f.erp / tf * 100 : 0, 0) + '% pelo reporte). '
+          + 'O resto são produtos cujo nome no reporte não casou com nenhuma caixa da PRODUTO_CODIGO — '
+          + 'os totais de peso abaixo cobrem só a parte conhecida. Cadastrar as caixas que faltam fecha a cobertura.', LARANJA);
       }
       if (!r.peso.confere) {
         out += aviso('<b>O peso por produto não fecha com a HISTORICO.</b> '
@@ -20362,8 +20437,12 @@ window.CompAnos = (function () {
           + (r.peso.difA !== null ? anoA + ' ' + pct(r.peso.difA) : '')
           + (r.peso.difA !== null && r.peso.difB !== null ? ' · ' : '')
           + (r.peso.difB !== null ? anoB + ' ' + pct(r.peso.difB) : '')
-          + '. As duas pontas saem do mesmo relatório do ERP, então divergência acima de 2% quer dizer que uma delas '
-          + 'foi lançada de outro corte. Confira antes de levar o peso para decisão.', VERM);
+          + '. ' + (r.peso.fonteCadastro
+              ? 'O peso aqui é bruto (P B do cadastro × quantidade) e o da HISTORICO é o que o ERP soma no reporte — '
+                + 'diferença acima de 2% quer dizer cobertura incompleta ou peso de cadastro desatualizado. '
+              : 'As duas pontas saem do mesmo relatório do ERP, então divergência acima de 2% quer dizer que uma delas '
+                + 'foi lançada de outro corte. ')
+          + 'Confira antes de levar o peso para decisão.', VERM);
       }
     }
     return out;
@@ -20401,9 +20480,9 @@ window.CompAnos = (function () {
     return '<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(185px,1fr))">'
       + card('Produção ' + anoA, fi(g.A.qtd) + ' <span style="font-size:.8rem">pç</span>', sufA + ' · ' + fi(g.A.nProd) + ' produtos', AMBAR)
       + card('Produção ' + anoB, fi(g.B.qtd) + ' <span style="font-size:.8rem">pç</span>', sufB + ' · ' + fi(g.B.nProd) + ' produtos', ROXO)
-      + (temP ? card('Peso ' + anoA, fi(g.A.peso) + ' <span style="font-size:.8rem">kg</span>',
+      + (temP ? card('Peso ' + anoA, fKg(g.A.peso),
                      g.A.pesoMedio ? fd(g.A.pesoMedio, 1) + ' kg por peça' : '—', AMBAR) : '')
-      + (temP ? card('Peso ' + anoB, fi(g.B.peso) + ' <span style="font-size:.8rem">kg</span>',
+      + (temP ? card('Peso ' + anoB, fKg(g.B.peso),
                      g.B.pesoMedio ? fd(g.B.pesoMedio, 1) + ' kg por peça' : '—', ROXO) : '')
       + cardVar
       + '</div>';
@@ -20493,7 +20572,7 @@ window.CompAnos = (function () {
     var temP = r.peso.temPeso;
     var linhas = r.familias.map(function (f) {
       return '<tr>'
-        + td('<b>' + esc(f.nome) + '</b>')
+        + td('<b>' + esc(f.nome) + '</b>', 'left', 'white-space:normal;overflow-wrap:anywhere;line-height:1.3')
         + td(fi(f.qtdA), 'right', 'color:var(--t2)')
         + td('<b>' + fi(f.qtdB) + '</b>', 'right')
         + td(pct(f.varQtd), 'right', 'color:' + corVar(f.varQtd))
@@ -20505,7 +20584,8 @@ window.CompAnos = (function () {
         + td('<b>' + (f.ppQtd >= 0 ? '+' : '') + fd(f.ppQtd, 1) + '</b>', 'right', 'color:' + corVar(f.ppQtd))
         + '</tr>';
     }).join('');
-    return secao('Por linha de produto', 'família derivada da descrição do ERP')
+    var porGrupo = r.linha.origem === 'grupo';
+    return secao('Por linha de produto', porGrupo ? 'grupo do ERP, pelo código do produto' : 'família derivada da descrição do ERP')
       + painel('<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:720px">'
         + '<thead><tr>' + th('Linha')
         + th('Qtd ' + anoA, 'right') + th('Qtd ' + anoB, 'right') + th('Δ Qtd', 'right')
@@ -20515,10 +20595,13 @@ window.CompAnos = (function () {
         + secaoInterna('Peso das famílias — ' + anoA + ' × ' + anoB)
         + graficoFamilias(r.familias, temP ? 'peso' : 'qtd', anoA, anoB, temP ? 'kg' : 'pç')
         + '<div style="font-size:.68rem;color:var(--t3);margin-top:11px;line-height:1.55;border-top:1px solid var(--b);padding-top:9px">'
-        + 'O cadastro do ERP não tem campo de linha de produto, então a família sai da descrição do próprio item '
-        + '(primeira palavra, ou as duas primeiras em nome composto; o prefixo KIT é embalagem e não conta). '
-        + 'É a mesma regra da aba Produção por Produto — nenhuma categoria foi inventada aqui. '
-        + 'A última coluna é o que mostra mix mudando: uma família pode cair em peças e ainda assim ganhar participação, '
+        + (porGrupo
+            ? 'A linha é o <b>grupo do Lógica</b>: os três primeiros dígitos do código do produto (100.009.001 → grupo 100, '
+              + 'TOUCADORES), com o nome vindo da aba GRUPOS. É o cadastro do ERP, não uma classificação do painel. '
+            : 'A aba GRUPOS não está na planilha, então a linha sai da descrição do próprio item '
+              + '(primeira palavra, ou as duas primeiras em nome composto; o prefixo KIT é embalagem e não conta) — '
+              + 'mesma regra da aba Produção por Produto. ')
+        + 'A última coluna é o que mostra mix mudando: uma linha pode cair em peças e ainda assim ganhar participação, '
         + 'se o total caiu mais que ela.</div>', ROXO);
   }
   function secaoInterna(t) {
@@ -20590,7 +20673,7 @@ window.CompAnos = (function () {
         return '<b style="color:' + (v > 0 ? VERDE : VERM) + '">' + (v > 0 ? '▲' : '▼') + '</b>';
       }
       return '<tr>'
-        + td('<b>' + esc(f.nome) + '</b>')
+        + td('<b>' + esc(f.nome) + '</b>', 'left', 'white-space:normal;overflow-wrap:anywhere;line-height:1.3')
         + td(mud.join('<br>'), 'left', 'color:var(--t2);font-size:.72rem;line-height:1.5;white-space:normal')
         + td(seta(f.difQtd) + '<span style="color:var(--t3);font-size:.68rem"> ' + (f.difQtd >= 0 ? '+' : '') + fi(f.difQtd) + '</span>', 'right')
         + (temP ? td(seta(f.difPeso) + '<span style="color:var(--t3);font-size:.68rem"> ' + (f.difPeso >= 0 ? '+' : '') + fi(f.difPeso) + '</span>', 'right') : '')
@@ -20603,8 +20686,9 @@ window.CompAnos = (function () {
          texto quebra dentro da célula. Em layout automático a célula de
          reflexo esticava a tabela para fora do painel. */
       + painel('<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:760px;table-layout:fixed">'
-        + '<thead><tr>' + th('Linha de produto', 'left', 'width:128px') + th('Mudança identificada', 'left', 'width:28%')
-        + th('Qtd', 'right', 'width:78px') + (temP ? th('Peso', 'right', 'width:78px') : '') + th('Possível reflexo operacional')
+        + '<thead><tr>' + th('Linha de produto', 'left', 'width:150px') + th('Mudança identificada', 'left', 'width:27%')
+        /* "▼ -1.234.567" em mono: sete dígitos com sinal e seta pedem ~100px. */
+        + th('Qtd', 'right', 'width:92px') + (temP ? th('Peso', 'right', 'width:106px') : '') + th('Possível reflexo operacional')
         + '</tr></thead><tbody>' + linhas + '</tbody></table></div>'
         + '<div style="font-size:.68rem;color:var(--t3);margin-top:11px;line-height:1.55;border-top:1px solid var(--b);padding-top:9px">'
         + 'A coluna de reflexo é leitura direta do número (mais quilos = mais material movimentado; mais itens distintos = mais trocas de setup). '
@@ -20652,15 +20736,21 @@ window.CompAnos = (function () {
                function (p) { return fd(p.kgUnB, 1) + ' kg'; }, LARANJA)
         + mini('Mais leves em ' + anoB, rank(r.produtos.filter(function (p) { return p.kgUnB > 0; }), 'kgUnB', 1),
                function (p) { return fd(p.kgUnB, 1) + ' kg'; }, CIANO)
-        + mini('Ficaram mais pesados', rank(comAmbos.filter(function (p) { return p.varKgUn > 0; }), 'varKgUn', -1),
-               function (p) { return pct(p.varKgUn); }, VERDE)
-        + mini('Ficaram mais leves', rank(comAmbos.filter(function (p) { return p.varKgUn < 0; }), 'varKgUn', 1),
-               function (p) { return pct(p.varKgUn); }, VERM)
+        + (r.peso.fonteCadastro ? '' :
+            mini('Ficaram mais pesados', rank(comAmbos.filter(function (p) { return p.varKgUn > 0; }), 'varKgUn', -1),
+                 function (p) { return pct(p.varKgUn); }, VERDE)
+          + mini('Ficaram mais leves', rank(comAmbos.filter(function (p) { return p.varKgUn < 0; }), 'varKgUn', 1),
+                 function (p) { return pct(p.varKgUn); }, VERM))
         + '</div>'
         + '<div style="font-size:.68rem;color:var(--t3);margin-top:13px;line-height:1.55;border-top:1px solid var(--b);padding-top:9px">'
-        + 'Peso unitário = peso reportado ÷ quantidade reportada, sobre os meses em que o produto teve peso informado. '
-        + 'Mudança no peso unitário do mesmo código quer dizer que o produto em si mudou (projeto, material ou embalagem) — '
-        + 'a base não diz qual.</div>', ROXO);
+        + (r.peso.fonteCadastro
+            ? 'Peso unitário = soma do P B (peso bruto) das caixas do produto na PRODUTO_CODIGO. É constante de cadastro: '
+              + 'o mesmo código pesa o mesmo nos dois anos, então o que move o peso médio é o <b>mix</b> — quais produtos '
+              + 'a fábrica fez mais e quais fez menos — e não o produto mudando.'
+            : 'Peso unitário = peso reportado ÷ quantidade reportada, sobre os meses em que o produto teve peso informado. '
+              + 'Mudança no peso unitário do mesmo código quer dizer que o produto em si mudou (projeto, material ou embalagem) — '
+              + 'a base não diz qual.')
+        + '</div>', ROXO);
   }
 
   function blocoMatriz(r, anoB) {
@@ -20680,7 +20770,7 @@ window.CompAnos = (function () {
       return;
     }
     var anoB = anos[anos.length - 1], anoA = anos.indexOf(anoB - 1) >= 0 ? anoB - 1 : anos[anos.length - 2];
-    var r = window.CompAnos.apurar(its, todos, { anoA: anoA, anoB: anoB, base: _base, mes: _mes });
+    var r = window.CompAnos.apurar(its, todos, { anoA: anoA, anoB: anoB, base: _base, mes: _mes, cadastro: cadastro() });
     if (!r.geral.A.qtd && !r.geral.B.qtd) {
       if (typeof toast === 'function') toast('Sem produção nos dois anos sob este filtro.', 'wn');
       return;
@@ -20823,7 +20913,10 @@ window.CompAnos = (function () {
       + '<div class="st">Produtos que mais moveram o resultado</div>' + tabTop
       + '<div class="st">Como ler</div>'
       + '<p style="font-size:8pt;line-height:1.5;color:#4a5568">'
-      + 'A linha de produto sai da descrição do item no ERP (não existe campo de linha no cadastro). '
+      + (r.linha.origem === 'grupo'
+          ? 'A linha de produto é o grupo do Lógica, pelos três primeiros dígitos do código (aba GRUPOS). '
+          : 'A linha de produto sai da descrição do item — a aba GRUPOS não está na planilha. ')
+      + (r.peso.fonteCadastro ? 'Peso = quantidade × soma do P B (peso bruto) das caixas do produto no cadastro. ' : '')
       + '“Estável” é variação menor que ' + r.limites.estavel + '%. Produto novo não tem variação percentual — não existe divisão por zero. '
       + 'A causa de cada mudança (decisão comercial, item fora de cadastro, mudança de projeto) não está na base e não é afirmada aqui.</p>'
       + '</div>'
@@ -20893,7 +20986,8 @@ window.CompAnos = (function () {
       return '<tr>'
         + td('<span style="font-family:var(--mono);font-size:.7rem;color:var(--t3)">' + esc(p.cod) + '</span><br>' + esc(p.desc),
              'left', 'line-height:1.35;white-space:normal')
-        + td(esc(p.familia), 'left', 'color:var(--t2);font-size:.71rem;white-space:normal')
+        + td(esc(p.familia) + (p.modelo ? '<br><span style="color:var(--t3);font-size:.64rem">' + esc(p.modelo) + '</span>' : ''),
+             'left', 'color:var(--t2);font-size:.71rem;white-space:normal;overflow-wrap:anywhere')
         + td(p.qtdA ? fi(p.qtdA) : '—', 'right', 'color:var(--t2)')
         + td(p.qtdB ? '<b>' + fi(p.qtdB) + '</b>' : '—', 'right')
         + td(p.varQtd === null ? '<span style="color:var(--t3)">—</span>' : pct(p.varQtd), 'right', 'color:' + corVar(p.varQtd))
@@ -20913,10 +21007,12 @@ window.CompAnos = (function () {
       + '<div style="max-height:520px;overflow:auto;border:1px solid var(--b);border-radius:6px">'
       + '<table style="width:100%;border-collapse:collapse;min-width:820px;table-layout:fixed">'
       + '<thead style="position:sticky;top:0;background:var(--panel);z-index:1"><tr>'
+        /* Larguras pelo pior caso real: um produto líder num ano cheio passa de
+           1.600.000 kg — nove dígitos com ponto de milhar, em mono. */
         + th('Produto') + th('Linha', 'left', 'width:118px')
-        + th('Qtd ' + anoA, 'right', 'width:74px') + th('Qtd ' + anoB, 'right', 'width:74px') + th('Δ Qtd', 'right', 'width:70px')
-        + (temP ? th('Kg ' + anoA, 'right', 'width:76px') + th('Kg ' + anoB, 'right', 'width:76px')
-                + th('Δ Kg', 'right', 'width:70px') + th('% Peso', 'right', 'width:64px') : '')
+        + th('Qtd ' + anoA, 'right', 'width:80px') + th('Qtd ' + anoB, 'right', 'width:80px') + th('Δ Qtd', 'right', 'width:70px')
+        + (temP ? th('Kg ' + anoA, 'right', 'width:96px') + th('Kg ' + anoB, 'right', 'width:96px')
+                + th('Δ Kg', 'right', 'width:70px') + th('% Peso', 'right', 'width:62px') : '')
         + th('Situação', 'left', 'width:88px')
       + '</tr></thead><tbody>' + linhas + '</tbody>'
       + '<tfoot><tr style="border-top:2px solid var(--b)">'
@@ -22646,9 +22742,10 @@ var APP_HISTORICO = [
     'A aba abre na base MESMOS MESES, nao no ano cheio. Somar 2025 inteiro contra um 2026 em andamento mostraria uma queda de calendario como se fosse queda de producao — em setembro dariam 12 meses contra 7. A base de ano cheio fica ao lado, marcada como parcial.',
     'Produto que so existe em 2026 nao ganha variacao percentual: (B-A)/A com A=0 nao existe, e inventar +100% enche o ranking de maiores altas com item que nunca teve producao. Fica traco e situacao Novo produto. Quem saiu de linha e -100%, que e exato.',
     'Aumento e reducao "relevantes" exigem variar mais de 10% E mover pelo menos 0,5% do total do periodo. So o percentual promoveria a mudanca de mix um item que foi de 2 para 4 pecas.',
-    'REPORTE_VOLUMES ganha a coluna PESO (F). O peso por linha ja vinha no PDF do ERP e era lido e jogado fora desde o comeco — sem ele nao existia peso POR PRODUTO em lugar nenhum, so o total do mes na HISTORICO. Com a coluna, da para dizer se o mix foi para peca mais pesada ou se a fabrica so produziu mais.',
+    'Peso por produto vem do cadastro: a coluna P B (peso bruto da caixa) da PRODUTO_CODIGO, somada nas caixas de cada produto e multiplicada pela quantidade. Ja existe para 2025 e 2026 e nao depende de reprocessar PDF. O Code.gs casa o codigo do reporte com as caixas pelo nome, com a mesma regua do calculo de volumes. Com peso de cadastro o kg/un e constante, entao a tela nao desenha "produto ficou mais pesado" — o que muda e o mix.',
+    'REPORTE_VOLUMES ganha a coluna PESO (F): o parser do PDF ja lia o peso da linha e descartava. Fica como reserva para produto sem peso no cadastro.',
     'Sem a coluna PESO preenchida, a aba mede so em pecas e diz isso: os blocos de peso somem em vez de mostrar zero. Com peso parcial, mostra a cobertura. E confere a soma dos pesos por produto contra o quilosProduzidos da HISTORICO — as duas pontas saem do mesmo relatorio, entao divergencia acima de 2% acende alerta.',
-    'A linha de produto sai da descricao do item (mesma regra de familia da aba Producao por Produto: primeira palavra, duas em nome composto, prefixo KIT e embalagem). O cadastro do ERP nao tem campo de linha e nenhuma categoria foi inventada.',
+    'Linha de produto = grupo do Logica. O codigo do produto no reporte e GRUPO.SUBGRUPO.ITEM (100.009.001), entao a linha sai dos tres primeiros digitos, sem casar nome; o nome do grupo vem da aba GRUPOS (Relatorio de Grupos do ERP, colado na planilha). Sem a aba, vale a familia derivada da descricao, e a tela avisa. Nunca mistura as duas na mesma apuracao.',
     'A coluna de reflexo operacional so afirma o que decorre do numero (mais quilos = mais material movimentado; mais itens distintos = mais trocas de setup). A causa da mudanca nao esta em nenhuma coluna da base e nao e afirmada.',
     'testes/comparativo-anos.test.js: 61 casos sobre a apuracao — base de comparacao, divisao por zero, materialidade, familia, cobertura e conferencia de peso, filtros e bordas.'
   ]},

@@ -236,7 +236,76 @@ afirma('busca casa código e descrição',
 afirma('filtro não altera os totais já apurados',
   R.geral.B.qtd === 414 && R.produtos.length === 5);
 
-/* ══ 9 · BORDAS ══ */
+/* ══ 9 · LINHA PELO GRUPO DO ERP (aba GRUPOS) ══
+   O código do produto é GRUPO.SUBGRUPO.ITEM. Com a aba GRUPOS a linha é
+   exata; sem ela cai para a família derivada — e nunca mistura as duas. */
+sec('Linha de produto pelo grupo do código');
+const CAD = {
+  grupos:  { '100': 'TOUCADORES', '103': 'MESA DE CABECEIRA', '105': 'RACKS' },
+  modelos: { '100.009': 'TOUCADOR MAGIC NEW', '103.002': 'MESA CABECEIRA PRIME' },
+  pesos:   { '100.009.001': 16.6, '103.002.001': 8.4 }
+};
+const ITENS_COD = [
+  ['JAN', 2025, '100.009.001', 'TOUCADOR MAGIC NEW BRANCO',  100],
+  ['JAN', 2025, '103.002.001', 'MESA CABECEIRA PRIME BRANCO', 50],
+  ['JAN', 2025, '105.010.001', 'RACK BRITO 137 CM BRANCO',    30],
+  ['JAN', 2025, '119.003.001', 'BALCAO ZEUS BRANCO',          10],
+  ['JAN', 2026, '100.009.001', 'TOUCADOR MAGIC NEW BRANCO',  120],
+  ['JAN', 2026, '103.002.001', 'MESA CABECEIRA PRIME BRANCO', 60, 600],   /* tem peso na linha E no cadastro */
+  ['JAN', 2026, '105.010.001', 'RACK BRITO 137 CM BRANCO',    40, 952],   /* só na linha do reporte */
+  ['JAN', 2026, '119.003.001', 'BALCAO ZEUS BRANCO',          12],        /* sem peso nenhum */
+];
+const RG = CA.apurar(ITENS_COD, [], { anoA: 2025, anoB: 2026, base: 'comuns', cadastro: CAD });
+afirma('origem da linha = grupo quando a aba GRUPOS existe', RG.linha.origem === 'grupo');
+afirma('100.009.001 → TOUCADORES (não "TOUCADOR")',
+  RG.produtos.find(p => p.cod === '100.009.001').familia === 'TOUCADORES');
+afirma('103.002.001 → MESA DE CABECEIRA (nome do ERP, não "MESA CABECEIRA")',
+  RG.produtos.find(p => p.cod === '103.002.001').familia === 'MESA DE CABECEIRA');
+afirma('grupo sem nome na aba vira "GRUPO 119" e é listado em linha.semNome',
+  RG.produtos.find(p => p.cod === '119.003.001').familia === 'GRUPO 119'
+  && RG.linha.semNome.join(',') === 'GRUPO 119');
+afirma('modelo = subgrupo pelo prefixo 100.009',
+  RG.produtos.find(p => p.cod === '100.009.001').modelo === 'TOUCADOR MAGIC NEW');
+afirma('produto sem modelo na aba fica com modelo vazio, não undefined',
+  RG.produtos.find(p => p.cod === '105.010.001').modelo === '');
+afirma('CA.linhaDe sem cadastro cai para a família derivada',
+  CA.linhaDe('100.009.001', 'TOUCADOR MAGIC NEW BRANCO', {}) === 'TOUCADOR');
+afirma('CA.linhaDe com código fora do padrão usa a família mesmo com aba GRUPOS',
+  CA.linhaDe('ABC', 'MESA CABECEIRA LUA', CAD) === 'MESA CABECEIRA');
+
+const RF = CA.apurar(ITENS_COD, [], { anoA: 2025, anoB: 2026, base: 'comuns' });
+afirma('sem cadastro: origem = familia e nenhum "GRUPO xxx" aparece',
+  RF.linha.origem === 'familia' && RF.produtos.every(p => p.familia.indexOf('GRUPO ') !== 0));
+afirma('sem cadastro a apuração de quantidade é idêntica',
+  RF.geral.A.qtd === RG.geral.A.qtd && RF.geral.B.qtd === RG.geral.B.qtd);
+
+/* ══ 10 · PESO PELO CADASTRO (P B × quantidade) ══ */
+sec('Peso pelo cadastro');
+const tou = RG.produtos.find(p => p.cod === '100.009.001');
+const mcp = RG.produtos.find(p => p.cod === '103.002.001');
+const rck = RG.produtos.find(p => p.cod === '105.010.001');
+const bal = RG.produtos.find(p => p.cod === '119.003.001');
+ok('peso 2025 do toucador = 100 × 16,6', tou.pesoA, 1660);
+ok('peso 2026 do toucador = 120 × 16,6', tou.pesoB, 1992);
+ok('kg/un do toucador é o do cadastro', tou.kgUnB, 16.6, 0.001);
+afirma('cadastro manda sobre a linha do reporte quando os dois existem (60 × 8,4 = 504, não 600)',
+  Math.abs(mcp.pesoB - 504) < 0.001 && mcp.fontePeso === 'cadastro');
+afirma('produto só com peso na linha do reporte usa a linha (952) como reserva',
+  Math.abs(rck.pesoB - 952) < 0.001 && rck.fontePeso === 'erp');
+afirma('produto sem peso nenhum fica com 0 e sem fonte', bal.pesoB === 0 && bal.fontePeso === '');
+ok('fonte.cadastro soma as peças pesadas pelo cadastro (100+50+120+60)', RG.peso.fonte.cadastro, 330);
+ok('fonte.erp soma as peças pesadas pela linha (40)', RG.peso.fonte.erp, 40);
+ok('fonte.nenhuma soma o resto (30+10+12)', RG.peso.fonte.nenhuma, 52);
+ok('cobertura = (330+40) / 422', RG.peso.cobertura, 370 / 422 * 100, 0.01);
+afirma('fonteCadastro é false enquanto houver peça pesada pelo reporte', RG.peso.fonteCadastro === false);
+const RC2 = CA.apurar(ITENS_COD.map(l => l.slice(0, 5)), [], { anoA: 2025, anoB: 2026, base: 'comuns', cadastro: CAD });
+afirma('só cadastro → fonteCadastro = true e kg/un igual nos dois anos',
+  RC2.peso.fonteCadastro === true
+  && RC2.produtos.filter(p => p.kgUnA > 0 && p.kgUnB > 0).every(p => Math.abs(p.varKgUn) < 1e-9));
+afirma('produto sem peso no cadastro e sem coluna PESO não entra no peso total',
+  Math.abs(RC2.geral.B.peso - (120 * 16.6 + 60 * 8.4)) < 0.001);
+
+/* ══ 11 · BORDAS ══ */
 sec('Bordas');
 const RV = CA.apurar([], [], { anoA: 2025, anoB: 2026, base: 'comuns' });
 afirma('entrada vazia não quebra', RV.produtos.length === 0 && RV.geral.A.qtd === 0);
