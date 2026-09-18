@@ -305,7 +305,89 @@ afirma('só cadastro → fonteCadastro = true e kg/un igual nos dois anos',
 afirma('produto sem peso no cadastro e sem coluna PESO não entra no peso total',
   Math.abs(RC2.geral.B.peso - (120 * 16.6 + 60 * 8.4)) < 0.001);
 
-/* ══ 11 · BORDAS ══ */
+/* ══ 11 · CONTRIBUIÇÃO — o que explica a variação de peso ══
+   A conta que sustenta a leitura da reunião ("o peso subiu porque o mix
+   migrou para linha pesada"). Se os efeitos não somarem a diferença exata,
+   a narrativa está atribuindo a causa errada — e ninguém confere isso na
+   tela, porque cada parcela sozinha parece plausível. */
+sec('Contribuição: volume × composição');
+/* Cenário desenhado como o real: uma linha LEVE encolhe, uma linha PESADA
+   cresce, e o peso total sobe mesmo com menos peças. */
+const ITENS_CONTRIB = [
+  /* MESA DE CABECEIRA: leve (8 kg), perde volume */
+  ['JAN', 2025, '103.001.001', 'MESA CABECEIRA SLEEP BRANCO', 1000],
+  ['JAN', 2026, '103.001.001', 'MESA CABECEIRA SLEEP BRANCO',  400],
+  /* PENTEADEIRA: pesada (40 kg), ganha volume */
+  ['JAN', 2025, '114.001.001', 'PENTEADEIRA CAMARIM BRANCO',   100],
+  ['JAN', 2026, '114.001.001', 'PENTEADEIRA CAMARIM BRANCO',   300],
+];
+const CAD_CONTRIB = {
+  grupos:  { '103': 'MESA DE CABECEIRA', '114': 'PENTEADEIRA' },
+  modelos: {},
+  pesos:   { '103.001.001': 8, '114.001.001': 40 }
+};
+const RK = CA.apurar(ITENS_CONTRIB, [], { anoA: 2025, anoB: 2026, base: 'comuns', cadastro: CAD_CONTRIB });
+const K = CA.contribuicao(RK);
+afirma('devolve objeto quando há peso', !!K);
+ok('peso 2025 = 1000×8 + 100×40', RK.geral.A.peso, 12000);
+ok('peso 2026 =  400×8 + 300×40', RK.geral.B.peso, 15200);
+afirma('menos peças (1100 → 700) e mais peso (12.000 → 15.200)',
+  RK.geral.B.qtd < RK.geral.A.qtd && RK.geral.B.peso > RK.geral.A.peso);
+ok('difPeso', K.difPeso, 3200);
+/* MESA: (400−1000)×8 = −4.800 · PENTEADEIRA: (300−100)×40 = +8.000 */
+ok('efeito volume soma −4.800 + 8.000', K.efVolume, 3200);
+ok('efeito composição é zero (kg/un de cada linha não mudou)', K.efComposicao, 0);
+afirma('volume + composição = difPeso, sem resíduo',
+  Math.abs((K.efVolume + K.efComposicao) - K.difPeso) < 1e-9);
+
+/* Peso médio: 10,91 → 21,71 kg/pç, tudo por mix entre linhas */
+ok('kg/pç 2025', K.kgMedA, 12000 / 1100, 0.001);
+ok('kg/pç 2026', K.kgMedB, 15200 / 700, 0.001);
+afirma('mix entre linhas explica a variação do peso médio, sem resíduo',
+  Math.abs((K.mixEntre + K.mixDentro) - K.difKgMed) < 1e-9);
+afirma('mix dentro das linhas é zero neste cenário', Math.abs(K.mixDentro) < 1e-9);
+afirma('PENTEADEIRA é quem mais empurrou o peso',
+  K.linhas[0].nome === 'PENTEADEIRA' && K.linhas[0].difPeso === 8000);
+afirma('subiram e cairam separam as duas linhas',
+  K.subiram.length === 1 && K.cairam.length === 1
+  && K.subiram[0].nome === 'PENTEADEIRA' && K.cairam[0].nome === 'MESA DE CABECEIRA');
+ok('soma das contribuições por linha = difPeso',
+  K.linhas.reduce((s, x) => s + x.difPeso, 0), K.difPeso);
+
+/* Mix DENTRO da linha: mesma linha, produto leve trocado por pesado. */
+const ITENS_DENTRO = [
+  ['JAN', 2025, '103.001.001', 'MESA CABECEIRA SLEEP',  1000],
+  ['JAN', 2026, '103.002.001', 'MESA CABECEIRA MADERO', 1000],
+];
+const RD2 = CA.apurar(ITENS_DENTRO, [], { anoA: 2025, anoB: 2026, base: 'comuns',
+  cadastro: { grupos: { '103': 'MESA DE CABECEIRA' }, modelos: {}, pesos: { '103.001.001': 8, '103.002.001': 12 } } });
+const KD = CA.contribuicao(RD2);
+ok('mesma quantidade nos dois anos', KD.linhas[0].difQtd, 0);
+ok('todo o ganho de peso é composição (1000 × (12−8))', KD.efComposicao, 4000);
+ok('efeito volume é zero', KD.efVolume, 0);
+afirma('a linha ficou mais pesada por dentro (8 → 12 kg/un)',
+  Math.abs(KD.linhas[0].kgUnA - 8) < 1e-9 && Math.abs(KD.linhas[0].kgUnB - 12) < 1e-9);
+
+/* Linha que nasce: todo o peso é volume, nada de composição inventada. */
+const RN2 = CA.apurar(ITENS_CONTRIB.concat([['JAN', 2026, '117.001.001', 'BERCO NOVO', 50]]), [],
+  { anoA: 2025, anoB: 2026, base: 'comuns',
+    cadastro: { grupos: Object.assign({ '117': 'BERCO' }, CAD_CONTRIB.grupos), modelos: {},
+                pesos: Object.assign({ '117.001.001': 30 }, CAD_CONTRIB.pesos) } });
+const KN = CA.contribuicao(RN2);
+const berco = KN.linhas.find(x => x.nome === 'BERCO');
+afirma('linha nova é marcada como nova', berco.nova === true);
+ok('peso da linha nova entra todo como volume (50 × 30)', berco.efVolume, 1500);
+ok('e nada como composição', berco.efComposicao, 0);
+afirma('mesmo com linha nova, volume + composição = difPeso',
+  Math.abs((KN.efVolume + KN.efComposicao) - KN.difPeso) < 1e-9);
+
+/* Sem peso não há o que decompor. */
+afirma('sem peso, contribuicao devolve null',
+  CA.contribuicao(CA.apurar(ITENS_CONTRIB.map(l => l.slice(0, 5)), [], { anoA: 2025, anoB: 2026, base: 'comuns' })) === null);
+afirma('entrada vazia devolve null',
+  CA.contribuicao(CA.apurar([], [], { anoA: 2025, anoB: 2026, base: 'comuns' })) === null);
+
+/* ══ 12 · BORDAS ══ */
 sec('Bordas');
 const RV = CA.apurar([], [], { anoA: 2025, anoB: 2026, base: 'comuns' });
 afirma('entrada vazia não quebra', RV.produtos.length === 0 && RV.geral.A.qtd === 0);

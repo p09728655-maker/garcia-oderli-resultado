@@ -4234,6 +4234,16 @@ body.lid-on{overflow:hidden}
 .lid-csub{font-size:.82em;color:#bbb;line-height:1.4}
 .lid-p{font-size:1.02em;line-height:1.5;margin-top:.8em}
 .lid-small{font-size:.8em}
+/* Slide do mix: KPIs em cima, as duas colunas de quem puxou embaixo. */
+.lid-mix{flex:1;min-height:0;display:flex;flex-direction:column;gap:1em}
+.lid-mix-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:.8em}
+.lid-mix-kpis .lid-cval{font-size:2em}
+.lid-mix-kpis .lid-card:last-child .lid-cval{font-size:1.3em;white-space:nowrap}
+.lid-mix-cols{display:grid;grid-template-columns:1fr 1fr;gap:1.2em}
+.lid-mix-t{font-size:.76em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.45em}
+.lid-mix-l{display:flex;justify-content:space-between;align-items:baseline;gap:1em;
+  padding:.4em 0;border-bottom:1px solid #2A2A2A;font-size:.95em}
+.lid-mix-l b{font-family:var(--mono);white-space:nowrap}
 .lid-resumo{background:#1F1F1F;border:1px solid #2A2A2A;border-radius:8px;padding:.7em 1em}
 .lid-2col{display:grid;grid-template-columns:1.3fr 1fr;gap:1.2em;flex:1;min-height:0;align-items:start}
 .lid-2col-w{grid-template-columns:1.5fr 1fr}
@@ -19842,8 +19852,79 @@ window.CompAnos = (function () {
     });
   }
 
+  /* ── Contribuição: o que explica a variação de peso ──
+     A pergunta que a tabela por linha não responde sozinha: o peso subiu
+     porque a fábrica produziu mais, ou porque passou a produzir COISA mais
+     pesada? São efeitos diferentes e cobram coisas diferentes do PPCP.
+
+     Para cada linha, a variação de peso se decompõe sem resíduo:
+
+       Δpeso = (qtdB − qtdA) × kgUnA   ← VOLUME: mesmas peças de antes, a mais
+             + qtdB × (kgUnB − kgUnA)  ← COMPOSIÇÃO: o que se produz mudou
+
+     A convenção (volume ao peso antigo, composição ao volume novo) é a mesma
+     do bloco de ponte do ritmo: os dois somam a diferença exata, e escolher
+     a outra ordem só troca qual efeito leva o termo cruzado.
+
+     O segundo termo é "mix DENTRO da linha": com peso vindo do cadastro o
+     kg/un de cada produto é fixo, então a linha só muda de peso médio quando
+     a proporção entre os produtos dela muda.
+
+     Também devolve a decomposição do peso médio global em pontos de peso:
+       Δkg/pç = Σ (partB − partA) × kgUnA   ← mix ENTRE linhas
+              + Σ partB × (kgUnB − kgUnA)   ← mix dentro das linhas
+     É essa primeira parcela que responde "a peça média ficou mais pesada
+     porque o mix migrou de linha leve para linha pesada". */
+  function contribuicao(r) {
+    if (!r || !r.familias || !r.peso || !r.peso.temPeso) return null;
+    var A = r.geral.A, B = r.geral.B;
+    if (!(A.qtd > 0) || !(B.qtd > 0) || !(A.peso > 0) || !(B.peso > 0)) return null;
+
+    var linhas = r.familias.map(function (f) {
+      var kgA = f.qtdA > 0 ? f.pesoA / f.qtdA : 0;
+      var kgB = f.qtdB > 0 ? f.pesoB / f.qtdB : 0;
+      /* Linha que nasceu ou morreu no período não tem os dois kg/un: todo o
+         peso dela é volume, ao seu próprio peso unitário. Dividir isso em
+         "composição" seria inventar uma mudança de produto que não houve. */
+      var base = kgA > 0 ? kgA : kgB;
+      var efVol = (f.qtdB - f.qtdA) * base;
+      var efComp = (kgA > 0 && kgB > 0) ? f.qtdB * (kgB - kgA) : 0;
+      return {
+        nome: f.nome, qtdA: f.qtdA, qtdB: f.qtdB, difQtd: f.qtdB - f.qtdA,
+        pesoA: f.pesoA, pesoB: f.pesoB, difPeso: f.pesoB - f.pesoA,
+        kgUnA: kgA || null, kgUnB: kgB || null,
+        efVolume: efVol, efComposicao: efComp,
+        /* Participação no peso médio: quanto esta linha empurrou o kg/pç. */
+        ppMix: ((f.qtdB / B.qtd) - (f.qtdA / A.qtd)) * base,
+        nova: f.qtdA === 0 && f.qtdB > 0, saiu: f.qtdA > 0 && f.qtdB === 0
+      };
+    }).filter(function (x) { return x.difPeso !== 0 || x.difQtd !== 0; });
+
+    linhas.sort(function (a, b) { return Math.abs(b.difPeso) - Math.abs(a.difPeso); });
+
+    var somaVol = 0, somaComp = 0, somaMix = 0, somaDentro = 0;
+    linhas.forEach(function (x) {
+      somaVol += x.efVolume; somaComp += x.efComposicao; somaMix += x.ppMix;
+      somaDentro += (x.kgUnA > 0 && x.kgUnB > 0) ? (x.qtdB / B.qtd) * (x.kgUnB - x.kgUnA) : 0;
+    });
+
+    var kgMedA = A.peso / A.qtd, kgMedB = B.peso / B.qtd;
+    /* O peso médio também muda por efeito de volume puro? Não: kg/pç é razão,
+       produzir o dobro de tudo não o move. Por isso só mix entra aqui. */
+    return {
+      linhas: linhas,
+      difPeso: B.peso - A.peso,
+      efVolume: somaVol, efComposicao: somaComp,
+      kgMedA: kgMedA, kgMedB: kgMedB, difKgMed: kgMedB - kgMedA,
+      mixEntre: somaMix, mixDentro: somaDentro,
+      /* Quem puxou para cima e quem puxou para baixo, já ordenado. */
+      subiram: linhas.filter(function (x) { return x.difPeso > 0; }),
+      cairam:  linhas.filter(function (x) { return x.difPeso < 0; })
+    };
+  }
+
   return {
-    apurar: apurar, filtrar: filtrar, familiaDe: familiaDe,
+    apurar: apurar, filtrar: filtrar, familiaDe: familiaDe, contribuicao: contribuicao,
     linhaDe: linhaDe, modeloDe: modeloDe,
     variacao: variacao, situacaoDe: situacaoDe, ehVolume: ehVolume,
     ROTULO_SITUACAO: ROTULO_SITUACAO, ORDEM_M: ORDEM_M
@@ -20092,6 +20173,7 @@ window.CompAnos = (function () {
       + blocoRanking(r, anoA, anoB)
       + blocoFamilias(r, anoA, anoB)
       + blocoImpacto(r, anoA, anoB)
+      + blocoContribuicao(r, anoA, anoB)
       + blocoPesoMedio(r, anoA, anoB)
       + blocoMatriz(r, anoB)
       + blocoTabela(r, anoA, anoB);
@@ -20414,6 +20496,107 @@ window.CompAnos = (function () {
   }
 
   /* ── Item 6: produto × peso médio ── */
+  /* ── O que explica a mudança de peso ──
+     A tabela por linha mostra que cada linha subiu ou caiu; ela não diz
+     quanto disso é a fábrica ter produzido mais e quanto é ter produzido
+     COISA diferente. É a distinção que muda a conversa: volume se resolve
+     com capacidade, composição se resolve com plano. */
+  function blocoContribuicao(r, anoA, anoB) {
+    var K = window.CompAnos.contribuicao(r);
+    if (!K || !K.linhas.length) return '';
+    var t = function (kg) { return fd(kg / 1000, 1); };   /* kg → toneladas */
+    var top = K.linhas.slice(0, 10);
+    var maxAbs = Math.max.apply(null, top.map(function (x) { return Math.abs(x.difPeso); }));
+
+    /* Barra divergente na própria célula: a leitura é "quem puxou para que
+       lado", e uma coluna de números não entrega isso de relance. */
+    function barra(v) {
+      var w = maxAbs > 0 ? (Math.abs(v) / maxAbs) * 46 : 0;
+      var cor = v >= 0 ? VERDE : VERM;
+      return '<span style="display:inline-block;width:100%;position:relative;height:13px">'
+        + '<span style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.18)"></span>'
+        + '<span style="position:absolute;top:1px;height:11px;border-radius:2px;background:' + cor + ';'
+        + (v >= 0 ? 'left:50%;' : 'right:50%;') + 'width:' + Math.max(w, 0.6).toFixed(1) + '%"></span></span>';
+    }
+
+    var linhas = top.map(function (x) {
+      var dom = Math.abs(x.efVolume) >= Math.abs(x.efComposicao) ? 'volume' : 'composição';
+      return '<tr>'
+        + td('<b>' + esc(x.nome) + '</b>', 'left', 'white-space:normal;overflow-wrap:anywhere;line-height:1.3')
+        + td((x.difQtd >= 0 ? '+' : '') + fi(x.difQtd), 'right', 'color:' + corVar(x.difQtd))
+        + td(x.kgUnA && x.kgUnB ? fd(x.kgUnA, 1) + ' → ' + fd(x.kgUnB, 1) : (x.kgUnB ? fd(x.kgUnB, 1) : '—'),
+             'right', 'color:var(--t2);white-space:nowrap')
+        + td((x.efVolume >= 0 ? '+' : '') + t(x.efVolume), 'right', 'color:' + corVar(x.efVolume))
+        + td(x.efComposicao ? (x.efComposicao >= 0 ? '+' : '') + t(x.efComposicao) : '—', 'right',
+             'color:' + (x.efComposicao ? corVar(x.efComposicao) : 'var(--t3)'))
+        + td(barra(x.difPeso), 'left', 'width:110px')
+        + td('<b>' + (x.difPeso >= 0 ? '+' : '') + t(x.difPeso) + '</b>', 'right', 'color:' + corVar(x.difPeso))
+        + td(x.nova ? 'linha nova' : (x.saiu ? 'saiu de linha' : dom), 'left',
+             'color:var(--t3);font-size:.68rem;white-space:nowrap')
+        + '</tr>';
+    }).join('');
+
+    /* Veredito: qual efeito domina e o que isso cobra. */
+    var mandou = Math.abs(K.efVolume) >= Math.abs(K.efComposicao) ? 'volume' : 'composição';
+    var pos = K.subiram.slice(0, 2), neg = K.cairam.slice(0, 2);
+    var frase = 'O peso ' + (K.difPeso >= 0 ? 'subiu' : 'caiu') + ' <b>' + t(Math.abs(K.difPeso)) + ' t</b>'
+      + ' e a peça média foi de <b>' + fd(K.kgMedA, 2) + '</b> para <b>' + fd(K.kgMedB, 2) + ' kg</b>'
+      + ' (' + pct(((K.kgMedB - K.kgMedA) / K.kgMedA) * 100) + '). ';
+    if (Math.abs(K.mixEntre) > Math.abs(K.mixDentro) * 1.5) {
+      frase += 'Quase tudo vem de <b>mix entre linhas</b>: a fábrica passou a fazer '
+        + (K.difKgMed >= 0 ? 'mais peça pesada e menos peça leve' : 'mais peça leve e menos peça pesada')
+        + ', não a fazer o mesmo produto mais ' + (K.difKgMed >= 0 ? 'pesado' : 'leve') + '. ';
+    } else if (Math.abs(K.mixDentro) > Math.abs(K.mixEntre) * 1.5) {
+      frase += 'O movimento vem de dentro das linhas: a composição mudou <b>dentro</b> de cada família, '
+        + 'não entre elas. ';
+    }
+    if (pos.length) {
+      frase += '<b style="color:' + VERDE + '">' + esc(pos[0].nome) + '</b> puxou ' + t(pos[0].difPeso) + ' t para cima'
+        + (pos[1] ? ' e <b style="color:' + VERDE + '">' + esc(pos[1].nome) + '</b> mais ' + t(pos[1].difPeso) + ' t' : '') + '; ';
+    }
+    if (neg.length) {
+      frase += '<b style="color:' + VERM + '">' + esc(neg[0].nome) + '</b> puxou ' + t(Math.abs(neg[0].difPeso)) + ' t para baixo'
+        + (neg[1] ? ' e <b style="color:' + VERM + '">' + esc(neg[1].nome) + '</b> mais ' + t(Math.abs(neg[1].difPeso)) + ' t' : '') + '. ';
+    }
+
+    return secao('O que explica a mudança de peso', 'volume × composição, em toneladas')
+      + painel('<div style="font-size:.82rem;line-height:1.6;color:var(--t1);margin-bottom:15px;max-width:1000px">' + frase + '</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;margin-bottom:17px">'
+          + miniEfeito('Por produzir mais/menos', K.efVolume, t(K.efVolume) + ' t',
+                       'mesmas peças de ' + anoA + ', em outra quantidade')
+          + miniEfeito('Por produzir coisa diferente', K.efComposicao, t(K.efComposicao) + ' t',
+                       'peso médio das linhas mudou por dentro')
+          + miniEfeito('Mix entre linhas', K.mixEntre, fd(K.mixEntre, 2) + ' kg/pç',
+                       'quanto do peso médio veio de trocar de linha')
+        + '</div>'
+        + '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:820px;table-layout:fixed">'
+        + '<thead><tr>' + th('Linha de produto', 'left', 'width:150px') + th('Δ peças', 'right', 'width:82px')
+        + th('kg/un', 'right', 'width:96px')
+        + th('Volume (t)', 'right', 'width:86px') + th('Composição (t)', 'right', 'width:92px')
+        + th('', 'left', 'width:110px') + th('Efeito (t)', 'right', 'width:84px') + th('Mandou', 'left', 'width:92px')
+        + '</tr></thead><tbody>' + linhas + '</tbody></table></div>'
+        + '<div style="font-size:.68rem;color:var(--t3);margin-top:11px;line-height:1.55;border-top:1px solid var(--b);padding-top:9px">'
+        + '<b>Volume</b> = (peças ' + anoB + ' − peças ' + anoA + ') × kg/un de ' + anoA + ': o que mudou por fazer mais ou menos do mesmo. '
+        + '<b>Composição</b> = peças ' + anoB + ' × (kg/un ' + anoB + ' − kg/un ' + anoA + '): o que mudou porque a linha passou a ser '
+        + 'feita de outros produtos. Os dois somam a diferença exata, sem sobra. '
+        + 'Linha que nasceu ou saiu no período entra toda como volume — ela não tem dois pesos para comparar. '
+        + (mandou === 'volume'
+            ? 'Aqui mandou o <b>volume</b>: é conversa de capacidade.'
+            : 'Aqui mandou a <b>composição</b>: é conversa de plano e mix, não de capacidade.')
+        + '</div>', ROXO);
+  }
+
+  /* Card pequeno de efeito, com o sinal já na cor. */
+  function miniEfeito(rot, v, val, sub) {
+    var cor = v > 0 ? VERDE : (v < 0 ? VERM : 'var(--t3)');
+    return '<div style="background:rgba(255,255,255,.02);border:1px solid var(--b);border-left:3px solid ' + cor + ';'
+      + 'border-radius:var(--r);padding:11px 14px;min-width:0">'
+      + '<div style="font-size:.58rem;letter-spacing:.09em;text-transform:uppercase;color:var(--t3)">' + rot + '</div>'
+      + '<div style="font-family:var(--mono);font-size:1.25rem;font-weight:700;color:' + cor + ';margin:3px 0">'
+        + (v > 0 ? '+' : '') + val + '</div>'
+      + '<div style="font-size:.66rem;color:var(--t3);line-height:1.4">' + sub + '</div></div>';
+  }
+
   function blocoPesoMedio(r, anoA, anoB) {
     if (!r.peso.temPeso) return '';
     var g = r.geral;
@@ -20548,6 +20731,44 @@ window.CompAnos = (function () {
           }).join('')
         + '</tbody></table>';
     }
+    /* Contribuição: a mesma decomposição da tela, em toneladas. Sai depois
+       da tabela por linha porque responde a pergunta que ela levanta. */
+    function tabContrib() {
+      var K = window.CompAnos.contribuicao(r);
+      if (!K || !K.linhas.length) return '';
+      var t = function (kg) { return fd(kg / 1000, 1); };
+      var mandou = Math.abs(K.efVolume) >= Math.abs(K.efComposicao) ? 'volume' : 'composição';
+      var pos = K.subiram.slice(0, 2), neg = K.cairam.slice(0, 2);
+      var frase = 'O peso ' + (K.difPeso >= 0 ? 'subiu' : 'caiu') + ' <b>' + t(Math.abs(K.difPeso))
+        + ' t</b> e a peça média foi de <b>' + fd(K.kgMedA, 2) + '</b> para <b>' + fd(K.kgMedB, 2) + ' kg</b>. '
+        + (Math.abs(K.mixEntre) > Math.abs(K.mixDentro) * 1.5
+            ? 'Quase tudo vem de mix ENTRE linhas: mudou o que se produz, não o produto em si. ' : '')
+        + (pos.length ? esc(pos[0].nome) + ' puxou +' + t(pos[0].difPeso) + ' t'
+            + (pos[1] ? ' e ' + esc(pos[1].nome) + ' +' + t(pos[1].difPeso) + ' t' : '') + '; ' : '')
+        + (neg.length ? esc(neg[0].nome) + ' puxou −' + t(Math.abs(neg[0].difPeso)) + ' t'
+            + (neg[1] ? ' e ' + esc(neg[1].nome) + ' −' + t(Math.abs(neg[1].difPeso)) + ' t' : '') + '.' : '');
+      return '<div class="st">O que explica a mudança de peso</div>'
+        + '<div class="ver" style="border-left-color:#6B46C1;background:#faf5ff;margin-bottom:8px"><p>' + frase + '</p></div>'
+        + '<table><thead><tr><th>Linha</th><th class="n">Δ peças</th><th class="n">kg/un</th>'
+        + '<th class="n">Volume (t)</th><th class="n">Composição (t)</th><th class="n">Efeito (t)</th><th>Mandou</th></tr></thead><tbody>'
+        + K.linhas.slice(0, 14).map(function (x) {
+            var dom = Math.abs(x.efVolume) >= Math.abs(x.efComposicao) ? 'volume' : 'composição';
+            return '<tr><td><b>' + esc(x.nome) + '</b></td>'
+              + '<td class="n">' + (x.difQtd >= 0 ? '+' : '') + fi(x.difQtd) + '</td>'
+              + '<td class="n">' + (x.kgUnA && x.kgUnB ? fd(x.kgUnA, 1) + ' → ' + fd(x.kgUnB, 1) : (x.kgUnB ? fd(x.kgUnB, 1) : '—')) + '</td>'
+              + '<td class="n">' + (x.efVolume >= 0 ? '+' : '') + t(x.efVolume) + '</td>'
+              + '<td class="n">' + (x.efComposicao ? (x.efComposicao >= 0 ? '+' : '') + t(x.efComposicao) : '—') + '</td>'
+              + '<td class="n"><b>' + (x.difPeso >= 0 ? '+' : '') + t(x.difPeso) + '</b></td>'
+              + '<td>' + (x.nova ? 'linha nova' : (x.saiu ? 'saiu de linha' : dom)) + '</td></tr>';
+          }).join('')
+        + '</tbody></table>'
+        + '<div style="font-size:7.5pt;color:#718096;margin-top:4px;line-height:1.45">'
+        + 'Volume = (peças ' + anoB + ' − peças ' + anoA + ') × kg/un de ' + anoA + '. '
+        + 'Composição = peças ' + anoB + ' × (kg/un ' + anoB + ' − kg/un ' + anoA + '). '
+        + 'Os dois somam a diferença exata. Linha que nasceu ou saiu entra toda como volume. '
+        + 'No período mandou o <b>' + mandou + '</b>.</div>';
+    }
+
     function tabMix(titulo, arr, campo, sufixo) {
       if (!arr.length) return '<div class="st">' + titulo + '</div><p style="font-size:8pt;color:#718096">Nenhum.</p>';
       return '<div class="st">' + titulo + ' (' + arr.length + ')</div>'
@@ -20625,6 +20846,7 @@ window.CompAnos = (function () {
       + '<div class="ver"><p>' + ver + '</p></div>'
       + kpis + avisos
       + '<div class="st">Por linha de produto</div>' + tabFam()
+      + tabContrib()
       + '<div class="dual"><div>' + tabMix('Entraram em ' + anoB, r.mix.entraram, 'qtdB', 'Qtd ' + anoB)
       + '</div><div>' + tabMix('Saíram em ' + anoB, r.mix.sairam, 'qtdA', 'Qtd ' + anoA) + '</div></div>'
       + '<div class="st">Produtos que mais moveram o resultado</div>' + tabTop
@@ -22064,6 +22286,14 @@ window.CompAnos = (function () {
         +'<div class="lid-grid3">'+cards9+'</div>'
         +'<div class="lid-p"><b>Presença é meta de linha, não só de RH.</b> Quem percebe primeiro que alguém vai faltar é o líder. A liderança é parte importante dessa melhoria: quanto mais cedo identificarmos falta, cobertura, balanceamento e gargalo, menor o impacto na produção e menos hora extra'+(M.abertos.length?' para fechar '+M.periodo:'')+'.</div>'+rod);
     }
+    /* 9.5 · mix de produtos — só quando há dois anos de reporte com peso.
+       Entra antes do fecho porque muda a leitura de tudo que veio antes: um
+       plano em peças cobrado sobre um mix que ficou mais pesado não é o mesmo
+       plano. Fora da apresentação isso vive na aba Comparativo; aqui vem só
+       o veredito, em números que cabem na tela de reunião. */
+    var mix = lidMix(M, rod);
+    if (mix) S.push(mix);
+
     /* 10 · três linhas */
     var l1=mesNome+' mostrou que dá: '+(acima?'acima do plano':fd(ref.at,0)+'% do plano')+', hora extra '+fxHE.curto+(melhorPcH?' e o melhor rendimento por hora do ano.':'.');
     var l2=M.gapDia!==null?(M.gapDia>0?M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede '+fd(M.gapDia/ref.pcDiaN*100,0)+'% a mais por dia na jornada normal.'+(passaram.length?' Em '+lidLista(passaram)+' já fizemos isso.':'')+' Agora é fazer sem depender da hora extra.'
@@ -22076,6 +22306,71 @@ window.CompAnos = (function () {
     return S;
   }
   var _lidIdx=0, _lidSlides=null;
+  /* Slide do mix: lê a mesma apuração da aba Comparativo (CompAnos), com a
+     mesma base de meses comuns. Devolve '' quando não há dois anos de
+     reporte, peso de cadastro ou variação que valha um slide — apresentação
+     não tem slide de "nada mudou". */
+  function lidMix(M, rod){
+    if (!window.CompAnos) return '';
+    var its; try { its = JSON.parse(localStorage.getItem('dash_prod_itens_v1')) || []; } catch(e){ return ''; }
+    if (!its.length) return '';
+    var cad; try { cad = JSON.parse(localStorage.getItem('dash_prod_cad_v1')) || {}; } catch(e){ cad = {}; }
+    var anos = {}; its.forEach(function(r){ if(r[1]) anos[r[1]]=1; });
+    var anoB = M.ano, anoA = anoB - 1;
+    if (!anos[anoA] || !anos[anoB]) return '';
+    var r = window.CompAnos.apurar(its, load(), { anoA:anoA, anoB:anoB, base:'comuns',
+                                                  cadastro: cad });
+    if (!r || !r.geral.A.qtd || !r.geral.B.qtd) return '';
+    var K = window.CompAnos.contribuicao(r);
+    if (!K) return '';
+    var dQtd = r.geral.varQtd, dPeso = r.geral.varPeso;
+    var dKg  = ((K.kgMedB - K.kgMedA) / K.kgMedA) * 100;
+    /* Menos de 3 p.p. de descolamento entre peças e peso: o mix não mudou o
+       bastante para ocupar um slide de reunião. */
+    if (dQtd === null || dPeso === null || Math.abs(dPeso - dQtd) < 3) return '';
+
+    var t = function(kg){ return fd(kg/1000,1); };
+    var sobe = K.subiram.slice(0,5), desce = K.cairam.slice(0,5);
+    var mesesTxt = r.base.usaB.length + (r.base.usaB.length===1?' mês':' meses') + ' com reporte nos dois anos';
+
+    var h = 'A fábrica faz <b>' + fd(Math.abs(dQtd),1) + '% ' + (dQtd<0?'menos':'mais') + ' peças</b> e move <b>'
+          + fd(Math.abs(dPeso),1) + '% ' + (dPeso<0?'menos':'mais') + ' material</b>: a peça média foi de '
+          + fd(K.kgMedA,1) + ' para ' + fd(K.kgMedB,1) + ' kg (' + (dKg>=0?'+':'') + fd(dKg,1) + '%).';
+
+    function col(titulo, arr, cor, sinal){
+      if(!arr.length) return '';
+      return '<div><div class="lid-mix-t" style="color:'+cor+'">'+titulo+'</div>'
+        + arr.map(function(x){
+            return '<div class="lid-mix-l"><span>'+esc(x.nome)+'</span>'
+              + '<b style="color:'+cor+'">'+sinal+t(Math.abs(x.difPeso))+' t</b></div>';
+          }).join('') + '</div>';
+    }
+    /* A frase que o slide existe para dizer: a meta é em peças, a carga não. */
+    var fecho = dPeso > dQtd
+      ? 'O plano é cobrado em <b>peças</b>. Com a peça ' + fd(Math.abs(dKg),0)
+        + '% mais pesada, a mesma meta em peças pede mais material, mais linha e mais expedição do que pedia em ' + anoA + '.'
+      : 'O plano é cobrado em <b>peças</b>. Com a peça ' + fd(Math.abs(dKg),0)
+        + '% mais leve, a mesma meta em peças exige menos da fábrica do que exigia em ' + anoA + '.';
+
+    return '<h1 class="lid-h">'+h+'</h1>'
+      + '<div class="lid-sub">Mix de produtos ' + anoA + ' × ' + anoB + ' · ' + mesesTxt
+      + ' · peso do cadastro (P B) × quantidade do reporte</div>'
+      + '<div class="lid-mix">'
+        + '<div class="lid-mix-kpis">'
+          + lidCard('Peças', (dQtd>=0?'+':'')+fd(dQtd,1)+'%', fi(r.geral.A.qtd)+' → '+fi(r.geral.B.qtd), dQtd>=0?'#4CAF50':'#F44336')
+          + lidCard('Peso', (dPeso>=0?'+':'')+fd(dPeso,1)+'%', t(r.geral.A.peso)+' → '+t(r.geral.B.peso)+' t', dPeso>=0?'#FF9800':'#4CAF50')
+          + lidCard('Peça média', (dKg>=0?'+':'')+fd(dKg,1)+'%', fd(K.kgMedA,1)+' → '+fd(K.kgMedB,1)+' kg', dKg>=0?'#FF9800':'#4CAF50')
+          + lidCard('Mix', r.mix.entraram.length+' ent · '+r.mix.sairam.length+' saí', 'produtos que entraram/saíram', '#9C6ADE')
+        + '</div>'
+        + '<div class="lid-mix-cols">'
+          + col('Puxaram o peso para cima', sobe, '#4CAF50', '+')
+          + col('Puxaram para baixo', desce, '#F44336', '−')
+        + '</div>'
+      + '</div>'
+      + '<p class="lid-p">' + fecho + '</p>'
+      + rod;
+  }
+
   function _lidPintar(){
     var ov=document.getElementById('lid-ov'); if(!ov||!_lidSlides) return;
     ov.querySelector('.lid-stage').innerHTML=_lidSlides[_lidIdx];
@@ -22158,6 +22453,12 @@ window.CompAnos = (function () {
       +'.lid-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.lid-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.lid-grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}'
       +'.lid-card{border:1px solid #D3D8DE;border-top:4px solid #888;border-radius:6px;padding:8px 10px;background:#fff}'
       +'.lid-clbl{font-size:8pt;font-weight:700;color:#52606D;text-transform:uppercase;letter-spacing:.06em}.lid-cval{font-size:22pt;font-weight:800;margin:4px 0}.lid-csub{font-size:8.5pt;color:#3E4C59;line-height:1.35}'
+      +'.lid-mix{display:flex;flex-direction:column;gap:10px}'
+      +'.lid-mix-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}'
+      +'.lid-mix-kpis .lid-card:last-child .lid-cval{font-size:13pt;white-space:nowrap}'
+      +'.lid-mix-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}'
+      +'.lid-mix-t{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}'
+      +'.lid-mix-l{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid #D3D8DE;font-size:9.5pt}'
       +'.lid-p{font-size:10.5pt;line-height:1.45;margin-top:8px}.lid-small{font-size:9pt}.lid-resumo{border:1px solid #D3D8DE;border-radius:6px;padding:8px 12px;margin-top:10px}'
       +'.lid-2col{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-top:4px}.lid-2col-w{grid-template-columns:1.5fr 1fr}'
       +'.lid-box{border:1px solid #D3D8DE;border-radius:6px;padding:10px 12px;font-size:10pt;line-height:1.45}.lid-box p{margin:0 0 7px}.lid-k2{font-weight:800;font-size:9.5pt;margin-bottom:6px;color:#1F2933}'
@@ -22608,9 +22909,17 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b95.6';
+var APP_VERSAO = 'b96';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b96', data:'18/09/2026', itens:[
+    'Comparativo 2025 x 2026 ganha o bloco "O que explica a mudanca de peso". A tabela por linha mostra que cada linha subiu ou caiu; ela nao diz quanto disso e a fabrica ter produzido MAIS e quanto e ter produzido COISA diferente. Sao efeitos que cobram coisas diferentes: volume se resolve com capacidade, composicao se resolve com plano.',
+    'A decomposicao, por linha, em toneladas: VOLUME = (pecas 2026 - pecas 2025) x kg/un de 2025; COMPOSICAO = pecas 2026 x (kg/un 2026 - kg/un 2025). Os dois somam a diferenca exata, sem residuo — mesma convencao do bloco de ponte do ritmo. Linha que nasceu ou saiu no periodo entra toda como volume: ela nao tem dois pesos para comparar.',
+    'O peso medio tambem e decomposto: mix ENTRE linhas (trocar linha leve por pesada) e mix DENTRO das linhas (mudar a proporcao de produtos da mesma familia). Com peso vindo do cadastro o kg/un de cada produto e fixo, entao praticamente tudo cai no primeiro — e e isso que a tela afirma, em vez de deixar o gestor supor.',
+    'Apresentacao para lideres ganha o slide de mix, antes do fecho: pecas, peso, peca media e as linhas que puxaram para cada lado, com a frase que o slide existe para dizer — o plano e cobrado em PECAS, e com a peca mais pesada a mesma meta pede mais material, mais linha e mais expedicao. So entra quando ha dois anos de reporte com peso e o descolamento entre pecas e peso passa de 3 p.p.: apresentacao nao tem slide de "nada mudou".',
+    'O relatorio em PDF do Comparativo sai com a mesma tabela de contribuicao, depois da tabela por linha.',
+    'testes/comparativo-anos.test.js: 25 casos novos sobre a decomposicao (109 no total) — soma sem residuo, efeito de volume puro, efeito de composicao pura, linha que nasce, e o cenario que importa: menos pecas e mais peso.'
+  ]},
   { v:'b95.6', data:'18/09/2026', itens:[
     'Apresentacao para lideres: mes sem horas lancadas fica de fora. Desde que producaoReal vem do reporte do ERP sozinho (b91), JUL e AGO/26 entravam como fechados com 32 mil pecas e zero hora — e o slide comemorava "0% na hora extra". Fechado agora e producao E horas, mesma regra do bloco de ponte. Hora zero e dado que falta, nao resultado.',
     'Code.gs: um sync do painel com registro SEM horas (mes que aquele navegador nao tem fechado — dado local velho, ou mes ainda nao lancado) nao apaga mais o que a HISTORICO ja tem. Foi o que zerou colaboradores, horas e producao de JUL e AGO/26 em 17/09 — o Resetar empurrava o dataset embutido, com JUL a DEZ zerados (gatilho corrigido na b95.2; esta guarda e a segunda barreira, do lado da planilha). Registro com horas continua podendo zerar um campo de proposito. As horas apagadas se recuperam pelo historico de versoes da planilha.',
