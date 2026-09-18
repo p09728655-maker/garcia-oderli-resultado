@@ -82,6 +82,14 @@ var PR_ABA_SETOR    = 'PONTO_SETOR';   /* mês × setor: horas, HE e ausências 
 var PR_SETOR_COLS   = ['mes', 'ano', 'setor', 'direto', 'pessoas', 'horasCarga', 'horasNormais', 'faltasPonto', 'atrasosPonto',
   'extra50', 'extra100', 'totalExtras', 'hePctHoras', 'ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias', 'atualizadoEm'];
 var PR_SETOR_AUS    = ['ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias'];
+/* Mês que já tem horasNormais na HISTORICO é mês fechado: o extrato preenche a
+   PONTO_SETOR e o aviso mostra a diferença entre o ponto e o que está digitado,
+   mas NÃO regrava a HISTORICO. Conferido em SET/26 com JAN–MAI: as horas
+   extras digitadas de MAI/26 eram as da fábrica inteira (1.724 + 671 h), não
+   só dos diretos, e o ponto mudaria o "feito na hora extra" de um mês já
+   apresentado. Para aceitar o ponto num mês fechado, ponha false, reprocesse
+   o extrato daquele mês e volte para true. Mês sem horas grava normalmente. */
+var PR_PROTEGER_FECHADOS = true;
 var PR_MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 /* Setores que contam como produção direta — a mesma régua para horas do ponto
    e para faltas do controle. Mude aqui se um setor entrar ou sair da fábrica. */
@@ -182,6 +190,9 @@ function prExtrair(sheet) {
     }
   }
   if (iCab < 0) throw new Error('não achei o cabeçalho (Carga … Normais) no extrato');
+  /* ABR/26 veio exportado sem Ex50%/Ex100%: lido como zero, apagaria a hora
+     extra do mês. Sem as duas colunas o arquivo não entra. */
+  if (col.e50 === undefined && col.e100 === undefined) throw new Error('extrato sem as colunas Ex50% e Ex100% — exporte de novo com as horas extras');
   if (col.codigo === undefined) col.codigo = 0;
   if (col.nome === undefined) col.nome = 1;
   if (!mes) throw new Error('não achei o período "De: dd/mm/aaaa" no extrato');
@@ -268,6 +279,26 @@ function prLancarHistorico(ss, mes, ano, a) {
   grava('faltasPonto', a.faltasPonto);
   grava('atrasosPonto', a.atrasosPonto);
   return criou;
+}
+
+/* O que a HISTORICO tem hoje para o mês (ou null se a linha não existe). */
+function prLerHistoricoMes(ss, mes, ano) {
+  var aba = ss.getSheetByName(PR_ABA_HISTORICO);
+  if (!aba) return null;
+  var linhas = aba.getDataRange().getValues(), iCab = -1, col = {};
+  for (var i = 0; i < Math.min(linhas.length, 20) && iCab < 0; i++) {
+    var norm = linhas[i].map(prNormaliza);
+    if (norm.indexOf('mes') >= 0 && norm.indexOf('ano') >= 0) { iCab = i; norm.forEach(function (n, c) { if (col[n] === undefined) col[n] = c; }); }
+  }
+  if (iCab < 0) return null;
+  var num = function (l, nome) { var c = col[prNormaliza(nome)]; if (c === undefined) return 0; var v = parseFloat(String(l[c]).replace(',', '.')); return isFinite(v) ? v : 0; };
+  for (var r = iCab + 1; r < linhas.length; r++) {
+    var m = String(linhas[r][col.mes] || '').trim().toUpperCase().slice(0, 3);
+    if (m === mes && parseInt(linhas[r][col.ano], 10) === ano)
+      return { colaboradores: num(linhas[r], 'colaboradores'), horasCarga: num(linhas[r], 'horasCarga'), horasNormais: num(linhas[r], 'horasNormais'),
+               extra50: num(linhas[r], 'extra50'), extra100: num(linhas[r], 'extra100') };
+  }
+  return null;
 }
 
 function prLog(ss, arquivo, ext, a, criou) {
@@ -442,7 +473,14 @@ function processarPontoDrive() {
       if (r.tipo === 'controle') {
         feitos.push(arq.getName() + ' → ausências de ' + r.meses + ' mês(es)' + (r.funcionarios ? '; FUNCIONARIOS regravada com ' + r.funcionarios + ' pessoas' : '') + ':\n   ' + r.lancados.join('\n   '));
       } else {
-        feitos.push(arq.getName() + ' → ' + r.ext.mes + '/' + r.ext.ano + ': ' + r.a.n + ' diretos, ' + Math.round(r.a.normais) + ' h normais, ' + Math.round(r.a.naoTrabalhadas) + ' h não trabalhadas; ' + r.setores.length + ' setor(es) na ' + PR_ABA_SETOR);
+        feitos.push(arq.getName() + ' → ' + r.ext.mes + '/' + r.ext.ano + ': ' + r.a.n + ' diretos, ' + Math.round(r.a.normais) + ' h normais, ' + Math.round(r.a.naoTrabalhadas) + ' h não trabalhadas; ' + r.setores.length + ' setor(es) na ' + PR_ABA_SETOR
+          + (r.protegido ? '\n   HISTORICO mantida (mês já fechado). Ponto × digitado: colaboradores ' + r.a.n + ' × ' + r.protegido.colaboradores
+                           + ' | h. normais ' + Math.round(r.a.normais) + ' × ' + Math.round(r.protegido.horasNormais)
+                           + ' | extra50 ' + Math.round(r.a.e50) + ' × ' + Math.round(r.protegido.extra50)
+                           + ' | extra100 ' + Math.round(r.a.e100) + ' × ' + Math.round(r.protegido.extra100)
+                           + '. Para aceitar o ponto: PR_PROTEGER_FECHADOS = false e reprocessar este arquivo.'
+                         : ''));
+        if (!r.a.e50 && !r.a.e100) feitos.push('   ATENÇÃO: extrato sem hora extra (colunas Ex50%/Ex100% ausentes ou zeradas). Exporte de novo com as colunas de extras.');
         if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
         if (r.a.admitidosDepois.length) feitos.push('   admitidos depois de ' + r.ext.mes + '/' + r.ext.ano + ', não contam neste mês: ' + r.a.admitidosDepois.join(', '));
       }
@@ -476,11 +514,16 @@ function prProcessarArquivo(ss, arq, func) {
     var ext = prExtrair(doc.getSheets()[0]);                     /* Extrato de Totais */
     var a = prAgregar(ext, func);
     if (!a.n) throw new Error('nenhum direto encontrado: confira a coluna direto (S/N) na ' + PR_ABA_FUNC);
-    var criou = prLancarHistorico(ss, ext.mes, ext.ano, a);
+    var atual = prLerHistoricoMes(ss, ext.mes, ext.ano), protegido = null, criou = false;
+    if (PR_PROTEGER_FECHADOS && atual && atual.horasNormais > 0) {
+      protegido = atual;   /* mês fechado: HISTORICO fica como está */
+    } else {
+      criou = prLancarHistorico(ss, ext.mes, ext.ano, a);
+    }
     prLog(ss, arq.getName(), ext, a, criou);
     var setores = prAgregarSetores(ext, func);
     prGravarSetoresPonto(ss, ext, setores);
-    return { tipo: 'ponto', ext: ext, a: a, setores: setores };
+    return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido };
   } finally {
     if (tmpId) { try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (ignore) {} }
   }
