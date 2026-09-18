@@ -735,7 +735,6 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .ic-gente{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8'/></svg>")}
 .ic-doc{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8'/></svg>")}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style id="tv-mode-style">.tv-mode { font-size: 20px; }
 .tv-mode #app { max-width: 100%; padding: 22px 28px 80px; }
 .tv-mode body::before { background-size: 60px 60px; }
@@ -1263,11 +1262,6 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 
     <div id="acoes-admin-box" style="display:none;flex-direction:column;gap:6px;margin-top:6px">
       <button class="sBtn" onclick="abrirNovo()"><span class="ic ic-mais"></span> Novo Mês</button>
-      <!-- b88: o botão "Importar Excel" saiu da tela. O Excel deixou de ser fonte
-           em b87 (fonte única: HISTORICO + regra do painel); o botão era a porta
-           por onde uma segunda fonte voltaria. O input e importarExcel() ficam
-           para emergência: document.getElementById('inputXlsx').click() no console. -->
-      <input type="file" id="inputXlsx" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
       <!-- b95.1: "Salvar JSON" e "Carregar JSON" saíram. O Carregar chamava
            save(), que sincroniza: abrir um arquivo antigo sobrescrevia a
            planilha com ele, sem confirmação e sem desfazer — um JSON de março
@@ -3283,7 +3277,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
   <!-- CONTEÚDO GERADO -->
   <!-- Briefing inteiro de Abril/2026 vinha commitado aqui: 8 KB de um relatório
      antigo congelado, com "Gerado em: 07/07/2026" e a pauta daquele mês.
-     Resíduo do salvarArquivoHTML(). O JS reescreve este bloco em toda
+     Resíduo do antigo salvarArquivoHTML(), removido em b95.5. O JS reescreve este bloco em toda
      renderização (brfg-content.innerHTML), então o único efeito do texto
      congelado era mostrar o briefing errado até o JS rodar. -->
   <div id="brfg-content"></div>
@@ -4082,7 +4076,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
     } catch(e){}
     document.getElementById('brfg-content').innerHTML=
       '<div class="brfg-sem-dados"><h3>Dados não encontrados</h3>'
-      +'<p>Importe a planilha pelo botão <strong>Importar XLSX</strong> no dashboard e volte nesta aba.<br><br>'
+      +'<p>Os dados vêm da planilha. Se esta aba estiver vazia, recarregue o painel para ele reler a HISTORICO.<br><br>'
       +'O briefing carrega automaticamente assim que os dados estiverem disponíveis.</p></div>';
   }
 
@@ -4440,24 +4434,6 @@ body.lid-on{overflow:hidden}
   </div>
 </div>
 
-<!-- ══ MODAL IMPORTAÇÃO ══ -->
-<div class="overlay" id="modImport">
-  <div class="modal" style="max-width:480px">
-    <h2><em>▸</em> Resultado da Importação</h2>
-    <!-- Conteúdo transitório: este bloco vinha commitado com o resultado de uma
-     importação de 2026 congelado ("18 meses atualizados: JAN/2026, ...") e com
-     o painel de validação já aprovado. Efeito do salvarArquivoHTML(), que
-     serializa o DOM vivo e vira o index.html do repositório. Vazio é o estado
-     correto antes de qualquer importação — texto aqui mente sobre um import
-     que não aconteceu nesta sessão. -->
-    <div id="importResult" style="font-size:.82rem;line-height:1.8;color:var(--t1)"></div><div id="valid-painel"></div>
-    <div class="mFoot" style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
-      <button class="btn" id="btnSalvarAposImport" onclick="salvarArquivoHTML()" style="background: rgb(21, 101, 192); color: rgb(255, 255, 255); border: none; font-weight: 700; display: inline-flex; gap: 6px;" disabled="">⏳ Gerando...</button>
-      <button class="btn btn-g" onclick="fecharImport()">Fechar</button>
-    </div>
-  </div>
-</div>
-
 <div id="zoomTabelaModal">
   <div id="zoomTabelaWrap">
     <div id="zoomTabelaHdr">
@@ -4478,7 +4454,7 @@ body.lid-on{overflow:hidden}
 
 <!-- Contêiner do tooltip. Vinha commitado com o conteúdo de um tooltip
      congelado ("Percentual de Horas Extras 13,0%") e uma posição fixa em
-     pixels — outro resíduo do salvarArquivoHTML(). O JS preenche em runtime. -->
+     pixels — outro resíduo do antigo salvarArquivoHTML(), removido em b95.5. O JS preenche em runtime. -->
 <div id="tip" class=""></div>
 
 
@@ -5345,52 +5321,6 @@ window.addEventListener('load', function(){ setTimeout(_carregarDoSheetsAoAbrir,
    Não depende de localStorage, IndexedDB, cache ou configuração
    do browser. Abrir o arquivo salvo já tem todos os meses.
 ════════════════════════════════════════════════════════════ */
-function salvarArquivoHTML(){
-  var d=load();
-  if(!d.length){toast('Sem dados para salvar.','wn');return}
-
-  var btn=document.getElementById('btnSalvarAposImport');
-  if(btn){btn.textContent='⏳ Gerando...';btn.disabled=true;}
-
-  try{
-    /* Lê o HTML atual direto do DOM — funciona em file:// sem restrições */
-    var html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-
-    /* Serializa os dados atuais como bloco PLANILHA */
-    var linhas=d.map(function(r){ return '  '+JSON.stringify(r); }).join(',\n');
-    var novaPlanilha='var PLANILHA = [\n'+linhas+'\n];';
-
-    /* Substitui o bloco PLANILHA existente */
-    var re=/var PLANILHA\s*=\s*\[[\s\S]*?\];/;
-    if(!re.test(html)){
-      toast('Não foi possível localizar bloco PLANILHA.','er');
-      if(btn){btn.textContent='<span class="ic ic-save"></span> Salvar Arquivo';btn.disabled=false;}
-      return;
-    }
-    var novoHtml=html.replace(re,novaPlanilha);
-
-    /* Download do arquivo atualizado */
-    var blob=new Blob([novoHtml],{type:'text/html;charset=utf-8'});
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='dashboard_mes_v15.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-
-    setTimeout(function(){
-      if(btn){btn.textContent='✓ Arquivo Salvo!';btn.disabled=false;}
-      toast('Arquivo salvo com '+d.length+' meses embutidos!','ok');
-    },300);
-
-  }catch(e){
-    toast('Erro ao gerar arquivo: '+e.message,'er');
-    if(btn){btn.textContent='<span class="ic ic-save"></span> Salvar Arquivo';btn.disabled=false;}
-    console.error(e);
-  }
-}
-
 /* ════════════════════════════════════════════════════════════════
    DashBus — barramento de eventos centralizado
    Substitui a cadeia frágil de hooks setTimeout encadeados.
@@ -7137,243 +7067,6 @@ window.addEventListener('resize',function(){clearTimeout(rsz);rsz=setTimeout(_re
     tmr = setTimeout(_redesenharPaginaAtiva, 160);
   }).observe(alvo);
 })();
-
-/* ════════════════════════════════════════════════════════════
-   IMPORTAR EXCEL (.xlsx)
-   Estrutura esperada: abas "ANALISE 2025", "ANALISE 2026", etc.
-   Linha 0 = cabeçalhos reais, dados a partir da linha 1.
-   Colunas por índice (0-based):
-   A coluna é resolvida pelo NOME do cabeçalho (_campoDoCabecalho). A tabela
-   POS abaixo é só rede para cabeçalho que não casa, e o uso dela vira aviso
-   na tela — se a planilha ganhar uma coluna no meio, o import avisa em vez
-   de gravar tudo deslocado em silêncio.
-   Este comentário já dizia 14=ProducaoReal enquanto o código lia row[15]:
-   documentação de posição fixa envelhece e ninguém percebe.
-════════════════════════════════════════════════════════════ */
-var MESES_VALIDOS=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-
-function importarExcel(input){
-  var file=input.files[0];
-  if(!file){return}
-  input.value=''; // reset para permitir reimportar mesmo arquivo
-
-  var reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      var data=new Uint8Array(e.target.result);
-      var wb=XLSX.read(data,{type:'array'});
-
-      var novos=[], atualizados=[], ignorados=[], erros=[];
-      var recsNovos=[];
-      var dadosExistentes=load();
-
-      wb.SheetNames.forEach(function(sheetName){
-        // Detecta ano da aba: "ANALISE 2025" → 2025
-        var anoMatch=sheetName.match(/\b(20\d{2})\b/);
-        if(!anoMatch){return}
-        var ano=parseInt(anoMatch[1]);
-
-        var ws=wb.Sheets[sheetName];
-        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
-
-        // Encontra linha de cabeçalho (contém "Meses" ou "MÊS")
-        var startRow=-1;
-        for(var i=0;i<rows.length;i++){
-          var r=rows[i];
-          if(r&&r[0]&&String(r[0]).trim().toLowerCase().replace('ê','e')==='meses'){
-            startRow=i+1; break
-          }
-        }
-        if(startRow<0){
-          erros.push('Aba "'+sheetName+'": não encontrou linha de cabeçalho');return
-        }
-
-        /* ── RESOLUÇÃO DE COLUNA POR CABEÇALHO ────────────────────────────
-           Toda coluna era lida por índice fixo (row[15], row[16], row[18]...).
-           Se alguém inserisse uma coluna no meio da planilha, os dados
-           entrariam deslocados EM SILÊNCIO: eficiencia (94,26) viraria
-           prodSemExtras (94 peças), diasTrabalhados viraria qtdeFaturado
-           (30.451 dias). E o bloco de horas — o único que um humano confere
-           de olho — sairia perfeito, porque o deslocamento começa depois
-           dele. O comentário de documentação deste bloco dizia 14=ProducaoReal
-           enquanto o código lia row[15]: já estavam divergentes.
-           Agora o nome do cabeçalho manda; o índice fixo é só rede. */
-        var headerRow = rows[startRow-1] || [];
-        var POS = { colaboradores:1, horasCarga:2, faltas:3, atraso:4,
-                    totalFaltaAtraso:5, absenteismo:6, horasNormais:7,
-                    extra50:8, extra100:9, totalExtras:10, horasTotais:11,
-                    producaoReal:15, prodSemExtras:16, meta:18, eficiencia:20,
-                    eficienciaAdj:21, margem:22, ticketMedio:23, custoCap:24,
-                    qtdeFaturado:25, diasTrabalhados:26, qtdeVendida:27 };
-
-        var colDe = {}, porNome = [], porPosicao = [];
-        for(var ci=0; ci<headerRow.length; ci++){
-          if(headerRow[ci] === null || headerRow[ci] === undefined || headerRow[ci] === '') continue;
-          var campo = _campoDoCabecalho(headerRow[ci]);
-          if(POS[campo] !== undefined && colDe[campo] === undefined) colDe[campo] = ci;
-        }
-        Object.keys(POS).forEach(function(c){
-          if(colDe[c] === undefined){ colDe[c] = POS[c]; porPosicao.push(c); }
-          else porNome.push(c);
-        });
-        function _col(campo){ return colDe[campo]; }
-
-        /* Previsão e férias variam de posição e não têm fallback confiável. */
-        var colPrevisao = -1, colFerias = -1;
-        for(var cp=0; cp<headerRow.length; cp++){
-          if(!headerRow[cp]) continue;
-          var hp = _normNome(headerRow[cp]);
-          if(colPrevisao < 0 && hp.indexOf('previsao') === 0) colPrevisao = cp;
-          if(colFerias   < 0 && hp.indexOf('ferias')  >= 0)   colFerias   = cp;
-        }
-        if(porPosicao.length){
-          erros.push('Aba "'+sheetName+'": '+porPosicao.length+' coluna(s) não '
-            +'encontrada(s) pelo nome, lidas por posição fixa — '
-            +porPosicao.join(', ')+'. Confira se a planilha mudou de layout.');
-        }
-
-        for(var ri=startRow;ri<rows.length;ri++){
-          var row=rows[ri];
-          if(!row||!row[0])continue;
-          var mesRaw=String(row[0]).trim().toUpperCase().substring(0,3);
-          if(MESES_VALIDOS.indexOf(mesRaw)<0)continue;
-
-          /* _numBR e não parseFloat: célula gravada como texto (colada de PDF
-             ou vinda do ERP) chega como "33.291" e parseFloat devolve 33,291
-             → Math.round → 33 peças. Perda de mil vezes, sem erro nenhum na
-             tela. "11,52" viraria 11. Os dois casos já apareceram aqui. */
-          var n = _numBR;
-          var g = function(campo){ return n(row[_col(campo)]); };
-          var rec={
-            id: uid(),
-            mes: mesRaw,
-            ano: ano,
-            colaboradores: Math.round(g('colaboradores')),
-            horasCarga:    parseFloat(g('horasCarga').toFixed(1)),
-            faltas:        parseFloat(g('faltas').toFixed(1)),
-            atraso:        parseFloat(g('atraso').toFixed(1)),
-            totalFaltaAtraso: parseFloat(g('totalFaltaAtraso').toFixed(1)),
-            absenteismo:   parseFloat((g('absenteismo')*100).toFixed(2)),
-            horasNormais:  parseFloat(g('horasNormais').toFixed(1)),
-            extra50:       parseFloat(g('extra50').toFixed(1)),
-            extra100:      parseFloat(g('extra100').toFixed(1)),
-            totalExtras:   parseFloat(g('totalExtras').toFixed(1)),
-            horasTotais:   parseFloat(g('horasTotais').toFixed(1)),
-            producaoReal:  Math.round(g('producaoReal')),
-            prodSemExtras: Math.round(g('prodSemExtras')),
-            meta:          Math.round(g('meta')),
-            eficiencia:    parseFloat((g('eficiencia')*100).toFixed(2)),
-            eficienciaAdj: parseFloat((g('eficienciaAdj')*100).toFixed(2)),
-            margem:        parseFloat((g('margem')*100).toFixed(2)),
-            ticketMedio:   parseFloat(g('ticketMedio').toFixed(2)),
-            custoCap:      parseFloat(g('custoCap').toFixed(2)),
-            qtdeFaturado:  Math.round(g('qtdeFaturado')),
-            diasTrabalhados: Math.round(g('diasTrabalhados')),
-            qtdeVendida:   Math.round(g('qtdeVendida')),
-            previsaoProducao: colPrevisao>=0 ? Math.round(n(row[colPrevisao])) : 0,
-            horasFerias:      colFerias  >=0 ? parseFloat(n(row[colFerias]).toFixed(1)) : 0
-          };
-
-          // Fix: absenteísmo já pode estar em % (>1) ou decimal (<1)
-          if(rec.absenteismo>0&&rec.absenteismo<1)
-            rec.absenteismo=parseFloat((rec.absenteismo*100).toFixed(2));
-
-          // Pula meses futuros sem dados (tudo zerado)
-          if(rec.colaboradores===0 && rec.horasCarga===0 && rec.producaoReal===0) continue;
-
-          recsNovos.push(rec);
-          var idx=dadosExistentes.findIndex(function(x){return x.mes===rec.mes&&x.ano===rec.ano});
-          if(idx>=0){
-            rec.id=dadosExistentes[idx].id; // preserva o id original
-            dadosExistentes[idx]=rec;
-            atualizados.push(mesRaw+'/'+ano)
-          } else {
-            dadosExistentes.push(rec);
-            novos.push(mesRaw+'/'+ano)
-          }
-        }
-      });
-
-      /* ── PORTÃO DE SANIDADE ──────────────────────────────────────────────
-         Resolver coluna por nome cobre o caso comum, mas não cobre cabeçalho
-         renomeado, duplicado, ou planilha com layout novo. Estas identidades
-         cobrem: valem em 18 de 18 meses da planilha atual e QUALQUER
-         deslocamento de coluna quebra pelo menos uma delas.
-         Import que reprova não grava nada — meio import é pior que nenhum,
-         porque mistura mês certo com mês deslocado na mesma série e não há
-         como saber depois qual é qual. */
-      var reprovas = [];
-      recsNovos.forEach(function(r){
-        var falhas = [];
-        var ap = function(t){ falhas.push(t); };
-        if (Math.abs((r.horasNormais + r.totalExtras) - r.horasTotais) > 1)
-          ap('h. normais + extras ≠ h. totais');
-        if (Math.abs((r.extra50 + r.extra100) - r.totalExtras) > 1)
-          ap('extra 50 + extra 100 ≠ total de extras');
-        if (Math.abs((r.faltas + r.atraso) - r.totalFaltaAtraso) > 1)
-          ap('faltas + atrasos ≠ total falta/atraso');
-        if (r.prodSemExtras > 0 && r.prodSemExtras > r.producaoReal + 1)
-          ap('produção s/ extras maior que a produção total');
-        if (r.diasTrabalhados < 0 || r.diasTrabalhados > 31)
-          ap('dias trabalhados = ' + r.diasTrabalhados);
-        if (r.absenteismo < 0 || r.absenteismo > 60)
-          ap('absenteísmo = ' + r.absenteismo + '%');
-        if (r.ticketMedio < 0 || r.ticketMedio > 10000)
-          ap('ticket médio = R$ ' + r.ticketMedio);
-        if (r.custoCap < 0) ap('custo de capital negativo');
-        if (falhas.length) reprovas.push(r.mes + '/' + r.ano + ': ' + falhas.join(' · '));
-      });
-
-      if (reprovas.length) {
-        var painel = document.getElementById('importResult');
-        var msg = '<p style="color:var(--red);font-weight:700">✗ Importação cancelada — '
-          + reprovas.length + ' mês(es) com dado incoerente. Nada foi gravado.</p>'
-          + '<p style="margin-top:8px;color:var(--t2);font-size:.78rem;line-height:1.6">'
-          + 'Isto costuma significar que a planilha ganhou ou perdeu uma coluna e os '
-          + 'valores entraram deslocados. Confira o cabeçalho da aba antes de reimportar.</p>'
-          + '<pre style="margin-top:10px;font-family:var(--mono);font-size:.72rem;color:#ff8a9a;'
-          + 'white-space:pre-wrap;line-height:1.55">' + reprovas.slice(0,12).join('\n')
-          + (reprovas.length>12 ? ('\n… e mais ' + (reprovas.length-12)) : '') + '</pre>';
-        if (painel) painel.innerHTML = msg; else alert(msg.replace(/<[^>]+>/g,''));
-        if (typeof toast==='function') toast('Importação cancelada: dado incoerente.','er');
-        return;
-      }
-
-      save(sortD(dadosExistentes));
-      render();
-
-      // Monta resultado
-      var html='';
-      if(novos.length)
-        html+='<p><span style="color:var(--green);font-weight:700">✓ '+novos.length+' meses adicionados:</span><br><span style="color:var(--t2);font-family:var(--mono);font-size:.75rem">'+novos.join(', ')+'</span></p>';
-      if(atualizados.length)
-        html+='<p style="margin-top:10px"><span style="color:var(--cyan);font-weight:700">↻ '+atualizados.length+' meses atualizados:</span><br><span style="color:var(--t2);font-family:var(--mono);font-size:.75rem">'+atualizados.join(', ')+'</span></p>';
-      if(erros.length)
-        html+='<p style="margin-top:10px"><span style="color:var(--red);font-weight:700">✕ Avisos:</span><br><span style="color:var(--t2);font-size:.75rem">'+erros.join('<br>')+'</span></p>';
-      if(!novos.length&&!atualizados.length)
-        html='<p style="color:var(--t3)">Nenhum dado encontrado no arquivo.</p>';
-
-      html+='<p style="margin-top:12px;font-size:.73rem;color:var(--t3)">ℹ️ Dados atualizados com os valores mais recentes da planilha.</p>';
-      document.getElementById('importResult').innerHTML=html;
-      document.getElementById('modImport').classList.remove('on'); /* Desativado a pedido: sem pop-up de confirmação */
-      /* Mostrar botão Salvar se houve dados importados */
-      var btnSalvar = document.getElementById('btnSalvarAposImport');
-      if (btnSalvar) {
-        btnSalvar.style.display = (novos.length || atualizados.length) ? 'inline-flex' : 'none';
-        btnSalvar.textContent = '<span class="ic ic-save"></span> Salvar JSON';
-        btnSalvar.disabled = false;
-      }
-
-    }catch(err){
-      toast('Erro ao ler Excel: '+err.message,'er');
-      console.error(err)
-    }
-  };
-  reader.readAsArrayBuffer(file)
-}
-
-function fecharImport(){document.getElementById('modImport').classList.remove('on')}
-document.getElementById('modImport').addEventListener('click',function(e){if(e.target===this)fecharImport()});
 
 /* ════════════════════════════════════════════════════════════
    TOOLTIP ENGINE
@@ -16995,195 +16688,6 @@ input:disabled, select:disabled {
 })();
 /* ══ FIM MÓDULO PROJEÇÃO ══ */
 
-/* ════════════════════════════════════════════════════════════════
-   MÓDULO — VALIDAÇÃO NA IMPORTAÇÃO EXCEL
-   Intercepta o resultado da importarExcel() e acrescenta
-   um painel de avisos detalhados sobre dados suspeitos:
-   • Eficiência > 120% ou < 10%
-   • Absenteísmo > 25%
-   • Colaboradores = 0
-   • Produção = 0 com horas > 0
-   • Meses duplicados na mesma aba
-   • Campos numéricos negativos onde não deveria
-════════════════════════════════════════════════════════════════ */
-(function () {
-
-  var style = document.createElement('style');
-  style.textContent = [
-    '#valid-painel{margin-top:14px;border-top:1px solid var(--b);padding-top:12px;display:none}',
-    '#valid-painel.on{display:block}',
-    '.valid-ttl{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px}',
-    '.valid-ttl.er{color:var(--ds-ruim)} .valid-ttl.wn{color:var(--ds-alerta)} .valid-ttl.ok{color:var(--ds-bom)}',
-    '.valid-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}',
-    '.valid-item{display:flex;align-items:flex-start;gap:7px;font-size:.72rem;padding:5px 8px;border-radius:4px}',
-    '.valid-item.er{background:rgba(244,67,54,.08);border:1px solid rgba(244,67,54,.2);color:#ff8a9a}',
-    '.valid-item.wn{background:rgba(255,152,0,.07);border:1px solid rgba(255,152,0,.2);color:#ffd04d}',
-    '.valid-item.ok{background:rgba(76,175,80,.07);border:1px solid rgba(76,175,80,.2);color:#69f0ae}',
-    '.valid-item-ico{flex-shrink:0;margin-top:1px}',
-    '.valid-resumo{font-size:.7rem;color:var(--t2);margin-top:8px}'
-  ].join('');
-  document.head.appendChild(style);
-
-  /* ── Regras de validação ── */
-  var REGRAS = [
-    {
-      id: 'ef-alta',
-      nivel: 'er',
-      msg: function(r) { return 'Eficiência muito alta ('+r.eficiencia.toFixed(1)+'%) em '+r.mes+'/'+r.ano+' — verifique se a coluna está correta.'; },
-      teste: function(r) { return r.eficiencia > 120; }
-    },
-    {
-      id: 'ef-baixa',
-      nivel: 'wn',
-      msg: function(r) { return 'Eficiência muito baixa ('+r.eficiencia.toFixed(1)+'%) em '+r.mes+'/'+r.ano+'.'; },
-      teste: function(r) { return r.eficiencia > 0 && r.eficiencia < 10; }
-    },
-    {
-      id: 'abs-alta',
-      nivel: 'wn',
-      msg: function(r) { return 'Absenteísmo muito alto ('+r.absenteismo.toFixed(1)+'%) em '+r.mes+'/'+r.ano+'.'; },
-      teste: function(r) { return r.absenteismo > 25; }
-    },
-    {
-      id: 'colabs-zero',
-      nivel: 'er',
-      msg: function(r) { return 'Colaboradores = 0 em '+r.mes+'/'+r.ano+' — campo obrigatório.'; },
-      // Só alerta se houver algum dado (não é mês futuro em branco)
-      teste: function(r) { return r.colaboradores <= 0 && (r.horasCarga > 0 || r.producaoReal > 0); }
-    },
-    {
-      id: 'prod-zero',
-      nivel: 'wn',
-      msg: function(r) { return 'Produção real = 0 em '+r.mes+'/'+r.ano+' com '+r.horasTotais+' h registradas.'; },
-      teste: function(r) { return r.producaoReal === 0 && r.horasTotais > 0; }
-    },
-    {
-      id: 'horas-neg',
-      nivel: 'er',
-      msg: function(r) { return 'Horas totais negativas ('+r.horasTotais+') em '+r.mes+'/'+r.ano+'.'; },
-      teste: function(r) { return r.horasTotais < 0; }
-    },
-    {
-      id: 'horas-inconsist',
-      nivel: 'wn',
-      msg: function(r) { return 'H. normais ('+r.horasNormais+') > H. totais ('+r.horasTotais+') em '+r.mes+'/'+r.ano+'.'; },
-      teste: function(r) { return r.horasNormais > r.horasTotais + 10; }
-    },
-    {
-      id: 'ef-decimal',
-      nivel: 'er',
-      msg: function(r) { return 'Eficiência parece estar em decimal (<1) em '+r.mes+'/'+r.ano+' — verifique formato da coluna.'; },
-      teste: function(r) { return r.eficiencia > 0 && r.eficiencia < 1; }
-    },
-    {
-      id: 'prod-acima-cap',
-      nivel: 'wn',
-      msg: function(r) {
-        return 'Produção real (' + (r.producaoReal||0) + ') > capacidade cadastrada em ' + r.mes + '/' + r.ano +
-               ' — Capacidade pode estar subestimada ou operação acima do limite planejado.';
-      },
-      teste: function(r) {
-        var cap = r.capHora || r.capacidade || r.capHoraFab || 0;
-        var hd  = r.diasTrabalhados > 0 ? r.diasTrabalhados * 8.8 : 22 * 8.8;
-        var prodH = hd > 0 ? (r.producaoReal || 0) / hd : 0;
-        return cap > 0 && prodH > cap;
-      }
-    }
-  ];
-
-  /* ── Validar lista de registros e retornar avisos ── */
-  function validar(registros) {
-    var avisos = [];
-
-    /* Regras por registro */
-    registros.forEach(function(r) {
-      REGRAS.forEach(function(regra) {
-        if (regra.teste(r)) {
-          avisos.push({ nivel: regra.nivel, texto: regra.msg(r) });
-        }
-      });
-    });
-
-    /* Duplicatas dentro do mesmo lote */
-    var vistos = {};
-    registros.forEach(function(r) {
-      var chave = r.mes + '-' + r.ano;
-      if (vistos[chave]) {
-        avisos.push({ nivel: 'er', texto: 'Mês duplicado no arquivo: '+r.mes+'/'+r.ano+'.' });
-      }
-      vistos[chave] = true;
-    });
-
-    return avisos;
-  }
-
-  /* ── Renderizar painel de validação no modal de importação ── */
-  function renderValidacao(registros) {
-    var painel = document.getElementById('valid-painel');
-    if (!painel) return;
-
-    var avisos = validar(registros);
-    var erros  = avisos.filter(function(a) { return a.nivel === 'er'; });
-    var warns  = avisos.filter(function(a) { return a.nivel === 'wn'; });
-
-    if (!avisos.length) {
-      painel.className = 'on';
-      painel.innerHTML = '<div class="valid-ttl ok">✅ Validação aprovada</div>' +
-        '<ul class="valid-list"><li class="valid-item ok"><span class="valid-item-ico">✓</span>' +
-        'Todos os '+registros.length+' registros passaram na validação automática.</li></ul>';
-      return;
-    }
-
-    var ttlNivel = erros.length ? 'er' : 'wn';
-    var ttlTxt   = erros.length
-      ? '⚠ ' + erros.length + ' problema'+(erros.length>1?'s':'')+' encontrado'+(erros.length>1?'s':'')
-      : '⚡ ' + warns.length + ' aviso'+(warns.length>1?'s':'')+' de qualidade';
-
-    var itens = avisos.map(function(a) {
-      var ico = a.nivel === 'er' ? '✕' : '!';
-      return '<li class="valid-item '+a.nivel+'"><span class="valid-item-ico">'+ico+'</span><span>'+a.texto+'</span></li>';
-    }).join('');
-
-    painel.className = 'on';
-    painel.innerHTML =
-      '<div class="valid-ttl '+ttlNivel+'">'+ttlTxt+'</div>' +
-      '<ul class="valid-list">'+itens+'</ul>' +
-      '<div class="valid-resumo">'+registros.length+' registros importados · '+erros.length+' erros · '+warns.length+' avisos. Corrija na planilha e reimporte se necessário.</div>';
-  }
-
-  /* ── Injetar painel no modal de importação ── */
-  function injetarPainel() {
-    var result = document.getElementById('importResult');
-    if (!result || document.getElementById('valid-painel')) return;
-    var div = document.createElement('div');
-    div.id = 'valid-painel';
-    result.parentNode.insertBefore(div, result.nextSibling);
-  }
-
-  /* ── Interceptar importarExcel via DashBus dados:salvos ── */
-  function _init() {
-    injetarPainel();
-
-    /* Hook no save() — quando importação termina, valida os dados novos */
-    var _origSave = typeof save === 'function' ? save : null;
-    if (_origSave && !_origSave._validV1) {
-      save = function(d) {
-        _origSave.apply(this, arguments);
-        /* Valida apenas se o modal de import estiver aberto */
-        var modal = document.getElementById('modImport');
-        if (modal && modal.classList.contains('on')) {
-          setTimeout(function() { renderValidacao(d); }, 100);
-        }
-      };
-      save._validV1 = true;
-    }
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init);
-  else _init();
-
-})();
-/* ══ FIM MÓDULO VALIDAÇÃO EXCEL ══ */
 </script>
 
 <script>
@@ -21787,9 +21291,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b95.4';
+var APP_VERSAO = 'b95.5';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b95.5', data:'18/09/2026', itens:[
+    'Importacao de Excel removida, com tudo que so ela usava: a funcao importarExcel, o modal de resultado, o input de arquivo, o modulo de validacao que embrulhava o save() e a biblioteca XLSX de 900 KB vinda de CDN. Era a ultima porta que escrevia na HISTORICO sem passar por uma acao sua — uma planilha antiga sobrescreveria o ano. O Excel deixou de ser fonte em b87 e o botao saiu em b88; so o console alcancava. Sai junto o salvarArquivoHTML, que congelava os dados dentro de um novo HTML e so era chamado pelo botao desse modal: e o mesmo padrao de dado congelado no arquivo que causou os problemas de hoje. Menos 23 KB e uma dependencia externa a menos.',
+    'Agora todo caminho que escreve na planilha parte de uma acao sua: salvar ou excluir um mes, Gravar calculos (que rele antes), metas, plano de acao e envio de e-mail.'
+  ]},
   { v:'b95.4', data:'18/09/2026', itens:[
     'Tabela por setor da aba Eficiencia & Horas com as colunas alinhadas: os titulos ficavam a esquerda e os numeros a direita, cada um num canto da coluna. Agora titulo e valor caem no mesmo lado, as larguras sao fixas e as linhas de Indiretos e Fabrica seguem o mesmo alinhamento das demais.'
   ]},
