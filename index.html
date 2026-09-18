@@ -21543,9 +21543,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b93.5';
+var APP_VERSAO = 'b93.6';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b93.6', data:'18/09/2026', itens:[
+    'PontoRH.gs, tres protecoes que a carga de JAN-MAI/26 pediu: (1) a PONTO_SETOR sai sempre ordenada por ano, mes e setor, numa escrita so; (2) mes que ja tem horas na HISTORICO nao e regravado pelo extrato: so a PONTO_SETOR entra e o aviso mostra ponto x digitado (maio tinha a hora extra da fabrica inteira digitada como se fosse dos diretos; fevereiro, 1.416 h normais a mais); (3) extrato exportado sem as colunas Ex50% e Ex100% e recusado, em vez de zerar a hora extra do mes. Executar > aceitarPontoNaHistorico regrava meses escolhidos pelo log do ponto, sem mover arquivo.'
+  ]},
   { v:'b93.5', data:'18/09/2026', itens:[
     'Hora extra por setor, etapa 2 (painel): o Web App manda a aba PONTO_SETOR e o painel guarda. Apresentacao para lideres ganha o slide "hora extra por setor" depois do de hora extra, e a aba Eficiencia & Horas ganha a tabela no fim, para o ultimo mes do periodo com ponto por setor. Colunas: pessoas, HE em horas, HE sobre horas normais do setor, parte na HE da fabrica, falta do setor e a leitura: "cobrindo falta" (HE acima da fabrica e falta acima de 6%) ou "capacidade" (HE acima da fabrica com falta dentro). Indiretos aparecem numa linha so, fora da dependencia de HE. Sem a aba, nem o slide nem a tabela aparecem. E hora por setor, nao peca por setor.'
   ]},

@@ -759,6 +759,45 @@ function instalarProcessamentoPonto() {
   prAvisar('Instalado: a pasta "' + PR_PASTA + '" é varrida todo dia por volta das 6h30. É só salvar o extrato do mês lá.');
 }
 
+/* Aceita o ponto na HISTORICO de meses já fechados sem reprocessar arquivo:
+   lê a última linha de cada mês na aba PONTO (o log guarda a soma dos
+   diretos) e grava como prLancarHistorico gravaria. Executar ›
+   aceitarPontoNaHistorico e responder "FEV/2026, MAI/2026". Nasceu de
+   FEV e MAI/26: HE de maio digitada com a fábrica inteira, horas normais
+   de fevereiro 1.416 h acima do ponto. */
+function aceitarPontoNaHistorico() {
+  var ui = null, resp = '';
+  try { ui = SpreadsheetApp.getUi(); var r = ui.prompt('Aceitar o ponto na HISTORICO', 'Meses a regravar pelo log da aba PONTO, ex.: FEV/2026, MAI/2026', ui.ButtonSet.OK_CANCEL); if (r.getSelectedButton() !== ui.Button.OK) return; resp = r.getResponseText(); }
+  catch (e) { resp = 'FEV/2026, MAI/2026'; }   /* sem UI (Executar no editor): padrão documentado */
+  var pedidos = resp.toUpperCase().split(/[,;\s]+/).map(function (x) { var m = x.match(/^([A-Z]{3})\/?(\d{4})$/); return m ? { mes: m[1], ano: parseInt(m[2], 10) } : null; }).filter(Boolean);
+  if (!pedidos.length) return prErro('nenhum mês reconhecido em "' + resp + '"');
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), log = ss.getSheetByName(PR_ABA_LOG);
+  if (!log || log.getLastRow() < 2) return prErro('aba ' + PR_ABA_LOG + ' vazia: o extrato do mês precisa ter sido processado antes');
+  var v = log.getDataRange().getValues(), cab = v[0].map(prNormaliza), col = {};
+  cab.forEach(function (c, i) { if (col[c] === undefined) col[c] = i; });
+  var num = function (x) { var f = parseFloat(String(x).replace(',', '.')); return isFinite(f) ? f : 0; };
+  var feitos = [], falhas = [];
+  pedidos.forEach(function (p) {
+    var ult = null;
+    for (var r = 1; r < v.length; r++) {   /* a última linha do mês vence */
+      if (String(v[r][col.mes]).toUpperCase().slice(0, 3) === p.mes && parseInt(v[r][col.ano], 10) === p.ano) ult = v[r];
+    }
+    if (!ult) { falhas.push(p.mes + '/' + p.ano + ': sem linha na aba ' + PR_ABA_LOG); return; }
+    var a = { n: num(ult[col.diretos]), carga: num(ult[col.carga]), normais: num(ult[col.normais]), faltasPonto: num(ult[col.faltasponto]),
+              atrasosPonto: num(ult[col.atrasosponto]), e50: num(ult[col.extra50]), e100: num(ult[col.extra100]),
+              jornada: num(ult[col.jornadacheia]), naoTrabalhadas: num(ult[col.naotrabalhadas]) };
+    if (!(a.normais > 0)) { falhas.push(p.mes + '/' + p.ano + ': linha do log sem horas normais'); return; }
+    var antes = prLerHistoricoMes(ss, p.mes, p.ano);
+    prLancarHistorico(ss, p.mes, p.ano, a);
+    feitos.push(p.mes + '/' + p.ano + ': h. normais ' + (antes ? Math.round(antes.horasNormais) : '—') + ' → ' + Math.round(a.normais)
+      + ' | extra50 ' + (antes ? Math.round(antes.extra50) : '—') + ' → ' + Math.round(a.e50)
+      + ' | extra100 ' + (antes ? Math.round(antes.extra100) : '—') + ' → ' + Math.round(a.e100)
+      + ' | colaboradores ' + (antes ? antes.colaboradores : '—') + ' → ' + a.n);
+  });
+  prAvisar((feitos.length ? 'HISTORICO regravada pelo ponto:\n' + feitos.join('\n') + '\n\nO painel refaz absenteísmo, peças por hora e hora extra desses meses no próximo sync.' : 'Nada regravado.')
+    + (falhas.length ? '\n\nNão feito:\n' + falhas.join('\n') : ''));
+}
+
 /* Ensaio sem gravar: mostra no Registro o que seria lançado do primeiro
    arquivo da pasta. Rode antes da primeira vez. */
 function testePonto() {
