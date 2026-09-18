@@ -20078,9 +20078,21 @@ window.CompAnos = (function () {
       +' entre os dois períodos. Top 12 por impacto, subindo ou caindo.</div>';
   }
 
-  /* Matriz volume × peso unitário. Corta pela MEDIANA, não pela média: um
-     guarda-roupa de 80 kg puxa a média e jogaria quase tudo para o quadrante
-     "leve", que não diria nada. */
+  /* Matriz volume × peso unitário.
+
+     EIXO EM LOG, não linear. A distribuição de volume de uma fábrica de móveis
+     tem quatro ordens de grandeza — de 1 peça a 20 mil no mesmo ano — e numa
+     escala linear metade dos 400 produtos se amontoa nos primeiros pixels:
+     vira mancha, não gráfico. Em log cada marca vale 10× a anterior, e a nuvem
+     se abre onde os produtos de fato estão.
+
+     Corta pela MEDIANA, não pela média: um guarda-roupa de 80 kg puxa a média
+     e jogaria quase tudo para o quadrante "leve", que não diria nada.
+
+     NOME nos que importam. Bolha anônima em meio a 400 não responde nada; o
+     gestor precisa saber QUAIS produtos estão em cima e à direita. Rotula os
+     que mais pesaram no ano, mais o mais pesado por unidade — que costuma ser
+     o caso de pouco volume e muito esforço. */
   function matrizVolumePeso(produtos, anoB) {
     var pts = produtos.filter(function(p){ return p.qtdB>0 && p.kgUnB>0; });
     if (pts.length < 4) return '';
@@ -20090,41 +20102,86 @@ window.CompAnos = (function () {
     }
     var medQ=mediana(pts.map(function(p){ return p.qtdB; }));
     var medP=mediana(pts.map(function(p){ return p.kgUnB; }));
-    var maxQ=Math.max.apply(null,pts.map(function(p){ return p.qtdB; }))*1.08;
+    var maxQ=Math.max.apply(null,pts.map(function(p){ return p.qtdB; }));
     var maxP=Math.max.apply(null,pts.map(function(p){ return p.kgUnB; }))*1.08;
-    var W=1000,H=430,mL=62,mR=18,mT=30,mB=44,gW=W-mL-mR,gH=H-mT-mB;
-    function X(v){ return mL+(v/maxQ)*gW; }
+
+    var W=1000,H=470,mL=62,mR=40,mT=34,mB=44,gW=W-mL-mR,gH=H-mT-mB;
+    /* Começa numa década cheia abaixo do menor ponto: o eixo ganha marcas
+       redondas (1, 10, 100, 1.000) em vez de números quebrados. */
+    var minQ=Math.max(1,Math.min.apply(null,pts.map(function(p){ return p.qtdB; })));
+    var lo=Math.floor(Math.log10(minQ)), hi=Math.ceil(Math.log10(Math.max(maxQ,10)));
+    if (hi<=lo) hi=lo+1;
+    function X(v){ return mL+((Math.log10(Math.max(v,1))-lo)/(hi-lo))*gW; }
     function Y(v){ return mT+gH-(v/maxP)*gH; }
     var xMed=X(medQ), yMed=Y(medP);
+
     var g='', eixo='';
     for (var i=0;i<=4;i++){
-      var yv=maxP*i/4, y=Y(yv), xv=maxQ*i/4, x=X(xv);
+      var yv=maxP*i/4, y=Y(yv);
       g+='<line x1="'+mL+'" y1="'+y.toFixed(1)+'" x2="'+(W-mR)+'" y2="'+y.toFixed(1)+'" stroke="rgba(255,255,255,.06)"/>';
-      eixo+='<text x="'+(mL-8)+'" y="'+(y+3.5).toFixed(1)+'" text-anchor="end" font-size="10.5" fill="#5a86b0">'+fd(yv,1)+'</text>'
-        +'<text x="'+x.toFixed(1)+'" y="'+(H-mB+16)+'" text-anchor="middle" font-size="10.5" fill="#5a86b0">'+fi(xv)+'</text>';
+      eixo+='<text x="'+(mL-8)+'" y="'+(y+3.5).toFixed(1)+'" text-anchor="end" font-size="10.5" fill="#5a86b0">'+fd(yv,1)+'</text>';
+    }
+    /* Uma linha por década, e tiquinhos nas intermediárias: dá a noção de
+       escala logarítmica sem encher o fundo de linha. */
+    for (var d=lo; d<=hi; d++){
+      var xv=Math.pow(10,d), x=X(xv);
+      g+='<line x1="'+x.toFixed(1)+'" y1="'+mT+'" x2="'+x.toFixed(1)+'" y2="'+(mT+gH)+'" stroke="rgba(255,255,255,.06)"/>';
+      eixo+='<text x="'+x.toFixed(1)+'" y="'+(H-mB+16)+'" text-anchor="middle" font-size="10.5" fill="#5a86b0">'+fi(xv)+'</text>';
+      if (d<hi) for (var k=2;k<10;k++){
+        var xm=X(Math.pow(10,d)*k);
+        g+='<line x1="'+xm.toFixed(1)+'" y1="'+(mT+gH-4)+'" x2="'+xm.toFixed(1)+'" y2="'+(mT+gH)+'" stroke="rgba(255,255,255,.10)"/>';
+      }
     }
     var quad='<line x1="'+xMed.toFixed(1)+'" y1="'+mT+'" x2="'+xMed.toFixed(1)+'" y2="'+(mT+gH)+'" stroke="'+ROXO+'" stroke-dasharray="4 3" stroke-width="1.2"/>'
       +'<line x1="'+mL+'" y1="'+yMed.toFixed(1)+'" x2="'+(W-mR)+'" y2="'+yMed.toFixed(1)+'" stroke="'+ROXO+'" stroke-dasharray="4 3" stroke-width="1.2"/>';
     var rot=[
-      {x:mL+8,           y:mT+14,        t:'baixo volume · pesado',  a:'start'},
-      {x:W-mR-8,         y:mT+14,        t:'alto volume · pesado',   a:'end'},
-      {x:mL+8,           y:mT+gH-7,      t:'baixo volume · leve',    a:'start'},
-      {x:W-mR-8,         y:mT+gH-7,      t:'alto volume · leve',     a:'end'}
+      {x:mL+8,   y:mT+13,   t:'baixo volume · pesado', a:'start'},
+      {x:W-mR-8, y:mT+13,   t:'alto volume · pesado',  a:'end'},
+      {x:mL+8,   y:mT+gH-7, t:'baixo volume · leve',   a:'start'},
+      {x:W-mR-8, y:mT+gH-7, t:'alto volume · leve',    a:'end'}
     ].map(function(r){
       return '<text x="'+r.x+'" y="'+r.y+'" text-anchor="'+r.a+'" font-size="10" fill="rgba(156,106,222,.75)" font-weight="600">'+r.t+'</text>';
     }).join('');
+
+    /* Bolha menor e mais transparente: com 400 pontos o que importa é enxergar
+       a densidade, e círculo grande e opaco só esconde o vizinho. */
     var bolhas=pts.map(function(p){
       var cor = p.situacao==='novo'?CIANO:(p.situacao==='aumentou'?VERDE:(p.situacao==='reduziu'?LARANJA:AMBAR));
-      return '<circle cx="'+X(p.qtdB).toFixed(1)+'" cy="'+Y(p.kgUnB).toFixed(1)+'" r="5" fill="'+cor+'" fill-opacity=".62" stroke="'+cor+'" stroke-width="1">'
-        +'<title>'+esc(p.desc)+'\n'+fi(p.qtdB)+' peças · '+fd(p.kgUnB,1)+' kg/un · '+p.rotulo+'</title></circle>';
+      return '<circle cx="'+X(p.qtdB).toFixed(1)+'" cy="'+Y(p.kgUnB).toFixed(1)+'" r="3.6" fill="'+cor+'" fill-opacity=".45" stroke="'+cor+'" stroke-width=".8" stroke-opacity=".8">'
+        +'<title>'+esc(p.desc)+' — '+fi(p.qtdB)+' peças · '+fd(p.kgUnB,1)+' kg/un · '+fi(p.pesoB)+' kg no ano · '+p.rotulo+'</title></circle>';
     }).join('');
-    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">'+g+quad+rot+bolhas+eixo
-      +'<text x="'+(mL+gW/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10.5" fill="#5a86b0">quantidade produzida em '+anoB+' (peças)</text>'
+
+    /* Nome só em quem cabe: descarta o rótulo que cairia sobre outro já posto,
+       em vez de empilhar texto ilegível. */
+    var cand=pts.slice().sort(function(a,b){ return b.pesoB-a.pesoB; }).slice(0,7);
+    var maisPesado=pts.slice().sort(function(a,b){ return b.kgUnB-a.kgUnB; })[0];
+    if (cand.indexOf(maisPesado)<0) cand.push(maisPesado);
+    var postos=[], nomes='';
+    cand.forEach(function(p){
+      var x=X(p.qtdB), y=Y(p.kgUnB);
+      var dir = x > mL+gW*0.62 ? -1 : 1;                  /* perto da borda direita, nome à esquerda */
+      var tx = x + dir*8, ty = y - 7;
+      /* 17px é a altura de linha do rótulo: abaixo disso dois nomes colam e
+         viram uma mancha de texto, que é pior que faltar um nome. */
+      function bate(){ return postos.some(function(o){ return Math.abs(o.x-tx)<190 && Math.abs(o.y-ty)<17; }); }
+      if (bate()) ty = y + 15;
+      if (bate()) return;
+      postos.push({x:tx,y:ty});
+      var nome = p.desc.length>26 ? p.desc.slice(0,25)+'…' : p.desc;
+      nomes += '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4.6" fill="none" stroke="#fff" stroke-width="1.1" stroke-opacity=".85"/>'
+        + '<text x="'+tx.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="'+(dir<0?'end':'start')+'" font-size="10.5" fill="#e6edf5" '
+        + 'style="paint-order:stroke;stroke:#0b1220;stroke-width:3px;stroke-linejoin:round">'+esc(nome)+'</text>';
+    });
+
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">'+g+quad+rot+bolhas+nomes+eixo
+      +'<text x="'+(mL+gW/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10.5" fill="#5a86b0">quantidade produzida em '+anoB+' (peças) · escala logarítmica</text>'
       +'<text x="14" y="'+(mT+gH/2)+'" text-anchor="middle" font-size="10.5" fill="#5a86b0" transform="rotate(-90 14 '+(mT+gH/2)+')">peso unitário (kg)</text>'
       +'</svg>'
       +'<div style="font-size:.68rem;color:var(--t3);padding-top:6px;line-height:1.5">'
-      +'Cada bolha é um produto de '+anoB+'. Linhas tracejadas: mediana de volume ('+fi(medQ)
-      +' peças) e de peso ('+fd(medP,1)+' kg/un). Cor = situação contra '+(anoB-1)+'.</div>';
+      +'Cada bolha é um produto de '+anoB+' ('+fi(pts.length)+' no total); os nomeados são os que mais pesaram no ano. '
+      +'O eixo horizontal é logarítmico — cada marca vale 10× a anterior — porque em escala linear metade dos produtos '
+      +'ficaria empilhada no canto esquerdo. Linhas tracejadas: mediana de volume ('+fi(medQ)
+      +' peças) e de peso ('+fd(medP,1)+' kg/un). Cor = situação contra '+(anoB-1)+'. Passe o mouse para ver cada produto.</div>';
   }
 
   /* ══ RENDER ══ */
@@ -22909,9 +22966,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96';
+var APP_VERSAO = 'b96.1';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.1', data:'18/09/2026', itens:[
+    'Matriz volume x peso legivel com o mix real. O eixo de quantidade passa a ser logaritmico: a fabrica produz de 1 a 20 mil pecas do mesmo produto no ano — quatro ordens de grandeza — e em escala linear metade dos 423 produtos ficava empilhada nos primeiros pixels, virando mancha em vez de grafico. Em log cada marca vale 10x a anterior e a nuvem se abre onde os produtos estao.',
+    'Os produtos que mais pesaram no ano aparecem com nome na propria matriz, mais o mais pesado por unidade. Bolha anonima em meio a 400 nao responde a pergunta que a matriz existe para responder: QUAIS produtos estao em cima e a direita. Rotulo que cairia sobre outro e descartado — falta um nome e melhor que dois nomes ilegiveis.',
+    'Bolha menor e mais transparente, para enxergar densidade onde os produtos se acumulam, e o tooltip agora traz tambem o peso do produto no ano.'
+  ]},
   { v:'b96', data:'18/09/2026', itens:[
     'Comparativo 2025 x 2026 ganha o bloco "O que explica a mudanca de peso". A tabela por linha mostra que cada linha subiu ou caiu; ela nao diz quanto disso e a fabrica ter produzido MAIS e quanto e ter produzido COISA diferente. Sao efeitos que cobram coisas diferentes: volume se resolve com capacidade, composicao se resolve com plano.',
     'A decomposicao, por linha, em toneladas: VOLUME = (pecas 2026 - pecas 2025) x kg/un de 2025; COMPOSICAO = pecas 2026 x (kg/un 2026 - kg/un 2025). Os dois somam a diferenca exata, sem residuo — mesma convencao do bloco de ponte do ritmo. Linha que nasceu ou saiu no periodo entra toda como volume: ela nao tem dois pesos para comparar.',
