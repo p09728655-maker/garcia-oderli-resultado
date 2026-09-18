@@ -5011,6 +5011,20 @@ window.SetorHE = (function(){
   function lista(arr){ var v=arr.map(function(x){ return nome(x.setor); }); return v.join(', ').replace(/, ([^,]*)$/,' e $1'); }
   return { SK:SK_SET, carregar:carregar, doMes:doMes, doPeriodo:doPeriodo, resumo:resumo, nome:nome, lista:lista };
 })();
+/* Grava só no navegador, sem tocar na planilha. Existe porque save() sincroniza,
+   e há dois caminhos que precisam popular a tela sem escrever na fonte: a carga
+   inicial do PLANILHA embutido e o Resetar. Em 18/09/26 o Resetar limpou o local,
+   o init() caiu no PLANILHA (que vai até JUN/26) e o save() empurrou isso para a
+   HISTORICO: JAN–JUN voltaram aos valores anteriores ao ponto e JUL e AGO
+   ficaram zerados. */
+function salvarLocal(d){
+  d=(d||[]).map(normalizarRegistro);
+  try{ localStorage.setItem(SK,JSON.stringify(d)); }catch(e){}
+  _idbSave(d);
+  if(window.DashBus) window.DashBus.emit('dados:salvos', d);
+  return d;
+}
+
 function save(d){
   d=(d||[]).map(normalizarRegistro);
   localStorage.setItem(SK,JSON.stringify(d));
@@ -7070,9 +7084,17 @@ function exportCSV(){
 }
 
 /* ── RESETAR DADOS ── */
+/* Limpa a cópia local e relê a planilha. Não grava nada nela: se a releitura
+   falhar, a tela abre com o dataset embutido, que fica só no navegador. */
 function resetDados(){
-  if(!confirm('Resetar para os dados originais da planilha?\nLançamentos manuais serão perdidos.'))return;
-  localStorage.removeItem(SK); _idbClear(); anoAtivo=null; init(); toast('Dados resetados.','wn')
+  if(!confirm('Descartar a cópia local e reler a planilha?\nNada é apagado na planilha.'))return;
+  localStorage.removeItem(SK); _idbClear(); anoAtivo=null;
+  if(typeof _recarregarDoSheets==='function'){
+    toast('Relendo a planilha…','info');
+    _recarregarDoSheets()
+      .then(function(){ try{ render(); }catch(e){} toast('Cópia local refeita a partir da planilha.','ok'); })
+      .catch(function(e){ init(); toast('A planilha não respondeu ('+(e&&e.message||e)+'). A tela está com a base embutida, só no navegador.','er'); });
+  } else { init(); toast('Cópia local descartada.','wn'); }
 }
 
 /* ── EVENTOS ── */
@@ -7905,9 +7927,12 @@ function init(){
   var d=load();
 
   if(!d.length){
-    /* Sem dados nenhum — carrega PLANILHA como base inicial */
+    /* Sem dados nenhum — PLANILHA é só a base para a tela abrir com algo.
+       salvarLocal, nunca save: o dataset embutido está congelado na data em que
+       o arquivo foi publicado e não pode virar verdade na planilha. A leitura do
+       Web App, que roda logo em seguida, substitui isto pelo dado real. */
     d=PLANILHA.map(function(r){return Object.assign({id:uid()},r)});
-    save(d);
+    salvarLocal(d);
   } else {
     /* MIGRAÇÃO SEGURA: se algum registro tiver campos faltando,
        adiciona o campo com valor padrão — NUNCA apaga dados importados.
@@ -21742,9 +21767,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b95.1';
+var APP_VERSAO = 'b95.2';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b95.2', data:'18/09/2026', itens:[
+    'CORRECAO GRAVE: o Resetar apagava a copia local, o init() caia no dataset PLANILHA embutido no arquivo (congelado em JUN/26) e chamava save(), que sincroniza — o embutido era empurrado para a HISTORICO. Em 18/09/26 isso devolveu JAN a JUN aos valores anteriores ao ponto e zerou JUL e AGO. Agora o Resetar rele a planilha pelo Web App e nao grava nada nela; se a leitura falhar, a tela abre com o embutido apenas no navegador. A carga inicial usa salvarLocal, que nunca sincroniza. O texto do botao passou a dizer o que ele faz: descartar a copia local e reler a planilha.'
+  ]},
   { v:'b95.1', data:'18/09/2026', itens:[
     'Botoes "Salvar JSON" e "Carregar JSON" saem do Modo edicao. O Carregar chamava a mesma gravacao que sincroniza com a planilha: abrir um arquivo antigo sobrescrevia a HISTORICO com ele, sem confirmacao e sem desfazer — um JSON de marco apagaria as correcoes do ponto de agosto. Os dois nasceram quando os dados viviam so no navegador; hoje a planilha e a fonte. Backup e restauracao passam a ser Arquivo > Historico de versoes, no proprio Google Sheets, que guarda data, hora e autor. Para tirar dados do painel continua valendo o Exportar CSV. O Resetar fica: ele so limpa o local e rele a planilha, nao grava nada nela.'
   ]},
