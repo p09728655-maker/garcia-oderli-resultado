@@ -105,7 +105,7 @@ var DICIONARIO_LINHAS = [
   ['eficienciaAdj', 'aposentada', 'histórico', 'Aposentada em b88. A fórmula herdada do Excel subtraía horas de peças. O painel não calcula nem exibe; a coluna fica só como histórico. Use Peças perdidas.'],
   ['margem', 'calculado', 'painel', '(90 − eficiencia) ÷ 90 × 100'],
   ['custoCap', 'calculado', 'painel', 'totalFaltaAtraso × (producaoReal ÷ horasNormais) × ticketMedio'],
-  ['(todas as calculadas)', 'regra', 'painel', 'O painel refaz estas colunas a cada leitura e gravação (DashUtils.normalizar) e as grava de volta na HISTORICO ao sincronizar, para o Power BI e a planilha lerem o mesmo número. Não digitar.']
+  ['(todas as calculadas)', 'regra', 'painel', 'O painel refaz estas colunas a cada leitura e gravação (DashUtils.normalizar) e as grava de volta na HISTORICO ao sincronizar, para a planilha mostrar o mesmo número da tela. Não digitar.']
 ];
 function criarAbaDicionario() {
   /* É documentação, não dado: pode rodar de novo quando a regra mudar —
