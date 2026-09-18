@@ -5246,10 +5246,19 @@ function renderSetoresHE(d){
     return '<tr><td>'+x.setor+'</td><td'+nC+'>'+fi2(x.pessoas)+'</td><td'+nC+'>'+fi2(x.he)+'</td><td style="text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:'+(x.heAlta?'800':'600')+'">'+fd2(x.hePct,1)+'%</td><td'+nC+'>'+fd2(x.parte,0)+'%</td>'
       +'<td'+nC+'>'+(x.absPct===null?'—':fd2(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor(x)+';font-weight:'+(x.leitura?'700':'400')+'">'+(x.leitura||'—')+'</td></tr>';
   }).join('');
-  if(RS.indiretos.length) linhas+='<tr><td class="lid-tx" style="color:var(--t3)!important">Indiretos ('+RS.indiretos.length+' setores, fora da dependência de HE)</td><td>'+fi2(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi2(RS.heInd)+'</td><td>'+(RS.hnInd>0?fd2(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>';
-  linhas+='<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi2(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi2(RS.heDir)+'</td><td>'+fd2(RS.refPct,1)+'%</td><td>100%</td><td>'+(RS.absDir===null?'—':fd2(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr>';
+  if(RS.indiretos.length) linhas+='<tr><td class="lid-tx" style="color:var(--t3)!important">Indiretos ('+RS.indiretos.length+' setores, fora da dependência de HE)</td><td'+nC+'>'+fi2(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nC+'>'+fi2(RS.heInd)+'</td><td'+nC+'>'+(RS.hnInd>0?fd2(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td'+nC+'>—</td><td'+nC+'>—</td><td class="lid-tx" style="color:var(--t3)!important">—</td></tr>';
+  linhas+='<tr class="lid-tot"><td>Fábrica (diretos)</td><td'+nC+'>'+fi2(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nC+'>'+fi2(RS.heDir)+'</td><td'+nC+'>'+fd2(RS.refPct,1)+'%</td><td'+nC+'>100%</td><td'+nC+'>'+(RS.absDir===null?'—':fd2(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr>';
   box.innerHTML='<div class="cHdr"><span class="cTtl">▸ '+RS.rotulo+' · '+fd2(RS.topParte,0)+'% da hora extra em '+SetorHE.lista(RS.top)+'</span></div>'
-    +'<table class="lid-tab" style="font-size:.72rem"><thead><tr><th>Setor</th><th>Pessoas</th><th>HE (h)</th><th title="extra50 + extra100 ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th><th title="Parte do setor nas horas extras dos diretos">% da HE</th><th title="falta + atestado + afastado + atraso ÷ horas normais do setor (controle do RH)">Falta</th><th title="Cobrindo falta: HE alta e falta acima de '+RS.absCrit+'%. Capacidade: HE alta com falta dentro do limite">Leitura</th></tr></thead><tbody>'+linhas+'</tbody></table>'
+    +'<style>#ef-setores .lid-tab td,#ef-setores .lid-tab th{padding:4px 10px}</style>'
+    +'<table class="lid-tab" style="font-size:.72rem;table-layout:fixed;width:100%"><thead><tr>'
+      +'<th style="text-align:left">Setor</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:9%">Pessoas</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:9%">HE (h)</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:13%" title="extra50 + extra100 ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:9%" title="Parte do setor nas horas extras dos diretos">% da HE</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:9%" title="falta + atestado + afastado + atraso ÷ horas normais do setor (controle do RH)">Falta</th>'
+      +'<th style="text-align:left;white-space:nowrap;width:16%" title="Cobrindo falta: HE alta e falta acima de '+RS.absCrit+'%. Capacidade: HE alta com falta dentro do limite">Leitura</th>'
+    +'</tr></thead><tbody>'+linhas+'</tbody></table>'
     +'<div style="font-size:.62rem;color:var(--t3);margin-top:8px">Fonte: aba PONTO_SETOR (extrato do ponto + controle de faltas do RH). '+(RS.varios?'Horas somadas no período; pessoas é a média mensal. ':'')+'Hora por setor, não peça por setor: a produção é da fábrica inteira. Setor = o atual da pessoa na FUNCIONARIOS. HE "alta" = acima da razão da fábrica no mês ('+fd2(RS.refPct,1)+'%); o limite de 8% do painel é sobre peças e não se aplica por setor.</div>';
 }
 
@@ -21778,9 +21787,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b95.3';
+var APP_VERSAO = 'b95.4';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b95.4', data:'18/09/2026', itens:[
+    'Tabela por setor da aba Eficiencia & Horas com as colunas alinhadas: os titulos ficavam a esquerda e os numeros a direita, cada um num canto da coluna. Agora titulo e valor caem no mesmo lado, as larguras sao fixas e as linhas de Indiretos e Fabrica seguem o mesmo alinhamento das demais.'
+  ]},
   { v:'b95.3', data:'18/09/2026', itens:[
     'Varredura dos caminhos que escrevem na HISTORICO. Sobravam dois automaticos, que rodavam sozinhos a cada abertura do painel: a migracao de campos faltantes do init() e o preenchimento de diasTrabalhados e qtdeFaturado por duas tabelas congeladas no arquivo. Os dois gravavam valor padrao ou congelado na planilha sem ninguem pedir. Agora usam salvarLocal: consertam a copia local e nao tocam na HISTORICO. Restam tres caminhos, todos deliberados: salvar ou excluir um mes no formulario, e o botao Gravar calculos, que le a planilha antes.',
     'importarExcel continua no codigo e grava na planilha, mas sem botao desde b88 (so pelo console). Mesma classe do Carregar JSON que saiu: uma planilha antiga sobrescreveria a HISTORICO. Fica para decisao.'
