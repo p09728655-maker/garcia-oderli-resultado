@@ -322,7 +322,10 @@ function prAbrirSetores(ss) {
 }
 
 /* Grava valores nas linhas de (mes, ano, setor); cria a linha se não existir.
-   linhas = [{ setor, valores: { campo: valor } }]. Uma escrita por linha. */
+   linhas = [{ setor, valores: { campo: valor } }]. Tudo em memória, depois a
+   aba inteira ordenada por ano, mês e setor numa escrita só: setor que só
+   existe no extrato (sem ausência) ficava no fim da aba, e AGO aparecia
+   depois de SET. */
 function prGravarSetores(ss, mes, ano, linhas) {
   var t = prAbrirSetores(ss), aba = t.aba, v = t.v, col = t.col, largura = t.largura;
   var idx = {};
@@ -345,9 +348,30 @@ function prGravarSetores(ss, mes, ano, linhas) {
       var x = l.valores[k]; row[c] = (typeof x === 'number') ? Math.round(x * 100) / 100 : x;
     });
     row[col.atualizadoem] = agora;
-    aba.getRange(r + 1, 1, 1, largura).setValues([row]);
   });
+  prEscreverSetoresOrdenado(aba, v, col, largura);
   return criadas;
+}
+
+/* Ordena (ano, mês na ordem do calendário, setor) e grava da linha 2 em diante. */
+function prEscreverSetoresOrdenado(aba, v, col, largura) {
+  var corpo = v.slice(1).filter(function (row) { return String(row[col.mes] || '').trim() !== ''; })
+    .map(function (row) { while (row.length < largura) row.push(''); return row; });
+  corpo.sort(function (a, b) {
+    var d = (parseInt(a[col.ano], 10) || 0) - (parseInt(b[col.ano], 10) || 0); if (d) return d;
+    d = PR_MESES.indexOf(String(a[col.mes]).toUpperCase().slice(0, 3)) - PR_MESES.indexOf(String(b[col.mes]).toUpperCase().slice(0, 3)); if (d) return d;
+    return String(a[col.setor]).localeCompare(String(b[col.setor]), 'pt-BR', { numeric: true });   /* 7-... antes de 12-... */
+  });
+  if (corpo.length) aba.getRange(2, 1, corpo.length, largura).setValues(corpo);
+  var sobra = aba.getLastRow() - 1 - corpo.length;   /* linhas que sumiram (não deve haver): limpa o rastro */
+  if (sobra > 0) aba.getRange(corpo.length + 2, 1, sobra, largura).clearContent();
+}
+
+/* Reordena a aba que já existe. Executar › ordenarPontoSetor, uma vez. */
+function ordenarPontoSetor() {
+  var t = prAbrirSetores(SpreadsheetApp.getActiveSpreadsheet());
+  prEscreverSetoresOrdenado(t.aba, t.v, t.col, t.largura);
+  prAvisar('Aba ' + PR_ABA_SETOR + ' ordenada por ano, mês e setor.');
 }
 
 /* Extrato → colunas de horas e HE por setor. */
@@ -372,7 +396,7 @@ function prLimparAusenciasSetor(ss, ano) {
     while (v[r].length < t.largura) v[r].push('');
     cols.forEach(function (c) { v[r][c] = 0; }); mudou = true;
   }
-  if (mudou && v.length > 1) t.aba.getRange(2, 1, v.length - 1, t.largura).setValues(v.slice(1).map(function (row) { while (row.length < t.largura) row.push(''); return row; }));
+  if (mudou) prEscreverSetoresOrdenado(t.aba, v, col, t.largura);
 }
 
 /* Para o Web App: a aba inteira como lista de objetos (chave = cabeçalho). */
