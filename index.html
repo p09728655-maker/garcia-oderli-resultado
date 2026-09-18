@@ -4898,8 +4898,14 @@ window.SetorHE = (function(){
     return carregar().filter(function(r){ return String(r.mes||'').trim().toUpperCase().slice(0,3)===mes && parseInt(r.ano,10)===ano; })
       .map(function(r){
         var he=n(r.totalExtras)||(n(r.extra50)+n(r.extra100)), hn=n(r.horasNormais);
-        var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+n(r.ausAtraso);
-        var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||n(r.ausAtraso)>0);
+        /* Mesma regra do painel (DashUtils.normalizar): faltas = ausFalta +
+           ausAtestado + ausAfastado, e atraso = atrasosPonto quando há ponto
+           (o relógio), senão ausAtraso (o que o líder anota). Sem isso a
+           coluna dava 11,1% para AGO/26 contra os 12,4% do card de
+           absenteísmo, e o painel se contradizia na mesma tela. */
+        var atr=n(r.atrasosPonto)>0?n(r.atrasosPonto):n(r.ausAtraso);
+        var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+atr;
+        var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
         return { setor:String(r.setor||'').trim()||'(sem setor)', direto:/^s/i.test(String(r.direto||'')), pessoas:n(r.pessoas),
                  hn:hn, he:he, e50:n(r.extra50), e100:n(r.extra100), hePct:hn>0?he/hn*100:0,
                  aus:aus, absPct:(temAus&&hn>0)?aus/hn*100:null };
@@ -21543,9 +21549,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b93.6';
+var APP_VERSAO = 'b93.7';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b93.7', data:'18/09/2026', itens:[
+    'Hora extra por setor: a coluna Falta passa a somar atraso do PONTO (atrasosPonto) quando existe, e so cai no atraso do controle sem ponto — a mesma regra do resto do painel. Em AGO/26 a tabela dava 11,1% de falta na fabrica contra os 12,4% do card de absenteismo, na mesma tela.'
+  ]},
   { v:'b93.6', data:'18/09/2026', itens:[
     'PontoRH.gs, tres protecoes que a carga de JAN-MAI/26 pediu: (1) a PONTO_SETOR sai sempre ordenada por ano, mes e setor, numa escrita so; (2) mes que ja tem horas na HISTORICO nao e regravado pelo extrato: so a PONTO_SETOR entra e o aviso mostra ponto x digitado (maio tinha a hora extra da fabrica inteira digitada como se fosse dos diretos; fevereiro, 1.416 h normais a mais); (3) extrato exportado sem as colunas Ex50% e Ex100% e recusado, em vez de zerar a hora extra do mes. Executar > aceitarPontoNaHistorico regrava meses escolhidos pelo log do ponto, sem mover arquivo.'
   ]},
