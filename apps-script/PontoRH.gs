@@ -769,7 +769,14 @@ function aceitarPontoNaHistorico() {
   var ui = null, resp = '';
   try { ui = SpreadsheetApp.getUi(); var r = ui.prompt('Aceitar o ponto na HISTORICO', 'Meses a regravar pelo log da aba PONTO, ex.: FEV/2026, MAI/2026', ui.ButtonSet.OK_CANCEL); if (r.getSelectedButton() !== ui.Button.OK) return; resp = r.getResponseText(); }
   catch (e) { resp = 'FEV/2026, MAI/2026'; }   /* sem UI (Executar no editor): padrão documentado */
-  var pedidos = resp.toUpperCase().split(/[,;\s]+/).map(function (x) { var m = x.match(/^([A-Z]{3})\/?(\d{4})$/); return m ? { mes: m[1], ano: parseInt(m[2], 10) } : null; }).filter(Boolean);
+  /* aceita JAN/2026, JAN/26, JAN 2026 e JAN2026: "JAN/26" era recusado e o
+     aviso só dizia "nenhum mês reconhecido". */
+  var pedidos = resp.toUpperCase().split(/[,;]+/).map(function (x) {
+    var m = x.trim().match(/^([A-Z]{3})\s*[\/\-]?\s*(\d{2}|\d{4})$/);
+    if (!m || PR_MESES.indexOf(m[1]) < 0) return null;
+    var a = parseInt(m[2], 10);
+    return { mes: m[1], ano: a < 100 ? 2000 + a : a };
+  }).filter(Boolean);
   if (!pedidos.length) return prErro('nenhum mês reconhecido em "' + resp + '"');
   var ss = SpreadsheetApp.getActiveSpreadsheet(), log = ss.getSheetByName(PR_ABA_LOG);
   if (!log || log.getLastRow() < 2) return prErro('aba ' + PR_ABA_LOG + ' vazia: o extrato do mês precisa ter sido processado antes');
