@@ -55,6 +55,11 @@ var LINHA_VOLUMES = 'TOTAL VOLUMES';
    quantidade) — alimentada pelo ReporteVolumes.gs. O dashboard usa para a
    listagem de produtos produzidos por código. */
 var ABA_REPORTE = 'REPORTE_VOLUMES';
+/* Relatório de Grupos do Lógica, colado como aba: uma linha por subgrupo com
+   GRUPO, LINHA, SUBGRUPO, MODELO. É de onde sai a linha de produto do
+   comparativo de anos — o código do produto no reporte (100.009.001) é
+   GRUPO.SUBGRUPO.ITEM, então basta o nome de cada grupo. */
+var ABA_GRUPOS  = 'GRUPOS';
 /* Aba do plano de ação da Reunião do Mês. Uma linha por ação ou decisão. */
 var ABA_ACOES = 'ACOES';
 /* Aba de metas oficiais. Chaves = nomes das constantes do painel. */
@@ -90,6 +95,9 @@ var DICIONARIO_LINHAS = [
   ['diasTrabalhados', 'entrada', 'PPCP', 'Dias úteis efetivamente trabalhados.'],
   ['produtosReportados', 'automático', 'ERP', 'Total de produtos acabados do relatório Mensal por Transação (3 REPORTE), lançado pelo ReporteVolumes.gs a partir do PDF na pasta REPORTES DE VOLUMES.'],
   ['volumesProduzidos / quilosProduzidos', 'automático', 'ERP', 'Mesmo relatório: volumes e quilos.'],
+  ['GRUPOS (aba)', 'colada', 'ERP', 'Relatório de Grupos do Lógica: GRUPO, LINHA, SUBGRUPO, MODELO. Dá a linha de produto do comparativo 2025 × 2026 pelos 3 primeiros dígitos do código. Sem a aba, o painel usa a família derivada da descrição.'],
+  ['PRODUTO_CODIGO coluna P B', 'cadastro', 'ERP', 'Peso bruto de cada caixa. O comparativo soma as caixas do produto e multiplica pela quantidade; confere contra quilosProduzidos.'],
+  ['REPORTE_VOLUMES coluna PESO', 'automático', 'ERP', 'Peso (kg) de cada linha do reporte, quando o PDF é reprocessado. Reserva para produto sem peso no cadastro.'],
   ['producaoReal', 'calculado', 'painel', 'produtosReportados, a partir do ano em PROD_ERP_DESDE (aba METAS). Antes disso, o digitado.'],
   ['qtdeVendida / qtdeFaturado', 'entrada', 'Comercial', 'Peças vendidas e faturadas no mês.'],
   ['ticketMedio', 'entrada', 'Comercial', 'R$ por peça faturada.'],
@@ -173,6 +181,9 @@ function doGet() {
     saida = { ok: true, dados: dados, plano: plano.produtos,
               planoVolumes: plano.volumes, planoLotes: plano.lotes,
               producaoItens: lerReporteVolumes(ss),
+              /* Linha (grupo do ERP) e peso (P B do cadastro) por produto —
+                 o comparativo de anos mede o mix com os dois. */
+              cadastro: lerCadastroProdutos(ss),
               /* PONTO_SETOR: horas, hora extra e ausências por setor (PontoRH.gs). */
               setores: (typeof prLerSetores === 'function') ? prLerSetores(ss) : [],
               acoes: lerAcoes(ss),
@@ -305,13 +316,25 @@ function gravarHistorico(ss, recebidos) {
       atualizados++;
     }
 
+    /* Um registro SEM horas é um mês que aquele navegador não tem fechado —
+       dado local velho, ou o mês ainda não lançado. Ele não pode apagar o
+       que a planilha já tem: em set/26 um sync assim zerou colaboradores,
+       horas e produção de JUL e AGO/26, e sobraram só as colunas que o
+       painel não manda (as do ERP). Regra: registro sem horas só escreve
+       valor não vazio e não zero; registro com horas é um fechamento de
+       verdade e continua podendo zerar um campo de propósito. */
+    var semHoras = idx !== undefined && atualizados > 0
+      && !(num(rec.horasNormais) > 0) && !(num(rec.totalExtras) > 0) && !(num(rec.colaboradores) > 0);
     Object.keys(rec).forEach(function (campo) {
       var n = normaliza(campo);
       if (n === 'id') return;
       if (COLUNAS_PROTEGIDAS.indexOf(n) >= 0) return;
       var c = col[n];
       if (c === undefined) return;      /* campo que a planilha não tem: ignora */
-      linha[c] = rec[campo];
+      var v = rec[campo];
+      if (semHoras && (v === '' || v === null || v === undefined || (typeof v === 'number' && v === 0))
+          && linha[c] !== '' && linha[c] !== null && linha[c] !== undefined && linha[c] !== 0) return;
+      linha[c] = v;
     });
     linha[col.mes] = mes;
     linha[col.ano] = ano;
@@ -455,20 +478,119 @@ function lerPlanoMestre(ss) {
 
 /* ══ REPORTE (produtos produzidos por código) ══
    Linhas cruas da REPORTE_VOLUMES, compactadas em arrays [mes, ano, codigo,
-   descricao, qtd] para o payload não inchar. Aba ausente ou vazia → []. */
+   descricao, qtd, peso] para o payload não inchar. Aba ausente ou vazia → [].
+
+   O peso (coluna F, kg da linha) só entra quando existe: mês carregado antes
+   da coluna existir continua devolvendo cinco posições, e o painel trata os
+   dois formatos. Linha sem peso não vira zero — vira ausência, senão o
+   comparativo somaria 0 kg como se o produto não pesasse nada. */
 function lerReporteVolumes(ss) {
   var aba = ss.getSheetByName(ABA_REPORTE);
   if (!aba || aba.getLastRow() < 2) return [];
-  var v = aba.getRange(2, 1, aba.getLastRow() - 1, 5).getValues();
+  var largura = Math.min(Math.max(aba.getLastColumn(), 5), 6);
+  var temPeso = largura >= 6
+    && String(aba.getRange(1, 6).getValue() || '').trim().toLowerCase().indexOf('peso') === 0;
+  var v = aba.getRange(2, 1, aba.getLastRow() - 1, temPeso ? 6 : 5).getValues();
   var out = [];
   v.forEach(function (l) {
     var mes = String(l[0] || '').trim().toUpperCase().slice(0, 3);
     var ano = num(l[1]);
     var qtd = num(l[4]);
     if (MESES.indexOf(mes) < 0 || !ano || !qtd) return;
-    out.push([mes, ano, String(l[2] || '').trim(), String(l[3] || '').trim(), qtd]);
+    var linha = [mes, ano, String(l[2] || '').trim(), String(l[3] || '').trim(), qtd];
+    var peso = temPeso ? num(l[5]) : 0;
+    if (peso > 0) linha.push(peso);
+    out.push(linha);
   });
   return out;
+}
+
+/* ══ CADASTRO PARA O COMPARATIVO DE ANOS ══
+   Devolve { grupos, modelos, pesos, fonte }:
+     grupos  : '100'     → 'TOUCADORES'          (aba GRUPOS, coluna LINHA)
+     modelos : '100.009' → 'TOUCADOR MAGIC NEW'  (aba GRUPOS, coluna MODELO)
+     pesos   : código do produto → kg por unidade (soma do P B das caixas
+               dele na PRODUTO_CODIGO)
+   Aba ausente não é erro: o mapa vem vazio e o painel avisa o que falta
+   em vez de inventar categoria ou peso. */
+function lerCadastroProdutos(ss) {
+  var g = lerGrupos(ss);
+  return { grupos: g.grupos, modelos: g.modelos, pesos: lerPesosCadastro(ss) };
+}
+
+/* Aba GRUPOS — lida pelo cabeçalho, como a METAS: a ordem das colunas não
+   importa e colunas extras (PL_CONTAS etc.) são ignoradas. */
+function lerGrupos(ss) {
+  var out = { grupos: {}, modelos: {} };
+  var aba = ss.getSheetByName(ABA_GRUPOS);
+  if (!aba || aba.getLastRow() < 2) return out;
+  var linhas = aba.getDataRange().getValues();
+  var cab = linhas[0].map(function (c) { return normaliza(c); });
+  var iG = cab.indexOf('grupo'), iL = cab.indexOf('linha'),
+      iS = cab.indexOf('subgrupo'), iM = cab.indexOf('modelo');
+  if (iG < 0 || iL < 0) return out;
+  for (var r = 1; r < linhas.length; r++) {
+    var g = num(linhas[r][iG]), nomeG = txt(linhas[r][iL]);
+    if (!(g > 0) || !nomeG) continue;
+    var chaveG = pad3(g);
+    if (!out.grupos[chaveG]) out.grupos[chaveG] = nomeG.toUpperCase();
+    if (iS >= 0 && iM >= 0) {
+      var sg = num(linhas[r][iS]), nomeM = txt(linhas[r][iM]);
+      if (sg > 0 && nomeM) out.modelos[chaveG + '.' + pad3(sg)] = nomeM.toUpperCase();
+    }
+  }
+  return out;
+}
+
+function pad3(n) { n = String(Math.round(n)); while (n.length < 3) n = '0' + n; return n; }
+
+/* PRODUTO_CODIGO, coluna "P B" (peso bruto da caixa, kg). A aba é por SKU de
+   volume ("VOL 1/2 NOME", "VOL 2/2 NOME"), então o peso do PRODUTO é a soma
+   das caixas dele; produto de caixa única aparece sem o prefixo VOL e leva o
+   P B direto. O casamento com o código do reporte é por NOME, com a mesma
+   régua que o cálculo de volumes já usa (rvAbrevia): nome do produto começa
+   com o nome da caixa, ou as palavras coincidem por abreviação. Nome mais
+   longo é testado primeiro — sem isso "RACK INTENSE" engoliria "RACK
+   INTENSE RIP". Peso é bruto (com embalagem): o painel confere a soma contra
+   o quilosProduzidos do ERP e avisa se não fechar. */
+function lerPesosCadastro(ss) {
+  var pesos = {};
+  var abaCad = ss.getSheetByName(typeof RV_ABA_CADASTRO !== 'undefined' ? RV_ABA_CADASTRO : 'PRODUTO_CODIGO');
+  var abaRep = ss.getSheetByName(ABA_REPORTE);
+  if (!abaCad || abaCad.getLastRow() < 2 || !abaRep || abaRep.getLastRow() < 2) return pesos;
+  var reVol = (typeof RV_RE_VOL !== 'undefined') ? RV_RE_VOL : /^VOL\.?\s*0?(\d+)\s*\/\s*0?(\d+)\s+(.+)$/i;
+  var abrevia = (typeof rvAbrevia === 'function') ? rvAbrevia : function () { return false; };
+
+  var cad = abaCad.getDataRange().getValues();
+  var cabCad = cad[0].map(function (c) { return normaliza(c).replace(/\s+/g, ''); });
+  var iPB = cabCad.indexOf('pb'); if (iPB < 0) iPB = cabCad.indexOf('peso'); if (iPB < 0) iPB = 2;
+  var kgNome = {};
+  for (var i = 1; i < cad.length; i++) {
+    var desc = txt(cad[i][1]), pb = num(cad[i][iPB]);
+    if (!desc || !(pb > 0)) continue;
+    var m = desc.match(reVol);
+    var nome = (m ? m[3] : desc).trim().toUpperCase();
+    kgNome[nome] = (kgNome[nome] || 0) + pb;
+  }
+  var nomes = Object.keys(kgNome).sort(function (a, b) { return b.length - a.length; });
+  if (!nomes.length) return pesos;
+
+  /* Um nome por código: o reporte repete o produto todo mês. */
+  var rep = abaRep.getRange(2, 1, abaRep.getLastRow() - 1, 4).getValues();
+  var nomePorCod = {};
+  rep.forEach(function (l) {
+    var cod = txt(l[2]), d = txt(l[3]);
+    if (!cod || !d || reVol.test(d) || nomePorCod[cod]) return;
+    nomePorCod[cod] = d.toUpperCase();
+  });
+  Object.keys(nomePorCod).forEach(function (cod) {
+    var n = nomePorCod[cod];
+    for (var k = 0; k < nomes.length; k++) {
+      var nv = nomes[k];
+      if (n.indexOf(nv) === 0 || abrevia(nv, n)) { pesos[cod] = Math.round(kgNome[nv] * 100) / 100; return; }
+    }
+  });
+  return pesos;
 }
 
 /* Antes de o Plano Mestre sobrescrever a previsão, guarda o que a HISTORICO

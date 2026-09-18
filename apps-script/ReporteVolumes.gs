@@ -30,9 +30,12 @@
  *
  * MODO MANUAL (continua valendo, e é o plano B se o PDF mudar de cara):
  *   1. criarAbaReporteVolumes() — uma vez; monta a aba REPORTE_VOLUMES;
- *   2. Cole o relatório do mês: MES | ANO | CODIGO | DESCRICAO | QUANTIDADE.
- *      A DESCRICAO é obrigatória: é ela que diz o que é volume ("VOL x/y…")
- *      e o que é produto. Código com pontos ("501.061.001") funciona;
+ *   2. Cole o relatório do mês: MES | ANO | CODIGO | DESCRICAO | QUANTIDADE
+ *      | PESO. A DESCRICAO é obrigatória: é ela que diz o que é volume
+ *      ("VOL x/y…") e o que é produto. Código com pontos ("501.061.001")
+ *      funciona. O PESO (kg da linha, como vem no PDF) é opcional para
+ *      volumes e fator, e obrigatório para o comparativo de anos medir mix
+ *      em peso em vez de só em peças;
  *   3. calcularVolumesMes() — escreve o resumo por mês na própria aba e
  *      lista os produtos sem SKU de volume (pendências de cadastro);
  *   4. Confira e rode lancarVolumesNaHistorico() — grava volumesProduzidos
@@ -47,6 +50,11 @@ var RV_ABA_CADASTRO  = 'PRODUTO_CODIGO';
 var RV_ABA_HISTORICO = 'HISTORICO';
 /* Onde o resumo por mês é escrito dentro da REPORTE_VOLUMES (colunas G..L). */
 var RV_COL_RESUMO = 7;
+/* Entrada: A..E são MES, ANO, CODIGO, DESCRICAO, QUANTIDADE desde sempre;
+   F guarda o PESO da linha (kg), que o PDF já trazia. Fica antes do resumo
+   porque F era a única coluna livre entre a entrada e o G do resumo. */
+var RV_COL_PESO    = 6;
+var RV_COLS_ENTRADA = 6;
 
 var RV_MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
@@ -58,10 +66,12 @@ function criarAbaReporteVolumes() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (ss.getSheetByName(RV_ABA)) return rvAvisar('Aba ' + RV_ABA + ' já existe — nada foi alterado.');
   var aba = ss.insertSheet(RV_ABA);
-  aba.getRange(1, 1, 1, 5).setValues([['MES', 'ANO', 'CODIGO', 'DESCRICAO', 'QUANTIDADE']]).setFontWeight('bold');
+  aba.getRange(1, 1, 1, RV_COLS_ENTRADA)
+     .setValues([['MES', 'ANO', 'CODIGO', 'DESCRICAO', 'QUANTIDADE', 'PESO']]).setFontWeight('bold');
   aba.getRange(1, RV_COL_RESUMO, 1, 6).setValues([['RESUMO: MES', 'ANO', 'VOLUMES', 'PRODUTOS', 'FATOR', 'PENDENCIAS']]).setFontWeight('bold');
   aba.setFrozenRows(1);
-  rvAvisar('Aba ' + RV_ABA + ' criada. Cole o relatório do mês (MES, ANO, CODIGO, DESCRICAO, QUANTIDADE) e rode calcularVolumesMes().');
+  rvAvisar('Aba ' + RV_ABA + ' criada. Cole o relatório do mês (MES, ANO, CODIGO, DESCRICAO, QUANTIDADE, PESO) e rode calcularVolumesMes(). '
+    + 'O PESO é opcional para volumes e fator; é ele que dá peso por produto no comparativo de anos do painel.');
 }
 
 /* ══ 2 · CADASTRO ══
@@ -339,7 +349,18 @@ function rvPeriodoDoTexto(texto) {
 
 /* Mesma régua do PDF: código 000.000.000, descrição, três números no fim
    (quantidade, peso, custo). Linha de cabeçalho/rodapé não casa e é
-   ignorada de graça. */
+   ignorada de graça.
+
+   O PESO (m[4]) era lido e jogado fora desde o começo — a régua sempre o
+   capturou para conseguir achar a quantidade, só não o guardava. Sem ele
+   não existe peso POR PRODUTO em lugar nenhum: a HISTORICO só tem o total
+   do mês, e por isso não dava para dizer se o mix mudou para peça mais
+   pesada ou se a fábrica só produziu mais. Agora vai para a coluna F.
+
+   É o peso TOTAL da linha (kg do que foi reportado daquele produto no mês),
+   na mesma régua do custo ao lado — não o peso unitário. O unitário sai de
+   peso ÷ quantidade, e o painel confere a soma contra o quilosProduzidos da
+   HISTORICO antes de usar. */
 function rvLinhasDoTexto(texto, mesAno) {
   var out = [];
   texto.split('\n').forEach(function (ln) {
@@ -347,26 +368,53 @@ function rvLinhasDoTexto(texto, mesAno) {
     if (!m) return;
     var qtd = rvNum(m[3]);
     if (!qtd) return;
-    out.push([mesAno.mes, mesAno.ano, m[1], m[2].trim(), qtd]);
+    out.push([mesAno.mes, mesAno.ano, m[1], m[2].trim(), qtd, rvNum(m[4])]);
   });
   return out;
 }
 
+/* Garante o cabeçalho PESO na coluna F de uma aba que nasceu com cinco
+   colunas. Só escreve se F estiver vazia: se alguém já usou a coluna para
+   outra coisa, o script não atropela — avisa quem chamou e o peso fica de
+   fora, que é o comportamento de antes. */
+function rvGarantirColunaPeso(aba) {
+  var atual = String(aba.getRange(1, RV_COL_PESO).getValue() || '').trim();
+  if (rvNormaliza(atual) === 'peso') return true;
+  if (atual) return false;
+  aba.getRange(1, RV_COL_PESO).setValue('PESO').setFontWeight('bold');
+  return true;
+}
+
 /* Troca as linhas do mês na REPORTE_VOLUMES pelas recém-lidas — reprocessar
-   o mesmo mês (PDF corrigido, por exemplo) substitui em vez de somar. */
+   o mesmo mês (PDF corrigido, por exemplo) substitui em vez de somar.
+
+   Lê e escreve seis colunas mesmo quando as linhas antigas só tinham cinco:
+   getValues() já devolve a matriz retangular com '' na F, e setValues()
+   exige que toda linha tenha o mesmo tamanho — por isso as novas passam por
+   rvSeisColunas() antes de entrar. */
 function rvSubstituirMes(mesAno, novas) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var aba = ss.getSheetByName(RV_ABA);
   if (!aba) { criarAbaReporteVolumes(); aba = ss.getSheetByName(RV_ABA); }
+  var comPeso = rvGarantirColunaPeso(aba);
+  var largura = comPeso ? RV_COLS_ENTRADA : 5;
   var alt = Math.max(aba.getLastRow() - 1, 0);
-  var atuais = alt ? aba.getRange(2, 1, alt, 5).getValues() : [];
+  var atuais = alt ? aba.getRange(2, 1, alt, largura).getValues() : [];
   var mantidas = atuais.filter(function (l) {
     var m = String(l[0] || '').trim().toUpperCase().slice(0, 3);
     return l[0] && !(m === mesAno.mes && parseInt(l[1], 10) === mesAno.ano);
   });
-  var tudo = mantidas.concat(novas);
-  if (alt) aba.getRange(2, 1, alt, 5).clearContent();
-  if (tudo.length) aba.getRange(2, 1, tudo.length, 5).setValues(tudo);
+  var tudo = mantidas.concat(novas).map(function (l) { return rvLinhaLarga(l, largura); });
+  if (alt) aba.getRange(2, 1, alt, largura).clearContent();
+  if (tudo.length) aba.getRange(2, 1, tudo.length, largura).setValues(tudo);
+}
+
+/* Corta ou completa a linha para a largura da aba — linha de cinco colunas
+   ganha '' na F, linha de seis perde o peso se a coluna não existir. */
+function rvLinhaLarga(linha, largura) {
+  var out = [];
+  for (var i = 0; i < largura; i++) out.push(linha[i] === undefined ? '' : linha[i]);
+  return out;
 }
 
 function rvMoverParaProcessados(pasta, pdf) {
