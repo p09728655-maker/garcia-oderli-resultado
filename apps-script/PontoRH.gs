@@ -767,23 +767,47 @@ function instalarProcessamentoPonto() {
    de fevereiro 1.416 h acima do ponto. */
 function aceitarPontoNaHistorico() {
   var ui = null, resp = '';
-  try { ui = SpreadsheetApp.getUi(); var r = ui.prompt('Aceitar o ponto na HISTORICO', 'Meses a regravar pelo log da aba PONTO, ex.: FEV/2026, MAI/2026', ui.ButtonSet.OK_CANCEL); if (r.getSelectedButton() !== ui.Button.OK) return; resp = r.getResponseText(); }
-  catch (e) { resp = 'FEV/2026, MAI/2026'; }   /* sem UI (Executar no editor): padrão documentado */
-  /* aceita JAN/2026, JAN/26, JAN 2026 e JAN2026: "JAN/26" era recusado e o
-     aviso só dizia "nenhum mês reconhecido". */
-  var pedidos = resp.toUpperCase().split(/[,;]+/).map(function (x) {
-    var m = x.trim().match(/^([A-Z]{3})\s*[\/\-]?\s*(\d{2}|\d{4})$/);
-    if (!m || PR_MESES.indexOf(m[1]) < 0) return null;
+  try { ui = SpreadsheetApp.getUi(); var r = ui.prompt('Aceitar o ponto na HISTORICO', 'Ano inteiro (2026) ou meses soltos (FEV/26, MAI/26). Em branco = ano corrente.', ui.ButtonSet.OK_CANCEL); if (r.getSelectedButton() !== ui.Button.OK) return; resp = r.getResponseText(); }
+  catch (e) { resp = ''; }                                    /* sem UI (Executar no editor): ano corrente */
+  if (!String(resp).trim()) resp = String(new Date().getFullYear());
+  /* Aceita "2026" (todos os meses daquele ano que tiverem linha no log),
+     "JAN/2026", "JAN/26", "JAN 2026" e "JAN-26". Mês a mês obrigava a lembrar
+     quais faltavam, e quem esquece um mês fica com o ano em duas réguas. */
+  var pedidos = [], anos = [], erros = [];
+  resp.toUpperCase().split(/[,;]+/).forEach(function (x) {
+    x = x.trim();
+    if (!x) return;
+    var so = x.match(/^(\d{2}|\d{4})$/);
+    if (so) { var y = parseInt(so[1], 10); anos.push(y < 100 ? 2000 + y : y); return; }
+    var m = x.match(/^([A-Z]{3})\s*[\/\-]?\s*(\d{2}|\d{4})$/);
+    if (!m || PR_MESES.indexOf(m[1]) < 0) { erros.push(x); return; }
     var a = parseInt(m[2], 10);
-    return { mes: m[1], ano: a < 100 ? 2000 + a : a };
-  }).filter(Boolean);
-  if (!pedidos.length) return prErro('nenhum mês reconhecido em "' + resp + '"');
+    pedidos.push({ mes: m[1], ano: a < 100 ? 2000 + a : a });
+  });
+  if (!pedidos.length && !anos.length) return prErro('nada reconhecido em "' + resp + '". Use o ano (2026) ou meses (FEV/26, MAI/26).');
   var ss = SpreadsheetApp.getActiveSpreadsheet(), log = ss.getSheetByName(PR_ABA_LOG);
   if (!log || log.getLastRow() < 2) return prErro('aba ' + PR_ABA_LOG + ' vazia: o extrato do mês precisa ter sido processado antes');
   var v = log.getDataRange().getValues(), cab = v[0].map(prNormaliza), col = {};
   cab.forEach(function (c, i) { if (col[c] === undefined) col[c] = i; });
   var num = function (x) { var f = parseFloat(String(x).replace(',', '.')); return isFinite(f) ? f : 0; };
-  var feitos = [], falhas = [];
+  /* "2026" vira a lista de meses que o log tem daquele ano, na ordem do
+     calendário. Mês sem extrato processado simplesmente não entra. */
+  anos.forEach(function (ano) {
+    var achados = {};
+    for (var r = 1; r < v.length; r++) {
+      if (parseInt(v[r][col.ano], 10) !== ano) continue;
+      var mm = String(v[r][col.mes]).toUpperCase().slice(0, 3);
+      if (PR_MESES.indexOf(mm) >= 0) achados[mm] = true;
+    }
+    var lista = PR_MESES.filter(function (m) { return achados[m]; });
+    if (!lista.length) { erros.push(ano + ' (nenhum extrato processado)'); return; }
+    lista.forEach(function (m) {
+      if (!pedidos.some(function (p) { return p.mes === m && p.ano === ano; })) pedidos.push({ mes: m, ano: ano });
+    });
+  });
+  pedidos.sort(function (a, b) { return (a.ano - b.ano) || (PR_MESES.indexOf(a.mes) - PR_MESES.indexOf(b.mes)); });
+  if (!pedidos.length) return prErro('nada a regravar: ' + erros.join(', '));
+  var feitos = [], falhas = [], iguais = 0;
   pedidos.forEach(function (p) {
     var ult = null;
     for (var r = 1; r < v.length; r++) {   /* a última linha do mês vence */
@@ -796,13 +820,19 @@ function aceitarPontoNaHistorico() {
     if (!(a.normais > 0)) { falhas.push(p.mes + '/' + p.ano + ': linha do log sem horas normais'); return; }
     var antes = prLerHistoricoMes(ss, p.mes, p.ano);
     prLancarHistorico(ss, p.mes, p.ano, a);
+    /* mês que já estava igual não polui o aviso: só conta */
+    if (antes && Math.abs(antes.horasNormais - a.normais) < 1 && Math.abs(antes.extra50 - a.e50) < 1
+        && Math.abs(antes.extra100 - a.e100) < 1 && antes.colaboradores === a.n) { iguais++; return; }
     feitos.push(p.mes + '/' + p.ano + ': h. normais ' + (antes ? Math.round(antes.horasNormais) : '—') + ' → ' + Math.round(a.normais)
       + ' | extra50 ' + (antes ? Math.round(antes.extra50) : '—') + ' → ' + Math.round(a.e50)
       + ' | extra100 ' + (antes ? Math.round(antes.extra100) : '—') + ' → ' + Math.round(a.e100)
       + ' | colaboradores ' + (antes ? antes.colaboradores : '—') + ' → ' + a.n);
   });
-  prAvisar((feitos.length ? 'HISTORICO regravada pelo ponto:\n' + feitos.join('\n') + '\n\nO painel refaz absenteísmo, peças por hora e hora extra desses meses no próximo sync.' : 'Nada regravado.')
-    + (falhas.length ? '\n\nNão feito:\n' + falhas.join('\n') : ''));
+  prAvisar((feitos.length ? 'HISTORICO regravada pelo ponto:\n' + feitos.join('\n') : 'Nenhum mês precisou mudar.')
+    + (iguais ? '\n\n' + iguais + ' mês(es) já estavam iguais ao ponto.' : '')
+    + (falhas.length ? '\n\nNão feito:\n' + falhas.join('\n') : '')
+    + (erros.length ? '\n\nNão reconhecido: ' + erros.join(', ') : '')
+    + '\n\nNo painel, use "Gravar cálculos na planilha" (Reunião › Integridade dos dados) para refazer absenteísmo, peças por hora e hora extra destes meses.');
 }
 
 /* Ensaio sem gravar: mostra no Registro o que seria lançado do primeiro
