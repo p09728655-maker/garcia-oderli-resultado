@@ -5156,6 +5156,30 @@ function renderSetoresHE(d){
     +'<div style="font-size:.62rem;color:var(--t3);margin-top:8px">Fonte: aba PONTO_SETOR (extrato do ponto + controle de faltas do RH). Hora por setor, não peça por setor: a produção é da fábrica inteira. Setor = o atual da pessoa na FUNCIONARIOS. HE "alta" = acima da razão da fábrica no mês ('+fd2(RS.refPct,1)+'%); o limite de 8% do painel é sobre peças e não se aplica por setor.</div>';
 }
 
+/* A mesma leitura da abertura, exposta como promessa para quem precisa da
+   planilha fresca antes de gravar (reuGravarCalculos). Rejeita em vez de
+   engolir o erro: quem chama decide o que fazer. */
+function _recarregarDoSheets(){
+  if (!SHEETS_WEBAPP_URL) return Promise.reject(new Error('sem URL do Web App'));
+  var url = SHEETS_WEBAPP_URL + (SHEETS_WEBAPP_URL.indexOf('?')>=0?'&':'?') + '_ts=' + Date.now();
+  return fetch(url, { cache: 'no-store' })
+    .then(function(r){ return r.text().then(function(txt){ return _lerRespostaWebApp(txt, r.status); }); })
+    .then(function(json){
+      if (!json || !json.ok || !json.dados || !json.dados.length) throw new Error('resposta sem dados');
+      var dados = json.dados.map(function(r){
+        var rec = Object.assign({id: uid()}, _traduzirCampos(r));
+        CAMPOS_NUM.forEach(function(c){ rec[c] = _numBR(rec[c]); });
+        rec.mes = String(rec.mes || '').trim();
+        return rec;
+      });
+      localStorage.setItem(SK, JSON.stringify(dados));
+      _idbSave(dados);
+      if (json.setores) { try { localStorage.setItem(SetorHE.SK, JSON.stringify(json.setores)); } catch (e) {} }
+      if (json.metas) { try { aplicarMetas(json.metas, true); } catch (e) {} }
+      return dados;
+    });
+}
+
 var _avisouWebApp = false;
 function _carregarDoSheetsAoAbrir(){
   if (!SHEETS_WEBAPP_URL) return;
@@ -21055,11 +21079,25 @@ function printAtiva(){
   }
   /* Recalcula tudo pela regra e manda para a HISTORICO: save() normaliza e
      sincroniza. Depois disso a planilha e o painel dizem o mesmo número. */
+  /* Recarrega a planilha ANTES de recalcular e gravar. O botão gravava a cópia
+     local, e a cópia podia ser mais velha que a planilha: em 18/09/26 o
+     PontoRH corrigiu MAR e JUN às 13h11, o painel estava aberto desde as
+     13h08, e o clique às 13h16 devolveu os dois meses ao valor antigo — sem
+     aviso, porque o painel não sabia que a planilha tinha mudado. Se a
+     releitura falhar, não grava: perder o clique é melhor que desfazer uma
+     correção feita na planilha. */
   window.reuGravarCalculos=function(){
     if(typeof save!=='function'||typeof load!=='function') return;
-    save(load());
-    if(typeof toast==='function') toast('Cálculos refeitos pela regra do painel e enviados à planilha.','ok');
-    try{ render(); }catch(e){}
+    var fim=function(){
+      save(load());
+      if(typeof toast==='function') toast('Planilha relida, cálculos refeitos pela regra do painel e enviados de volta.','ok');
+      try{ render(); }catch(e){}
+    };
+    if(typeof _recarregarDoSheets!=='function'){ fim(); return; }
+    if(typeof toast==='function') toast('Relendo a planilha antes de gravar…','info');
+    _recarregarDoSheets().then(fim).catch(function(e){
+      if(typeof toast==='function') toast('Não gravei: a planilha não respondeu ('+(e&&e.message||e)+'). Sem a releitura, gravar poderia desfazer uma correção feita nela.','err');
+    });
   };
   window.reuLideres=function(){
     var M=lidModelo();
@@ -21549,9 +21587,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b93.8';
+var APP_VERSAO = 'b93.9';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b93.9', data:'18/09/2026', itens:[
+    'Gravar calculos na planilha passa a reler a planilha antes de gravar. O botao enviava a copia local, e a copia podia estar mais velha que a planilha: em 18/09 o PontoRH corrigiu MAR e JUN as 13h11, o painel estava aberto desde as 13h08, e o clique as 13h16 devolveu os dois meses ao valor antigo, sem aviso. Se a releitura falhar, nao grava — perder o clique e melhor que desfazer uma correcao feita na planilha.'
+  ]},
   { v:'b93.8', data:'18/09/2026', itens:[
     'Referencia ao Power BI sai da tela e do DICIONARIO: o PPCP nao usa. O motivo de gravar os calculos na planilha continua o mesmo e agora esta escrito certo — a planilha mostrar o mesmo numero da tela.',
     'PontoRH.gs, aceitarPontoNaHistorico: aceita o ano com dois digitos e separador de espaco ou traco. "JAN/26" era recusado com "nenhum mes reconhecido" e so "JAN/2026" funcionava.'
