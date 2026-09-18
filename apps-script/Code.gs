@@ -87,6 +87,7 @@ var DICIONARIO_LINHAS = [
   ['horasNormais', 'automático', 'ponto', 'Normais do extrato = Carga − Faltas − Atrasos: horas trabalhadas na jornada normal. Base do absenteísmo e das peças por hora. Conferido em AGO/26.'],
   ['naoTrabalhadas', 'automático', 'ponto', 'PontoRH.gs: jornada cheia do mês (carga mais frequente entre os diretos) × diretos − Normais. Tudo que não foi trabalhado, férias incluídas.'],
   ['faltasPonto / atrasosPonto', 'automático', 'ponto', 'Colunas Faltas e Atras. do extrato, somadas para os diretos. O ponto só conta falta sem justificativa; atestado, afastamento e licença reduzem a Carga.'],
+  ['(aba PONTO_SETOR)', 'automático', 'ponto + controle', 'Uma linha por mês/ano/setor, diretos e indiretos: pessoas, horasCarga, horasNormais, faltasPonto, atrasosPonto, extra50, extra100, totalExtras, hePctHoras (totalExtras ÷ horasNormais do setor) e as ausências do controle. Hora por setor, não peça por setor; setor = o atual da pessoa na FUNCIONARIOS. Não digitar: o script regrava.'],
   ['ausFalta / ausAtestado / ausAfastado / ausAtraso', 'automático', 'controle de faltas', 'PontoRH.gs: aba BASE do CONTROLE_FALTAS, horas por STATUS, só para os diretos (mesma base das horas do ponto). Até SET/26 as faltas vinham do departamento 2-PRODUÇÃO inteiro, 18 setores.'],
   ['horasFerias', 'automático', 'controle de faltas', 'HORAS FÉRIAS da BASE, só para os diretos. Sem controle processado: o digitado.'],
   ['faltas / atraso', 'calculado', 'painel', 'Com o controle lançado: faltas = ausFalta + ausAtestado + ausAfastado; atraso = atrasosPonto (o ponto mede o relógio; o controle só registra o que o líder anota) ou, sem ponto, ausAtraso. Sem controle, com ponto: atraso = atrasosPonto; faltas = naoTrabalhadas − horasFerias − atraso. Sem nenhum dos dois: o digitado.'],
@@ -112,7 +113,7 @@ var DICIONARIO_LINHAS = [
   ['eficienciaAdj', 'aposentada', 'histórico', 'Aposentada em b88. A fórmula herdada do Excel subtraía horas de peças. O painel não calcula nem exibe; a coluna fica só como histórico. Use Peças perdidas.'],
   ['margem', 'calculado', 'painel', '(90 − eficiencia) ÷ 90 × 100'],
   ['custoCap', 'calculado', 'painel', 'totalFaltaAtraso × (producaoReal ÷ horasNormais) × ticketMedio'],
-  ['(todas as calculadas)', 'regra', 'painel', 'O painel refaz estas colunas a cada leitura e gravação (DashUtils.normalizar) e as grava de volta na HISTORICO ao sincronizar, para o Power BI e a planilha lerem o mesmo número. Não digitar.']
+  ['(todas as calculadas)', 'regra', 'painel', 'O painel refaz estas colunas a cada leitura e gravação (DashUtils.normalizar) e as grava de volta na HISTORICO ao sincronizar, para a planilha mostrar o mesmo número da tela. Não digitar.']
 ];
 function criarAbaDicionario() {
   /* É documentação, não dado: pode rodar de novo quando a regra mudar —
@@ -183,6 +184,8 @@ function doGet() {
               /* Linha (grupo do ERP) e peso (P B do cadastro) por produto —
                  o comparativo de anos mede o mix com os dois. */
               cadastro: lerCadastroProdutos(ss),
+              /* PONTO_SETOR: horas, hora extra e ausências por setor (PontoRH.gs). */
+              setores: (typeof prLerSetores === 'function') ? prLerSetores(ss) : [],
               acoes: lerAcoes(ss),
               metas: lerMetas(ss),
               /* Para o painel dizer PARA QUEM vai enviar antes de enviar. */

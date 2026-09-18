@@ -706,8 +706,35 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   ::-webkit-scrollbar { width: 7px; height: 7px; }
 }
 
+/* ── ÍCONES SVG DOS BOTÕES ─────────────────────────────────────────────
+   Os botões usavam emoji: 💬 e 📋 saem coloridos no Chrome, ✉ e ✎ saem
+   monocromáticos, e o desenho muda de sistema para sistema. Aqui cada ícone
+   é um SVG aplicado como máscara, então herda a cor do botão (currentColor)
+   e fica igual em qualquer máquina. Uso: <span class="ic ic-mail"></span>.
+   ────────────────────────────────────────────────────────────────────── */
+.ic{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.16em;flex:none;
+    background-color:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;
+    mask:var(--ic) center/contain no-repeat}
+.ic-zap{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z'/></svg>")}
+.ic-mail{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6'/></svg>")}
+.ic-copy{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 9h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V11a2 2 0 0 1 2-2zM5 15H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1'/></svg>")}
+.ic-print{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z'/></svg>")}
+.ic-save{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3'/></svg>")}
+.ic-load{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12'/></svg>")}
+.ic-alvo{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'/></svg>")}
+.ic-eng{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V7a1.7 1.7 0 0 0 1.5 1H23a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z'/></svg>")}
+.ic-mais{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 5v14M5 12h14'/></svg>")}
+.ic-reset{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M23 4v6h-6M20.5 15a9 9 0 1 1-2.1-9.4L23 10'/></svg>")}
+.ic-lapis{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z'/></svg>")}
+.ic-lixo{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6'/></svg>")}
+.ic-fechar{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M18 6L6 18M6 6l12 12'/></svg>")}
+.ic-play{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 3l14 9-14 9z'/></svg>")}
+.ic-graf{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M18 20V10M12 20V4M6 20v-6'/></svg>")}
+.ic-caixa{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.3 7L12 12l8.7-5M12 22V12'/></svg>")}
+.ic-carro{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 22a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM20 22a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6'/></svg>")}
+.ic-gente{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8'/></svg>")}
+.ic-doc{--ic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8'/></svg>")}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style id="tv-mode-style">.tv-mode { font-size: 20px; }
 .tv-mode #app { max-width: 100%; padding: 22px 28px 80px; }
 .tv-mode body::before { background-size: 60px 60px; }
@@ -1227,23 +1254,25 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <button class="sBtn" onclick="exportCSV()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"></path></svg>Exportar CSV</button>
     <button class="sBtn" onclick="printAtiva()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"></path></svg>Imprimir</button>
     <button class="sBtn" style="color:var(--amber);border-color:rgba(255,152,0,.4);background:rgba(255,152,0,.05)" onclick="brfgImprimir()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"></path></svg>Briefing</button>
-    <button class="sBtn" style="color:#F5A623;border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)" onclick="abrirMetas()" title="Metas oficiais (aba METAS da planilha): ver e alterar com origem e vigência">🎯 Metas oficiais</button>
+    <button class="sBtn" style="color:#F5A623;border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)" onclick="abrirMetas()" title="Metas oficiais (aba METAS da planilha): ver e alterar com origem e vigência"><span class="ic ic-alvo"></span> Metas oficiais</button>
 
     <div id="acoes-admin-toggle" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--b)">
-      <button class="sBtn" style="font-size:.62rem;color:var(--t3);border-color:var(--b);background:transparent;padding:5px 8px" onclick="document.getElementById('acoes-admin-box').style.display='flex';this.parentElement.style.display='none'">⚙ Modo edição (manutenção de dados)</button>
+      <button class="sBtn" style="font-size:.62rem;color:var(--t3);border-color:var(--b);background:transparent;padding:5px 8px" onclick="document.getElementById('acoes-admin-box').style.display='flex';this.parentElement.style.display='none'"><span class="ic ic-eng"></span> Modo edição (manutenção de dados)</button>
     </div>
 
     <div id="acoes-admin-box" style="display:none;flex-direction:column;gap:6px;margin-top:6px">
-      <button class="sBtn" onclick="abrirNovo()">＋ Novo Mês</button>
-      <!-- b88: o botão "Importar Excel" saiu da tela. O Excel deixou de ser fonte
-           em b87 (fonte única: HISTORICO + regra do painel); o botão era a porta
-           por onde uma segunda fonte voltaria. O input e importarExcel() ficam
-           para emergência: document.getElementById('inputXlsx').click() no console. -->
-      <input type="file" id="inputXlsx" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
-      <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)" onclick="salvarJSON()">💾 Salvar JSON</button>
-      <button class="sBtn" style="color:var(--cyan);border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.03)" onclick="document.getElementById('inputJSON').click()">📂 Carregar JSON</button>
-      <input type="file" id="inputJSON" accept=".json" style="display:none" onchange="carregarJSON(this)">
-      <button class="sBtn" style="color:var(--red);border-color:rgba(244,67,54,.3)" onclick="if(confirm('Isso apaga TODOS os dados. Tem certeza?'))resetDados()">↺ Resetar</button>
+      <button class="sBtn" onclick="abrirNovo()"><span class="ic ic-mais"></span> Novo Mês</button>
+      <!-- b95.1: "Salvar JSON" e "Carregar JSON" saíram. O Carregar chamava
+           save(), que sincroniza: abrir um arquivo antigo sobrescrevia a
+           planilha com ele, sem confirmação e sem desfazer — um JSON de março
+           apagaria as correções do ponto de agosto. Nasceram quando os dados
+           viviam só no navegador; hoje a planilha é a fonte. Restauração:
+           Arquivo › Histórico de versões, no próprio Google Sheets. Para tirar
+           dados do painel continua valendo o Exportar CSV. -->
+      <div style="font-size:.6rem;color:var(--t3);line-height:1.35;padding:2px 2px 4px">
+        Backup e restauração ficam na planilha: <b>Arquivo › Histórico de versões</b>.
+      </div>
+      <button class="sBtn" style="color:var(--red);border-color:rgba(244,67,54,.3)" onclick="if(confirm('Isso apaga TODOS os dados. Tem certeza?'))resetDados()"><span class="ic ic-reset"></span> Resetar</button>
     </div>
   </div>
   <!-- Selo de versão — no rodapé da sidebar: sempre à vista, sem flutuar por
@@ -1291,7 +1320,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   </button>
 <button class="pTab" id="pTab-ppcp" data-page="ppcp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"></path></svg>PPCP</button></nav>
 <!-- Sub-navegação: renderizada dinamicamente pelo módulo NAV4 -->
-<div id="sub-nav-bar" data-group="geral" data-label="Visão Geral" style="display: flex;"><button class="subTab on" data-page="resumo" onclick="mudarSubPagina('resumo',this)">📋 Resumo Executivo</button><button class="subTab" data-page="visao" onclick="mudarSubPagina('visao',this)">📊 Visão Geral</button></div>
+<div id="sub-nav-bar" data-group="geral" data-label="Visão Geral" style="display: flex;"><button class="subTab on" data-page="resumo" onclick="mudarSubPagina('resumo',this)"><span class="ic ic-doc"></span> Resumo Executivo</button><button class="subTab" data-page="visao" onclick="mudarSubPagina('visao',this)"><span class="ic ic-graf"></span> Visão Geral</button></div>
 
 <!-- ══ PÁGINA: VISÃO GERAL ══ -->
 <div class="page" id="page-visao">
@@ -1375,10 +1404,10 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 
   <!-- ─── ENTREGA × PRODUÇÃO (toggle Faturado/Vendido) ─── -->
   <div class="mes-takt-bloco-label primeiro" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <span><span id="mes-bl-ico">📦</span> <span id="mes-bl-label">FATURADO × PRODUÇÃO</span></span>
+    <span><span id="mes-bl-ico"><span class="ic ic-caixa"></span></span> <span id="mes-bl-label">FATURADO × PRODUÇÃO</span></span>
     <span style="display:inline-flex;gap:5px;margin-left:auto">
-      <button type="button" id="mes-bl-tgl-fat" onclick="mesSetBacklogMode('fat')" style="border:1px solid rgba(255,179,0,.45);border-radius:6px;padding:5px 11px;font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;font-family:inherit;background:rgba(255,179,0,.18);color:#ffb300;font-weight:700">📦 Faturado</button>
-      <button type="button" id="mes-bl-tgl-vend" onclick="mesSetBacklogMode('vend')" style="border:1px solid var(--b);border-radius:6px;padding:5px 11px;font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;font-family:inherit;background:transparent;color:var(--t3);font-weight:600">🛒 Vendido</button>
+      <button type="button" id="mes-bl-tgl-fat" onclick="mesSetBacklogMode('fat')" style="border:1px solid rgba(255,179,0,.45);border-radius:6px;padding:5px 11px;font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;font-family:inherit;background:rgba(255,179,0,.18);color:#ffb300;font-weight:700"><span class="ic ic-caixa"></span> Faturado</button>
+      <button type="button" id="mes-bl-tgl-vend" onclick="mesSetBacklogMode('vend')" style="border:1px solid var(--b);border-radius:6px;padding:5px 11px;font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;font-family:inherit;background:transparent;color:var(--t3);font-weight:600"><span class="ic ic-carro"></span> Vendido</button>
     </span>
   </div>
   <div class="mes-lvl2-grid">
@@ -1655,6 +1684,10 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       <div class="cEmpty" id="emDeltaEf" style="display: none;">Mínimo 2 meses de dados</div>
     </div>
   </div>
+  <!-- Hora extra por setor: aba PONTO_SETOR (PontoRH.gs). Só horas — a
+       produção não tem setor. Preenchido por renderSetoresHE. -->
+  <div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:20px 0 10px;padding-left:2px">▸ Hora extra por setor — segue o período escolhido na lateral</div>
+  <div class="cBox" id="ef-setores"><div class="cEmpty" style="display:block">Sem hora extra por setor: a aba PONTO_SETOR ainda não chegou da planilha (processe o extrato do ponto com o PontoRH.gs atual).</div></div>
 </div>
 
 <!-- ══ PÁGINA: PESSOAS ══ -->
@@ -2628,7 +2661,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
       <input class="cap-param-input" id="cf-p-caphora" type="number" min="0" step="1" value="">
       <span class="cap-param-from">▸ auto</span>
     </div>
-    <button class="cap-param-btn" onclick="cfRecalcular()">▶ Recalcular</button>
+    <button class="cap-param-btn" onclick="cfRecalcular()"><span class="ic ic-play"></span> Recalcular</button>
   </div>
 
   <!-- Estado vazio -->
@@ -3237,14 +3270,14 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
   <!-- ACTION BAR -->
   <div id="brfg-action">
     <span class="brfg-fonte" id="brfg-fonte-label">Dados: Abril/2026 · Gerado em 07/07/2026</span>
-    <button class="brfg-btn brfg-btn-print" onclick="brfgImprimir()">🖨️ Imprimir / PDF</button>
+    <button class="brfg-btn brfg-btn-print" onclick="brfgImprimir()"><span class="ic ic-print"></span> Imprimir / PDF</button>
     <a id="brfg-btn-gmail" class="brfg-btn brfg-btn-gmail" target="_blank" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;su=Briefing%20PPCP%20%E2%80%94%20Abril%2F2026">✉️ Abrir no Gmail</a>
-    <button class="brfg-btn brfg-btn-copy" id="brfg-btn-copy" onclick="brfgCopiar()">📋 Copiar para E-mail</button>
+    <button class="brfg-btn brfg-btn-copy" id="brfg-btn-copy" onclick="brfgCopiar()"><span class="ic ic-copy"></span> Copiar para E-mail</button>
   </div>
   <!-- CONTEÚDO GERADO -->
   <!-- Briefing inteiro de Abril/2026 vinha commitado aqui: 8 KB de um relatório
      antigo congelado, com "Gerado em: 07/07/2026" e a pauta daquele mês.
-     Resíduo do salvarArquivoHTML(). O JS reescreve este bloco em toda
+     Resíduo do antigo salvarArquivoHTML(), removido em b95.5. O JS reescreve este bloco em toda
      renderização (brfg-content.innerHTML), então o único efeito do texto
      congelado era mostrar o briefing errado até o JS rodar. -->
   <div id="brfg-content"></div>
@@ -4022,7 +4055,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
       navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([clone.innerText],{type:'text/plain'})})]).then(function(){
         var t=document.getElementById('brfg-toast'); t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},3500);
         var btn=document.getElementById('brfg-btn-copy'); btn.classList.add('copied'); btn.textContent='✓ Copiado!';
-        setTimeout(function(){btn.classList.remove('copied');btn.innerHTML='📋 Copiar para E-mail';},3000);
+        setTimeout(function(){btn.classList.remove('copied');btn.innerHTML='<span class="ic ic-copy"></span> Copiar para E-mail';},3000);
       });
     } catch(e) {
       var area=document.createElement('div'); area.contentEditable='true';
@@ -4043,7 +4076,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
     } catch(e){}
     document.getElementById('brfg-content').innerHTML=
       '<div class="brfg-sem-dados"><h3>Dados não encontrados</h3>'
-      +'<p>Importe a planilha pelo botão <strong>Importar XLSX</strong> no dashboard e volte nesta aba.<br><br>'
+      +'<p>Os dados vêm da planilha. Se esta aba estiver vazia, recarregue o painel para ele reler a HISTORICO.<br><br>'
       +'O briefing carrega automaticamente assim que os dados estiverem disponíveis.</p></div>';
   }
 
@@ -4245,7 +4278,7 @@ body.lid-on{overflow:hidden}
       <!-- Filtro próprio da aba. Antes o período vinha só da barra lateral,
            que fica escondida no modo TV e em tela de reunião — trocar de mês
            no meio da apresentação exigia sair da tela. -->
-      <div id="reu-filtro" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end"></div>
+      <div id="reu-filtro" style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:flex-end;min-width:0"></div>
       <span id="reu-per-lbl" style="font-family:var(--mono);font-size:1rem;font-weight:800;letter-spacing:.06em;
         color:#F5A623;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.45);
         border-radius:8px;padding:7px 16px;white-space:nowrap">—</span>
@@ -4427,24 +4460,6 @@ body.lid-on{overflow:hidden}
   </div>
 </div>
 
-<!-- ══ MODAL IMPORTAÇÃO ══ -->
-<div class="overlay" id="modImport">
-  <div class="modal" style="max-width:480px">
-    <h2><em>▸</em> Resultado da Importação</h2>
-    <!-- Conteúdo transitório: este bloco vinha commitado com o resultado de uma
-     importação de 2026 congelado ("18 meses atualizados: JAN/2026, ...") e com
-     o painel de validação já aprovado. Efeito do salvarArquivoHTML(), que
-     serializa o DOM vivo e vira o index.html do repositório. Vazio é o estado
-     correto antes de qualquer importação — texto aqui mente sobre um import
-     que não aconteceu nesta sessão. -->
-    <div id="importResult" style="font-size:.82rem;line-height:1.8;color:var(--t1)"></div><div id="valid-painel"></div>
-    <div class="mFoot" style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
-      <button class="btn" id="btnSalvarAposImport" onclick="salvarArquivoHTML()" style="background: rgb(21, 101, 192); color: rgb(255, 255, 255); border: none; font-weight: 700; display: inline-flex; gap: 6px;" disabled="">⏳ Gerando...</button>
-      <button class="btn btn-g" onclick="fecharImport()">Fechar</button>
-    </div>
-  </div>
-</div>
-
 <div id="zoomTabelaModal">
   <div id="zoomTabelaWrap">
     <div id="zoomTabelaHdr">
@@ -4465,7 +4480,7 @@ body.lid-on{overflow:hidden}
 
 <!-- Contêiner do tooltip. Vinha commitado com o conteúdo de um tooltip
      congelado ("Percentual de Horas Extras 13,0%") e uma posição fixa em
-     pixels — outro resíduo do salvarArquivoHTML(). O JS preenche em runtime. -->
+     pixels — outro resíduo do antigo salvarArquivoHTML(), removido em b95.5. O JS preenche em runtime. -->
 <div id="tip" class=""></div>
 
 
@@ -4567,7 +4582,7 @@ function abrirMetas(){
   ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
   ov.innerHTML='<div style="background:var(--panel);border:1px solid var(--b);border-top:3px solid #F5A623;border-radius:8px;width:100%;max-width:1100px;max-height:88vh;overflow:auto;padding:22px 24px;color:var(--t1)">'
     +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px">'
-      +'<div style="font-size:.95rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase">🎯 Metas oficiais</div>'
+      +'<div style="font-size:.95rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase"><span class="ic ic-alvo"></span> Metas oficiais</div>'
       +'<button onclick="document.getElementById(\'metas-overlay\').remove()" style="background:none;border:none;color:var(--t3);font-size:1.2rem;cursor:pointer;line-height:1">✕</button></div>'
     +'<div style="font-size:.72rem;color:var(--t3);margin-bottom:14px;line-height:1.5">Fonte: aba <b>METAS</b> da planilha. Alterar aqui grava lá, com data. '
       +'<b>Origem e vigência são obrigatórias</b> em toda linha alterada — meta sem dono e sem data não entra. Vale na hora para todo o painel.</div>'
@@ -4894,6 +4909,124 @@ function normalizarRegistro(r){
 }
 function loadBruto(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
 function load(){ return loadBruto().map(normalizarRegistro); }
+
+/* ── HORA EXTRA POR SETOR ─────────────────────────────────────────────────
+   Lê a aba PONTO_SETOR (PontoRH.gs) guardada em localStorage: uma linha por
+   mês/ano/setor com horas normais, extra50, extra100 e as ausências do
+   controle de faltas. Responde a pergunta que o total não responde: a hora
+   extra está cobrindo falta ou está no gargalo?
+     • HE do setor = extra50 + extra100 ÷ horas normais do setor;
+     • "alta" = acima da razão da fábrica (diretos) no mesmo mês, não de um
+       limite fixo — o limite de 8% do painel é sobre PEÇAS, e por setor só
+       há horas;
+     • falta do setor = (falta + atestado + afastado + atraso) ÷ h. normais,
+       contra ABS_ATENCAO, a mesma régua do card de faltas;
+     • leitura: HE alta + falta acima do limite = cobrindo falta;
+                HE alta + falta dentro = capacidade (gargalo);
+                HE abaixo da fábrica = sem leitura.
+   É hora por setor, não peça por setor; o setor é o atual da pessoa na
+   FUNCIONARIOS. Sem a aba, tudo devolve vazio e as telas não mostram nada. */
+window.SetorHE = (function(){
+  var SK_SET = 'dash_ponto_setor_v1';
+  function n(v){ if(typeof v==='number') return isFinite(v)?v:0; var x=parseFloat(String(v===null||v===undefined?'':v).replace(',','.')); return isFinite(x)?x:0; }
+  function carregar(){ try{ var a=JSON.parse(localStorage.getItem(SK_SET)); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  /* Um mês ou o ano inteiro, pela mesma conta. No ano as horas somam e as
+     pessoas viram média mensal: somar 93 pessoas de oito meses daria 744.
+     meses = lista de códigos, ou null para todos os meses do ano que tiverem
+     linha. */
+  function doPeriodo(ano, meses){
+    ano=parseInt(ano,10);
+    var alvo=meses?meses.map(function(m){ return String(m||'').trim().toUpperCase().slice(0,3); }):null;
+    var por={}, nomes=[];
+    carregar().forEach(function(r){
+      if(parseInt(r.ano,10)!==ano) return;
+      var m=String(r.mes||'').trim().toUpperCase().slice(0,3);
+      if(alvo && alvo.indexOf(m)<0) return;
+      var he=n(r.totalExtras)||(n(r.extra50)+n(r.extra100)), hn=n(r.horasNormais);
+      var atr=n(r.atrasosPonto)>0?n(r.atrasosPonto):n(r.ausAtraso);
+      var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+atr;
+      var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
+      var k=String(r.setor||'').trim()||'(sem setor)';
+      var a=por[k];
+      if(!a){ a=por[k]={ setor:k, direto:false, pessoas:0, meses:0, hn:0, he:0, e50:0, e100:0, aus:0, temAus:false }; nomes.push(k); }
+      a.direto=a.direto||/^s/i.test(String(r.direto||''));
+      a.temAus=a.temAus||temAus;
+      a.pessoas+=n(r.pessoas); a.hn+=hn; a.he+=he;
+      a.e50+=n(r.extra50); a.e100+=n(r.extra100); a.aus+=aus;
+      if(hn>0||he>0||n(r.pessoas)>0) a.meses++;
+    });
+    return nomes.map(function(k){
+      var a=por[k];
+      a.pessoas=a.meses>0?a.pessoas/a.meses:0;
+      a.hePct=a.hn>0?a.he/a.hn*100:0;
+      a.absPct=(a.temAus&&a.hn>0)?a.aus/a.hn*100:null;
+      return a;
+    });
+  }
+  function doMes(mes, ano){
+    mes=String(mes||'').trim().toUpperCase().slice(0,3); ano=parseInt(ano,10);
+    return carregar().filter(function(r){ return String(r.mes||'').trim().toUpperCase().slice(0,3)===mes && parseInt(r.ano,10)===ano; })
+      .map(function(r){
+        var he=n(r.totalExtras)||(n(r.extra50)+n(r.extra100)), hn=n(r.horasNormais);
+        /* Mesma regra do painel (DashUtils.normalizar): faltas = ausFalta +
+           ausAtestado + ausAfastado, e atraso = atrasosPonto quando há ponto
+           (o relógio), senão ausAtraso (o que o líder anota). Sem isso a
+           coluna dava 11,1% para AGO/26 contra os 12,4% do card de
+           absenteísmo, e o painel se contradizia na mesma tela. */
+        var atr=n(r.atrasosPonto)>0?n(r.atrasosPonto):n(r.ausAtraso);
+        var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+atr;
+        var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
+        return { setor:String(r.setor||'').trim()||'(sem setor)', direto:/^s/i.test(String(r.direto||'')), pessoas:n(r.pessoas),
+                 hn:hn, he:he, e50:n(r.extra50), e100:n(r.extra100), hePct:hn>0?he/hn*100:0,
+                 aus:aus, absPct:(temAus&&hn>0)?aus/hn*100:null };
+      });
+  }
+  /* Nome curto para frase: "7-LINHA DE PINTURA" → "linha de pintura". */
+  function nome(setor){ return String(setor).replace(/^\d+\s*-\s*/,'').toLowerCase(); }
+  /* resumo('AGO',2026) segue valendo; resumo(null,2026) dá o ano inteiro e
+     resumo(['JUN','JUL','AGO'],2026) um trimestre. */
+  function resumo(mes, ano){
+    var lin, rotulo;
+    if(mes===null||mes===undefined||mes===''){ lin=doPeriodo(ano,null); rotulo=String(ano); }
+    else if(Object.prototype.toString.call(mes)==='[object Array]'){ lin=doPeriodo(ano,mes); rotulo=(mes.length===1?mes[0]+'/'+String(ano).slice(2):mes[0]+'–'+mes[mes.length-1]+'/'+String(ano).slice(2)); }
+    else { lin=doPeriodo(ano,[mes]); rotulo=String(mes).toUpperCase().slice(0,3)+'/'+String(ano).slice(2); }
+    if(!lin.length) return null;
+    var absCrit=(typeof ABS_ATENCAO!=='undefined')?ABS_ATENCAO:6;
+    var dir=lin.filter(function(x){ return x.direto; }), ind=lin.filter(function(x){ return !x.direto; });
+    var sum=function(a,k){ return a.reduce(function(t,x){ return t+x[k]; },0); };
+    var heDir=sum(dir,'he'), hnDir=sum(dir,'hn'), heInd=sum(ind,'he'), hnInd=sum(ind,'hn');
+    var ausDir=sum(dir,'aus'), temAusDir=dir.some(function(x){ return x.absPct!==null; });
+    var ref=hnDir>0?heDir/hnDir*100:0;   /* razão da fábrica (diretos) */
+    dir.forEach(function(x){
+      x.parte=heDir>0?x.he/heDir*100:0;
+      x.heAlta=x.he>0&&x.hePct>ref;
+      x.leitura=!x.heAlta?'':(x.absPct===null?'HE alta':(x.absPct>absCrit?'cobrindo falta':'capacidade'));
+    });
+    dir.sort(function(a,b){ return b.he-a.he; });
+    var top=dir.slice(0,3).filter(function(x){ return x.he>0; });
+    return { mes:mes, ano:ano, rotulo:rotulo, varios:(rotulo===String(ano)||/–/.test(rotulo)), setores:dir, indiretos:ind, heDir:heDir, hnDir:hnDir, heInd:heInd, hnInd:hnInd,
+             refPct:ref, absDir:(temAusDir&&hnDir>0)?ausDir/hnDir*100:null, absCrit:absCrit,
+             top:top, topParte:top.reduce(function(t,x){ return t+x.parte; },0),
+             cobrindo:dir.filter(function(x){ return x.leitura==='cobrindo falta'; }),
+             capacidade:dir.filter(function(x){ return x.leitura==='capacidade'; }) };
+  }
+  function lista(arr){ var v=arr.map(function(x){ return nome(x.setor); }); return v.join(', ').replace(/, ([^,]*)$/,' e $1'); }
+  return { SK:SK_SET, carregar:carregar, doMes:doMes, doPeriodo:doPeriodo, resumo:resumo, nome:nome, lista:lista };
+})();
+/* Grava só no navegador, sem tocar na planilha. Existe porque save() sincroniza,
+   e há dois caminhos que precisam popular a tela sem escrever na fonte: a carga
+   inicial do PLANILHA embutido e o Resetar. Em 18/09/26 o Resetar limpou o local,
+   o init() caiu no PLANILHA (que vai até JUN/26) e o save() empurrou isso para a
+   HISTORICO: JAN–JUN voltaram aos valores anteriores ao ponto e JUL e AGO
+   ficaram zerados. */
+function salvarLocal(d){
+  d=(d||[]).map(normalizarRegistro);
+  try{ localStorage.setItem(SK,JSON.stringify(d)); }catch(e){}
+  _idbSave(d);
+  if(window.DashBus) window.DashBus.emit('dados:salvos', d);
+  return d;
+}
+
 function save(d){
   d=(d||[]).map(normalizarRegistro);
   localStorage.setItem(SK,JSON.stringify(d));
@@ -5089,6 +5222,72 @@ function _lerRespostaWebApp(txt, status){
   throw e2;
 }
 
+/* Tabela de hora extra por setor na aba Eficiência: último mês do período
+   filtrado que tenha linhas na PONTO_SETOR. Mesma leitura do slide do
+   briefing (SetorHE.resumo). */
+function renderSetoresHE(d){
+  var box=document.getElementById('ef-setores');
+  if(!box||!window.SetorHE) return;
+  /* Segue o filtro da lateral: soma os meses do período em vez de mostrar só
+     o último. Com mais de um ano no filtro vale o mais recente, porque somar
+     anos diferentes misturaria quadros de pessoal distintos. */
+  var regs=(d||[]).filter(function(r){ return r && r.ano && r.mes; });
+  var ano=regs.length?Math.max.apply(null,regs.map(function(r){ return r.ano; })):null;
+  var meses=regs.filter(function(r){ return r.ano===ano; }).map(function(r){ return r.mes; });
+  var RS=(ano&&meses.length)?SetorHE.resumo(meses.length===1?meses[0]:meses, ano):null;
+  if(RS&&!(RS.setores.length&&RS.heDir>0)) RS=null;
+  if(!RS){ box.innerHTML='<div class="cEmpty" style="display:block">Sem hora extra por setor no período: a aba PONTO_SETOR não tem estes meses (processe o extrato do ponto com o PontoRH.gs atual).</div>'; return; }
+  var fi2=function(v){ return isFinite(v)?Math.round(v).toLocaleString('pt-BR'):'—'; };
+  var fd2=function(v,k){ return isFinite(v)?v.toLocaleString('pt-BR',{minimumFractionDigits:k,maximumFractionDigits:k}):'—'; };
+  /* o tema escuro declara td{color:var(--t1)!important}: sem !important no
+     inline a coluna Leitura sai branca e a cor não distingue nada. Mesmo
+     defeito que a tabela da Reunião tinha. */
+  var cor=function(x){ return (x.leitura==='cobrindo falta'?'var(--red)':(x.leitura?'var(--amber)':'var(--t3)'))+'!important'; };
+  var nC=' style="text-align:right;font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap"';
+  var linhas=RS.setores.map(function(x){
+    return '<tr><td>'+x.setor+'</td><td'+nC+'>'+fi2(x.pessoas)+'</td><td'+nC+'>'+fi2(x.he)+'</td><td style="text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:'+(x.heAlta?'800':'600')+'">'+fd2(x.hePct,1)+'%</td><td'+nC+'>'+fd2(x.parte,0)+'%</td>'
+      +'<td'+nC+'>'+(x.absPct===null?'—':fd2(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor(x)+';font-weight:'+(x.leitura?'700':'400')+'">'+(x.leitura||'—')+'</td></tr>';
+  }).join('');
+  if(RS.indiretos.length) linhas+='<tr><td class="lid-tx" style="color:var(--t3)!important">Indiretos ('+RS.indiretos.length+' setores, fora da dependência de HE)</td><td'+nC+'>'+fi2(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nC+'>'+fi2(RS.heInd)+'</td><td'+nC+'>'+(RS.hnInd>0?fd2(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td'+nC+'>—</td><td'+nC+'>—</td><td class="lid-tx" style="color:var(--t3)!important">—</td></tr>';
+  linhas+='<tr class="lid-tot"><td>Fábrica (diretos)</td><td'+nC+'>'+fi2(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nC+'>'+fi2(RS.heDir)+'</td><td'+nC+'>'+fd2(RS.refPct,1)+'%</td><td'+nC+'>100%</td><td'+nC+'>'+(RS.absDir===null?'—':fd2(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr>';
+  box.innerHTML='<div class="cHdr"><span class="cTtl">▸ '+RS.rotulo+' · '+fd2(RS.topParte,0)+'% da hora extra em '+SetorHE.lista(RS.top)+'</span></div>'
+    +'<style>#ef-setores .lid-tab td,#ef-setores .lid-tab th{padding:4px 10px}</style>'
+    +'<table class="lid-tab" style="font-size:.72rem;table-layout:fixed;width:100%"><thead><tr>'
+      +'<th style="text-align:left">Setor</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:9%">Pessoas</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:9%">HE (h)</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:13%" title="extra50 + extra100 ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:9%" title="Parte do setor nas horas extras dos diretos">% da HE</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:9%" title="falta + atestado + afastado + atraso ÷ horas normais do setor (controle do RH)">Falta</th>'
+      +'<th style="text-align:left;white-space:nowrap;width:16%" title="Cobrindo falta: HE alta e falta acima de '+RS.absCrit+'%. Capacidade: HE alta com falta dentro do limite">Leitura</th>'
+    +'</tr></thead><tbody>'+linhas+'</tbody></table>'
+    +'<div style="font-size:.62rem;color:var(--t3);margin-top:8px">Fonte: aba PONTO_SETOR (extrato do ponto + controle de faltas do RH). '+(RS.varios?'Horas somadas no período; pessoas é a média mensal. ':'')+'Hora por setor, não peça por setor: a produção é da fábrica inteira. Setor = o atual da pessoa na FUNCIONARIOS. HE "alta" = acima da razão da fábrica no mês ('+fd2(RS.refPct,1)+'%); o limite de 8% do painel é sobre peças e não se aplica por setor.</div>';
+}
+
+/* A mesma leitura da abertura, exposta como promessa para quem precisa da
+   planilha fresca antes de gravar (reuGravarCalculos). Rejeita em vez de
+   engolir o erro: quem chama decide o que fazer. */
+function _recarregarDoSheets(){
+  if (!SHEETS_WEBAPP_URL) return Promise.reject(new Error('sem URL do Web App'));
+  var url = SHEETS_WEBAPP_URL + (SHEETS_WEBAPP_URL.indexOf('?')>=0?'&':'?') + '_ts=' + Date.now();
+  return fetch(url, { cache: 'no-store' })
+    .then(function(r){ return r.text().then(function(txt){ return _lerRespostaWebApp(txt, r.status); }); })
+    .then(function(json){
+      if (!json || !json.ok || !json.dados || !json.dados.length) throw new Error('resposta sem dados');
+      var dados = json.dados.map(function(r){
+        var rec = Object.assign({id: uid()}, _traduzirCampos(r));
+        CAMPOS_NUM.forEach(function(c){ rec[c] = _numBR(rec[c]); });
+        rec.mes = String(rec.mes || '').trim();
+        return rec;
+      });
+      localStorage.setItem(SK, JSON.stringify(dados));
+      _idbSave(dados);
+      if (json.setores) { try { localStorage.setItem(SetorHE.SK, JSON.stringify(json.setores)); } catch (e) {} }
+      if (json.metas) { try { aplicarMetas(json.metas, true); } catch (e) {} }
+      return dados;
+    });
+}
+
 var _avisouWebApp = false;
 function _carregarDoSheetsAoAbrir(){
   if (!SHEETS_WEBAPP_URL) return;
@@ -5118,6 +5317,10 @@ function _carregarDoSheetsAoAbrir(){
       if (json.cadastro) {
         try { localStorage.setItem('dash_prod_cad_v1', JSON.stringify(json.cadastro)); } catch (e) {}
       }
+      /* Horas, hora extra e ausências por setor (aba PONTO_SETOR, PontoRH.gs).
+         A planilha é a fonte: lista vazia também grava, para não sobrar setor
+         de rodada antiga. Web App antigo não manda a chave e nada muda. */
+      if (json.setores) { try { localStorage.setItem(SetorHE.SK, JSON.stringify(json.setores)); } catch (e) {} }
       /* Plano de ação da Reunião (aba ACOES). Mescla com o local: a versão
          mais nova de cada ação vence, e o que só existe aqui é reenviado. */
       if (json.acoes && window.Acoes) { try { window.Acoes.mesclar(json.acoes); } catch (e) { console.warn('ACOES:', e); } }
@@ -5144,95 +5347,12 @@ function _carregarDoSheetsAoAbrir(){
 window.addEventListener('load', function(){ setTimeout(_carregarDoSheetsAoAbrir, 300); });
 
 /* ── SALVAR / CARREGAR JSON ── */
-function salvarJSON(){
-  var d=load();
-  if(!d.length){toast('Sem dados para salvar.','wn');return}
-  var blob=new Blob([JSON.stringify({versao:'dash_v3',exportado:new Date().toISOString(),dados:d},null,2)],{type:'application/json'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='dashboard_dados_'+new Date().toISOString().slice(0,10)+'.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast('JSON salvo com sucesso!','ok')
-}
-
 /* ════════════════════════════════════════════════════════════
    SALVAR ARQUIVO HTML — Gera novo HTML com dados embutidos
    Os dados importados ficam permanentemente no código do arquivo.
    Não depende de localStorage, IndexedDB, cache ou configuração
    do browser. Abrir o arquivo salvo já tem todos os meses.
 ════════════════════════════════════════════════════════════ */
-function salvarArquivoHTML(){
-  var d=load();
-  if(!d.length){toast('Sem dados para salvar.','wn');return}
-
-  var btn=document.getElementById('btnSalvarAposImport');
-  if(btn){btn.textContent='⏳ Gerando...';btn.disabled=true;}
-
-  try{
-    /* Lê o HTML atual direto do DOM — funciona em file:// sem restrições */
-    var html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-
-    /* Serializa os dados atuais como bloco PLANILHA */
-    var linhas=d.map(function(r){ return '  '+JSON.stringify(r); }).join(',\n');
-    var novaPlanilha='var PLANILHA = [\n'+linhas+'\n];';
-
-    /* Substitui o bloco PLANILHA existente */
-    var re=/var PLANILHA\s*=\s*\[[\s\S]*?\];/;
-    if(!re.test(html)){
-      toast('Não foi possível localizar bloco PLANILHA.','er');
-      if(btn){btn.textContent='💾 Salvar Arquivo';btn.disabled=false;}
-      return;
-    }
-    var novoHtml=html.replace(re,novaPlanilha);
-
-    /* Download do arquivo atualizado */
-    var blob=new Blob([novoHtml],{type:'text/html;charset=utf-8'});
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='dashboard_mes_v15.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-
-    setTimeout(function(){
-      if(btn){btn.textContent='✓ Arquivo Salvo!';btn.disabled=false;}
-      toast('Arquivo salvo com '+d.length+' meses embutidos!','ok');
-    },300);
-
-  }catch(e){
-    toast('Erro ao gerar arquivo: '+e.message,'er');
-    if(btn){btn.textContent='💾 Salvar Arquivo';btn.disabled=false;}
-    console.error(e);
-  }
-}
-
-function carregarJSON(input){
-  var file=input.files[0];
-  if(!file){return}
-  input.value='';
-  var reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      var obj=JSON.parse(e.target.result);
-      /* Aceita tanto array direto quanto objeto com campo "dados" */
-      var dados=Array.isArray(obj)?obj:(obj.dados||null);
-      if(!dados||!dados.length){toast('JSON inválido ou sem dados.','er');return}
-      /* Valida campos mínimos */
-      var valido=dados.every(function(r){return r.mes&&r.ano&&r.horasCarga!==undefined});
-      if(!valido){toast('Estrutura do JSON inválida.','er');return}
-      save(sortD(dados));
-      render();
-      toast(dados.length+' registros carregados do JSON!','ok')
-    }catch(err){
-      toast('Erro ao ler JSON: '+err.message,'er');
-      console.error(err)
-    }
-  };
-  reader.readAsText(file,'UTF-8')
-}
-
 /* ════════════════════════════════════════════════════════════════
    DashBus — barramento de eventos centralizado
    Substitui a cadeia frágil de hooks setTimeout encadeados.
@@ -5931,7 +6051,7 @@ function render(){
       '<td class="cNum" title="'+tipHfp+'" style="color:'+hfpCor+';font-weight:700;">'+(hfp!==null?fi(hfp)+' h'+(hfp_pct!==null?' <span style="font-size:.67rem;opacity:.7">('+f(hfp_pct)+'%)</span>':''):'<span style="color:var(--t3)">—</span>')+'</td>'+
       '<td class="cNum">'+(r.ticketMedio>0?'R$ '+f(r.ticketMedio,2):'—')+'</td>'+
       '<td style="text-align:center"><div style="display:flex;gap:4px;justify-content:center">'+
-        '<button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg(\''+r.id+'\')">✎</button>'+
+        '<button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="editarReg(\''+r.id+'\')"><span class="ic ic-lapis"></span></button>'+
         '<button class="btn btn-sm btn-r" onclick="excluirReg(\''+r.id+'\')">✕</button>'+
       '</div></td>';
     tbody.appendChild(tr)
@@ -6935,9 +7055,17 @@ function exportCSV(){
 }
 
 /* ── RESETAR DADOS ── */
+/* Limpa a cópia local e relê a planilha. Não grava nada nela: se a releitura
+   falhar, a tela abre com o dataset embutido, que fica só no navegador. */
 function resetDados(){
-  if(!confirm('Resetar para os dados originais da planilha?\nLançamentos manuais serão perdidos.'))return;
-  localStorage.removeItem(SK); _idbClear(); anoAtivo=null; init(); toast('Dados resetados.','wn')
+  if(!confirm('Descartar a cópia local e reler a planilha?\nNada é apagado na planilha.'))return;
+  localStorage.removeItem(SK); _idbClear(); anoAtivo=null;
+  if(typeof _recarregarDoSheets==='function'){
+    toast('Relendo a planilha…','info');
+    _recarregarDoSheets()
+      .then(function(){ try{ render(); }catch(e){} toast('Cópia local refeita a partir da planilha.','ok'); })
+      .catch(function(e){ init(); toast('A planilha não respondeu ('+(e&&e.message||e)+'). A tela está com a base embutida, só no navegador.','er'); });
+  } else { init(); toast('Cópia local descartada.','wn'); }
 }
 
 /* ── EVENTOS ── */
@@ -6971,243 +7099,6 @@ window.addEventListener('resize',function(){clearTimeout(rsz);rsz=setTimeout(_re
     tmr = setTimeout(_redesenharPaginaAtiva, 160);
   }).observe(alvo);
 })();
-
-/* ════════════════════════════════════════════════════════════
-   IMPORTAR EXCEL (.xlsx)
-   Estrutura esperada: abas "ANALISE 2025", "ANALISE 2026", etc.
-   Linha 0 = cabeçalhos reais, dados a partir da linha 1.
-   Colunas por índice (0-based):
-   A coluna é resolvida pelo NOME do cabeçalho (_campoDoCabecalho). A tabela
-   POS abaixo é só rede para cabeçalho que não casa, e o uso dela vira aviso
-   na tela — se a planilha ganhar uma coluna no meio, o import avisa em vez
-   de gravar tudo deslocado em silêncio.
-   Este comentário já dizia 14=ProducaoReal enquanto o código lia row[15]:
-   documentação de posição fixa envelhece e ninguém percebe.
-════════════════════════════════════════════════════════════ */
-var MESES_VALIDOS=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-
-function importarExcel(input){
-  var file=input.files[0];
-  if(!file){return}
-  input.value=''; // reset para permitir reimportar mesmo arquivo
-
-  var reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      var data=new Uint8Array(e.target.result);
-      var wb=XLSX.read(data,{type:'array'});
-
-      var novos=[], atualizados=[], ignorados=[], erros=[];
-      var recsNovos=[];
-      var dadosExistentes=load();
-
-      wb.SheetNames.forEach(function(sheetName){
-        // Detecta ano da aba: "ANALISE 2025" → 2025
-        var anoMatch=sheetName.match(/\b(20\d{2})\b/);
-        if(!anoMatch){return}
-        var ano=parseInt(anoMatch[1]);
-
-        var ws=wb.Sheets[sheetName];
-        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
-
-        // Encontra linha de cabeçalho (contém "Meses" ou "MÊS")
-        var startRow=-1;
-        for(var i=0;i<rows.length;i++){
-          var r=rows[i];
-          if(r&&r[0]&&String(r[0]).trim().toLowerCase().replace('ê','e')==='meses'){
-            startRow=i+1; break
-          }
-        }
-        if(startRow<0){
-          erros.push('Aba "'+sheetName+'": não encontrou linha de cabeçalho');return
-        }
-
-        /* ── RESOLUÇÃO DE COLUNA POR CABEÇALHO ────────────────────────────
-           Toda coluna era lida por índice fixo (row[15], row[16], row[18]...).
-           Se alguém inserisse uma coluna no meio da planilha, os dados
-           entrariam deslocados EM SILÊNCIO: eficiencia (94,26) viraria
-           prodSemExtras (94 peças), diasTrabalhados viraria qtdeFaturado
-           (30.451 dias). E o bloco de horas — o único que um humano confere
-           de olho — sairia perfeito, porque o deslocamento começa depois
-           dele. O comentário de documentação deste bloco dizia 14=ProducaoReal
-           enquanto o código lia row[15]: já estavam divergentes.
-           Agora o nome do cabeçalho manda; o índice fixo é só rede. */
-        var headerRow = rows[startRow-1] || [];
-        var POS = { colaboradores:1, horasCarga:2, faltas:3, atraso:4,
-                    totalFaltaAtraso:5, absenteismo:6, horasNormais:7,
-                    extra50:8, extra100:9, totalExtras:10, horasTotais:11,
-                    producaoReal:15, prodSemExtras:16, meta:18, eficiencia:20,
-                    eficienciaAdj:21, margem:22, ticketMedio:23, custoCap:24,
-                    qtdeFaturado:25, diasTrabalhados:26, qtdeVendida:27 };
-
-        var colDe = {}, porNome = [], porPosicao = [];
-        for(var ci=0; ci<headerRow.length; ci++){
-          if(headerRow[ci] === null || headerRow[ci] === undefined || headerRow[ci] === '') continue;
-          var campo = _campoDoCabecalho(headerRow[ci]);
-          if(POS[campo] !== undefined && colDe[campo] === undefined) colDe[campo] = ci;
-        }
-        Object.keys(POS).forEach(function(c){
-          if(colDe[c] === undefined){ colDe[c] = POS[c]; porPosicao.push(c); }
-          else porNome.push(c);
-        });
-        function _col(campo){ return colDe[campo]; }
-
-        /* Previsão e férias variam de posição e não têm fallback confiável. */
-        var colPrevisao = -1, colFerias = -1;
-        for(var cp=0; cp<headerRow.length; cp++){
-          if(!headerRow[cp]) continue;
-          var hp = _normNome(headerRow[cp]);
-          if(colPrevisao < 0 && hp.indexOf('previsao') === 0) colPrevisao = cp;
-          if(colFerias   < 0 && hp.indexOf('ferias')  >= 0)   colFerias   = cp;
-        }
-        if(porPosicao.length){
-          erros.push('Aba "'+sheetName+'": '+porPosicao.length+' coluna(s) não '
-            +'encontrada(s) pelo nome, lidas por posição fixa — '
-            +porPosicao.join(', ')+'. Confira se a planilha mudou de layout.');
-        }
-
-        for(var ri=startRow;ri<rows.length;ri++){
-          var row=rows[ri];
-          if(!row||!row[0])continue;
-          var mesRaw=String(row[0]).trim().toUpperCase().substring(0,3);
-          if(MESES_VALIDOS.indexOf(mesRaw)<0)continue;
-
-          /* _numBR e não parseFloat: célula gravada como texto (colada de PDF
-             ou vinda do ERP) chega como "33.291" e parseFloat devolve 33,291
-             → Math.round → 33 peças. Perda de mil vezes, sem erro nenhum na
-             tela. "11,52" viraria 11. Os dois casos já apareceram aqui. */
-          var n = _numBR;
-          var g = function(campo){ return n(row[_col(campo)]); };
-          var rec={
-            id: uid(),
-            mes: mesRaw,
-            ano: ano,
-            colaboradores: Math.round(g('colaboradores')),
-            horasCarga:    parseFloat(g('horasCarga').toFixed(1)),
-            faltas:        parseFloat(g('faltas').toFixed(1)),
-            atraso:        parseFloat(g('atraso').toFixed(1)),
-            totalFaltaAtraso: parseFloat(g('totalFaltaAtraso').toFixed(1)),
-            absenteismo:   parseFloat((g('absenteismo')*100).toFixed(2)),
-            horasNormais:  parseFloat(g('horasNormais').toFixed(1)),
-            extra50:       parseFloat(g('extra50').toFixed(1)),
-            extra100:      parseFloat(g('extra100').toFixed(1)),
-            totalExtras:   parseFloat(g('totalExtras').toFixed(1)),
-            horasTotais:   parseFloat(g('horasTotais').toFixed(1)),
-            producaoReal:  Math.round(g('producaoReal')),
-            prodSemExtras: Math.round(g('prodSemExtras')),
-            meta:          Math.round(g('meta')),
-            eficiencia:    parseFloat((g('eficiencia')*100).toFixed(2)),
-            eficienciaAdj: parseFloat((g('eficienciaAdj')*100).toFixed(2)),
-            margem:        parseFloat((g('margem')*100).toFixed(2)),
-            ticketMedio:   parseFloat(g('ticketMedio').toFixed(2)),
-            custoCap:      parseFloat(g('custoCap').toFixed(2)),
-            qtdeFaturado:  Math.round(g('qtdeFaturado')),
-            diasTrabalhados: Math.round(g('diasTrabalhados')),
-            qtdeVendida:   Math.round(g('qtdeVendida')),
-            previsaoProducao: colPrevisao>=0 ? Math.round(n(row[colPrevisao])) : 0,
-            horasFerias:      colFerias  >=0 ? parseFloat(n(row[colFerias]).toFixed(1)) : 0
-          };
-
-          // Fix: absenteísmo já pode estar em % (>1) ou decimal (<1)
-          if(rec.absenteismo>0&&rec.absenteismo<1)
-            rec.absenteismo=parseFloat((rec.absenteismo*100).toFixed(2));
-
-          // Pula meses futuros sem dados (tudo zerado)
-          if(rec.colaboradores===0 && rec.horasCarga===0 && rec.producaoReal===0) continue;
-
-          recsNovos.push(rec);
-          var idx=dadosExistentes.findIndex(function(x){return x.mes===rec.mes&&x.ano===rec.ano});
-          if(idx>=0){
-            rec.id=dadosExistentes[idx].id; // preserva o id original
-            dadosExistentes[idx]=rec;
-            atualizados.push(mesRaw+'/'+ano)
-          } else {
-            dadosExistentes.push(rec);
-            novos.push(mesRaw+'/'+ano)
-          }
-        }
-      });
-
-      /* ── PORTÃO DE SANIDADE ──────────────────────────────────────────────
-         Resolver coluna por nome cobre o caso comum, mas não cobre cabeçalho
-         renomeado, duplicado, ou planilha com layout novo. Estas identidades
-         cobrem: valem em 18 de 18 meses da planilha atual e QUALQUER
-         deslocamento de coluna quebra pelo menos uma delas.
-         Import que reprova não grava nada — meio import é pior que nenhum,
-         porque mistura mês certo com mês deslocado na mesma série e não há
-         como saber depois qual é qual. */
-      var reprovas = [];
-      recsNovos.forEach(function(r){
-        var falhas = [];
-        var ap = function(t){ falhas.push(t); };
-        if (Math.abs((r.horasNormais + r.totalExtras) - r.horasTotais) > 1)
-          ap('h. normais + extras ≠ h. totais');
-        if (Math.abs((r.extra50 + r.extra100) - r.totalExtras) > 1)
-          ap('extra 50 + extra 100 ≠ total de extras');
-        if (Math.abs((r.faltas + r.atraso) - r.totalFaltaAtraso) > 1)
-          ap('faltas + atrasos ≠ total falta/atraso');
-        if (r.prodSemExtras > 0 && r.prodSemExtras > r.producaoReal + 1)
-          ap('produção s/ extras maior que a produção total');
-        if (r.diasTrabalhados < 0 || r.diasTrabalhados > 31)
-          ap('dias trabalhados = ' + r.diasTrabalhados);
-        if (r.absenteismo < 0 || r.absenteismo > 60)
-          ap('absenteísmo = ' + r.absenteismo + '%');
-        if (r.ticketMedio < 0 || r.ticketMedio > 10000)
-          ap('ticket médio = R$ ' + r.ticketMedio);
-        if (r.custoCap < 0) ap('custo de capital negativo');
-        if (falhas.length) reprovas.push(r.mes + '/' + r.ano + ': ' + falhas.join(' · '));
-      });
-
-      if (reprovas.length) {
-        var painel = document.getElementById('importResult');
-        var msg = '<p style="color:var(--red);font-weight:700">✗ Importação cancelada — '
-          + reprovas.length + ' mês(es) com dado incoerente. Nada foi gravado.</p>'
-          + '<p style="margin-top:8px;color:var(--t2);font-size:.78rem;line-height:1.6">'
-          + 'Isto costuma significar que a planilha ganhou ou perdeu uma coluna e os '
-          + 'valores entraram deslocados. Confira o cabeçalho da aba antes de reimportar.</p>'
-          + '<pre style="margin-top:10px;font-family:var(--mono);font-size:.72rem;color:#ff8a9a;'
-          + 'white-space:pre-wrap;line-height:1.55">' + reprovas.slice(0,12).join('\n')
-          + (reprovas.length>12 ? ('\n… e mais ' + (reprovas.length-12)) : '') + '</pre>';
-        if (painel) painel.innerHTML = msg; else alert(msg.replace(/<[^>]+>/g,''));
-        if (typeof toast==='function') toast('Importação cancelada: dado incoerente.','er');
-        return;
-      }
-
-      save(sortD(dadosExistentes));
-      render();
-
-      // Monta resultado
-      var html='';
-      if(novos.length)
-        html+='<p><span style="color:var(--green);font-weight:700">✓ '+novos.length+' meses adicionados:</span><br><span style="color:var(--t2);font-family:var(--mono);font-size:.75rem">'+novos.join(', ')+'</span></p>';
-      if(atualizados.length)
-        html+='<p style="margin-top:10px"><span style="color:var(--cyan);font-weight:700">↻ '+atualizados.length+' meses atualizados:</span><br><span style="color:var(--t2);font-family:var(--mono);font-size:.75rem">'+atualizados.join(', ')+'</span></p>';
-      if(erros.length)
-        html+='<p style="margin-top:10px"><span style="color:var(--red);font-weight:700">✕ Avisos:</span><br><span style="color:var(--t2);font-size:.75rem">'+erros.join('<br>')+'</span></p>';
-      if(!novos.length&&!atualizados.length)
-        html='<p style="color:var(--t3)">Nenhum dado encontrado no arquivo.</p>';
-
-      html+='<p style="margin-top:12px;font-size:.73rem;color:var(--t3)">ℹ️ Dados atualizados com os valores mais recentes da planilha.</p>';
-      document.getElementById('importResult').innerHTML=html;
-      document.getElementById('modImport').classList.remove('on'); /* Desativado a pedido: sem pop-up de confirmação */
-      /* Mostrar botão Salvar se houve dados importados */
-      var btnSalvar = document.getElementById('btnSalvarAposImport');
-      if (btnSalvar) {
-        btnSalvar.style.display = (novos.length || atualizados.length) ? 'inline-flex' : 'none';
-        btnSalvar.textContent = '💾 Salvar JSON';
-        btnSalvar.disabled = false;
-      }
-
-    }catch(err){
-      toast('Erro ao ler Excel: '+err.message,'er');
-      console.error(err)
-    }
-  };
-  reader.readAsArrayBuffer(file)
-}
-
-function fecharImport(){document.getElementById('modImport').classList.remove('on')}
-document.getElementById('modImport').addEventListener('click',function(e){if(e.target===this)fecharImport()});
 
 /* ════════════════════════════════════════════════════════════
    TOOLTIP ENGINE
@@ -7429,6 +7320,7 @@ function renderKPIsExtras(d){
   var acimaAbs=d.filter(function(r){return r.absenteismo>META_ABS}).length;
   var u=d[d.length-1], hfp=calcHFP(u);
 
+  try{ renderSetoresHE(d); }catch(e){ console.warn('SetorHE:', e); }
   // Capacidade
   s('kv2-cap', fi(tHT)+' h');
   s('kv2-hn',  fi(tHN)+' h');
@@ -7769,13 +7661,20 @@ function init(){
   var d=load();
 
   if(!d.length){
-    /* Sem dados nenhum — carrega PLANILHA como base inicial */
+    /* Sem dados nenhum — PLANILHA é só a base para a tela abrir com algo.
+       salvarLocal, nunca save: o dataset embutido está congelado na data em que
+       o arquivo foi publicado e não pode virar verdade na planilha. A leitura do
+       Web App, que roda logo em seguida, substitui isto pelo dado real. */
     d=PLANILHA.map(function(r){return Object.assign({id:uid()},r)});
-    save(d);
+    salvarLocal(d);
   } else {
-    /* MIGRAÇÃO SEGURA: se algum registro tiver campos faltando,
-       adiciona o campo com valor padrão — NUNCA apaga dados importados.
-       Isso preserva meses como MAR/2026 que não estão no PLANILHA hardcoded. */
+    /* MIGRAÇÃO SEGURA: se algum registro tiver campos faltando, adiciona o
+       campo com valor padrão — NUNCA apaga dados importados.
+       salvarLocal, não save: isto conserta a CÓPIA LOCAL para a tela não
+       quebrar com um campo ausente. Os valores são padrões (qtdeFaturado vira
+       producaoReal, diasTrabalhados vira 0), não dado apurado, e não podem
+       subir para a HISTORICO por conta própria. Campo faltando de verdade se
+       corrige na planilha. */
     var migrou=false;
     d=d.map(function(r){
       var dirty=false;
@@ -7786,7 +7685,7 @@ function init(){
       if(dirty) migrou=true;
       return r;
     });
-    if(migrou) save(d);
+    if(migrou) salvarLocal(d);
   }
 
   /* Filtro padrão ao abrir: ano e mês atuais (data do sistema).
@@ -9697,10 +9596,17 @@ function cfInicializar() {
   };
 
   /* ══════════════════════════════════════════════════════════════
-     MIGRAÇÃO DE DADOS — preenche diasTrabalhados e qtdeFaturado
-     nos registros que vieram do array PLANILHA (dados hardcoded)
-     e portanto não possuíam esses campos.
-     Executa UMA vez, somente se houver registros sem diasTrabalhados.
+     MIGRAÇÃO DE DADOS — preenche diasTrabalhados e qtdeFaturado nos
+     registros que vieram do array PLANILHA e portanto não possuíam
+     esses campos.
+
+     As duas tabelas abaixo estão congeladas no arquivo. Até b95.2 isto
+     chamava save(), que sincroniza: um mês cujo valor estivesse zerado na
+     planilha recebia de volta o número gravado aqui, sem ninguém pedir, e
+     rodando a cada abertura do painel. Passou a usar salvarLocal — conserta
+     a tela e não toca na HISTORICO. Com a planilha como fonte desde b87,
+     isto é resíduo: quando a HISTORICO tiver dias e faturado em todos os
+     meses de 2025 e JAN–FEV/26, as duas tabelas podem sair.
   ══════════════════════════════════════════════════════════════ */
   var _DIAS_REAIS = {
     '2026-JAN': 17, '2026-FEV': 20,
@@ -9716,7 +9622,7 @@ function cfInicializar() {
   };
 
   (function _migrarDados() {
-    if (typeof load !== 'function' || typeof save !== 'function') return;
+    if (typeof load !== 'function' || typeof salvarLocal !== 'function') return;
     var dados = load();
     if (!dados || !dados.length) return;
 
@@ -9739,9 +9645,9 @@ function cfInicializar() {
     });
 
     if (alterado) {
-      save(dados);
+      salvarLocal(dados);
       /* Avisa no console para diagnóstico */
-      console.log('[Ajustes v2] diasTrabalhados/qtdeFaturado migrados para registros existentes.');
+      console.log('[Ajustes v2] diasTrabalhados/qtdeFaturado preenchidos na cópia local (a planilha não foi tocada).');
     }
   })();
 
@@ -15072,7 +14978,7 @@ input:disabled, select:disabled {
       var palCobre = isVend ? '✅ Produção cobre as vendas' : '✅ Produção cobre a demanda';
 
       /* rótulos do 1º card + cabeçalho do bloco */
-      var ico = document.getElementById('mes-bl-ico');   if (ico) ico.textContent = isVend ? '🛒' : '📦';
+      var ico = document.getElementById('mes-bl-ico');   if (ico) ico.innerHTML = isVend ? '<span class="ic ic-carro"></span>' : '<span class="ic ic-caixa"></span>';
       var lbl = document.getElementById('mes-bl-label'); if (lbl) lbl.textContent = isVend ? 'VENDAS × PRODUÇÃO' : 'FATURADO × PRODUÇÃO';
       var bEl = document.getElementById('mes-takt-dem-badge'); if (bEl) { bEl.textContent = isVend ? 'TAKT VENDAS' : 'TAKT FATURADO'; bEl.style.color = srcCor; }
       var tEl = document.getElementById('mes-takt-dem-title'); if (tEl) tEl.textContent = isVend ? 'Takt Vendas' : 'Takt Faturado';
@@ -16815,195 +16721,6 @@ input:disabled, select:disabled {
 })();
 /* ══ FIM MÓDULO PROJEÇÃO ══ */
 
-/* ════════════════════════════════════════════════════════════════
-   MÓDULO — VALIDAÇÃO NA IMPORTAÇÃO EXCEL
-   Intercepta o resultado da importarExcel() e acrescenta
-   um painel de avisos detalhados sobre dados suspeitos:
-   • Eficiência > 120% ou < 10%
-   • Absenteísmo > 25%
-   • Colaboradores = 0
-   • Produção = 0 com horas > 0
-   • Meses duplicados na mesma aba
-   • Campos numéricos negativos onde não deveria
-════════════════════════════════════════════════════════════════ */
-(function () {
-
-  var style = document.createElement('style');
-  style.textContent = [
-    '#valid-painel{margin-top:14px;border-top:1px solid var(--b);padding-top:12px;display:none}',
-    '#valid-painel.on{display:block}',
-    '.valid-ttl{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px}',
-    '.valid-ttl.er{color:var(--ds-ruim)} .valid-ttl.wn{color:var(--ds-alerta)} .valid-ttl.ok{color:var(--ds-bom)}',
-    '.valid-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}',
-    '.valid-item{display:flex;align-items:flex-start;gap:7px;font-size:.72rem;padding:5px 8px;border-radius:4px}',
-    '.valid-item.er{background:rgba(244,67,54,.08);border:1px solid rgba(244,67,54,.2);color:#ff8a9a}',
-    '.valid-item.wn{background:rgba(255,152,0,.07);border:1px solid rgba(255,152,0,.2);color:#ffd04d}',
-    '.valid-item.ok{background:rgba(76,175,80,.07);border:1px solid rgba(76,175,80,.2);color:#69f0ae}',
-    '.valid-item-ico{flex-shrink:0;margin-top:1px}',
-    '.valid-resumo{font-size:.7rem;color:var(--t2);margin-top:8px}'
-  ].join('');
-  document.head.appendChild(style);
-
-  /* ── Regras de validação ── */
-  var REGRAS = [
-    {
-      id: 'ef-alta',
-      nivel: 'er',
-      msg: function(r) { return 'Eficiência muito alta ('+r.eficiencia.toFixed(1)+'%) em '+r.mes+'/'+r.ano+' — verifique se a coluna está correta.'; },
-      teste: function(r) { return r.eficiencia > 120; }
-    },
-    {
-      id: 'ef-baixa',
-      nivel: 'wn',
-      msg: function(r) { return 'Eficiência muito baixa ('+r.eficiencia.toFixed(1)+'%) em '+r.mes+'/'+r.ano+'.'; },
-      teste: function(r) { return r.eficiencia > 0 && r.eficiencia < 10; }
-    },
-    {
-      id: 'abs-alta',
-      nivel: 'wn',
-      msg: function(r) { return 'Absenteísmo muito alto ('+r.absenteismo.toFixed(1)+'%) em '+r.mes+'/'+r.ano+'.'; },
-      teste: function(r) { return r.absenteismo > 25; }
-    },
-    {
-      id: 'colabs-zero',
-      nivel: 'er',
-      msg: function(r) { return 'Colaboradores = 0 em '+r.mes+'/'+r.ano+' — campo obrigatório.'; },
-      // Só alerta se houver algum dado (não é mês futuro em branco)
-      teste: function(r) { return r.colaboradores <= 0 && (r.horasCarga > 0 || r.producaoReal > 0); }
-    },
-    {
-      id: 'prod-zero',
-      nivel: 'wn',
-      msg: function(r) { return 'Produção real = 0 em '+r.mes+'/'+r.ano+' com '+r.horasTotais+' h registradas.'; },
-      teste: function(r) { return r.producaoReal === 0 && r.horasTotais > 0; }
-    },
-    {
-      id: 'horas-neg',
-      nivel: 'er',
-      msg: function(r) { return 'Horas totais negativas ('+r.horasTotais+') em '+r.mes+'/'+r.ano+'.'; },
-      teste: function(r) { return r.horasTotais < 0; }
-    },
-    {
-      id: 'horas-inconsist',
-      nivel: 'wn',
-      msg: function(r) { return 'H. normais ('+r.horasNormais+') > H. totais ('+r.horasTotais+') em '+r.mes+'/'+r.ano+'.'; },
-      teste: function(r) { return r.horasNormais > r.horasTotais + 10; }
-    },
-    {
-      id: 'ef-decimal',
-      nivel: 'er',
-      msg: function(r) { return 'Eficiência parece estar em decimal (<1) em '+r.mes+'/'+r.ano+' — verifique formato da coluna.'; },
-      teste: function(r) { return r.eficiencia > 0 && r.eficiencia < 1; }
-    },
-    {
-      id: 'prod-acima-cap',
-      nivel: 'wn',
-      msg: function(r) {
-        return 'Produção real (' + (r.producaoReal||0) + ') > capacidade cadastrada em ' + r.mes + '/' + r.ano +
-               ' — Capacidade pode estar subestimada ou operação acima do limite planejado.';
-      },
-      teste: function(r) {
-        var cap = r.capHora || r.capacidade || r.capHoraFab || 0;
-        var hd  = r.diasTrabalhados > 0 ? r.diasTrabalhados * 8.8 : 22 * 8.8;
-        var prodH = hd > 0 ? (r.producaoReal || 0) / hd : 0;
-        return cap > 0 && prodH > cap;
-      }
-    }
-  ];
-
-  /* ── Validar lista de registros e retornar avisos ── */
-  function validar(registros) {
-    var avisos = [];
-
-    /* Regras por registro */
-    registros.forEach(function(r) {
-      REGRAS.forEach(function(regra) {
-        if (regra.teste(r)) {
-          avisos.push({ nivel: regra.nivel, texto: regra.msg(r) });
-        }
-      });
-    });
-
-    /* Duplicatas dentro do mesmo lote */
-    var vistos = {};
-    registros.forEach(function(r) {
-      var chave = r.mes + '-' + r.ano;
-      if (vistos[chave]) {
-        avisos.push({ nivel: 'er', texto: 'Mês duplicado no arquivo: '+r.mes+'/'+r.ano+'.' });
-      }
-      vistos[chave] = true;
-    });
-
-    return avisos;
-  }
-
-  /* ── Renderizar painel de validação no modal de importação ── */
-  function renderValidacao(registros) {
-    var painel = document.getElementById('valid-painel');
-    if (!painel) return;
-
-    var avisos = validar(registros);
-    var erros  = avisos.filter(function(a) { return a.nivel === 'er'; });
-    var warns  = avisos.filter(function(a) { return a.nivel === 'wn'; });
-
-    if (!avisos.length) {
-      painel.className = 'on';
-      painel.innerHTML = '<div class="valid-ttl ok">✅ Validação aprovada</div>' +
-        '<ul class="valid-list"><li class="valid-item ok"><span class="valid-item-ico">✓</span>' +
-        'Todos os '+registros.length+' registros passaram na validação automática.</li></ul>';
-      return;
-    }
-
-    var ttlNivel = erros.length ? 'er' : 'wn';
-    var ttlTxt   = erros.length
-      ? '⚠ ' + erros.length + ' problema'+(erros.length>1?'s':'')+' encontrado'+(erros.length>1?'s':'')
-      : '⚡ ' + warns.length + ' aviso'+(warns.length>1?'s':'')+' de qualidade';
-
-    var itens = avisos.map(function(a) {
-      var ico = a.nivel === 'er' ? '✕' : '!';
-      return '<li class="valid-item '+a.nivel+'"><span class="valid-item-ico">'+ico+'</span><span>'+a.texto+'</span></li>';
-    }).join('');
-
-    painel.className = 'on';
-    painel.innerHTML =
-      '<div class="valid-ttl '+ttlNivel+'">'+ttlTxt+'</div>' +
-      '<ul class="valid-list">'+itens+'</ul>' +
-      '<div class="valid-resumo">'+registros.length+' registros importados · '+erros.length+' erros · '+warns.length+' avisos. Corrija na planilha e reimporte se necessário.</div>';
-  }
-
-  /* ── Injetar painel no modal de importação ── */
-  function injetarPainel() {
-    var result = document.getElementById('importResult');
-    if (!result || document.getElementById('valid-painel')) return;
-    var div = document.createElement('div');
-    div.id = 'valid-painel';
-    result.parentNode.insertBefore(div, result.nextSibling);
-  }
-
-  /* ── Interceptar importarExcel via DashBus dados:salvos ── */
-  function _init() {
-    injetarPainel();
-
-    /* Hook no save() — quando importação termina, valida os dados novos */
-    var _origSave = typeof save === 'function' ? save : null;
-    if (_origSave && !_origSave._validV1) {
-      save = function(d) {
-        _origSave.apply(this, arguments);
-        /* Valida apenas se o modal de import estiver aberto */
-        var modal = document.getElementById('modImport');
-        if (modal && modal.classList.contains('on')) {
-          setTimeout(function() { renderValidacao(d); }, 100);
-        }
-      };
-      save._validV1 = true;
-    }
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init);
-  else _init();
-
-})();
-/* ══ FIM MÓDULO VALIDAÇÃO EXCEL ══ */
 </script>
 
 <script>
@@ -21099,6 +20816,84 @@ window.CompAnos = (function () {
      legível da tela era justamente o que dizia por que os cards estavam ali.
      Dentro da faixa, o card que responde a pergunta é o grande; os outros
      explicam. */
+  /* HORA EXTRA POR SETOR NA REUNIÃO
+     A dependência de HE do mês é um número só; ele diz que existe hora extra,
+     não onde nem por quê. Este bloco responde as duas coisas com a PONTO_SETOR:
+     os cinco setores que mais consomem HE, a razão de cada um sobre as próprias
+     horas normais, e a leitura — HE acima da fábrica com falta acima do limite
+     é reposição de presença; com falta dentro, é capacidade. A decisão de turno,
+     headcount ou ação de presença muda conforme a resposta.
+     O Relatório reaproveita o HTML da tela, então o bloco sai impresso junto.
+     Sem a PONTO_SETOR do mês (extrato do ponto não processado), não aparece. */
+  function reuBlocoSetores(mes,ano){
+    if(!window.SetorHE||!SetorHE.resumo) return '';
+    var RS=null; try{ RS=SetorHE.resumo(mes,ano); }catch(e){ return ''; }
+    if(!RS||!RS.setores.length||!(RS.heDir>0)) return '';
+    var comHE=RS.setores.filter(function(x){ return x.he>0; });   /* já vem em ordem de HE */
+    if(!comHE.length) return '';
+    /* Cinco maiores + qualquer setor que a frase vá nomear: citar "corte" numa
+       frase e não ter a linha de corte na tabela manda o leitor procurar o que
+       não está lá. */
+    var top=comHE.slice(0,5);
+    comHE.slice(5).forEach(function(x){ if(x.leitura) top.push(x); });
+    top.sort(function(a,b){ return b.he-a.he; });
+    var dentro={}; top.forEach(function(x){ dentro[x.setor]=1; });
+    var resto=comHE.filter(function(x){ return !dentro[x.setor]; });
+    var hRest=resto.reduce(function(t,x){ return t+x.he; },0);
+    var tres=comHE.slice(0,3);
+    var parteTres=tres.reduce(function(t,x){ return t+x.parte; },0);
+    /* o tema escuro declara td{color:var(--t1)!important}: sem !important no
+       inline a coluna Leitura saía branca e a cor não dizia nada */
+    var corLeitura=function(x){ return x.leitura==='cobrindo falta'?'#F44336':(x.leitura?'#FF9800':'var(--t3)'); };
+    /* Consolas com peso 400 a 12px sobre fundo escuro fica fino ao lado do
+       Segoe UI da mesma linha e o número parece embaçado. Peso 600 e
+       tabular-nums resolvem sem aumentar a tabela. */
+    var nCel=' class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums"';
+    var linha=function(x){
+      return '<tr><td class="reu-set-nome">'+x.setor+'</td>'
+        +'<td'+nCel+'>'+fi(x.pessoas)+'</td>'
+        +'<td'+nCel+'>'+fi(x.he)+'</td>'
+        +'<td class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:'+(x.heAlta?'800':'600')+'">'+fd(x.hePct,1)+'%</td>'
+        +'<td'+nCel+'>'+fd(x.parte,0)+'%</td>'
+        +'<td'+nCel+'>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td>'
+        +'<td style="color:'+corLeitura(x)+'!important;font-weight:'+(x.leitura?'700':'400')+'">'+(x.leitura||'—')+'</td></tr>';
+    };
+    var frase=fd(parteTres,0)+'% da hora extra está em '+SetorHE.lista(tres)+'.'
+      +(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' a falta também passa de '+RS.absCrit+'%: hora extra cobrindo presença.':'')
+      +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro do limite: é capacidade.':'');
+    return '<div class="reu-setores" style="margin:10px 2px 0">'
+      +'<div class="reu-set-h" style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:3px">'
+        +'▸ Onde está a hora extra · '+RS.rotulo+'</div>'
+      +'<div class="reu-set-p" style="font-size:.8rem;color:var(--t1);opacity:.85;line-height:1.35;margin-bottom:5px">'+frase+'</div>'
+      +'<style>.reu-set-tab th{color:var(--t2)!important;font-size:.63rem;letter-spacing:.07em;text-transform:uppercase;padding:3px 6px;border-bottom:1px solid var(--b)}'
+        +'.reu-set-tab td{padding:3px 6px;border-top:1px solid rgba(255,255,255,.05)}'
+        +'.reu-set-resto:hover td{background:rgba(245,166,35,.07)}'
+        +'.reu-set-tab .reu-set-tot td{border-top:1px solid var(--b)}</style>'
+      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="width:100%;border-collapse:collapse;font-size:.76rem;min-width:600px">'
+      +'<thead><tr>'
+        +'<th style="text-align:left;width:auto">Setor</th>'
+        +'<th style="text-align:right;width:8%;white-space:nowrap">Pessoas</th>'
+        +'<th style="text-align:right;width:9%;white-space:nowrap" title="extra50 + extra100 do ponto">HE (h)</th>'
+        +'<th style="text-align:right;width:12%;white-space:nowrap" title="HE ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th>'
+        +'<th style="text-align:right;width:8%;white-space:nowrap" title="Parte do setor nas horas extras dos diretos">% da HE</th>'
+        +'<th style="text-align:right;width:9%;white-space:nowrap" title="falta, atestado, afastado e atraso ÷ horas normais do setor">Falta</th>'
+        +'<th style="text-align:left;width:16%;white-space:nowrap" title="Cobrindo falta: HE acima da fábrica e falta acima de '+RS.absCrit+'%. Capacidade: HE acima da fábrica com falta dentro">Leitura</th>'
+      +'</tr></thead><tbody>'
+      +top.map(linha).join('')
+      +(resto.length?('<tr class="reu-set-resto" onclick="reuSetoresMais()" title="Abrir os outros setores" style="cursor:pointer">'
+          +'<td class="reu-set-nome" style="color:var(--t3)!important"><span id="reu-set-lbl">▸ Outros '+resto.length+' setores diretos</span></td>'
+          +'<td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>'
+          +resto.map(function(x){ return linha(x).replace('<tr>','<tr class="reu-set-extra" style="display:none">'); }).join('')):'')
+      +'<tr class="reu-set-tot"><td class="reu-set-nome" style="font-weight:700">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
+      +'</tbody></table></div>'
+      +'<div class="reu-set-nota" style="font-size:.66rem;color:var(--t3);margin-top:4px;line-height:1.3">'
+        +'Horas do ponto, não peças: a produção é da fábrica inteira. '
+        +(RS.varios?'Horas somadas no período; pessoas é a média mensal. ':'')
+        +'Indiretos, fora da dependência de HE: '
+        +fi(RS.heInd)+' h'+(RS.hnInd>0?(' ('+fd(RS.heInd/RS.hnInd*100,1)+'%)'):'')+'.'
+      +'</div></div>';
+  }
+
   function faixa(num,pergunta,resposta,corResp,cards,extra){
     return '<div class="reu-sec" style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:13px 0 7px;padding-left:2px">'
       +'<span class="reu-sec-n" style="font-family:var(--mono);font-size:.8rem;font-weight:800;color:#F5A623">'+num+'</span>'
@@ -21139,7 +20934,7 @@ window.CompAnos = (function () {
       +'<summary style="cursor:pointer;font-weight:700;color:'+cor+'">'+titulo+'</summary>'
       +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px">'
         +'<button type="button" class="btn btn-g btn-sm reu-noprint" onclick="reuGravarCalculos()" title="Recalcula todos os meses, de todos os anos, pela regra do painel e envia para a HISTORICO">Gravar cálculos na planilha</button>'
-        +'<span style="font-size:.7rem;color:var(--t3)">Refaz as colunas calculadas de todos os anos pela regra atual (metas incluídas) e grava na HISTORICO, para a planilha e o Power BI lerem o mesmo número. Use depois de mudar uma meta ou corrigir uma entrada.</span></div>'
+        +'<span style="font-size:.7rem;color:var(--t3)">Refaz as colunas calculadas de todos os anos pela regra atual (metas incluídas) e grava na HISTORICO, para a planilha mostrar o mesmo número da tela. Use depois de mudar uma meta ou corrigir uma entrada.</span></div>'
       +(I.itens.length
         ? '<div style="color:var(--t3);margin:6px 0 4px;line-height:1.4">Conferido contra a própria linha, o reporte do ERP e o Plano Mestre. '
           +'As colunas calculadas saem da regra do painel; "planilha desatualizada" significa que a HISTORICO ainda guarda a conta antiga. '
@@ -21321,13 +21116,13 @@ window.CompAnos = (function () {
         +'<td style="white-space:nowrap">'+esc(a.status||'Aberta')
           +(a.enviadoEm?'<div style="color:var(--t3);font-size:.62rem">cobrada '+fData(a.enviadoEm)+'</div>':'')+'</td>'
         +'<td class="reu-noprint" style="white-space:nowrap">'
-          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar">✎</button> '
+          +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar"><span class="ic ic-lapis"></span></button> '
           +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button> ':'')
-          +'<details class="reu-envio"><summary class="btn btn-g btn-sm" title="Enviar esta ação">✉ Enviar</summary><div class="reu-envio-menu">'
-            +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\');this.closest(\'details\').open=false" title="Enviar por WhatsApp para o responsável">💬 WhatsApp</button>'
+          +'<details class="reu-envio"><summary class="btn btn-g btn-sm" title="Enviar esta ação"><span class="ic ic-mail"></span> Enviar</summary><div class="reu-envio-menu">'
+            +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\');this.closest(\'details\').open=false" title="Enviar por WhatsApp para o responsável"><span class="ic ic-zap"></span> WhatsApp</button>'
             +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\');this.closest(\'details\').open=false" title="Enviar agora, pela caixa do PPCP, para a lista da aba EMAIL">✉ E-mail</button>'
           +'</div></details> '
-          +'<button type="button" class="btn btn-g btn-sm reu-del" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)">🗑</button>'
+          +'<button type="button" class="btn btn-g btn-sm reu-del" onclick="reuAcaoExcluir(\''+esc(a.id)+'\')" title="Excluir (some do painel; a linha fica na planilha como Excluída)"><span class="ic ic-lixo"></span></button>'
         +'</td></tr>';
     }).join('');
     var vazio='<tr><td colspan="9" style="color:var(--t3);padding:14px 8px;text-align:center">'
@@ -21362,9 +21157,9 @@ window.CompAnos = (function () {
         +'<label style="font-size:.66rem;color:var(--t3);display:inline-flex;align-items:center;gap:5px;cursor:pointer">'
           +'<input type="checkbox" '+(mostrarFechadas?'checked':'')+' onchange="reuAcaoMostrar(this.checked)" style="width:auto">mostrar concluídas e canceladas</label>'
         +'<span style="font-size:.66rem;color:var(--t3)">Plano em aberto:</span>'
-        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'zap\')" title="Todas as ações em aberto numa mensagem de WhatsApp">💬 WhatsApp</button>'
-        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Enviar todas as ações em aberto agora, pela caixa do PPCP, para a lista da aba EMAIL">✉ E-mail</button>'
-        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'copiar\')" title="Copiar o plano em aberto como texto">📋 Copiar</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'zap\')" title="Todas as ações em aberto numa mensagem de WhatsApp"><span class="ic ic-zap"></span> WhatsApp</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Enviar todas as ações em aberto agora, pela caixa do PPCP, para a lista da aba EMAIL"><span class="ic ic-mail"></span> E-mail</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'copiar\')" title="Copiar o plano em aberto como texto"><span class="ic ic-copy"></span> Copiar</button>'
         +'<span style="margin-left:auto;font-size:.62rem;color:var(--t3)">aba ACOES da planilha · cópia local para abrir offline</span>'
       +'</div>'
       +form
@@ -21383,20 +21178,26 @@ window.CompAnos = (function () {
       if((r.producaoReal||0)>0 && anos.indexOf(r.ano)<0) anos.push(r.ano); });
     anos.sort(function(a,b){ return a-b; });
 
-    var bt=function(txt,on,attr,titulo){
+    /* Os meses quebravam em três linhas a 1600px e o cabeçalho crescia
+       conforme o ano andava. Agora são dois grupos que não quebram: anos e
+       "Ano todo" de um lado, os doze meses do outro, mais estreitos. Se um dia
+       não couberem, o grupo dos meses rola na horizontal em vez de empurrar a
+       tela para baixo. */
+    var bt=function(txt,on,attr,titulo,estreito){
       return '<button type="button" data-reu="'+attr+'" title="'+(titulo||'')+'" style="'
-        +'font-family:var(--mono);font-size:.68rem;font-weight:700;letter-spacing:.04em;'
-        +'padding:5px 9px;border-radius:5px;cursor:pointer;white-space:nowrap;'
+        +'font-family:var(--mono);font-size:'+(estreito?'.64rem':'.68rem')+';font-weight:700;letter-spacing:.03em;'
+        +'padding:'+(estreito?'4px 6px':'5px 9px')+';border-radius:5px;cursor:pointer;white-space:nowrap;flex:none;'
         +(on?'background:rgba(245,166,35,.18);border:1px solid #F5A623;color:#F5A623;'
             :'background:transparent;border:1px solid var(--b);color:var(--lbl-2,#9AA9B8);')
         +'">'+txt+'</button>';
     };
-    var h='';
-    anos.forEach(function(a){ h+=bt(String(a), a===anoAtual, 'ano:'+a, 'Ver o ano de '+a); });
-    h+='<span style="width:8px"></span>';
-    h+=bt('Ano todo', !mesAtual, 'mes:', 'Acumulado do ano inteiro');
-    mesesDoAno.forEach(function(m){ h+=bt(m, m===mesAtual, 'mes:'+m, m+'/'+anoAtual); });
-    alvo.innerHTML=h;
+    var gAnos='';
+    anos.forEach(function(a){ gAnos+=bt(String(a), a===anoAtual, 'ano:'+a, 'Ver o ano de '+a); });
+    gAnos+=bt('Ano todo', !mesAtual, 'mes:', 'Acumulado do ano inteiro');
+    var gMeses='';
+    mesesDoAno.forEach(function(m){ gMeses+=bt(m, m===mesAtual, 'mes:'+m, m+'/'+anoAtual, true); });
+    alvo.innerHTML='<span style="display:flex;gap:5px;flex-wrap:nowrap;flex:none">'+gAnos+'</span>'
+      +'<span style="display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;min-width:0;padding-bottom:1px">'+gMeses+'</span>';
     alvo.querySelectorAll('button[data-reu]').forEach(function(b){
       b.onclick=function(){
         var v=b.getAttribute('data-reu');
@@ -21654,7 +21455,8 @@ window.CompAnos = (function () {
     corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025}), ano)
       +manchete
       +faixa('1','O plano cabe sem hora extra?', r1Curta, c1, b2,
-             r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
+             (r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
+             +reuBlocoSetores(anoTodo?null:mes, ano))
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
       +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
              '<div class="reu-row3" style="display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:8px;align-items:start">'
@@ -21692,6 +21494,15 @@ window.CompAnos = (function () {
       +'.reu-tab th{font-size:6.5pt!important;color:#52606D!important;text-align:left;padding:3px 5px!important;border-bottom:1px solid #D3D8DE}'
       +'.reu-tab td{padding:4px 5px!important;border-top:1px solid #edf2f7;vertical-align:top;color:#1F2933!important}'
       +'.reu-tab tr{opacity:1!important}'
+      +'.reu-set-h{font-size:7pt!important;color:#52606D!important;margin-bottom:3px!important}'
+      +'.reu-set-p{font-size:8.5pt!important;color:#1F2933!important;opacity:1!important;margin-bottom:5px!important}'
+      +'.reu-set-tab td.n{text-align:right;font-family:Consolas,monospace}'
+      +'.reu-set-tab td.reu-set-nome{text-align:left;font-family:inherit}'
+      +'.reu-set-extra{display:table-row!important}'
+      +'.reu-set-resto{display:none!important}'
+      +'.reu-set-tot td{font-weight:700;border-top:1.2px solid #C6CBD3!important}'
+      +'.reu-set-nota{font-size:6.8pt!important;color:#7B8794!important;margin-top:4px!important}'
+      +'.reu-setores{break-inside:avoid;page-break-inside:avoid;margin-top:8px!important}'
       /* Card chapado e sem fio colorido: quem julga na folha e a manchete. */
       +'.reu-card{background:#fff!important;border:1px solid #D3D8DE!important;'
         +'border-radius:5px!important;padding:8px 10px!important}'
@@ -21936,7 +21747,7 @@ window.CompAnos = (function () {
     var F=r.totalFaltaAtraso||0, dias=DashUtils.getDias(r), plano=r.previsaoProducao||0;
     var abs=(r.absenteismo>0)?r.absenteismo:(H>0?F/H*100:0);
     return { mes:r.mes, ano:r.ano, plano:plano, P:P, Q:Q, heP:P-Q, hePct:P>0?(P-Q)/P*100:0,
-             heH:HE, H:H, HT:HT, pcH:HT>0?P/HT:0, dias:dias, pcDia:dias>0?P/dias:0,
+             heH:HE, H:H, HT:HT, pcH:HT>0?P/HT:0, dias:dias, pcDia:dias>0?P/dias:0, pcDiaN:dias>0?Q/dias:0,
              abs:abs, F:F, colab:r.colaboradores||0, fat:r.qtdeFaturado||0, ven:r.qtdeVendida||0,
              fPonto:r.faltasPonto||0, aPonto:r.atrasosPonto||0, temPonto:(r.naoTrabalhadas||0)>0,
              kg:r.quilosProduzidos||0, kgH:(HT>0?(r.quilosProduzidos||0)/HT:0), kgPc:(P>0?(r.quilosProduzidos||0)/P:0),
@@ -21979,6 +21790,7 @@ window.CompAnos = (function () {
     M.tot.hePct=M.tot.P>0?M.tot.heP/M.tot.P*100:0;
     M.tot.pcH=M.tot.HT>0?M.tot.P/M.tot.HT:0;
     M.tot.pcDia=M.tot.dias>0?M.tot.P/M.tot.dias:0;
+    M.tot.pcDiaN=M.tot.dias>0?M.tot.Q/M.tot.dias:0;
     M.cumpriram=meses.filter(function(m){ return m.cumpriu; });
     M.comPlano=meses.filter(function(m){ return m.plano>0; });
     M.cumpriuNoLimite=M.cumpriram.filter(function(m){ return m.hePct<=M.limHE; });
@@ -21992,7 +21804,10 @@ window.CompAnos = (function () {
     M.planoAberto=M.abertos.reduce(function(a,x){ return a+x.plano; },0);
     M.diasAbertos=M.abertos.reduce(function(a,x){ return a+x.dias; },0);
     M.ritmoExig=M.diasAbertos>0?M.planoAberto/M.diasAbertos:null;
-    M.gapDia=M.ritmoExig!==null?M.ritmoExig-ref.pcDia:null;
+    /* Ritmo comparado ao plano = JORNADA NORMAL (pcDiaN), a mesma base da coluna
+       "Ritmo realizado (s/ HE)" da tabela mês a mês. Com hora extra o card dizia
+       1.541 para AGO/26 e a tabela 1.414, e o gap para set–dez saía 116 em vez de 244. */
+    M.gapDia=M.ritmoExig!==null?M.ritmoExig-ref.pcDiaN:null;
     M.periodo=M.abertos.length?(MES_MIN[M.abertos[0].mes]+'–'+MES_MIN[M.abertos[M.abertos.length-1].mes]):'';
     /* simulação linear de falta: horas recuperadas × pç/h do mês de referência */
     M.ganhoPP=ref.H/100*ref.pcH;                       /* peças por mês por ponto percentual */
@@ -22084,7 +21899,7 @@ window.CompAnos = (function () {
     var corAbs=fxAbs.nivel==='dentro'?'#4CAF50':(fxAbs.nivel==='perto'?'#FF9800':'#F44336');
     var melhorPcH=lidMelhorEm(ms,'pcH',ref,true), melhorVol=lidMelhorEm(ms,'P',ref,true);
     var acima=ref.at!==null&&ref.at>=100;
-    var passaram=M.ritmoExig!==null?ms.filter(function(m){ return m.pcDia>=M.ritmoExig; }):[];
+    var passaram=M.ritmoExig!==null?ms.filter(function(m){ return m.pcDiaN>=M.ritmoExig; }):[];
     var rod='<div class="lid-foot"><span>Como foi a produção · '+mesNome+'/'+anoS+' · PPCP</span>'
       +'<span>Fonte: HISTORICO do painel (ERP Lógica e RH) · gerado em '+new Date().toLocaleDateString('pt-BR')+'</span></div>';
     var S=[];
@@ -22106,7 +21921,7 @@ window.CompAnos = (function () {
       +lidCard('Produção',fi(ref.P),'peças · o plano era '+fi(ref.plano)+'<br>'+(acima?fi(ref.P-ref.plano)+' peças acima do plano':fi(ref.plano-ref.P)+' peças abaixo do plano'),acima?'#4CAF50':'#F44336')
       +lidCard('Feito na hora extra',fd(ref.hePct,1)+'%','da produção do mês · limite '+M.limHE+'%<br>'+lidMenorDesde(ms,ref),corHE)
       +lidCard('Faltas',fd(ref.abs,1)+'%','das horas trabalhadas na jornada normal (critério do RH) · limite '+M.absCrit+'%<br>'+lidRankAbs(ms,ref),corAbs)
-      +lidCard('Ritmo',fi(ref.pcDia),'peças por dia'+(M.ritmoExig!==null?' · '+M.periodo+' pede '+fi(M.ritmoExig)+'<br>'+(M.gapDia>0?'faltam '+fi(M.gapDia)+' por dia ('+fd(M.gapDia/ref.pcDia*100,1)+'%)':'ritmo já suficiente'):''),M.gapDia===null?'#F5A623':(M.gapDia<=0?'#4CAF50':'#FF9800'))
+      +lidCard('Ritmo',fi(ref.pcDiaN),'peças por dia na jornada normal · com a hora extra: '+fi(ref.pcDia)+(M.ritmoExig!==null?'<br>'+M.periodo+' pede '+fi(M.ritmoExig)+(M.gapDia>0?' · faltam '+fi(M.gapDia)+' por dia ('+fd(M.gapDia/ref.pcDiaN*100,1)+'%)':' · ritmo já suficiente'):''),M.gapDia===null?'#F5A623':(M.gapDia<=0?'#4CAF50':'#FF9800'))
       +'</div><div class="lid-p lid-resumo">'+resumo+'</div>'+rod);
     /* 3 · mês a mês */
     var nC=M.cumpriram.length, nP=M.comPlano.length;
@@ -22139,8 +21954,28 @@ window.CompAnos = (function () {
       +'<div class="lid-box"><div class="lid-k2">Na prática</div>'
       +'<p>Em '+ref2+', '+fi(ref.heP)+' das '+fi(ref.P)+' peças saíram na hora extra ('+fi(ref.heH)+' horas).</p>'
       +'<p>No ano: '+fi(M.tot.heH)+' horas extras, e '+fd(M.tot.hePct,1)+'% de tudo que produzimos saiu nelas.</p>'
-      +(minHE.mes!==ref.mes?'<p>'+NOME_MES[minHE.mes]+' teve a menor hora extra ('+fd(minHE.hePct,1)+'%)'+(lidMelhorEm(ms,'pcDia',minHE,false)?', mas também foi o mês de menor ritmo: '+fi(minHE.pcDia)+' peças por dia.':'.')+'</p>':'')
+      +(minHE.mes!==ref.mes?'<p>'+NOME_MES[minHE.mes]+' teve a menor hora extra ('+fd(minHE.hePct,1)+'%)'+(lidMelhorEm(ms,'pcDia',minHE,false)?', mas também foi o mês de menor ritmo: '+fi(minHE.pcDia)+' peças por dia com a hora extra, '+fi(minHE.pcDiaN)+' sem.':'.')+'</p>':'')
       +'</div></div>'+rod);
+    /* 4b · hora extra por setor (só quando a PONTO_SETOR tem o mês) */
+    var RS=(window.SetorHE&&SetorHE.resumo)?SetorHE.resumo(ref.mes,ref.ano):null;
+    if(RS&&RS.setores.length&&RS.heDir>0){
+      var h4b='Em '+ref2+', '+fd(RS.topParte,0)+'% da hora extra ficou em '+RS.top.length+(RS.top.length===1?' setor: ':' setores: ')+SetorHE.lista(RS.top)+'.'
+        +(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' a falta também passa de '+RS.absCrit+'%: hora extra cobrindo presença.':'')
+        +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro: é capacidade.':'');
+      var linhaSet=function(x){
+        var cor=x.leitura==='cobrindo falta'?'#F44336':(x.leitura==='capacidade'?'#FF9800':(x.leitura?'#FF9800':'#888'));
+        return '<tr><td>'+x.setor+'</td><td>'+fi(x.pessoas)+'</td><td>'+fi(x.he)+'</td><td'+(x.heAlta?' style="font-weight:800"':'')+'>'+fd(x.hePct,1)+'%</td><td>'+fd(x.parte,0)+'%</td>'
+          +'<td>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor+'">'+(x.leitura||'—')+'</td></tr>';
+      };
+      var tabSet='<table class="lid-tab"><thead><tr><th>Setor</th><th>Pessoas</th><th>HE (h)</th><th>HE ÷ normais</th><th>% da HE</th><th>Falta</th><th>Leitura</th></tr></thead><tbody>'
+        +RS.setores.map(linhaSet).join('')
+        +(RS.indiretos.length?'<tr><td class="lid-tx" style="color:#888">Indiretos ('+RS.indiretos.length+' setores, fora do '+fd(ref.hePct,1)+'%)</td><td>'+fi(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi(RS.heInd)+'</td><td>'+(RS.hnInd>0?fd(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>':'')
+        +'<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi(RS.heDir)+'</td><td>'+fd(RS.refPct,1)+'%</td><td>100%</td><td>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr></tbody></table>';
+      S.push('<h1 class="lid-h">'+h4b+'</h1><div class="lid-sub">Horas extras do ponto por setor · HE ÷ horas normais do setor, "alta" = acima da fábrica ('+fd(RS.refPct,1)+'%) · falta = falta, atestado, afastado e atraso ÷ horas normais · limite '+RS.absCrit+'%</div>'
+        +tabSet
+        +'<div class="lid-p lid-small">Cobrindo falta = hora extra alta num setor com falta acima do limite: a HE repõe presença. Capacidade = hora extra alta com falta dentro do limite: o setor não dá conta na jornada normal. '
+        +'É hora por setor, não peça por setor; a produção é da fábrica inteira. O setor é o atual da pessoa na lista do RH.</div>'+rod);
+    }
     /* 5 · faltas */
     var cobre=ref.F>0?ref.heH/ref.F*100:0, melhores=ms.slice().sort(function(a,b){ return a.abs-b.abs; }).slice(0,2).filter(function(m){ return m.mes!==ref.mes; });
     var h5='Falta é onde a liderança mais pode ajudar: '+fd(ref.abs,1)+'% em '+ref2+', o mesmo que '+fi(M.foraHoje)+' pessoas fora todo dia. Cada 1% a menos são '+fi(M.ganhoPP)+' peças no mês.';
@@ -22194,21 +22029,22 @@ window.CompAnos = (function () {
       +'<tr><td>A · Sem hora extra</td><td>'+fi(M.cen.A)+'</td><td class="lid-tx">o que sai na jornada normal</td></tr>'
       +'<tr><td>B · Como está hoje</td><td>'+fi(M.cen.B)+'</td><td class="lid-tx">com a hora extra de hoje</td></tr>'
       +'<tr class="lid-dest"><td>C · Ritmo da venda</td><td>'+fi(M.cen.C)+'</td><td class="lid-tx">para os pedidos não acumularem</td></tr>'
-      +'<tr><td>'+mesNome+'</td><td>'+fi(ref.pcDia)+'</td><td class="lid-tx">'+(ref.pcDia>=M.cen.B?'melhor':'abaixo')+' que a média do ano</td></tr></tbody></table>'
+      +'<tr><td>'+mesNome+' · sem hora extra</td><td>'+fi(ref.pcDiaN)+'</td><td class="lid-tx">'+(ref.pcDiaN>=M.cen.A?'melhor':'abaixo')+' que a média do ano (A)</td></tr>'
+      +'<tr><td>'+mesNome+' · com hora extra</td><td>'+fi(ref.pcDia)+'</td><td class="lid-tx">'+(ref.pcDia>=M.cen.B?'melhor':'abaixo')+' que a média do ano (B)</td></tr></tbody></table>'
       +'<div class="lid-p lid-small">A venda varia muito de um mês para outro. Por isso olhamos o ano inteiro.'+(M.ritmoExig!==null?' O plano de '+M.periodo+' pede '+fi(M.ritmoExig)+' peças por dia.':'')+'</div></div></div>'+rod);
     /* 8 · plano dos meses abertos e de onde tirar */
     if(M.abertos.length){
       var s6=M.sim.filter(function(x){ return x.alvo===M.absCrit; })[0]||M.sim[M.sim.length-1];
       var cobreTxt=s6&&M.gapDia>0?(s6.dia>=M.gapDia?'cobre a diferença':(s6.dia>=0.8*M.gapDia?'cobre quase toda a diferença':'cobre parte da diferença')):'';
-      var melhorRit=passaram.filter(function(m){ return m.mes!==ref.mes; }).sort(function(a,b){ return b.pcDia-a.pcDia; })[0];
-      var h8=M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede '+fi(M.ritmoExig)+' peças por dia. '+mesNome+' fez '+fi(ref.pcDia)
-        +(M.gapDia>0&&melhorRit?' e '+NOME_MES[melhorRit.mes].toLowerCase()+' fez '+fi(melhorRit.pcDia):'')
+      var melhorRit=passaram.filter(function(m){ return m.mes!==ref.mes; }).sort(function(a,b){ return b.pcDiaN-a.pcDiaN; })[0];
+      var h8=M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede '+fi(M.ritmoExig)+' peças por dia. '+mesNome+' fez '+fi(ref.pcDiaN)+' na jornada normal ('+fi(ref.pcDia)+' com a hora extra)'
+        +(M.gapDia>0&&melhorRit?' e '+NOME_MES[melhorRit.mes].toLowerCase()+' fez '+fi(melhorRit.pcDiaN):'')
         +'. '+(M.gapDia>0?'A diferença é '+fi(M.gapDia)+' por dia, e a conta mostra de onde tirar.':'O ritmo de '+ref2+' já cobre o plano; a conta mostra a folga que a presença daria.');
       S.push('<h1 class="lid-h">'+h8+'</h1><div class="lid-sub">Plano de '+NOME_MES[M.abertos[0].mes].toLowerCase()+' a '+NOME_MES[M.abertos[M.abertos.length-1].mes].toLowerCase()+' de '+anoS+' · Plano Mestre</div>'
         +'<div class="lid-2col"><div><table class="lid-tab"><thead><tr><th>Mês</th><th>Dias</th><th>Plano (peças)</th><th>Por dia</th></tr></thead><tbody>'
         +M.abertos.map(function(x){ return '<tr><td>'+NOME_MES[x.mes]+'</td><td>'+x.dias+'</td><td>'+fi(x.plano)+'</td><td>'+(x.dias>0?fi(x.plano/x.dias):'—')+'</td></tr>'; }).join('')
         +'<tr class="lid-tot"><td>Total</td><td>'+M.diasAbertos+'</td><td>'+fi(M.planoAberto)+'</td><td>'+fi(M.ritmoExig)+'</td></tr></tbody></table>'
-        +'<div class="lid-p lid-small">Ritmo de '+anoS+' por mês (peças por dia): '+ms.map(function(m){ return MES_MIN[m.mes]+' '+fi(m.pcDia); }).join(' · ')+'. Média do ano: '+fi(M.tot.pcDia)+'.</div></div>'
+        +'<div class="lid-p lid-small">Ritmo de '+anoS+' por mês na jornada normal, sem hora extra (peças por dia): '+ms.map(function(m){ return MES_MIN[m.mes]+' '+fi(m.pcDiaN); }).join(' · ')+'. Média do ano: '+fi(M.tot.pcDiaN)+'. Com a hora extra, '+ref2+' fez '+fi(ref.pcDia)+'.</div></div>'
         +'<div class="lid-box"><div class="lid-k2">'+(M.gapDia>0?'De onde tirar as '+fi(M.gapDia)+' peças por dia que faltam':'O que a presença ainda pode dar')+'</div>'
         +(s6?'<p>Se a falta cair de '+fd(ref.abs,0)+'% para '+s6.alvo+'%, sobram cerca de '+fi(s6.h)+' horas por mês.</p>'
              +'<p>No rendimento de '+ref2+' ('+fd(ref.pcH,2)+' peças por hora), isso dá perto de '+fi(s6.pc)+' peças por mês: '+fi(s6.dia)+' por dia.</p>'
@@ -22230,7 +22066,7 @@ window.CompAnos = (function () {
     }
     /* 10 · três linhas */
     var l1=mesNome+' mostrou que dá: '+(acima?'acima do plano':fd(ref.at,0)+'% do plano')+', hora extra '+fxHE.curto+(melhorPcH?' e o melhor rendimento por hora do ano.':'.');
-    var l2=M.gapDia!==null?(M.gapDia>0?M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede '+fd(M.gapDia/ref.pcDia*100,0)+'% a mais por dia.'+(passaram.length?' Em '+lidLista(passaram)+' já fizemos isso.':'')+' Agora é fazer sem depender da hora extra.'
+    var l2=M.gapDia!==null?(M.gapDia>0?M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede '+fd(M.gapDia/ref.pcDiaN*100,0)+'% a mais por dia na jornada normal.'+(passaram.length?' Em '+lidLista(passaram)+' já fizemos isso.':'')+' Agora é fazer sem depender da hora extra.'
                                           :'O ritmo já cobre o plano até o fim do ano. Agora é manter sem depender da hora extra.')
                           :'O ano está fechado: a base para o próximo plano é o ritmo demonstrado, não o nominal.';
     var l3=(ref.abs>M.absCrit?'Boa parte da diferença está na presença: cada 1% a menos de falta são '+fi(M.ganhoPP)+' peças no mês. ':'Presença dentro do limite: a próxima alavanca é balanceamento e perdas no turno. ')+'A liderança é parte importante disso.';
@@ -22249,11 +22085,40 @@ window.CompAnos = (function () {
   }
   /* Recalcula tudo pela regra e manda para a HISTORICO: save() normaliza e
      sincroniza. Depois disso a planilha e o painel dizem o mesmo número. */
+  /* Recarrega a planilha ANTES de recalcular e gravar. O botão gravava a cópia
+     local, e a cópia podia ser mais velha que a planilha: em 18/09/26 o
+     PontoRH corrigiu MAR e JUN às 13h11, o painel estava aberto desde as
+     13h08, e o clique às 13h16 devolveu os dois meses ao valor antigo — sem
+     aviso, porque o painel não sabia que a planilha tinha mudado. Se a
+     releitura falhar, não grava: perder o clique é melhor que desfazer uma
+     correção feita na planilha. */
+  /* Os cinco maiores respondem a pergunta na reunião; o resto fica a um
+     clique, para quem perguntar "e o meu setor?". No relatório impresso todos
+     saem abertos e a linha de abrir some: papel é documento, não tela de
+     decisão. */
+  window.reuSetoresMais=function(){
+    var tab=document.querySelector('.reu-set-tab'); if(!tab) return;
+    var extras=tab.querySelectorAll('tr.reu-set-extra'); if(!extras.length) return;
+    var abrir=(extras[0].style.display==='none');
+    [].forEach.call(extras,function(tr){ tr.style.display=abrir?'':'none'; });
+    var lbl=document.getElementById('reu-set-lbl');
+    if(lbl) lbl.textContent=(abrir?'▾ Ocultar os outros ':'▸ Outros ')+extras.length+' setores diretos';
+    var lin=tab.querySelector('tr.reu-set-resto');
+    if(lin) lin.title=abrir?'Ocultar os outros setores':'Abrir os outros setores';
+  };
+
   window.reuGravarCalculos=function(){
     if(typeof save!=='function'||typeof load!=='function') return;
-    save(load());
-    if(typeof toast==='function') toast('Cálculos refeitos pela regra do painel e enviados à planilha.','ok');
-    try{ render(); }catch(e){}
+    var fim=function(){
+      save(load());
+      if(typeof toast==='function') toast('Planilha relida, cálculos refeitos pela regra do painel e enviados de volta.','ok');
+      try{ render(); }catch(e){}
+    };
+    if(typeof _recarregarDoSheets!=='function'){ fim(); return; }
+    if(typeof toast==='function') toast('Relendo a planilha antes de gravar…','info');
+    _recarregarDoSheets().then(fim).catch(function(e){
+      if(typeof toast==='function') toast('Não gravei: a planilha não respondeu ('+(e&&e.message||e)+'). Sem a releitura, gravar poderia desfazer uma correção feita nela.','err');
+    });
   };
   window.reuLideres=function(){
     var M=lidModelo();
@@ -22743,14 +22608,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b94.1';
+var APP_VERSAO = 'b95.6';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
-  { v:'b94.1', data:'18/09/2026', itens:[
+  { v:'b95.6', data:'18/09/2026', itens:[
     'Apresentacao para lideres: mes sem horas lancadas fica de fora. Desde que producaoReal vem do reporte do ERP sozinho (b91), JUL e AGO/26 entravam como fechados com 32 mil pecas e zero hora — e o slide comemorava "0% na hora extra". Fechado agora e producao E horas, mesma regra do bloco de ponte. Hora zero e dado que falta, nao resultado.',
-    'Code.gs: um sync do painel com registro SEM horas (mes que aquele navegador nao tem fechado — dado local velho, ou mes ainda nao lancado) nao apaga mais o que a HISTORICO ja tem. Foi assim que colaboradores, horas e producao de JUL e AGO/26 foram zerados: sobraram so as colunas que o painel nao manda, as do ERP. Registro com horas continua podendo zerar um campo de proposito. As horas apagadas se recuperam pelo historico de versoes da planilha.'
-  ]},
-  { v:'b94', data:'18/09/2026', itens:[
+    'Code.gs: um sync do painel com registro SEM horas (mes que aquele navegador nao tem fechado — dado local velho, ou mes ainda nao lancado) nao apaga mais o que a HISTORICO ja tem. Foi o que zerou colaboradores, horas e producao de JUL e AGO/26 em 17/09 — o Resetar empurrava o dataset embutido, com JUL a DEZ zerados (gatilho corrigido na b95.2; esta guarda e a segunda barreira, do lado da planilha). Registro com horas continua podendo zerar um campo de proposito. As horas apagadas se recuperam pelo historico de versoes da planilha.',
     'Aba nova Comparativo 2025 x 2026, no grupo PPCP/Capacidade: responde o que MUDOU no mix, nao quanto foi produzido. Comparativo geral (pecas, peso, produtos distintos, peso medio), tabela produto a produto com situacao, analise por linha de produto, o que entrou e o que saiu do mix, impacto por linha, ranking de peso medio, matriz volume x peso e relatorio proprio em PDF.',
     'A aba abre na base MESMOS MESES, nao no ano cheio. Somar 2025 inteiro contra um 2026 em andamento mostraria uma queda de calendario como se fosse queda de producao — em setembro dariam 12 meses contra 7. A base de ano cheio fica ao lado, marcada como parcial.',
     'Produto que so existe em 2026 nao ganha variacao percentual: (B-A)/A com A=0 nao existe, e inventar +100% enche o ranking de maiores altas com item que nunca teve producao. Fica traco e situacao Novo produto. Quem saiu de linha e -100%, que e exato.',
@@ -22760,7 +22623,73 @@ var APP_HISTORICO = [
     'Sem a coluna PESO preenchida, a aba mede so em pecas e diz isso: os blocos de peso somem em vez de mostrar zero. Com peso parcial, mostra a cobertura. E confere a soma dos pesos por produto contra o quilosProduzidos da HISTORICO — as duas pontas saem do mesmo relatorio, entao divergencia acima de 2% acende alerta.',
     'Linha de produto = grupo do Logica. O codigo do produto no reporte e GRUPO.SUBGRUPO.ITEM (100.009.001), entao a linha sai dos tres primeiros digitos, sem casar nome; o nome do grupo vem da aba GRUPOS (Relatorio de Grupos do ERP, colado na planilha). Sem a aba, vale a familia derivada da descricao, e a tela avisa. Nunca mistura as duas na mesma apuracao.',
     'A coluna de reflexo operacional so afirma o que decorre do numero (mais quilos = mais material movimentado; mais itens distintos = mais trocas de setup). A causa da mudanca nao esta em nenhuma coluna da base e nao e afirmada.',
-    'testes/comparativo-anos.test.js: 61 casos sobre a apuracao — base de comparacao, divisao por zero, materialidade, familia, cobertura e conferencia de peso, filtros e bordas.'
+    'testes/comparativo-anos.test.js: 61 casos sobre a apuracao — base de comparacao, divisao por zero, materialidade, familia, cobertura e conferencia de peso, filtros e bordas.',
+  ]},
+  { v:'b95.5', data:'18/09/2026', itens:[
+    'Importacao de Excel removida, com tudo que so ela usava: a funcao importarExcel, o modal de resultado, o input de arquivo, o modulo de validacao que embrulhava o save() e a biblioteca XLSX de 900 KB vinda de CDN. Era a ultima porta que escrevia na HISTORICO sem passar por uma acao sua — uma planilha antiga sobrescreveria o ano. O Excel deixou de ser fonte em b87 e o botao saiu em b88; so o console alcancava. Sai junto o salvarArquivoHTML, que congelava os dados dentro de um novo HTML e so era chamado pelo botao desse modal: e o mesmo padrao de dado congelado no arquivo que causou os problemas de hoje. Menos 23 KB e uma dependencia externa a menos.',
+    'Agora todo caminho que escreve na planilha parte de uma acao sua: salvar ou excluir um mes, Gravar calculos (que rele antes), metas, plano de acao e envio de e-mail.'
+  ]},
+  { v:'b95.4', data:'18/09/2026', itens:[
+    'Tabela por setor da aba Eficiencia & Horas com as colunas alinhadas: os titulos ficavam a esquerda e os numeros a direita, cada um num canto da coluna. Agora titulo e valor caem no mesmo lado, as larguras sao fixas e as linhas de Indiretos e Fabrica seguem o mesmo alinhamento das demais.'
+  ]},
+  { v:'b95.3', data:'18/09/2026', itens:[
+    'Varredura dos caminhos que escrevem na HISTORICO. Sobravam dois automaticos, que rodavam sozinhos a cada abertura do painel: a migracao de campos faltantes do init() e o preenchimento de diasTrabalhados e qtdeFaturado por duas tabelas congeladas no arquivo. Os dois gravavam valor padrao ou congelado na planilha sem ninguem pedir. Agora usam salvarLocal: consertam a copia local e nao tocam na HISTORICO. Restam tres caminhos, todos deliberados: salvar ou excluir um mes no formulario, e o botao Gravar calculos, que le a planilha antes.',
+    'importarExcel continua no codigo e grava na planilha, mas sem botao desde b88 (so pelo console). Mesma classe do Carregar JSON que saiu: uma planilha antiga sobrescreveria a HISTORICO. Fica para decisao.'
+  ]},
+  { v:'b95.2', data:'18/09/2026', itens:[
+    'CORRECAO GRAVE: o Resetar apagava a copia local, o init() caia no dataset PLANILHA embutido no arquivo (congelado em JUN/26) e chamava save(), que sincroniza — o embutido era empurrado para a HISTORICO. Em 18/09/26 isso devolveu JAN a JUN aos valores anteriores ao ponto e zerou JUL e AGO. Agora o Resetar rele a planilha pelo Web App e nao grava nada nela; se a leitura falhar, a tela abre com o embutido apenas no navegador. A carga inicial usa salvarLocal, que nunca sincroniza. O texto do botao passou a dizer o que ele faz: descartar a copia local e reler a planilha.'
+  ]},
+  { v:'b95.1', data:'18/09/2026', itens:[
+    'Botoes "Salvar JSON" e "Carregar JSON" saem do Modo edicao. O Carregar chamava a mesma gravacao que sincroniza com a planilha: abrir um arquivo antigo sobrescrevia a HISTORICO com ele, sem confirmacao e sem desfazer — um JSON de marco apagaria as correcoes do ponto de agosto. Os dois nasceram quando os dados viviam so no navegador; hoje a planilha e a fonte. Backup e restauracao passam a ser Arquivo > Historico de versoes, no proprio Google Sheets, que guarda data, hora e autor. Para tirar dados do painel continua valendo o Exportar CSV. O Resetar fica: ele so limpa o local e rele a planilha, nao grava nada nela.'
+  ]},
+  { v:'b95', data:'18/09/2026', itens:[
+    'Icones dos botoes viram SVG monocromatico: WhatsApp, e-mail, copiar, imprimir, salvar, carregar, metas, modo edicao, novo mes, resetar, recalcular, visao geral, resumo executivo, faturado, vendido, editar e excluir. Antes eram emoji — 💬 e 📋 saiam coloridos no Chrome, ✉ e ✎ monocromaticos, e o desenho mudava de sistema para sistema. Cada icone agora e uma mascara SVG que herda a cor do botao e fica igual em qualquer maquina.',
+    'Os emoji que nomeiam menus da planilha (Volumes, Ponto, Plano Mestre, Metas) continuam como estao no texto: sao o nome real do menu no Google Sheets. As bolinhas de status verde, amarela e vermelha das legendas tambem ficam, porque a cor delas e o dado.'
+  ]},
+  { v:'b94.6', data:'18/09/2026', itens:[
+    'Tabela por setor da aba Eficiencia & Horas passa a somar o periodo do filtro lateral, em vez de mostrar so o ultimo mes com dados. Com mais de um ano no filtro vale o mais recente.',
+    'Ano todo passa a mostrar a hora extra por setor somada no ano, em vez de esconder o bloco. As horas somam e a coluna Pessoas vira media mensal: somar 93 pessoas de oito meses daria 744. A nota do bloco avisa quando o numero e de periodo.'
+  ]},
+  { v:'b94.5', data:'18/09/2026', itens:[
+    'Tabela por setor da aba Eficiencia & Horas ganha a mesma correcao que a da Reuniao: coluna Leitura com cor (o tema escuro declara td{color:var(--t1)!important} e vencia o estilo da celula, entao cobrindo falta, capacidade e HE alta saiam todos brancos) e numeros em peso 600 com tabular-nums, alinhados a direita.'
+  ]},
+  { v:'b94.4', data:'18/09/2026', itens:[
+    'Bloco por setor mais compacto e o filtro numa linha so: a Reuniao encolheu cerca de 90px de rolagem.',
+    'Meses da Reuniao param de quebrar em varias linhas: anos e "Ano todo" num grupo, os doze meses noutro, mais estreitos e sem quebra. A 1600px eram tres linhas e o cabecalho crescia conforme o ano andava.',
+    'Linha "Outros N setores diretos" abre no clique e mostra os demais, e fecha de novo. Os cinco maiores respondem a pergunta na reuniao; o resto fica a um clique para quem perguntar pelo proprio setor. No relatorio impresso todos saem abertos e a linha de abrir some.',
+    'Botao de e-mail do plano de acao com o envelope no mesmo padrao dos vizinhos: 💬 e 📋 saem coloridos no Chrome e o ✉ saia monocromatico, com os tres lado a lado.'
+  ]},
+  { v:'b94.3', data:'18/09/2026', itens:[
+    'Coluna Leitura da tabela por setor volta a ter cor: vermelho para cobrindo falta, ambar para capacidade. O tema escuro declara td{color:var(--t1)!important} e vencia o estilo da celula, entao tudo saia branco e a cor nao dizia nada.',
+    'Tabela de hora extra por setor da Reuniao: numeros em peso 600 com tabular-nums e corpo um pouco maior. Consolas com peso 400 a 12px sobre o fundo escuro ficava fino ao lado do texto da mesma linha e o numero parecia embacado. Cabecalho e linhas ganharam espacamento e fio proprios.'
+  ]},
+  { v:'b94.1', data:'18/09/2026', itens:[
+    'Reuniao do Mes ganha "Onde esta a hora extra", logo abaixo da pergunta 1: os cinco setores que mais consomem HE, a razao de cada um sobre as proprias horas normais, a parte na HE da fabrica, a falta do setor e a leitura (cobrindo presenca ou capacidade). O Relatorio reaproveita o HTML da tela, entao o bloco sai impresso junto, com CSS proprio e sem quebrar entre paginas. Aparece so no mes escolhido, nao em Ano todo, e so quando o extrato do mes ja foi processado.'
+  ]},
+  { v:'b94', data:'18/09/2026', itens:[
+    'aceitarPontoNaHistorico aceita o ano inteiro: digite 2026 e ele regrava todos os meses que tiverem extrato processado, na ordem do calendario. Em branco assume o ano corrente. Mes a mes obrigava a lembrar quais faltavam, e quem esquece um mes fica com o ano em duas reguas — foi o que aconteceu com MAR e JUN. Mes que ja estava igual ao ponto so e contado, nao polui o aviso, e o aviso termina dizendo para usar Gravar calculos na planilha.'
+  ]},
+  { v:'b93.9', data:'18/09/2026', itens:[
+    'Gravar calculos na planilha passa a reler a planilha antes de gravar. O botao enviava a copia local, e a copia podia estar mais velha que a planilha: em 18/09 o PontoRH corrigiu MAR e JUN as 13h11, o painel estava aberto desde as 13h08, e o clique as 13h16 devolveu os dois meses ao valor antigo, sem aviso. Se a releitura falhar, nao grava — perder o clique e melhor que desfazer uma correcao feita na planilha.'
+  ]},
+  { v:'b93.8', data:'18/09/2026', itens:[
+    'Referencia ao Power BI sai da tela e do DICIONARIO: o PPCP nao usa. O motivo de gravar os calculos na planilha continua o mesmo e agora esta escrito certo — a planilha mostrar o mesmo numero da tela.',
+    'PontoRH.gs, aceitarPontoNaHistorico: aceita o ano com dois digitos e separador de espaco ou traco. "JAN/26" era recusado com "nenhum mes reconhecido" e so "JAN/2026" funcionava.'
+  ]},
+  { v:'b93.7', data:'18/09/2026', itens:[
+    'Hora extra por setor: a coluna Falta passa a somar atraso do PONTO (atrasosPonto) quando existe, e so cai no atraso do controle sem ponto — a mesma regra do resto do painel. Em AGO/26 a tabela dava 11,1% de falta na fabrica contra os 12,4% do card de absenteismo, na mesma tela.'
+  ]},
+  { v:'b93.6', data:'18/09/2026', itens:[
+    'PontoRH.gs, tres protecoes que a carga de JAN-MAI/26 pediu: (1) a PONTO_SETOR sai sempre ordenada por ano, mes e setor, numa escrita so; (2) mes que ja tem horas na HISTORICO nao e regravado pelo extrato: so a PONTO_SETOR entra e o aviso mostra ponto x digitado (maio tinha a hora extra da fabrica inteira digitada como se fosse dos diretos; fevereiro, 1.416 h normais a mais); (3) extrato exportado sem as colunas Ex50% e Ex100% e recusado, em vez de zerar a hora extra do mes. Executar > aceitarPontoNaHistorico regrava meses escolhidos pelo log do ponto, sem mover arquivo.'
+  ]},
+  { v:'b93.5', data:'18/09/2026', itens:[
+    'Hora extra por setor, etapa 2 (painel): o Web App manda a aba PONTO_SETOR e o painel guarda. Apresentacao para lideres ganha o slide "hora extra por setor" depois do de hora extra, e a aba Eficiencia & Horas ganha a tabela no fim, para o ultimo mes do periodo com ponto por setor. Colunas: pessoas, HE em horas, HE sobre horas normais do setor, parte na HE da fabrica, falta do setor e a leitura: "cobrindo falta" (HE acima da fabrica e falta acima de 6%) ou "capacidade" (HE acima da fabrica com falta dentro). Indiretos aparecem numa linha so, fora da dependencia de HE. Sem a aba, nem o slide nem a tabela aparecem. E hora por setor, nao peca por setor.'
+  ]},
+  { v:'b93.4', data:'18/09/2026', itens:[
+    'Hora extra por setor, etapa 1 (planilha): PontoRH.gs passa a gravar a aba PONTO_SETOR, uma linha por mes e setor, diretos e indiretos: pessoas, horas de carga e normais, faltas e atrasos do ponto, extra50, extra100, total de HE e HE sobre horas normais do setor. O controle de faltas grava as ausencias por setor na mesma linha. A HISTORICO nao muda. O Web App devolve a aba em "setores"; o painel ainda nao mostra (etapa 2). E hora por setor, nao peca por setor; o setor e o atual da pessoa na FUNCIONARIOS; a serie comeca no primeiro extrato processado depois desta versao. Para AGO/26 entrar, mova o extrato e o CONTROLE_FALTAS de PROCESSADOS de volta para PONTO RH e rode Processar de novo.'
+  ]},
+  { v:'b93.3', data:'18/09/2026', itens:[
+    'Apresentacao para lideres: o card Ritmo e o gap para os meses abertos passam a usar a producao em JORNADA NORMAL por dia, a mesma base da coluna "Ritmo realizado (s/ HE)" da tabela mes a mes. Com hora extra o card dizia 1.541 para AGO/26 e a tabela 1.414; contra os 1.658 de set-dez o gap saia 116 por dia quando e 244, e "em maio ja passamos desse ritmo" so valia com hora extra. O valor com HE continua no card, como secundario. Cenarios e slide do plano mostram as duas bases.'
   ]},
   { v:'b93.2', data:'18/09/2026', itens:[
     'Envio do plano de acao: quando o Web App do Apps Script devolve uma pagina em vez de JSON (o script nao rodou — em geral permissao do Gmail pendente depois de republicar), o painel diz isso e diz o que fazer, em vez de mostrar "Unexpected token <". Nesse caso tambem afirma que o e-mail NAO saiu, para ninguem ficar conferindo Enviados a toa.',
