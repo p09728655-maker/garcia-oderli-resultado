@@ -19939,16 +19939,21 @@ function printAtiva(){
     var hRest=resto.reduce(function(t,x){ return t+x.he; },0);
     var tres=comHE.slice(0,3);
     var parteTres=tres.reduce(function(t,x){ return t+x.parte; },0);
+    /* o tema escuro declara td{color:var(--t1)!important}: sem !important no
+       inline a coluna Leitura saía branca e a cor não dizia nada */
     var corLeitura=function(x){ return x.leitura==='cobrindo falta'?'#F44336':(x.leitura?'#FF9800':'var(--t3)'); };
-    var nCel=' class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap"';
+    /* Consolas com peso 400 a 12px sobre fundo escuro fica fino ao lado do
+       Segoe UI da mesma linha e o número parece embaçado. Peso 600 e
+       tabular-nums resolvem sem aumentar a tabela. */
+    var nCel=' class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums"';
     var linha=function(x){
       return '<tr><td class="reu-set-nome">'+x.setor+'</td>'
         +'<td'+nCel+'>'+fi(x.pessoas)+'</td>'
         +'<td'+nCel+'>'+fi(x.he)+'</td>'
-        +'<td class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-weight:'+(x.heAlta?'800':'400')+'">'+fd(x.hePct,1)+'%</td>'
+        +'<td class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:'+(x.heAlta?'800':'600')+'">'+fd(x.hePct,1)+'%</td>'
         +'<td'+nCel+'>'+fd(x.parte,0)+'%</td>'
         +'<td'+nCel+'>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td>'
-        +'<td style="color:'+corLeitura(x)+';font-weight:'+(x.leitura?'700':'400')+'">'+(x.leitura||'—')+'</td></tr>';
+        +'<td style="color:'+corLeitura(x)+'!important;font-weight:'+(x.leitura?'700':'400')+'">'+(x.leitura||'—')+'</td></tr>';
     };
     var frase=fd(parteTres,0)+'% da hora extra está em '+SetorHE.lista(tres)+'.'
       +(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' a falta também passa de '+RS.absCrit+'%: hora extra cobrindo presença.':'')
@@ -19957,7 +19962,10 @@ function printAtiva(){
       +'<div class="reu-set-h" style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:5px">'
         +'▸ Onde está a hora extra · '+mes+'/'+String(ano).slice(2)+'</div>'
       +'<div class="reu-set-p" style="font-size:.8rem;color:var(--t1);opacity:.85;line-height:1.4;margin-bottom:7px">'+frase+'</div>'
-      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="width:100%;border-collapse:collapse;font-size:.72rem;min-width:600px">'
+      +'<style>.reu-set-tab th{color:var(--t2)!important;font-size:.63rem;letter-spacing:.07em;text-transform:uppercase;padding:4px 6px;border-bottom:1px solid var(--b)}'
+        +'.reu-set-tab td{padding:5px 6px;border-top:1px solid rgba(255,255,255,.05)}'
+        +'.reu-set-tab .reu-set-tot td{border-top:1px solid var(--b)}</style>'
+      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="width:100%;border-collapse:collapse;font-size:.76rem;min-width:600px">'
       +'<thead><tr>'
         +'<th style="text-align:left;width:auto">Setor</th>'
         +'<th style="text-align:right;width:8%;white-space:nowrap">Pessoas</th>'
@@ -19968,8 +19976,8 @@ function printAtiva(){
         +'<th style="text-align:left;width:16%;white-space:nowrap" title="Cobrindo falta: HE acima da fábrica e falta acima de '+RS.absCrit+'%. Capacidade: HE acima da fábrica com falta dentro">Leitura</th>'
       +'</tr></thead><tbody>'
       +top.map(linha).join('')
-      +(resto.length?'<tr class="reu-set-resto"><td class="reu-set-nome" style="color:var(--t3)">Outros '+resto.length+' setores diretos</td><td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td>—</td></tr>':'')
-      +'<tr class="reu-set-tot"><td class="reu-set-nome" style="font-weight:700">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td>—</td></tr>'
+      +(resto.length?'<tr class="reu-set-resto"><td class="reu-set-nome" style="color:var(--t3)!important">Outros '+resto.length+' setores diretos</td><td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>':'')
+      +'<tr class="reu-set-tot"><td class="reu-set-nome" style="font-weight:700">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
       +'</tbody></table></div>'
       +'<div class="reu-set-nota" style="font-size:.68rem;color:var(--t3);margin-top:5px;line-height:1.35">'
         +'Horas do ponto por setor. É hora por setor, não peça por setor: a produção é da fábrica inteira. '
@@ -21660,9 +21668,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b94.1';
+var APP_VERSAO = 'b94.3';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b94.2', data:'18/09/2026', itens:[
+    'Coluna Leitura da tabela por setor volta a ter cor: vermelho para cobrindo falta, ambar para capacidade. O tema escuro declara td{color:var(--t1)!important} e vencia o estilo da celula, entao tudo saia branco e a cor nao dizia nada.',
+    'Tabela de hora extra por setor da Reuniao: numeros em peso 600 com tabular-nums e corpo um pouco maior. Consolas com peso 400 a 12px sobre o fundo escuro ficava fino ao lado do texto da mesma linha e o numero parecia embacado. Cabecalho e linhas ganharam espacamento e fio proprios.'
+  ]},
   { v:'b94.1', data:'18/09/2026', itens:[
     'Reuniao do Mes ganha "Onde esta a hora extra", logo abaixo da pergunta 1: os cinco setores que mais consomem HE, a razao de cada um sobre as proprias horas normais, a parte na HE da fabrica, a falta do setor e a leitura (cobrindo presenca ou capacidade). O Relatorio reaproveita o HTML da tela, entao o bloco sai impresso junto, com CSS proprio e sem quebrar entre paginas. Aparece so no mes escolhido, nao em Ano todo, e so quando o extrato do mes ja foi processado.'
   ]},
