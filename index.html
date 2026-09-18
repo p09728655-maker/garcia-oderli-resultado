@@ -4302,6 +4302,32 @@ body.lid-on{overflow:hidden}
   <div id="pc-corpo"></div>
 </div>
 <!-- ══ FIM PÁGINA: PRODUÇÃO POR PRODUTO ══ -->
+<!-- ══ PÁGINA: COMPARATIVO 2025 × 2026 ══ -->
+<div class="page" id="page-comp-anos">
+  <div class="pageHdr">
+    <div class="pageHdrIcon" style="background:#9C6ADE">
+      <svg viewBox="0 0 24 24" fill="var(--bg)"><path d="M3 17h2v-7H3v7zm4 0h2V7H7v10zm4 0h2V4h-2v13zm4 0h2V9h-2v8zm4 0h2v-5h-2v5zM2 20h20v2H2v-2z"></path></svg>
+    </div>
+    <div>
+      <div class="pageHdrTitle">Comparativo 2025 × 2026</div>
+      <div class="pageHdrSub">O que mudou no mix de produtos — quantidade, peso, famílias e o que entrou ou saiu de linha</div>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:14px">
+      <span id="ca-base-lbl" style="font-family:var(--mono);font-size:1rem;font-weight:800;letter-spacing:.06em;
+        color:#9C6ADE;background:rgba(156,106,222,.12);border:1px solid rgba(156,106,222,.45);
+        border-radius:8px;padding:7px 16px;white-space:nowrap">—</span>
+      <button onclick="caImprimir()" title="Relatório comparativo 2025 × 2026 em PDF"
+        style="display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border:1px solid #9C6ADE;
+        border-radius:6px;background:rgba(156,106,222,.08);color:#9C6ADE;font-size:.76rem;font-weight:700;
+        text-transform:uppercase;letter-spacing:.05em;cursor:pointer;white-space:nowrap">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"></path></svg>
+        Relatório
+      </button>
+    </div>
+  </div>
+  <div id="ca-corpo"></div>
+</div>
+<!-- ══ FIM PÁGINA: COMPARATIVO 2025 × 2026 ══ -->
 </div><!-- /main -->
 </div><!-- /layout -->
 
@@ -13038,7 +13064,8 @@ function cfInicializar() {
         { id: 'mestre',  label: 'Planejamento Mestre', icon: '🗓' },
         { id: 'ppcp',    label: 'PPCP',               icon: '⚙' },
         { id: 'capfat',  label: 'Cap × Faturamento',  icon: '📈' },
-        { id: 'prodcod', label: 'Produção por Produto', icon: '📦' }
+        { id: 'prodcod', label: 'Produção por Produto', icon: '📦' },
+        { id: 'comp-anos', label: 'Comparativo 2025 × 2026', icon: '🔀' }
       ]
     },
     'producao-grp': {
@@ -19733,6 +19760,1191 @@ function printAtiva(){
 })();
 
 /* ══════════════════════════════════════════════════════════════════════════
+   CompAnos — apuração do comparativo entre dois anos de produção
+   ─────────────────────────────────────────────────────────────────────────
+   Separado do desenho da tela de propósito: é a conta que decide o que a
+   diretoria lê ("o mix mudou", "esta linha saiu"), e conta que decide isso
+   precisa de teste. A aba Comparativo 2025 × 2026 e o relatório impresso
+   consomem daqui; testes/comparativo-anos.test.js exercita esta função com o
+   dataset do próprio index.html.
+
+   ENTRADA — as linhas cruas do reporte mensal do ERP (REPORTE_VOLUMES), como
+   chegam do Web App: [mes, ano, codigo, descricao, qtd] ou, desde a coluna
+   PESO, [mes, ano, codigo, descricao, qtd, peso]. O peso é o total da linha
+   em kg; o unitário sai de peso ÷ qtd.
+
+   TRÊS DECISÕES QUE MUDAM O NÚMERO NA TELA
+   1. BASE DE COMPARAÇÃO. 2025 tem 12 meses fechados e 2026, em setembro,
+      tem 7. Somar ano contra ano responde "quantos meses já passaram", não
+      "o que mudou na produção" — daria uma queda de ~40% que é calendário.
+      O padrão é 'comuns': só os meses com reporte nos DOIS anos. 'cheio'
+      existe para quem quer o total do exercício e vem marcado como parcial.
+   2. VARIAÇÃO CONTRA ZERO. (B−A)/A não existe quando A = 0. Produto que só
+      aparece em 2026 tem variação nula (null) e situação 'novo' — devolver
+      +∞ ou +100% inventaria um número. Quem sumiu em 2026 é −100%, que é
+      exato. Quem é zero nos dois anos não entra na lista.
+   3. PESO. Só entra produto a produto onde a coluna PESO existe. A cobertura
+      (% da quantidade com peso informado) sai junto: com cobertura parcial,
+      somar os pesos conhecidos e chamar de "peso total" seria mentir para
+      baixo. Quem lê a tela precisa ver a cobertura antes do número.
+══════════════════════════════════════════════════════════════════════════ */
+window.CompAnos = (function () {
+  var ORDEM_M = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  /* Linha "VOL x/y NOME" é a caixa, não o produto: entra no fator de
+     embalagem, nunca na contagem de produtos. Mesma régua do resto do painel. */
+  var RE_VOL = /^VOL\.?\s*\d+\s*\/\s*\d+\s+/i;
+  /* Família = primeira palavra da descrição; nome composto leva a segunda
+     junto para não virar tudo "MESA". KIT é embalagem, não família ("KIT 2
+     MESA CABECEIRA" são duas mesas de cabeceira numa caixa só). Regras
+     idênticas às da aba Produção por Produto — se divergirem, as duas telas
+     mostram mixes diferentes para o mesmo mês. */
+  var DUPLA = {MESA:1,MESAS:1,CONJUNTO:1,CANTINHO:1,PAINEL:1,HOME:1,GUARDA:1,PORTA:1,MODULO:1};
+  var RE_KIT = /^KIT\s*\d*\s+/i;
+
+  /* Estável até 10%: abaixo disso é oscilação de lote, não decisão de mix.
+     Serve para classificar CADA produto. */
+  var LIM_ESTAVEL = 10;
+  /* Para ENTRAR na lista executiva de "mudança relevante" não basta variar
+     muito em %: 2 → 4 peças é +100% e não muda nada na fábrica. O produto
+     também precisa mover pelo menos este % do total do período. Sem esse
+     corte a lista enche de item irrelevante e esconde o que importa. */
+  var LIM_MATERIAL = 0.5;
+
+  function familiaDe(desc) {
+    var p = String(desc).trim().toUpperCase().replace(RE_KIT, '').split(/\s+/);
+    return DUPLA[p[0]] && p[1] ? p[0] + ' ' + p[1] : p[0];
+  }
+
+  function ehVolume(desc) { return RE_VOL.test(String(desc || '')); }
+
+  /* Variação relativa com as regras da nota 2. */
+  function variacao(a, b) {
+    if (!(a > 0)) return null;          /* nasceu em B, ou zero nos dois */
+    return ((b - a) / a) * 100;
+  }
+
+  function situacaoDe(qa, qb) {
+    if (!(qa > 0) && qb > 0) return 'novo';
+    if (qa > 0 && !(qb > 0))  return 'saiu';
+    var v = variacao(qa, qb);
+    if (v === null) return 'estavel';
+    if (v >=  LIM_ESTAVEL) return 'aumentou';
+    if (v <= -LIM_ESTAVEL) return 'reduziu';
+    return 'estavel';
+  }
+
+  var ROTULO_SITUACAO = {
+    novo:     'Novo produto',
+    saiu:     'Não produzido',
+    aumentou: 'Aumentou produção',
+    reduziu:  'Reduziu produção',
+    estavel:  'Produção estável'
+  };
+
+  /* Meses com reporte de PRODUTO (não de caixa) em cada ano. */
+  function mesesCom(itens, ano) {
+    var m = {};
+    itens.forEach(function (r) {
+      if (r[1] !== ano || ehVolume(r[3])) return;
+      if (r[4] > 0) m[r[0]] = 1;
+    });
+    return m;
+  }
+
+  /* ── Núcleo ──
+     itens : linhas do reporte  [mes, ano, cod, desc, qtd, peso?]
+     regs  : registros da HISTORICO (um por mês) — só para conferir o peso
+     opts  : { anoA, anoB, base:'comuns'|'cheio', mes:'' , familia:'', situacao:'' }
+     O filtro de família/situação NÃO entra aqui: ele é de exibição, e aplicá-lo
+     na apuração mudaria os totais e as participações. */
+  function apurar(itens, regs, opts) {
+    opts = opts || {};
+    itens = itens || [];
+    regs  = regs  || [];
+    var anoA = opts.anoA, anoB = opts.anoB;
+    var base = opts.base === 'cheio' ? 'cheio' : 'comuns';
+    var mesFiltro = opts.mes || '';
+
+    var mA = mesesCom(itens, anoA), mB = mesesCom(itens, anoB);
+    var mesesA = ORDEM_M.filter(function (m) { return mA[m]; });
+    var mesesB = ORDEM_M.filter(function (m) { return mB[m]; });
+    var comuns = ORDEM_M.filter(function (m) { return mA[m] && mB[m]; });
+
+    /* Que meses cada ano usa. Em 'comuns' os dois usam a interseção; em
+       'cheio', cada um usa os seus — e é justamente aí que a comparação
+       vira calendário, o que a flag `parcial` sinaliza para a tela. */
+    var usaA = base === 'cheio' ? mesesA : comuns;
+    var usaB = base === 'cheio' ? mesesB : comuns;
+    if (mesFiltro) {
+      usaA = usaA.filter(function (m) { return m === mesFiltro; });
+      usaB = usaB.filter(function (m) { return m === mesFiltro; });
+    }
+
+    var okA = {}, okB = {};
+    usaA.forEach(function (m) { okA[m] = 1; });
+    usaB.forEach(function (m) { okB[m] = 1; });
+
+    /* Agregação por código. A descrição fica a do ano mais recente em que o
+       produto apareceu: cadastro renomeado não vira dois produtos. */
+    var prod = {};
+    var comPeso = 0, semPeso = 0;   /* em QUANTIDADE, para a cobertura */
+    function acumula(r, lado) {
+      var cod = String(r[2] || '').trim();
+      if (!cod) return;
+      var p = prod[cod] || (prod[cod] = {
+        cod: cod, desc: String(r[3] || '').trim(), familia: familiaDe(r[3]),
+        qtdA: 0, qtdB: 0, pesoA: 0, pesoB: 0, pesoConhecidoA: 0, pesoConhecidoB: 0
+      });
+      var peso = (r.length > 5 && r[5] > 0) ? r[5] : 0;
+      if (lado === 'B') { p.desc = String(r[3] || '').trim(); p.familia = familiaDe(r[3]); }
+      p['qtd' + lado] += r[4];
+      if (peso > 0) { p['peso' + lado] += peso; p['pesoConhecido' + lado] += r[4]; comPeso += r[4]; }
+      else semPeso += r[4];
+    }
+    itens.forEach(function (r) {
+      if (ehVolume(r[3]) || !(r[4] > 0)) return;
+      if (r[1] === anoA && okA[r[0]]) acumula(r, 'A');
+      else if (r[1] === anoB && okB[r[0]]) acumula(r, 'B');
+    });
+
+    var lista = Object.keys(prod).map(function (k) { return prod[k]; })
+      .filter(function (p) { return p.qtdA > 0 || p.qtdB > 0; });
+
+    var totQA = 0, totQB = 0, totPA = 0, totPB = 0;
+    lista.forEach(function (p) {
+      totQA += p.qtdA; totQB += p.qtdB; totPA += p.pesoA; totPB += p.pesoB;
+    });
+
+    lista.forEach(function (p) {
+      p.situacao   = situacaoDe(p.qtdA, p.qtdB);
+      p.rotulo     = ROTULO_SITUACAO[p.situacao];
+      p.varQtd     = variacao(p.qtdA, p.qtdB);
+      p.varPeso    = variacao(p.pesoA, p.pesoB);
+      p.difQtd     = p.qtdB - p.qtdA;
+      p.difPeso    = p.pesoB - p.pesoA;
+      /* Peso unitário sobre a quantidade QUE TEM PESO, não sobre a total:
+         dividir por tudo faria o produto parecer mais leve só porque parte
+         dos meses veio sem a coluna. */
+      p.kgUnA      = p.pesoConhecidoA > 0 ? p.pesoA / p.pesoConhecidoA : null;
+      p.kgUnB      = p.pesoConhecidoB > 0 ? p.pesoB / p.pesoConhecidoB : null;
+      p.varKgUn    = (p.kgUnA > 0 && p.kgUnB > 0) ? ((p.kgUnB - p.kgUnA) / p.kgUnA) * 100 : null;
+      p.partQtdB   = totQB > 0 ? (p.qtdB / totQB) * 100 : 0;
+      p.partPesoB  = totPB > 0 ? (p.pesoB / totPB) * 100 : 0;
+      /* Materialidade: quanto este produto mexeu, em % do total do ano-base
+         de cada grandeza. É o que separa "mudou muito" de "mudou e importa". */
+      p.matQtd     = totQA > 0 ? (Math.abs(p.difQtd)  / totQA) * 100 : 0;
+      p.matPeso    = totPA > 0 ? (Math.abs(p.difPeso) / totPA) * 100 : 0;
+      p.relevante  = p.matQtd >= LIM_MATERIAL || p.matPeso >= LIM_MATERIAL;
+    });
+    lista.sort(function (a, b) { return b.qtdB - a.qtdB || b.qtdA - a.qtdA; });
+
+    /* ── Famílias ── */
+    var fam = {};
+    lista.forEach(function (p) {
+      var f = fam[p.familia] || (fam[p.familia] = {
+        nome: p.familia, qtdA: 0, qtdB: 0, pesoA: 0, pesoB: 0,
+        nProdA: 0, nProdB: 0, novos: 0, saidos: 0
+      });
+      f.qtdA += p.qtdA; f.qtdB += p.qtdB; f.pesoA += p.pesoA; f.pesoB += p.pesoB;
+      if (p.qtdA > 0) f.nProdA++;
+      if (p.qtdB > 0) f.nProdB++;
+      if (p.situacao === 'novo') f.novos++;
+      if (p.situacao === 'saiu') f.saidos++;
+    });
+    var familias = Object.keys(fam).map(function (k) { return fam[k]; });
+    familias.forEach(function (f) {
+      f.varQtd  = variacao(f.qtdA, f.qtdB);
+      f.varPeso = variacao(f.pesoA, f.pesoB);
+      f.difQtd  = f.qtdB - f.qtdA;
+      f.difPeso = f.pesoB - f.pesoA;
+      f.partQtdA  = totQA > 0 ? (f.qtdA / totQA) * 100 : 0;
+      f.partQtdB  = totQB > 0 ? (f.qtdB / totQB) * 100 : 0;
+      f.partPesoA = totPA > 0 ? (f.pesoA / totPA) * 100 : 0;
+      f.partPesoB = totPB > 0 ? (f.pesoB / totPB) * 100 : 0;
+      /* Participação é o que mostra mix mudando: uma família pode cair em
+         peças e ganhar espaço, se o total caiu mais que ela. */
+      f.ppQtd   = f.partQtdB  - f.partQtdA;
+      f.ppPeso  = f.partPesoB - f.partPesoA;
+      f.kgUnA   = f.qtdA > 0 && f.pesoA > 0 ? f.pesoA / f.qtdA : null;
+      f.kgUnB   = f.qtdB > 0 && f.pesoB > 0 ? f.pesoB / f.qtdB : null;
+      f.difProd = f.nProdB - f.nProdA;
+    });
+    familias.sort(function (a, b) { return b.qtdB - a.qtdB || b.qtdA - a.qtdA; });
+
+    /* ── Mudanças no mix ── */
+    function porImpacto(arr, campo) {
+      return arr.slice().sort(function (x, y) {
+        return Math.abs(y[campo]) - Math.abs(x[campo]);
+      });
+    }
+    var mix = {
+      entraram: porImpacto(lista.filter(function (p) { return p.situacao === 'novo'; }), 'qtdB'),
+      sairam:   porImpacto(lista.filter(function (p) { return p.situacao === 'saiu'; }), 'qtdA'),
+      subiram:  porImpacto(lista.filter(function (p) {
+                  return p.situacao === 'aumentou' && p.relevante; }), 'difQtd'),
+      cairam:   porImpacto(lista.filter(function (p) {
+                  return p.situacao === 'reduziu' && p.relevante; }), 'difQtd')
+    };
+
+    /* ── Peso: cobertura e conferência contra a HISTORICO ──
+       A soma dos pesos por produto tem de bater com o quilosProduzidos que o
+       mesmo relatório do ERP já lança na HISTORICO. Divergência grande quer
+       dizer que a coluna PESO veio de outro corte — e aí o número por produto
+       não pode ser usado para decidir nada. */
+    function kgHist(ano, ok) {
+      var kg = 0, temAlgum = false;
+      regs.forEach(function (r) {
+        if (r.ano !== ano || !ok[r.mes]) return;
+        var v = r.quilosProduzidos || r.quilos || r.kg || 0;
+        if (v > 0) { kg += v; temAlgum = true; }
+      });
+      return temAlgum ? kg : null;
+    }
+    var histA = kgHist(anoA, okA), histB = kgHist(anoB, okB);
+    function difPct(soma, hist) {
+      if (!(hist > 0) || !(soma > 0)) return null;
+      return ((soma - hist) / hist) * 100;
+    }
+    var peso = {
+      temPeso:   totPA > 0 || totPB > 0,
+      cobertura: (comPeso + semPeso) > 0 ? (comPeso / (comPeso + semPeso)) * 100 : 0,
+      somaA: totPA, somaB: totPB,
+      histA: histA, histB: histB,
+      difA: difPct(totPA, histA), difB: difPct(totPB, histB)
+    };
+    /* 2% é a folga de arredondamento do relatório; acima disso a tela avisa
+       em vez de deixar o gestor decidir sobre número que não fecha. */
+    peso.confere = (peso.difA === null || Math.abs(peso.difA) <= 2)
+                && (peso.difB === null || Math.abs(peso.difB) <= 2);
+
+    /* lado é 'A' ou 'B' explicitamente: identificar o lado comparando os
+       totais quebraria no ano em que os dois fossem iguais. */
+    function bloco(lado, q, p, mesesDoAno) {
+      var nProd = lista.filter(function (x) { return x['qtd' + lado] > 0; }).length;
+      return {
+        qtd: q, peso: p, nProd: nProd,
+        pesoMedio: (q > 0 && p > 0) ? p / q : null,
+        meses: mesesDoAno.slice(), nMeses: mesesDoAno.length
+      };
+    }
+
+    return {
+      base: {
+        modo: base, comuns: comuns, mesFiltro: mesFiltro,
+        usaA: usaA, usaB: usaB,
+        mesesA: mesesA, mesesB: mesesB,
+        /* 'cheio' com contagem de meses diferente é comparação de calendário:
+           quem desenha a tela precisa dizer isso em cima do número. */
+        parcial: base === 'cheio' && usaA.length !== usaB.length
+      },
+      anoA: anoA, anoB: anoB,
+      geral: {
+        A: bloco('A', totQA, totPA, usaA),
+        B: bloco('B', totQB, totPB, usaB),
+        varQtd:  variacao(totQA, totQB),
+        varPeso: variacao(totPA, totPB),
+        varPesoMedio: (totQA > 0 && totQB > 0 && totPA > 0 && totPB > 0)
+          ? variacao(totPA / totQA, totPB / totQB) : null
+      },
+      produtos: lista,
+      familias: familias,
+      mix: mix,
+      peso: peso,
+      limites: { estavel: LIM_ESTAVEL, material: LIM_MATERIAL }
+    };
+  }
+
+  /* Filtro de exibição — aplicado DEPOIS da apuração, sobre a lista pronta,
+     para os totais e as participações continuarem sendo do período inteiro. */
+  function filtrar(produtos, f) {
+    f = f || {};
+    var busca = String(f.busca || '').trim().toUpperCase();
+    return produtos.filter(function (p) {
+      if (f.familia  && p.familia  !== f.familia)  return false;
+      if (f.situacao && p.situacao !== f.situacao) return false;
+      if (busca && p.cod.indexOf(busca) < 0 && p.desc.toUpperCase().indexOf(busca) < 0) return false;
+      return true;
+    });
+  }
+
+  return {
+    apurar: apurar, filtrar: filtrar, familiaDe: familiaDe,
+    variacao: variacao, situacaoDe: situacaoDe, ehVolume: ehVolume,
+    ROTULO_SITUACAO: ROTULO_SITUACAO, ORDEM_M: ORDEM_M
+  };
+})();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COMPARATIVO 2025 × 2026 — aba dedicada (grupo PPCP/Capacidade)
+   ─────────────────────────────────────────────────────────────────────────
+   Responde à pergunta que a aba Produção por Produto não responde: não
+   "quanto a fábrica fez", e sim "o que mudou no que ela faz". A conta está
+   em CompAnos (testada à parte); aqui só o desenho.
+
+   A tela abre na base MESMOS MESES. Somar 2025 inteiro contra um 2026 que
+   ainda está correndo mostraria uma queda de calendário como se fosse queda
+   de produção — e é exatamente o número que alguém levaria para a reunião.
+   A base ANO CHEIO existe ao lado, marcada como parcial.
+
+   Onde o dado não existe, a tela diz que não existe em vez de estimar: sem a
+   coluna PESO no reporte, os blocos de peso somem e o resto continua de pé
+   medindo em peças. */
+(function () {
+  var ORDEM_M = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  var ROXO = '#9C6ADE', AMBAR = '#F5A623', CIANO = '#00E5FF',
+      VERDE = '#4CAF50', VERM = '#F44336', LARANJA = '#FF9800';
+
+  function fi(n){ return isFinite(n)&&n!==null?Math.round(n).toLocaleString('pt-BR'):'—'; }
+  function fd(n,d){ return isFinite(n)&&n!==null?n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'; }
+  function pct(n,d){ if(n===null||!isFinite(n)) return '—'; return (n>=0?'+':'')+fd(n,d===undefined?1:d)+'%'; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function corVar(v){ return v===null?'var(--t3)':(v>=0?VERDE:VERM); }
+
+  function itens(){ try{ return JSON.parse(localStorage.getItem('dash_prod_itens_v1'))||[] }catch(e){ return [] } }
+  function regs(){ return (typeof load==='function')?load():[]; }
+
+  /* ── estado da tela (os filtros do item 8 do pedido) ── */
+  var _base='comuns', _mes='', _familia='', _situacao='', _busca='', _ord='qtdB', _apuracao=null;
+  window._caBase=function(b){ _base=b; render(); };
+  window._caMes=function(m){ _mes=m; render(); };
+  window._caFam=function(v){ _familia=v; renderTabela(); };
+  window._caSit=function(v){ _situacao=v; renderTabela(); };
+  window._caBusca=function(v){ _busca=v||''; renderTabela(); };
+  window._caOrd=function(v){ _ord=v; renderTabela(); };
+  window._caLimpar=function(){ _familia=''; _situacao=''; _busca=''; render(); };
+
+  function chip(rot,ativo,onclick,cor){
+    cor=cor||ROXO;
+    return '<button onclick="'+onclick+'" style="padding:5px 12px;border-radius:14px;font-size:.7rem;cursor:pointer;'
+      +'border:1px solid '+(ativo?cor:'var(--b)')+';background:'+(ativo?'rgba(156,106,222,.14)':'transparent')+';'
+      +'color:'+(ativo?cor:'var(--t2)')+';font-weight:'+(ativo?'700':'400')+'">'+rot+'</button>';
+  }
+  function card(lbl,val,sub,cor){
+    return '<div class="kCard" style="border-top:3px solid '+cor+'">'
+      +'<div class="kLbl">'+lbl+'</div>'
+      +'<div class="kVal" style="color:'+cor+';font-size:1.55rem">'+val+'</div>'
+      +'<div class="kSub">'+sub+'</div></div>';
+  }
+  function secao(t,sub){
+    return '<div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:22px 0 10px;padding-left:2px">▸ '+t
+      +(sub?'<span style="text-transform:none;letter-spacing:0;color:var(--t3);font-size:.68rem"> · '+sub+'</span>':'')+'</div>';
+  }
+  function painel(conteudo,borda){
+    return '<div style="background:var(--panel);border:1px solid var(--b);'
+      +(borda?'border-left:4px solid '+borda+';':'')+'border-radius:var(--r);padding:14px 18px">'+conteudo+'</div>';
+  }
+  function aviso(txt,cor){
+    return '<div style="background:rgba('+(cor===VERM?'244,67,54':'255,152,0')+',.08);border:1px solid rgba('
+      +(cor===VERM?'244,67,54':'255,152,0')+',.35);border-left:4px solid '+cor+';border-radius:var(--r);'
+      +'padding:11px 15px;margin-bottom:14px;font-size:.78rem;line-height:1.55;color:var(--t1)">'+txt+'</div>';
+  }
+  function th(t,dir,extra){
+    return '<th style="text-align:'+(dir||'left')+';padding:7px 9px;font-size:.58rem;letter-spacing:.09em;'
+      +'text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--b);white-space:nowrap;'+(extra||'')+'">'+t+'</th>';
+  }
+  function td(t,dir,extra){
+    return '<td style="padding:6px 9px;text-align:'+(dir||'left')+';font-size:.75rem;'
+      +(dir==='right'?'font-family:var(--mono);font-variant-numeric:tabular-nums;':'')+(extra||'')+'">'+t+'</td>';
+  }
+  /* Concordância: "1 produtos entraram" é o tipo de detalhe que faz um
+     relatório parecer gerado por máquina. */
+  function conta(n, sing, plur) { return fi(n) + ' ' + (n === 1 ? sing : plur); }
+  var SIT_COR = { novo:CIANO, saiu:VERM, aumentou:VERDE, reduziu:LARANJA, estavel:'var(--t3)' };
+  var SIT_CURTO = { novo:'Novo', saiu:'Saiu', aumentou:'Aumentou', reduziu:'Reduziu', estavel:'Estável' };
+  function tagSit(p){
+    var c=SIT_COR[p.situacao]||'var(--t3)';
+    return '<span title="'+p.rotulo+'" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:.64rem;font-weight:600;'
+      +'border:1px solid '+c+';color:'+c+';white-space:nowrap">'+(SIT_CURTO[p.situacao]||p.rotulo)+'</span>';
+  }
+
+  /* ══ GRÁFICOS ══ SVG, padrão da casa: acompanha a largura e sai no PDF sem
+     virar imagem borrada. */
+
+  /* Barras pareadas 2025 × 2026 por família — o "onde a linha mudou" visual. */
+  function graficoFamilias(familias, campo, anoA, anoB, unidade) {
+    var top = familias.slice().sort(function(a,b){
+      return (b[campo+'A']+b[campo+'B'])-(a[campo+'A']+a[campo+'B']); }).slice(0,8);
+    if (!top.length) return '';
+    var mx = 0;
+    top.forEach(function(f){ mx=Math.max(mx,f[campo+'A'],f[campo+'B']); });
+    if (mx<=0) return '';
+    mx*=1.08;
+    var W=1000, linhaH=34, H=top.length*linhaH+34, mL=200, mR=80, gW=W-mL-mR;
+    var corpo='';
+    top.forEach(function(f,i){
+      var y=i*linhaH+16;
+      var wA=(f[campo+'A']/mx)*gW, wB=(f[campo+'B']/mx)*gW;
+      var dp=f[campo==='qtd'?'ppQtd':'ppPeso'];
+      corpo+='<text x="'+(mL-10)+'" y="'+(y+13)+'" text-anchor="end" font-size="12" fill="#c9d6e4">'+esc(f.nome)+'</text>'
+        +'<rect x="'+mL+'" y="'+y+'" width="'+Math.max(wA,0.5).toFixed(1)+'" height="11" rx="2" fill="'+AMBAR+'" opacity=".75"><title>'+esc(f.nome)+' '+anoA+': '+fi(f[campo+'A'])+' '+unidade+'</title></rect>'
+        +'<rect x="'+mL+'" y="'+(y+13)+'" width="'+Math.max(wB,0.5).toFixed(1)+'" height="11" rx="2" fill="'+ROXO+'"><title>'+esc(f.nome)+' '+anoB+': '+fi(f[campo+'B'])+' '+unidade+'</title></rect>'
+        +'<text x="'+(W-mR+8)+'" y="'+(y+17)+'" font-size="11" font-weight="700" fill="'+(dp>=0?VERDE:VERM)+'">'
+          +(dp>=0?'+':'')+fd(dp,1)+' p.p.</text>';
+    });
+    return '<div style="display:flex;gap:16px;font-size:.68rem;color:var(--t2);margin-bottom:8px;flex-wrap:wrap">'
+      +'<span><span style="display:inline-block;width:10px;height:10px;background:'+AMBAR+';border-radius:2px;margin-right:5px"></span>'+anoA+'</span>'
+      +'<span><span style="display:inline-block;width:10px;height:10px;background:'+ROXO+';border-radius:2px;margin-right:5px"></span>'+anoB+'</span>'
+      +'<span style="margin-left:auto;color:var(--t3)">à direita: ganho ou perda de participação no total</span></div>'
+      +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">'+corpo+'</svg>';
+  }
+
+  /* Produtos que mais moveram o resultado — barras divergentes a partir do
+     zero. Ordena por impacto absoluto: o que mais mexeu aparece primeiro,
+     tenha subido ou caído. */
+  function graficoImpacto(produtos, campo, unidade) {
+    var lista = produtos.filter(function(p){ return p['dif'+campo]!==0; })
+      .sort(function(a,b){ return Math.abs(b['dif'+campo])-Math.abs(a['dif'+campo]); }).slice(0,12);
+    if (!lista.length) return '';
+    var mx=0;
+    lista.forEach(function(p){ mx=Math.max(mx,Math.abs(p['dif'+campo])); });
+    if (mx<=0) return '';
+    var W=1000, linhaH=25, H=lista.length*linhaH+26, mL=250, mR=95, gW=W-mL-mR, zero=mL+gW/2;
+    var corpo='<line x1="'+zero+'" y1="8" x2="'+zero+'" y2="'+(H-16)+'" stroke="rgba(255,255,255,.18)" stroke-width="1"/>';
+    lista.forEach(function(p,i){
+      var y=i*linhaH+12, v=p['dif'+campo], w=(Math.abs(v)/mx)*(gW/2)*0.94;
+      var x=v>=0?zero:zero-w;
+      corpo+='<text x="'+(mL-10)+'" y="'+(y+11)+'" text-anchor="end" font-size="11.5" fill="#c9d6e4">'+esc(p.desc.slice(0,34))+'</text>'
+        +'<rect x="'+x.toFixed(1)+'" y="'+y+'" width="'+Math.max(w,1).toFixed(1)+'" height="13" rx="2" fill="'+(v>=0?VERDE:VERM)+'">'
+          +'<title>'+esc(p.cod+' — '+p.desc)+': '+(v>=0?'+':'')+fi(v)+' '+unidade+'</title></rect>'
+        +'<text x="'+(W-mR+8)+'" y="'+(y+11)+'" font-size="11" font-weight="700" fill="'+(v>=0?VERDE:VERM)+'">'
+          +(v>=0?'+':'')+fi(v)+'</text>';
+    });
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">'+corpo+'</svg>'
+      +'<div style="font-size:.68rem;color:var(--t3);padding-top:6px">Diferença absoluta em '+unidade
+      +' entre os dois períodos. Top 12 por impacto, subindo ou caindo.</div>';
+  }
+
+  /* Matriz volume × peso unitário. Corta pela MEDIANA, não pela média: um
+     guarda-roupa de 80 kg puxa a média e jogaria quase tudo para o quadrante
+     "leve", que não diria nada. */
+  function matrizVolumePeso(produtos, anoB) {
+    var pts = produtos.filter(function(p){ return p.qtdB>0 && p.kgUnB>0; });
+    if (pts.length < 4) return '';
+    function mediana(arr){
+      var s=arr.slice().sort(function(a,b){ return a-b; }), n=s.length;
+      return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;
+    }
+    var medQ=mediana(pts.map(function(p){ return p.qtdB; }));
+    var medP=mediana(pts.map(function(p){ return p.kgUnB; }));
+    var maxQ=Math.max.apply(null,pts.map(function(p){ return p.qtdB; }))*1.08;
+    var maxP=Math.max.apply(null,pts.map(function(p){ return p.kgUnB; }))*1.08;
+    var W=1000,H=430,mL=62,mR=18,mT=30,mB=44,gW=W-mL-mR,gH=H-mT-mB;
+    function X(v){ return mL+(v/maxQ)*gW; }
+    function Y(v){ return mT+gH-(v/maxP)*gH; }
+    var xMed=X(medQ), yMed=Y(medP);
+    var g='', eixo='';
+    for (var i=0;i<=4;i++){
+      var yv=maxP*i/4, y=Y(yv), xv=maxQ*i/4, x=X(xv);
+      g+='<line x1="'+mL+'" y1="'+y.toFixed(1)+'" x2="'+(W-mR)+'" y2="'+y.toFixed(1)+'" stroke="rgba(255,255,255,.06)"/>';
+      eixo+='<text x="'+(mL-8)+'" y="'+(y+3.5).toFixed(1)+'" text-anchor="end" font-size="10.5" fill="#5a86b0">'+fd(yv,1)+'</text>'
+        +'<text x="'+x.toFixed(1)+'" y="'+(H-mB+16)+'" text-anchor="middle" font-size="10.5" fill="#5a86b0">'+fi(xv)+'</text>';
+    }
+    var quad='<line x1="'+xMed.toFixed(1)+'" y1="'+mT+'" x2="'+xMed.toFixed(1)+'" y2="'+(mT+gH)+'" stroke="'+ROXO+'" stroke-dasharray="4 3" stroke-width="1.2"/>'
+      +'<line x1="'+mL+'" y1="'+yMed.toFixed(1)+'" x2="'+(W-mR)+'" y2="'+yMed.toFixed(1)+'" stroke="'+ROXO+'" stroke-dasharray="4 3" stroke-width="1.2"/>';
+    var rot=[
+      {x:mL+8,           y:mT+14,        t:'baixo volume · pesado',  a:'start'},
+      {x:W-mR-8,         y:mT+14,        t:'alto volume · pesado',   a:'end'},
+      {x:mL+8,           y:mT+gH-7,      t:'baixo volume · leve',    a:'start'},
+      {x:W-mR-8,         y:mT+gH-7,      t:'alto volume · leve',     a:'end'}
+    ].map(function(r){
+      return '<text x="'+r.x+'" y="'+r.y+'" text-anchor="'+r.a+'" font-size="10" fill="rgba(156,106,222,.75)" font-weight="600">'+r.t+'</text>';
+    }).join('');
+    var bolhas=pts.map(function(p){
+      var cor = p.situacao==='novo'?CIANO:(p.situacao==='aumentou'?VERDE:(p.situacao==='reduziu'?LARANJA:AMBAR));
+      return '<circle cx="'+X(p.qtdB).toFixed(1)+'" cy="'+Y(p.kgUnB).toFixed(1)+'" r="5" fill="'+cor+'" fill-opacity=".62" stroke="'+cor+'" stroke-width="1">'
+        +'<title>'+esc(p.desc)+'\n'+fi(p.qtdB)+' peças · '+fd(p.kgUnB,1)+' kg/un · '+p.rotulo+'</title></circle>';
+    }).join('');
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">'+g+quad+rot+bolhas+eixo
+      +'<text x="'+(mL+gW/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10.5" fill="#5a86b0">quantidade produzida em '+anoB+' (peças)</text>'
+      +'<text x="14" y="'+(mT+gH/2)+'" text-anchor="middle" font-size="10.5" fill="#5a86b0" transform="rotate(-90 14 '+(mT+gH/2)+')">peso unitário (kg)</text>'
+      +'</svg>'
+      +'<div style="font-size:.68rem;color:var(--t3);padding-top:6px;line-height:1.5">'
+      +'Cada bolha é um produto de '+anoB+'. Linhas tracejadas: mediana de volume ('+fi(medQ)
+      +' peças) e de peso ('+fd(medP,1)+' kg/un). Cor = situação contra '+(anoB-1)+'.</div>';
+  }
+
+  /* ══ RENDER ══ */
+  function anosDisponiveis(its) {
+    var a = {};
+    its.forEach(function (r) { if (r[1]) a[r[1]] = 1; });
+    return Object.keys(a).map(Number).sort(function (x, y) { return x - y; });
+  }
+
+  function render() {
+    var corpo = document.getElementById('ca-corpo'); if (!corpo) return;
+    var its = itens(), todos = regs();
+    var anos = anosDisponiveis(its);
+    var lbl = document.getElementById('ca-base-lbl');
+
+    if (anos.length < 2) {
+      if (lbl) lbl.textContent = '—';
+      corpo.innerHTML = painel(
+        '<div style="font-size:.85rem;line-height:1.6;color:var(--t1)">'
+        + '<b>Ainda não dá para comparar dois anos.</b><br>'
+        + 'Esta aba lê as linhas do reporte mensal do ERP (aba REPORTE_VOLUMES da planilha), '
+        + 'e hoje há ' + (anos.length ? 'só ' + anos[0] : 'nenhum ano') + ' com reporte carregado. '
+        + 'Processe os PDFs do relatório <i>Mensal por Transação (3 - REPORTE)</i> dos dois anos '
+        + 'e o comparativo aparece sozinho no próximo sync.</div>', LARANJA);
+      return;
+    }
+    var anoB = anos[anos.length - 1], anoA = anoB - 1;
+    if (anos.indexOf(anoA) < 0) anoA = anos[anos.length - 2];
+
+    var r = window.CompAnos.apurar(its, todos, { anoA: anoA, anoB: anoB, base: _base, mes: _mes });
+    _apuracao = r;
+    if (lbl) lbl.textContent = anoA + ' × ' + anoB;
+
+    if (!r.geral.A.qtd && !r.geral.B.qtd) {
+      corpo.innerHTML = painel('<div style="font-size:.85rem;color:var(--t1)">Nenhum mês com reporte nos dois anos '
+        + 'sob este filtro. Tire o filtro de mês ou use a base <b>ano cheio</b>.</div>', LARANJA);
+      return;
+    }
+
+    corpo.innerHTML =
+        blocoFiltros(r, anoA, anoB)
+      + blocoAvisos(r, anoA, anoB)
+      + blocoCards(r, anoA, anoB)
+      + blocoIndicadores(r, anoA, anoB)
+      + blocoMix(r, anoA, anoB)
+      + blocoRanking(r, anoA, anoB)
+      + blocoFamilias(r, anoA, anoB)
+      + blocoImpacto(r, anoA, anoB)
+      + blocoPesoMedio(r, anoA, anoB)
+      + blocoMatriz(r, anoB)
+      + blocoTabela(r, anoA, anoB);
+    renderTabela();
+  }
+
+  /* ── Filtros (item 8 do pedido) ── */
+  function blocoFiltros(r, anoA, anoB) {
+    var mesesPossiveis = ORDEM_M.filter(function (m) { return r.base.comuns.indexOf(m) >= 0; });
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
+      + '<span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-right:4px">Base</span>'
+      + chip('Mesmos meses', _base === 'comuns', "_caBase('comuns')")
+      + chip('Ano cheio', _base === 'cheio', "_caBase('cheio')")
+      + '<span style="width:14px"></span>'
+      + '<span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-right:4px">Período</span>'
+      + chip('Todos', _mes === '', "_caMes('')")
+      + mesesPossiveis.map(function (m) { return chip(m, _mes === m, "_caMes('" + m + "')"); }).join('')
+      + '</div>'
+      + '<div style="font-size:.66rem;color:var(--t3);margin-bottom:14px;line-height:1.5">'
+      + (_base === 'comuns'
+          ? 'Comparando só os meses com reporte nos dois anos: <b style="color:var(--t2)">'
+            + (r.base.usaB.join(', ') || '—') + '</b>. É a base que responde “o que mudou na produção”.'
+          : 'Ano cheio: ' + anoA + ' com ' + r.base.usaA.length + ' ' + (r.base.usaA.length === 1 ? 'mês' : 'meses')
+            + ' e ' + anoB + ' com ' + r.base.usaB.length + '. Serve para totalizar o exercício, não para comparar ritmo.')
+      + '</div>';
+  }
+
+  /* ── Avisos: o que o gestor precisa saber ANTES de ler os números ── */
+  function blocoAvisos(r, anoA, anoB) {
+    var out = '';
+    if (r.base.parcial) {
+      out += aviso('<b>Comparação de calendário, não de produção.</b> ' + anoA + ' entra com <b>'
+        + r.base.usaA.length + '</b> ' + (r.base.usaA.length === 1 ? 'mês' : 'meses') + ' e ' + anoB + ' com <b>'
+        + r.base.usaB.length + '</b>. A diferença de totais embute os meses que ' + anoB
+        + ' ainda não teve. Para medir mudança de mix, volte para <b>mesmos meses</b>.', LARANJA);
+    }
+    if (!r.peso.temPeso) {
+      out += aviso('<b>Sem peso por produto.</b> A coluna <code>PESO</code> da aba REPORTE_VOLUMES está vazia ou não existe, '
+        + 'então esta tela mede o mix só em peças. O peso vem no mesmo PDF do ERP que já alimenta os volumes — '
+        + 'com a coluna preenchida, aparecem aqui o peso por produto, o peso médio e a matriz volume × peso.', LARANJA);
+    } else {
+      if (r.peso.cobertura < 95) {
+        out += aviso('<b>Peso informado em ' + fd(r.peso.cobertura, 1) + '% da quantidade produzida.</b> '
+          + 'Os totais de peso abaixo cobrem só essa parte — o resto do reporte veio sem a coluna. '
+          + 'Trate os kg como parciais até a cobertura fechar.', LARANJA);
+      }
+      if (!r.peso.confere) {
+        out += aviso('<b>O peso por produto não fecha com a HISTORICO.</b> '
+          + 'Soma do reporte contra o <code>quilosProduzidos</code> lançado: '
+          + (r.peso.difA !== null ? anoA + ' ' + pct(r.peso.difA) : '')
+          + (r.peso.difA !== null && r.peso.difB !== null ? ' · ' : '')
+          + (r.peso.difB !== null ? anoB + ' ' + pct(r.peso.difB) : '')
+          + '. As duas pontas saem do mesmo relatório do ERP, então divergência acima de 2% quer dizer que uma delas '
+          + 'foi lançada de outro corte. Confira antes de levar o peso para decisão.', VERM);
+      }
+    }
+    return out;
+  }
+
+  /* ── Cards do topo (item 7 do pedido) ──
+     Cinco cards, não seis: a área de conteúdo tem largura fixa e o sexto
+     quebraria para uma segunda linha sozinho. As duas variações dividem o
+     último card de propósito — a distância entre elas É o achado. Peso
+     subindo bem mais que peças quer dizer mix mais pesado, e lado a lado
+     isso se lê sem precisar de conta. */
+  function blocoCards(r, anoA, anoB) {
+    var g = r.geral, temP = r.peso.temPeso;
+    var sufA = g.A.nMeses + (g.A.nMeses === 1 ? ' mês' : ' meses');
+    var sufB = g.B.nMeses + (g.B.nMeses === 1 ? ' mês' : ' meses');
+    var cardVar;
+    if (temP && g.varQtd !== null && g.varPeso !== null) {
+      cardVar = '<div class="kCard" style="border-top:3px solid ' + corVar(g.varPeso) + '">'
+        + '<div class="kLbl">Variação</div>'
+        + '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'
+          + '<span class="kVal" style="color:' + corVar(g.varQtd) + ';font-size:1.3rem">' + pct(g.varQtd) + '</span>'
+          + '<span style="font-size:.66rem;color:var(--t3)">peças</span>'
+        + '</div>'
+        + '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:3px">'
+          + '<span class="kVal" style="color:' + corVar(g.varPeso) + ';font-size:1.3rem">' + pct(g.varPeso) + '</span>'
+          + '<span style="font-size:.66rem;color:var(--t3)">peso</span>'
+        + '</div>'
+        + '<div class="kSub">' + (Math.abs(g.varPeso - g.varQtd) < 2
+            ? 'andaram juntas: mix estável'
+            : (g.varPeso > g.varQtd ? 'peso subiu mais: peça mais pesada' : 'peças subiram mais: peça mais leve'))
+        + '</div></div>';
+    } else {
+      cardVar = card('Variação em peças', pct(g.varQtd), 'quantidade produzida', corVar(g.varQtd));
+    }
+    return '<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(185px,1fr))">'
+      + card('Produção ' + anoA, fi(g.A.qtd) + ' <span style="font-size:.8rem">pç</span>', sufA + ' · ' + fi(g.A.nProd) + ' produtos', AMBAR)
+      + card('Produção ' + anoB, fi(g.B.qtd) + ' <span style="font-size:.8rem">pç</span>', sufB + ' · ' + fi(g.B.nProd) + ' produtos', ROXO)
+      + (temP ? card('Peso ' + anoA, fi(g.A.peso) + ' <span style="font-size:.8rem">kg</span>',
+                     g.A.pesoMedio ? fd(g.A.pesoMedio, 1) + ' kg por peça' : '—', AMBAR) : '')
+      + (temP ? card('Peso ' + anoB, fi(g.B.peso) + ' <span style="font-size:.8rem">kg</span>',
+                     g.B.pesoMedio ? fd(g.B.pesoMedio, 1) + ' kg por peça' : '—', ROXO) : '')
+      + cardVar
+      + '</div>';
+  }
+
+  /* ── Item 1: indicadores principais ── */
+  function blocoIndicadores(r, anoA, anoB) {
+    var g = r.geral, temP = r.peso.temPeso;
+    function lin(rot, a, b, v, dec, suf) {
+      return '<tr>' + td(rot, 'left', 'color:var(--t2)')
+        + td((dec ? fd(a, dec) : fi(a)) + (suf || ''), 'right', 'color:var(--t2)')
+        + td('<b>' + (dec ? fd(b, dec) : fi(b)) + (suf || '') + '</b>', 'right', 'color:var(--t1)')
+        + td('<b>' + pct(v) + '</b>', 'right', 'color:' + corVar(v)) + '</tr>';
+    }
+    return secao('Comparativo geral', anoA + ' × ' + anoB)
+      + painel('<table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr>' + th('Indicador') + th(String(anoA), 'right') + th(String(anoB), 'right') + th('Variação', 'right') + '</tr></thead><tbody>'
+        + lin('Quantidade produzida', g.A.qtd, g.B.qtd, g.varQtd, 0, ' pç')
+        + (temP ? lin('Peso total produzido', g.A.peso, g.B.peso, g.varPeso, 0, ' kg') : '')
+        + lin('Produtos diferentes', g.A.nProd, g.B.nProd, window.CompAnos.variacao(g.A.nProd, g.B.nProd))
+        + (temP ? lin('Peso médio por peça', g.A.pesoMedio, g.B.pesoMedio, g.varPesoMedio, 2, ' kg') : '')
+        + '</tbody></table>'
+        + '<div style="font-size:.7rem;color:var(--t3);margin-top:10px;line-height:1.55">'
+        + conta(r.mix.entraram.length, 'produto entrou', 'produtos entraram') + ' em ' + anoB + ', '
+        + conta(r.mix.sairam.length, 'saiu', 'saíram') + ' de linha, '
+        + conta(r.produtos.filter(function (p) { return p.situacao === 'aumentou'; }).length, 'aumentou', 'aumentaram') + ' e '
+        + conta(r.produtos.filter(function (p) { return p.situacao === 'reduziu'; }).length, 'reduziu', 'reduziram')
+        + ' (estável = variação menor que ' + r.limites.estavel + '%).</div>', ROXO);
+  }
+
+  /* ── Item 4: o que entrou, o que saiu, o que mexeu ── */
+  function blocoMix(r, anoA, anoB) {
+    function lista(titulo, arr, campo, cor, vazio, unidade) {
+      var top = arr.slice(0, 8);
+      /* table-layout:fixed para o text-overflow:ellipsis da coluna do nome
+         valer — em tabela automática a célula cresce e o corte não acontece. */
+      var corpo = top.length
+        ? '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><tbody>'
+          + top.map(function (p) {
+              var v = p[campo];
+              return '<tr>' + td('<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'
+                  + esc(p.cod + ' — ' + p.desc) + '"><span style="color:var(--t1)">' + esc(p.desc) + '</span>'
+                  + '<span style="color:var(--t3);font-size:.64rem"> · ' + esc(p.familia) + '</span></div>')
+                + td('<b style="color:' + cor + '">' + (campo === 'difQtd' && v > 0 ? '+' : '') + fi(v) + '</b>'
+                  + '<span style="color:var(--t3);font-size:.64rem"> ' + unidade + '</span>', 'right',
+                  'white-space:nowrap;width:118px') + '</tr>';
+            }).join('')
+          + '</tbody></table>'
+          + (arr.length > 8 ? '<div style="font-size:.66rem;color:var(--t3);padding-top:7px">+ ' + (arr.length - 8) + ' produtos</div>' : '')
+        : '<div style="font-size:.74rem;color:var(--t3);padding:6px 0">' + vazio + '</div>';
+      /* min-width:0 é obrigatório: sem ele o item de grid não encolhe abaixo da
+         largura do próprio conteúdo, e um nome de produto comprido empurra a
+         coluna para fora do painel. */
+      return '<div style="min-width:0">'
+        + '<div style="font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:' + cor + ';font-weight:700;margin-bottom:7px">'
+        + titulo + ' <span style="color:var(--t3);font-weight:400">(' + arr.length + ')</span></div>'
+        + corpo + '</div>';
+    }
+    return secao('Mudanças no mix', 'onde a linha de produto mudou')
+      + painel('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;align-items:start">'
+        + lista('Entraram em ' + anoB, r.mix.entraram, 'qtdB', CIANO, 'Nenhum produto novo no período.', 'pç')
+        + lista('Saíram em ' + anoB, r.mix.sairam, 'qtdA', VERM, 'Nenhum produto deixou de ser produzido.', 'pç em ' + anoA)
+        + lista('Aumento relevante', r.mix.subiram, 'difQtd', VERDE, 'Nenhum aumento acima do corte de materialidade.', 'pç')
+        + lista('Redução relevante', r.mix.cairam, 'difQtd', LARANJA, 'Nenhuma redução acima do corte de materialidade.', 'pç')
+        + '</div>'
+        + '<div style="font-size:.68rem;color:var(--t3);margin-top:13px;line-height:1.55;border-top:1px solid var(--b);padding-top:9px">'
+        + 'Aumento e redução “relevantes” exigem duas coisas ao mesmo tempo: variar mais de ' + r.limites.estavel
+        + '% <b>e</b> mover pelo menos ' + fd(r.limites.material, 1) + '% do total do período. Só o percentual encheria a lista '
+        + 'de item que foi de 2 para 4 peças.</div>', ROXO);
+  }
+
+  /* ── Produtos que mais moveram o resultado ──
+     Barras divergentes a partir do zero: quem puxou para cima e quem puxou
+     para baixo na mesma escala. Em peso quando há peso — é a grandeza que
+     diz quanto material a mais (ou a menos) passou pela fábrica; em peças
+     quando não há. */
+  function blocoRanking(r, anoA, anoB) {
+    var temP = r.peso.temPeso;
+    var svg = graficoImpacto(r.produtos, temP ? 'Peso' : 'Qtd', temP ? 'kg' : 'peças');
+    if (!svg) return '';
+    return secao('Produtos que mais impactaram o resultado', anoA + ' → ' + anoB)
+      + painel(svg, ROXO);
+  }
+
+  /* ── Item 3: análise por linha de produto (família) ── */
+  function blocoFamilias(r, anoA, anoB) {
+    var temP = r.peso.temPeso;
+    var linhas = r.familias.map(function (f) {
+      return '<tr>'
+        + td('<b>' + esc(f.nome) + '</b>')
+        + td(fi(f.qtdA), 'right', 'color:var(--t2)')
+        + td('<b>' + fi(f.qtdB) + '</b>', 'right')
+        + td(pct(f.varQtd), 'right', 'color:' + corVar(f.varQtd))
+        + (temP ? td(fi(f.pesoA), 'right', 'color:var(--t2)') + td('<b>' + fi(f.pesoB) + '</b>', 'right')
+                + td(pct(f.varPeso), 'right', 'color:' + corVar(f.varPeso)) : '')
+        + td(f.nProdA + ' → <b>' + f.nProdB + '</b>'
+            + (f.difProd ? '<span style="color:' + (f.difProd > 0 ? VERDE : VERM) + ';font-size:.66rem"> ('
+               + (f.difProd > 0 ? '+' : '') + f.difProd + ')</span>' : ''), 'right')
+        + td('<b>' + (f.ppQtd >= 0 ? '+' : '') + fd(f.ppQtd, 1) + '</b>', 'right', 'color:' + corVar(f.ppQtd))
+        + '</tr>';
+    }).join('');
+    return secao('Por linha de produto', 'família derivada da descrição do ERP')
+      + painel('<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:720px">'
+        + '<thead><tr>' + th('Linha')
+        + th('Qtd ' + anoA, 'right') + th('Qtd ' + anoB, 'right') + th('Δ Qtd', 'right')
+        + (temP ? th('Kg ' + anoA, 'right') + th('Kg ' + anoB, 'right') + th('Δ Kg', 'right') : '')
+        + th('Produtos ativos', 'right') + th('Δ Part. (p.p.)', 'right')
+        + '</tr></thead><tbody>' + linhas + '</tbody></table></div>'
+        + secaoInterna('Peso das famílias — ' + anoA + ' × ' + anoB)
+        + graficoFamilias(r.familias, temP ? 'peso' : 'qtd', anoA, anoB, temP ? 'kg' : 'pç')
+        + '<div style="font-size:.68rem;color:var(--t3);margin-top:11px;line-height:1.55;border-top:1px solid var(--b);padding-top:9px">'
+        + 'O cadastro do ERP não tem campo de linha de produto, então a família sai da descrição do próprio item '
+        + '(primeira palavra, ou as duas primeiras em nome composto; o prefixo KIT é embalagem e não conta). '
+        + 'É a mesma regra da aba Produção por Produto — nenhuma categoria foi inventada aqui. '
+        + 'A última coluna é o que mostra mix mudando: uma família pode cair em peças e ainda assim ganhar participação, '
+        + 'se o total caiu mais que ela.</div>', ROXO);
+  }
+  function secaoInterna(t) {
+    return '<div style="font-size:.57rem;letter-spacing:.11em;text-transform:uppercase;color:var(--t3);margin:18px 0 9px;'
+      + 'border-top:1px solid var(--b);padding-top:12px">' + t + '</div>';
+  }
+
+  /* ── Item 5: impacto das mudanças ──
+     A regra que o pedido fixa e que esta função respeita: o REFLEXO é leitura
+     direta do dado (mais kg = mais material movimentado; mais produtos
+     distintos = mais trocas de setup), nunca a CAUSA. Por que a linha mudou
+     — decisão comercial, saída de cadastro, troca de fornecedor — não está em
+     lugar nenhum da base, e por isso sai escrito que não está. */
+  function blocoImpacto(r, anoA, anoB) {
+    var temP = r.peso.temPeso;
+    /* Só família que mexeu de verdade entra: com todas, a tabela vira lista
+       de cadastro e o que importa se perde no meio. */
+    var relevantes = r.familias.filter(function (f) {
+      return (f.varQtd !== null && Math.abs(f.varQtd) >= r.limites.estavel)
+          || Math.abs(f.ppQtd) >= 1 || Math.abs(f.ppPeso) >= 1
+          || f.novos > 0 || f.saidos > 0
+          || (f.qtdA === 0) || (f.qtdB === 0);
+    }).sort(function (a, b) {
+      /* Ordena pelo deslocamento de participação — em peso quando há peso,
+         em peças quando não há. É o que mede "mudou o mix", não "é grande". */
+      function forca(f) { return Math.abs(temP && f.ppPeso ? f.ppPeso : f.ppQtd); }
+      return forca(b) - forca(a);
+    });
+    if (!relevantes.length) {
+      return secao('Impacto das mudanças')
+        + painel('<div style="font-size:.8rem;color:var(--t2);line-height:1.6">Nenhuma família mudou o suficiente no período '
+          + 'para caracterizar mudança de mix (corte: ' + r.limites.estavel + '% de variação ou 1 p.p. de participação).</div>', ROXO);
+    }
+
+    var linhas = relevantes.slice(0, 12).map(function (f) {
+      /* Mudança identificada — a mais forte primeiro. */
+      var mud = [];
+      if (f.qtdA === 0 && f.qtdB > 0) mud.push('Linha nova em ' + anoB);
+      else if (f.qtdB === 0 && f.qtdA > 0) mud.push('Linha sem produção em ' + anoB);
+      else {
+        if (f.novos > 0)  mud.push('Entrada de ' + f.novos + ' produto' + (f.novos > 1 ? 's' : ''));
+        if (f.saidos > 0) mud.push('Saída de ' + f.saidos + ' produto' + (f.saidos > 1 ? 's' : ''));
+        if (f.varQtd !== null && Math.abs(f.varQtd) >= r.limites.estavel)
+          mud.push((f.varQtd > 0 ? 'Aumento' : 'Redução') + ' de volume (' + pct(f.varQtd) + ')');
+        if (temP && f.kgUnA > 0 && f.kgUnB > 0) {
+          var dKg = ((f.kgUnB - f.kgUnA) / f.kgUnA) * 100;
+          if (Math.abs(dKg) >= r.limites.estavel)
+            mud.push((dKg > 0 ? 'Aumento' : 'Redução') + ' do peso médio (' + pct(dKg) + ')');
+        }
+      }
+      if (!mud.length) mud.push('Mudança de participação (' + (f.ppQtd >= 0 ? '+' : '') + fd(f.ppQtd, 1) + ' p.p.)');
+
+      /* Reflexo operacional — só o que decorre do próprio número. */
+      var refl = [];
+      if (f.difQtd > 0) refl.push('mais peças ocupando a linha');
+      else if (f.difQtd < 0) refl.push('menos peças ocupando a linha');
+      if (temP && f.difPeso > 0) refl.push('mais material movimentado');
+      else if (temP && f.difPeso < 0) refl.push('menos material movimentado');
+      if (f.difProd > 0) refl.push('mais itens distintos, mais trocas de setup');
+      else if (f.difProd < 0) refl.push('menos itens distintos, menos trocas');
+      if (temP && f.kgUnA > 0 && f.kgUnB > 0 && Math.abs((f.kgUnB - f.kgUnA) / f.kgUnA) * 100 >= r.limites.estavel)
+        refl.push(f.kgUnB > f.kgUnA ? 'peça mais pesada por unidade' : 'peça mais leve por unidade');
+      var reflexo = refl.length
+        ? refl.join('; ').replace(/^./, function (c) { return c.toUpperCase(); }) + '.'
+        : 'Impacto identificado nos dados, causa operacional não disponível.';
+
+      function seta(v) {
+        if (v === 0 || v === null) return '<span style="color:var(--t3)">=</span>';
+        return '<b style="color:' + (v > 0 ? VERDE : VERM) + '">' + (v > 0 ? '▲' : '▼') + '</b>';
+      }
+      return '<tr>'
+        + td('<b>' + esc(f.nome) + '</b>')
+        + td(mud.join('<br>'), 'left', 'color:var(--t2);font-size:.72rem;line-height:1.5;white-space:normal')
+        + td(seta(f.difQtd) + '<span style="color:var(--t3);font-size:.68rem"> ' + (f.difQtd >= 0 ? '+' : '') + fi(f.difQtd) + '</span>', 'right')
+        + (temP ? td(seta(f.difPeso) + '<span style="color:var(--t3);font-size:.68rem"> ' + (f.difPeso >= 0 ? '+' : '') + fi(f.difPeso) + '</span>', 'right') : '')
+        + td(reflexo, 'left', 'color:var(--t2);font-size:.72rem;line-height:1.5;white-space:normal')
+        + '</tr>';
+    }).join('');
+
+    return secao('Impacto das mudanças', 'o que o dado mostra — a causa não está na base')
+      /* table-layout:fixed: a largura de cada coluna vem do cabeçalho e o
+         texto quebra dentro da célula. Em layout automático a célula de
+         reflexo esticava a tabela para fora do painel. */
+      + painel('<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:760px;table-layout:fixed">'
+        + '<thead><tr>' + th('Linha de produto', 'left', 'width:128px') + th('Mudança identificada', 'left', 'width:28%')
+        + th('Qtd', 'right', 'width:78px') + (temP ? th('Peso', 'right', 'width:78px') : '') + th('Possível reflexo operacional')
+        + '</tr></thead><tbody>' + linhas + '</tbody></table></div>'
+        + '<div style="font-size:.68rem;color:var(--t3);margin-top:11px;line-height:1.55;border-top:1px solid var(--b);padding-top:9px">'
+        + 'A coluna de reflexo é leitura direta do número (mais quilos = mais material movimentado; mais itens distintos = mais trocas de setup). '
+        + '<b>Por que</b> a linha mudou — decisão comercial, item fora de cadastro, mudança de projeto — não existe em nenhuma coluna da base, '
+        + 'e por isso não é afirmado aqui.</div>', ROXO);
+  }
+
+  /* ── Item 6: produto × peso médio ── */
+  function blocoPesoMedio(r, anoA, anoB) {
+    if (!r.peso.temPeso) return '';
+    var g = r.geral;
+    var comAmbos = r.produtos.filter(function (p) { return p.kgUnA > 0 && p.kgUnB > 0; });
+    function rank(arr, campo, dir, n) {
+      return arr.slice().sort(function (a, b) { return dir * ((a[campo] || 0) - (b[campo] || 0)); }).slice(0, n || 5);
+    }
+    /* Mesma regra do bloco de mix: min-width:0 no item do grid e ellipsis no
+       nome, senão um produto de nome comprido empurra a coluna para fora. */
+    function mini(titulo, arr, fmt, cor) {
+      return '<div style="min-width:0"><div style="font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:' + cor
+        + ';font-weight:700;margin-bottom:7px">' + titulo + '</div>'
+        + (arr.length ? '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><tbody>'
+            + arr.map(function (p) {
+                return '<tr>' + td('<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t1)" title="'
+                    + esc(p.cod + ' — ' + p.desc) + '">' + esc(p.desc) + '</div>')
+                  + td('<b style="color:' + cor + '">' + fmt(p) + '</b>', 'right', 'white-space:nowrap;width:78px') + '</tr>';
+              }).join('') + '</tbody></table>'
+          : '<div style="font-size:.74rem;color:var(--t3)">—</div>')
+        + '</div>';
+    }
+    var dPM = g.varPesoMedio;
+    var frase = dPM === null ? ''
+      : (Math.abs(dPM) < 2
+          ? 'O peso médio por peça praticamente não mudou (' + pct(dPM) + '): a variação de quilos veio de <b>volume</b>, não de mix.'
+          : (dPM > 0
+              ? 'O peso médio por peça <b style="color:' + LARANJA + '">subiu ' + pct(dPM) + '</b> ('
+                + fd(g.A.pesoMedio, 2) + ' → ' + fd(g.B.pesoMedio, 2) + ' kg): a fábrica está produzindo peças maiores. '
+                + 'Mesmo com a mesma contagem de peças, passa mais material pela linha, pela embalagem e pela expedição.'
+              : 'O peso médio por peça <b style="color:' + VERDE + '">caiu ' + pct(dPM) + '</b> ('
+                + fd(g.A.pesoMedio, 2) + ' → ' + fd(g.B.pesoMedio, 2) + ' kg): a fábrica está produzindo peças menores. '
+                + 'A mesma contagem de peças move menos material — e a peça em si diz menos sobre o esforço da linha.'));
+    return secao('Produto × peso médio', 'a fábrica faz mais peças ou peças mais pesadas?')
+      + painel('<div style="font-size:.82rem;line-height:1.6;color:var(--t1);margin-bottom:16px;max-width:1000px">' + frase + '</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:22px;align-items:start">'
+        + mini('Mais pesados em ' + anoB, rank(r.produtos.filter(function (p) { return p.kgUnB > 0; }), 'kgUnB', -1),
+               function (p) { return fd(p.kgUnB, 1) + ' kg'; }, LARANJA)
+        + mini('Mais leves em ' + anoB, rank(r.produtos.filter(function (p) { return p.kgUnB > 0; }), 'kgUnB', 1),
+               function (p) { return fd(p.kgUnB, 1) + ' kg'; }, CIANO)
+        + mini('Ficaram mais pesados', rank(comAmbos.filter(function (p) { return p.varKgUn > 0; }), 'varKgUn', -1),
+               function (p) { return pct(p.varKgUn); }, VERDE)
+        + mini('Ficaram mais leves', rank(comAmbos.filter(function (p) { return p.varKgUn < 0; }), 'varKgUn', 1),
+               function (p) { return pct(p.varKgUn); }, VERM)
+        + '</div>'
+        + '<div style="font-size:.68rem;color:var(--t3);margin-top:13px;line-height:1.55;border-top:1px solid var(--b);padding-top:9px">'
+        + 'Peso unitário = peso reportado ÷ quantidade reportada, sobre os meses em que o produto teve peso informado. '
+        + 'Mudança no peso unitário do mesmo código quer dizer que o produto em si mudou (projeto, material ou embalagem) — '
+        + 'a base não diz qual.</div>', ROXO);
+  }
+
+  function blocoMatriz(r, anoB) {
+    var svg = matrizVolumePeso(r.produtos, anoB);
+    if (!svg) return '';
+    return secao('Matriz volume × peso', 'onde cada produto cai') + painel(svg, ROXO);
+  }
+
+  /* ── Relatório impresso ──
+     Mesma apuração da tela, incluindo a base escolhida: relatório que sai com
+     número diferente do que está na tela é pior que não sair. */
+  window.caImprimir = function () {
+    var its = itens(), todos = regs();
+    var anos = anosDisponiveis(its);
+    if (anos.length < 2) {
+      if (typeof toast === 'function') toast('Sem dois anos de reporte para comparar.', 'wn');
+      return;
+    }
+    var anoB = anos[anos.length - 1], anoA = anos.indexOf(anoB - 1) >= 0 ? anoB - 1 : anos[anos.length - 2];
+    var r = window.CompAnos.apurar(its, todos, { anoA: anoA, anoB: anoB, base: _base, mes: _mes });
+    if (!r.geral.A.qtd && !r.geral.B.qtd) {
+      if (typeof toast === 'function') toast('Sem produção nos dois anos sob este filtro.', 'wn');
+      return;
+    }
+    var temP = r.peso.temPeso, hoje = new Date().toLocaleDateString('pt-BR');
+    var rotBase = _base === 'comuns'
+      ? 'mesmos meses (' + (r.base.usaB.join(', ') || '—') + ')'
+      : 'ano cheio — ' + anoA + ': ' + r.base.usaA.length + ' meses, ' + anoB + ': ' + r.base.usaB.length;
+
+    function kpi(l, v, s) { return '<div class="k"><div class="kl">' + l + '</div><div class="kv">' + v + '</div><div class="ks">' + s + '</div></div>'; }
+    var g = r.geral;
+    var kpis = '<div class="kg">'
+      + kpi('Peças ' + anoA, fi(g.A.qtd), g.A.nProd + ' produtos')
+      + kpi('Peças ' + anoB, fi(g.B.qtd), g.B.nProd + ' produtos')
+      + kpi('Variação', pct(g.varQtd), 'em peças')
+      + kpi('Peso ' + anoA, temP ? fi(g.A.peso) + ' kg' : '—', temP ? fd(g.A.pesoMedio, 1) + ' kg/pç' : 'sem coluna PESO')
+      + kpi('Peso ' + anoB, temP ? fi(g.B.peso) + ' kg' : '—', temP ? fd(g.B.pesoMedio, 1) + ' kg/pç' : 'sem coluna PESO')
+      + kpi('Mix', r.mix.entraram.length + ' ent · ' + r.mix.sairam.length + ' saí', 'produtos que entraram/saíram')
+      + '</div>';
+
+    /* Veredito: o que um gestor precisa saber em três linhas. */
+    var ver = '';
+    if (g.varQtd !== null) {
+      ver += 'A produção ' + (g.varQtd >= 0 ? 'subiu' : 'caiu') + ' <b>' + pct(g.varQtd) + '</b> em peças';
+      if (temP && g.varPeso !== null) {
+        ver += ' e <b>' + pct(g.varPeso) + '</b> em peso';
+        var gap = g.varPeso - g.varQtd;
+        ver += Math.abs(gap) < 2
+          ? ' — as duas grandezas andaram juntas, então o mix de tamanho não mudou.'
+          : (gap > 0
+              ? ' — o peso subiu mais que as peças, ou seja, <b>a peça média ficou mais pesada</b> ('
+                + fd(g.A.pesoMedio, 2) + ' → ' + fd(g.B.pesoMedio, 2) + ' kg).'
+              : ' — as peças subiram mais que o peso, ou seja, <b>a peça média ficou mais leve</b> ('
+                + fd(g.A.pesoMedio, 2) + ' → ' + fd(g.B.pesoMedio, 2) + ' kg).');
+      } else ver += '.';
+    }
+    var fLider = r.familias.slice().sort(function (a, b) { return Math.abs(b.ppQtd) - Math.abs(a.ppQtd); })[0];
+    if (fLider) {
+      ver += ' No mix, <b>' + esc(fLider.nome) + '</b> ' + (fLider.ppQtd >= 0 ? 'ganhou' : 'perdeu') + ' '
+        + fd(Math.abs(fLider.ppQtd), 1) + ' p.p. de participação.';
+    }
+    if (r.base.parcial) {
+      ver += ' <b>Atenção:</b> base de ano cheio com número de meses diferente — a variação embute calendário.';
+    }
+
+    function tabFam() {
+      return '<table><thead><tr><th>Linha</th><th class="n">Qtd ' + anoA + '</th><th class="n">Qtd ' + anoB + '</th>'
+        + '<th class="n">Δ</th>' + (temP ? '<th class="n">Kg ' + anoA + '</th><th class="n">Kg ' + anoB + '</th><th class="n">Δ</th>' : '')
+        + '<th class="n">Produtos</th><th class="n">Δ Part.</th></tr></thead><tbody>'
+        + r.familias.slice(0, 18).map(function (f) {
+            return '<tr><td><b>' + esc(f.nome) + '</b></td>'
+              + '<td class="n">' + fi(f.qtdA) + '</td><td class="n"><b>' + fi(f.qtdB) + '</b></td>'
+              + '<td class="n">' + pct(f.varQtd) + '</td>'
+              + (temP ? '<td class="n">' + fi(f.pesoA) + '</td><td class="n"><b>' + fi(f.pesoB) + '</b></td>'
+                        + '<td class="n">' + pct(f.varPeso) + '</td>' : '')
+              + '<td class="n">' + f.nProdA + ' → ' + f.nProdB + '</td>'
+              + '<td class="n">' + (f.ppQtd >= 0 ? '+' : '') + fd(f.ppQtd, 1) + ' p.p.</td></tr>';
+          }).join('')
+        + '</tbody></table>';
+    }
+    function tabMix(titulo, arr, campo, sufixo) {
+      if (!arr.length) return '<div class="st">' + titulo + '</div><p style="font-size:8pt;color:#718096">Nenhum.</p>';
+      return '<div class="st">' + titulo + ' (' + arr.length + ')</div>'
+        + '<table><thead><tr><th>Produto</th><th>Linha</th><th class="n">' + sufixo + '</th></tr></thead><tbody>'
+        + arr.slice(0, 12).map(function (p) {
+            return '<tr><td>' + esc(p.desc) + '</td><td>' + esc(p.familia) + '</td>'
+              + '<td class="n"><b>' + (p[campo] > 0 && campo === 'difQtd' ? '+' : '') + fi(p[campo]) + '</b></td></tr>';
+          }).join('')
+        + '</tbody></table>'
+        + (arr.length > 12 ? '<div style="font-size:7.5pt;color:#718096;margin-top:3px">+ ' + (arr.length - 12) + ' produtos na tela da aba.</div>' : '');
+    }
+    var topProd = r.produtos.slice().sort(function (a, b) { return Math.abs(b.difQtd) - Math.abs(a.difQtd); }).slice(0, 25);
+    var tabTop = '<table><thead><tr><th>Produto</th><th>Linha</th><th class="n">Qtd ' + anoA + '</th>'
+      + '<th class="n">Qtd ' + anoB + '</th><th class="n">Δ</th>'
+      + (temP ? '<th class="n">Kg ' + anoB + '</th><th class="n">% Peso</th>' : '') + '<th>Situação</th></tr></thead><tbody>'
+      + topProd.map(function (p) {
+          return '<tr><td>' + esc(p.desc) + '</td><td>' + esc(p.familia) + '</td>'
+            + '<td class="n">' + (p.qtdA ? fi(p.qtdA) : '—') + '</td>'
+            + '<td class="n"><b>' + (p.qtdB ? fi(p.qtdB) : '—') + '</b></td>'
+            + '<td class="n">' + (p.varQtd === null ? '—' : pct(p.varQtd)) + '</td>'
+            + (temP ? '<td class="n">' + (p.pesoB ? fi(p.pesoB) : '—') + '</td>'
+                      + '<td class="n">' + (p.partPesoB ? fd(p.partPesoB, 1) + '%' : '—') + '</td>' : '')
+            + '<td>' + p.rotulo + '</td></tr>';
+        }).join('')
+      + '</tbody></table>'
+      + '<div style="font-size:7.5pt;color:#718096;margin-top:4px">Os 25 produtos que mais moveram o resultado em peças. '
+      + 'A listagem completa (' + r.produtos.length + ' produtos), com filtro por linha e situação, está na tela da aba.</div>';
+
+    var avisos = '';
+    if (!temP) avisos += '<p style="font-size:8pt;color:#c05621;margin-top:5px">Sem a coluna PESO no reporte: este relatório mede só em peças.</p>';
+    else if (r.peso.cobertura < 95) avisos += '<p style="font-size:8pt;color:#c05621;margin-top:5px">Peso informado em '
+      + fd(r.peso.cobertura, 1) + '% da quantidade — os quilos são parciais.</p>';
+    if (temP && !r.peso.confere) avisos += '<p style="font-size:8pt;color:#c53030;margin-top:5px">O peso por produto não fecha com o '
+      + 'quilosProduzidos da HISTORICO (' + (r.peso.difA !== null ? anoA + ' ' + pct(r.peso.difA) : '')
+      + (r.peso.difB !== null ? ' · ' + anoB + ' ' + pct(r.peso.difB) : '') + '). Conferir antes de usar.</p>';
+
+    var w = window.open('', '_blank', 'width=1000,height=900');
+    w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>'
+      + '<title>Comparativo ' + anoA + ' × ' + anoB + '</title><style>'
+      + '@page{size:A4 portrait;margin:10mm 12mm;}' + (typeof printBase === 'function' ? printBase() : '')
+      + '*{box-sizing:border-box;margin:0;padding:0}'
+      + 'body{font-family:"Segoe UI",Arial,sans-serif;font-size:8.5pt;color:#1a1a2e;background:#fff;'
+        + '-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+      + '.hd{background:#1F2933;color:#fff;padding:13px 22px}'
+      + '.hd .hdrow{display:flex;align-items:center;gap:16px}'
+      + '.hd .lb{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#9C6ADE;font-weight:700}'
+      + '.hd h1{font-size:16px;margin:3px 0 2px}.hd .sb{font-size:9px;color:#a0aec0}'
+      + '.bd{padding:11px 22px}'
+      + '.st{font-size:8px;letter-spacing:1.8px;text-transform:uppercase;color:#6B46C1;font-weight:700;'
+        + 'margin:12px 0 7px;padding-bottom:3px;border-bottom:1.5px solid #edf2f7}'
+      + '.ver{border-left:5px solid #9C6ADE;background:#faf5ff;border-radius:6px;padding:10px 14px;margin-bottom:10px}'
+      + '.ver p{font-size:9.5pt;line-height:1.55;color:#2d3748}'
+      + '.kg{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:4px}'
+      + '.k{background:#f8fafc;border-left:3px solid #9C6ADE;border-radius:5px;padding:8px 10px}'
+      + '.kl{font-size:7.5px;letter-spacing:.6px;text-transform:uppercase;color:#718096;font-weight:600}'
+      + '.kv{font-size:13.5pt;font-weight:800;color:#1a202c;margin:2px 0}'
+      + '.ks{font-size:7pt;color:#a0aec0}'
+      + 'table{width:100%;border-collapse:collapse;font-size:8pt}'
+      + 'th{background:#1a1a2e;color:#fff;padding:5px 8px;text-align:left;font-size:7px;'
+        + 'letter-spacing:.8px;text-transform:uppercase}'
+      + 'th.n,td.n{text-align:right;font-variant-numeric:tabular-nums}'
+      + 'td{padding:4px 8px;border-bottom:1px solid #edf2f7}'
+      + 'tr{page-break-inside:avoid}'
+      + '.dual{display:grid;grid-template-columns:1fr 1fr;gap:14px}'
+      + '.ft{display:flex;justify-content:space-between;font-size:7pt;color:#a0aec0;'
+        + 'padding:8px 22px;border-top:1px solid #edf2f7;margin-top:8px}'
+      + '</style></head><body>'
+      + '<div class="hd"><div class="hdrow">' + (typeof logoImprimir === 'function' ? logoImprimir(30) : '') + '<div>'
+      + '<div class="lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
+      + '<h1>Comparativo de produção ' + anoA + ' × ' + anoB + '</h1>'
+      + '<div class="sb">Mix de produtos, quantidade e peso · base: ' + rotBase
+      + ' · fonte: reporte mensal do ERP (transação 3)</div>'
+      + '</div></div></div>'
+      + '<div class="bd">'
+      + '<div class="ver"><p>' + ver + '</p></div>'
+      + kpis + avisos
+      + '<div class="st">Por linha de produto</div>' + tabFam()
+      + '<div class="dual"><div>' + tabMix('Entraram em ' + anoB, r.mix.entraram, 'qtdB', 'Qtd ' + anoB)
+      + '</div><div>' + tabMix('Saíram em ' + anoB, r.mix.sairam, 'qtdA', 'Qtd ' + anoA) + '</div></div>'
+      + '<div class="st">Produtos que mais moveram o resultado</div>' + tabTop
+      + '<div class="st">Como ler</div>'
+      + '<p style="font-size:8pt;line-height:1.5;color:#4a5568">'
+      + 'A linha de produto sai da descrição do item no ERP (não existe campo de linha no cadastro). '
+      + '“Estável” é variação menor que ' + r.limites.estavel + '%. Produto novo não tem variação percentual — não existe divisão por zero. '
+      + 'A causa de cada mudança (decisão comercial, item fora de cadastro, mudança de projeto) não está na base e não é afirmada aqui.</p>'
+      + '</div>'
+      + '<div class="ft"><span>Patrimar Móveis · PPCP</span><span>Emitido em ' + hoje + '</span></div>'
+      + '</body></html>');
+    w.document.close();
+    setTimeout(function () { w.focus(); w.print(); }, 700);
+  };
+
+  /* ── Item 2: a tabela produto a produto, com os filtros do item 8 ──
+     Renderizada à parte para digitar na busca não redesenhar os gráficos
+     (e não perder o foco do campo) — mesmo motivo da aba Produção por Produto. */
+  function blocoTabela(r, anoA, anoB) {
+    var fams = r.familias.map(function (f) { return f.nome; }).sort();
+    var sits = [['', 'Todas as situações'], ['aumentou', 'Aumentou produção'], ['reduziu', 'Reduziu produção'],
+                ['novo', 'Novo em ' + anoB], ['saiu', 'Não produzido em ' + anoB], ['estavel', 'Produção estável']];
+    var sel = 'padding:6px 10px;border:1px solid var(--b);border-radius:6px;background:var(--panel);'
+            + 'color:var(--t1);font-size:.73rem;max-width:200px';
+    return secao('Produto × peso', 'linha a linha, com filtro')
+      + painel('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:11px">'
+        + '<select onchange="_caFam(this.value)" style="' + sel + '">'
+          + '<option value="">Todas as linhas</option>'
+          + fams.map(function (f) {
+              return '<option value="' + esc(f) + '"' + (_familia === f ? ' selected' : '') + '>' + esc(f) + '</option>';
+            }).join('')
+        + '</select>'
+        + '<select onchange="_caSit(this.value)" style="' + sel + '">'
+          + sits.map(function (s) {
+              return '<option value="' + s[0] + '"' + (_situacao === s[0] ? ' selected' : '') + '>' + s[1] + '</option>';
+            }).join('')
+        + '</select>'
+        + '<select onchange="_caOrd(this.value)" style="' + sel + '">'
+          + [['qtdB', 'Ordenar: quantidade ' + anoB], ['difQtd', 'Ordenar: maior variação de peças'],
+             ['difPeso', 'Ordenar: maior variação de peso'], ['partPesoB', 'Ordenar: participação no peso']]
+            .map(function (o) {
+              return '<option value="' + o[0] + '"' + (_ord === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+            }).join('')
+        + '</select>'
+        + '<input placeholder="buscar código ou produto…" value="' + esc(_busca) + '" oninput="_caBusca(this.value)" '
+          + 'style="margin-left:auto;min-width:200px;padding:6px 11px;border:1px solid var(--b);border-radius:6px;'
+          + 'background:rgba(255,255,255,.03);color:var(--t1);font-size:.73rem">'
+        + ((_familia || _situacao || _busca)
+            ? '<button onclick="_caLimpar()" style="padding:6px 11px;border:1px solid var(--b);border-radius:6px;'
+              + 'background:transparent;color:var(--t2);font-size:.72rem;cursor:pointer">limpar</button>' : '')
+        + '</div><div id="ca-tabela"></div>', ROXO);
+  }
+
+  function renderTabela() {
+    var el = document.getElementById('ca-tabela'); if (!el || !_apuracao) return;
+    var r = _apuracao, temP = r.peso.temPeso, anoA = r.anoA, anoB = r.anoB;
+    var lista = window.CompAnos.filtrar(r.produtos, { familia: _familia, situacao: _situacao, busca: _busca });
+    var campo = _ord;
+    lista = lista.slice().sort(function (a, b) {
+      if (campo === 'difQtd' || campo === 'difPeso') return Math.abs(b[campo]) - Math.abs(a[campo]);
+      return (b[campo] || 0) - (a[campo] || 0);
+    });
+    if (!lista.length) {
+      el.innerHTML = '<div style="font-size:.76rem;color:var(--t3);padding:10px 0">Nenhum produto com esse filtro.</div>';
+      return;
+    }
+    /* Somatório do que está na tela — com filtro ligado, o total da tabela
+       não é o total do período, e a linha de rodapé deixa isso explícito. */
+    var sQA = 0, sQB = 0, sPA = 0, sPB = 0;
+    lista.forEach(function (p) { sQA += p.qtdA; sQB += p.qtdB; sPA += p.pesoA; sPB += p.pesoB; });
+
+    var linhas = lista.slice(0, 400).map(function (p) {
+      return '<tr>'
+        + td('<span style="font-family:var(--mono);font-size:.7rem;color:var(--t3)">' + esc(p.cod) + '</span><br>' + esc(p.desc),
+             'left', 'line-height:1.35;white-space:normal')
+        + td(esc(p.familia), 'left', 'color:var(--t2);font-size:.71rem;white-space:normal')
+        + td(p.qtdA ? fi(p.qtdA) : '—', 'right', 'color:var(--t2)')
+        + td(p.qtdB ? '<b>' + fi(p.qtdB) + '</b>' : '—', 'right')
+        + td(p.varQtd === null ? '<span style="color:var(--t3)">—</span>' : pct(p.varQtd), 'right', 'color:' + corVar(p.varQtd))
+        + (temP ? td(p.pesoA ? fi(p.pesoA) : '—', 'right', 'color:var(--t2)')
+                + td(p.pesoB ? '<b>' + fi(p.pesoB) + '</b>' : '—', 'right')
+                + td(p.varPeso === null ? '<span style="color:var(--t3)">—</span>' : pct(p.varPeso), 'right', 'color:' + corVar(p.varPeso))
+                + td(p.partPesoB ? fd(p.partPesoB, 1) + '%' : '—', 'right', 'color:var(--t2)') : '')
+        + td(tagSit(p), 'left')
+        + '</tr>';
+    }).join('');
+
+    el.innerHTML = '<div style="font-size:.7rem;color:var(--t3);margin-bottom:8px">'
+        + lista.length + ' produto' + (lista.length > 1 ? 's' : '')
+        + (lista.length > 400 ? ' (mostrando os 400 primeiros)' : '')
+        + (_familia || _situacao || _busca ? ' · <b style="color:var(--t2)">filtro ativo</b>' : '')
+        + '</div>'
+      + '<div style="max-height:520px;overflow:auto;border:1px solid var(--b);border-radius:6px">'
+      + '<table style="width:100%;border-collapse:collapse;min-width:820px;table-layout:fixed">'
+      + '<thead style="position:sticky;top:0;background:var(--panel);z-index:1"><tr>'
+        + th('Produto') + th('Linha', 'left', 'width:118px')
+        + th('Qtd ' + anoA, 'right', 'width:74px') + th('Qtd ' + anoB, 'right', 'width:74px') + th('Δ Qtd', 'right', 'width:70px')
+        + (temP ? th('Kg ' + anoA, 'right', 'width:76px') + th('Kg ' + anoB, 'right', 'width:76px')
+                + th('Δ Kg', 'right', 'width:70px') + th('% Peso', 'right', 'width:64px') : '')
+        + th('Situação', 'left', 'width:88px')
+      + '</tr></thead><tbody>' + linhas + '</tbody>'
+      + '<tfoot><tr style="border-top:2px solid var(--b)">'
+        + td('<b>TOTAL' + (_familia || _situacao || _busca ? ' (filtrado)' : '') + '</b>') + td('')
+        + td('<b>' + fi(sQA) + '</b>', 'right') + td('<b>' + fi(sQB) + '</b>', 'right')
+        + td('<b>' + pct(window.CompAnos.variacao(sQA, sQB)) + '</b>', 'right', 'color:' + corVar(window.CompAnos.variacao(sQA, sQB)))
+        + (temP ? td('<b>' + fi(sPA) + '</b>', 'right') + td('<b>' + fi(sPB) + '</b>', 'right')
+                + td('<b>' + pct(window.CompAnos.variacao(sPA, sPB)) + '</b>', 'right', 'color:' + corVar(window.CompAnos.variacao(sPA, sPB)))
+                + td('', 'right') : '')
+        + td('')
+      + '</tr></tfoot></table></div>';
+  }
+
+  /* ── Ligação com o resto do painel ──
+     Redesenha quando os dados chegam do Sheets e quando a aba abre (a página
+     fica display:none até então, e gráfico em tela escondida sai sem medida). */
+  function ligar() {
+    if (!window.DashBus) { setTimeout(ligar, 300); return; }
+    window.DashBus.on('dados:salvos', function () { if (document.getElementById('ca-corpo')) render(); });
+    window.DashBus.on('pagina:mudou', function (p) { if (p && p.id === 'comp-anos') setTimeout(render, 40); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(ligar, 500); });
+  else setTimeout(ligar, 500);
+})();
+
+
+
+/* ══════════════════════════════════════════════════════════════════════════
    REUNIÃO DO MÊS — a tela que substitui a navegação
    ─────────────────────────────────────────────────────────────────────────
    Em reunião de diretoria, trocar de aba custa o fio da conversa. Esta tela
@@ -20483,7 +21695,7 @@ function printAtiva(){
     if(typeof mudarPagina==='function') mudarPagina(id);
     /* acende o grupo certo na barra de cima, senão o usuário se perde */
     try{
-      var g={mestre:'ppcp-cap',prodcod:'ppcp-cap',capfat:'ppcp-cap',ppcp:'ppcp-cap',
+      var g={mestre:'ppcp-cap',prodcod:'ppcp-cap','comp-anos':'ppcp-cap',capfat:'ppcp-cap',ppcp:'ppcp-cap',
              eficiencia:'operacao',pessoas:'operacao',producao:'producao-grp',takt:'producao-grp'}[id];
       if(g&&typeof mudarGrupo==='function'){
         var btn=document.querySelector('.pTab[data-group="'+g+'"]');
@@ -21426,9 +22638,20 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b93.2';
+var APP_VERSAO = 'b94';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b94', data:'18/09/2026', itens:[
+    'Aba nova Comparativo 2025 x 2026, no grupo PPCP/Capacidade: responde o que MUDOU no mix, nao quanto foi produzido. Comparativo geral (pecas, peso, produtos distintos, peso medio), tabela produto a produto com situacao, analise por linha de produto, o que entrou e o que saiu do mix, impacto por linha, ranking de peso medio, matriz volume x peso e relatorio proprio em PDF.',
+    'A aba abre na base MESMOS MESES, nao no ano cheio. Somar 2025 inteiro contra um 2026 em andamento mostraria uma queda de calendario como se fosse queda de producao — em setembro dariam 12 meses contra 7. A base de ano cheio fica ao lado, marcada como parcial.',
+    'Produto que so existe em 2026 nao ganha variacao percentual: (B-A)/A com A=0 nao existe, e inventar +100% enche o ranking de maiores altas com item que nunca teve producao. Fica traco e situacao Novo produto. Quem saiu de linha e -100%, que e exato.',
+    'Aumento e reducao "relevantes" exigem variar mais de 10% E mover pelo menos 0,5% do total do periodo. So o percentual promoveria a mudanca de mix um item que foi de 2 para 4 pecas.',
+    'REPORTE_VOLUMES ganha a coluna PESO (F). O peso por linha ja vinha no PDF do ERP e era lido e jogado fora desde o comeco — sem ele nao existia peso POR PRODUTO em lugar nenhum, so o total do mes na HISTORICO. Com a coluna, da para dizer se o mix foi para peca mais pesada ou se a fabrica so produziu mais.',
+    'Sem a coluna PESO preenchida, a aba mede so em pecas e diz isso: os blocos de peso somem em vez de mostrar zero. Com peso parcial, mostra a cobertura. E confere a soma dos pesos por produto contra o quilosProduzidos da HISTORICO — as duas pontas saem do mesmo relatorio, entao divergencia acima de 2% acende alerta.',
+    'A linha de produto sai da descricao do item (mesma regra de familia da aba Producao por Produto: primeira palavra, duas em nome composto, prefixo KIT e embalagem). O cadastro do ERP nao tem campo de linha e nenhuma categoria foi inventada.',
+    'A coluna de reflexo operacional so afirma o que decorre do numero (mais quilos = mais material movimentado; mais itens distintos = mais trocas de setup). A causa da mudanca nao esta em nenhuma coluna da base e nao e afirmada.',
+    'testes/comparativo-anos.test.js: 61 casos sobre a apuracao — base de comparacao, divisao por zero, materialidade, familia, cobertura e conferencia de peso, filtros e bordas.'
+  ]},
   { v:'b93.2', data:'18/09/2026', itens:[
     'Envio do plano de acao: quando o Web App do Apps Script devolve uma pagina em vez de JSON (o script nao rodou — em geral permissao do Gmail pendente depois de republicar), o painel diz isso e diz o que fazer, em vez de mostrar "Unexpected token <". Nesse caso tambem afirma que o e-mail NAO saiu, para ninguem ficar conferindo Enviados a toa.',
     'Mesma leitura na abertura: se a planilha nao responde pelo mesmo motivo, aparece um aviso de que o painel esta com dados locais. Antes o erro ia so para o console e a tela abria com numero velho sem ninguem saber.'

@@ -89,6 +89,7 @@ var DICIONARIO_LINHAS = [
   ['diasTrabalhados', 'entrada', 'PPCP', 'Dias úteis efetivamente trabalhados.'],
   ['produtosReportados', 'automático', 'ERP', 'Total de produtos acabados do relatório Mensal por Transação (3 REPORTE), lançado pelo ReporteVolumes.gs a partir do PDF na pasta REPORTES DE VOLUMES.'],
   ['volumesProduzidos / quilosProduzidos', 'automático', 'ERP', 'Mesmo relatório: volumes e quilos.'],
+  ['REPORTE_VOLUMES coluna PESO', 'automático', 'ERP', 'Peso (kg) de cada linha do reporte. Alimenta o peso por produto do comparativo 2025 × 2026. Sem ela o comparativo mede só em peças.'],
   ['producaoReal', 'calculado', 'painel', 'produtosReportados, a partir do ano em PROD_ERP_DESDE (aba METAS). Antes disso, o digitado.'],
   ['qtdeVendida / qtdeFaturado', 'entrada', 'Comercial', 'Peças vendidas e faturadas no mês.'],
   ['ticketMedio', 'entrada', 'Comercial', 'R$ por peça faturada.'],
@@ -452,18 +453,29 @@ function lerPlanoMestre(ss) {
 
 /* ══ REPORTE (produtos produzidos por código) ══
    Linhas cruas da REPORTE_VOLUMES, compactadas em arrays [mes, ano, codigo,
-   descricao, qtd] para o payload não inchar. Aba ausente ou vazia → []. */
+   descricao, qtd, peso] para o payload não inchar. Aba ausente ou vazia → [].
+
+   O peso (coluna F, kg da linha) só entra quando existe: mês carregado antes
+   da coluna existir continua devolvendo cinco posições, e o painel trata os
+   dois formatos. Linha sem peso não vira zero — vira ausência, senão o
+   comparativo somaria 0 kg como se o produto não pesasse nada. */
 function lerReporteVolumes(ss) {
   var aba = ss.getSheetByName(ABA_REPORTE);
   if (!aba || aba.getLastRow() < 2) return [];
-  var v = aba.getRange(2, 1, aba.getLastRow() - 1, 5).getValues();
+  var largura = Math.min(Math.max(aba.getLastColumn(), 5), 6);
+  var temPeso = largura >= 6
+    && String(aba.getRange(1, 6).getValue() || '').trim().toLowerCase().indexOf('peso') === 0;
+  var v = aba.getRange(2, 1, aba.getLastRow() - 1, temPeso ? 6 : 5).getValues();
   var out = [];
   v.forEach(function (l) {
     var mes = String(l[0] || '').trim().toUpperCase().slice(0, 3);
     var ano = num(l[1]);
     var qtd = num(l[4]);
     if (MESES.indexOf(mes) < 0 || !ano || !qtd) return;
-    out.push([mes, ano, String(l[2] || '').trim(), String(l[3] || '').trim(), qtd]);
+    var linha = [mes, ano, String(l[2] || '').trim(), String(l[3] || '').trim(), qtd];
+    var peso = temPeso ? num(l[5]) : 0;
+    if (peso > 0) linha.push(peso);
+    out.push(linha);
   });
   return out;
 }
