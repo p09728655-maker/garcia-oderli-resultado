@@ -1657,7 +1657,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   </div>
   <!-- Hora extra por setor: aba PONTO_SETOR (PontoRH.gs). Só horas — a
        produção não tem setor. Preenchido por renderSetoresHE. -->
-  <div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:20px 0 10px;padding-left:2px">▸ Hora extra por setor — último mês do período com ponto por setor</div>
+  <div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:20px 0 10px;padding-left:2px">▸ Hora extra por setor — segue o período escolhido na lateral</div>
   <div class="cBox" id="ef-setores"><div class="cEmpty" style="display:block">Sem hora extra por setor: a aba PONTO_SETOR ainda não chegou da planilha (processe o extrato do ponto com o PontoRH.gs atual).</div></div>
 </div>
 
@@ -4893,6 +4893,39 @@ window.SetorHE = (function(){
   var SK_SET = 'dash_ponto_setor_v1';
   function n(v){ if(typeof v==='number') return isFinite(v)?v:0; var x=parseFloat(String(v===null||v===undefined?'':v).replace(',','.')); return isFinite(x)?x:0; }
   function carregar(){ try{ var a=JSON.parse(localStorage.getItem(SK_SET)); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  /* Um mês ou o ano inteiro, pela mesma conta. No ano as horas somam e as
+     pessoas viram média mensal: somar 93 pessoas de oito meses daria 744.
+     meses = lista de códigos, ou null para todos os meses do ano que tiverem
+     linha. */
+  function doPeriodo(ano, meses){
+    ano=parseInt(ano,10);
+    var alvo=meses?meses.map(function(m){ return String(m||'').trim().toUpperCase().slice(0,3); }):null;
+    var por={}, nomes=[];
+    carregar().forEach(function(r){
+      if(parseInt(r.ano,10)!==ano) return;
+      var m=String(r.mes||'').trim().toUpperCase().slice(0,3);
+      if(alvo && alvo.indexOf(m)<0) return;
+      var he=n(r.totalExtras)||(n(r.extra50)+n(r.extra100)), hn=n(r.horasNormais);
+      var atr=n(r.atrasosPonto)>0?n(r.atrasosPonto):n(r.ausAtraso);
+      var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+atr;
+      var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
+      var k=String(r.setor||'').trim()||'(sem setor)';
+      var a=por[k];
+      if(!a){ a=por[k]={ setor:k, direto:false, pessoas:0, meses:0, hn:0, he:0, e50:0, e100:0, aus:0, temAus:false }; nomes.push(k); }
+      a.direto=a.direto||/^s/i.test(String(r.direto||''));
+      a.temAus=a.temAus||temAus;
+      a.pessoas+=n(r.pessoas); a.hn+=hn; a.he+=he;
+      a.e50+=n(r.extra50); a.e100+=n(r.extra100); a.aus+=aus;
+      if(hn>0||he>0||n(r.pessoas)>0) a.meses++;
+    });
+    return nomes.map(function(k){
+      var a=por[k];
+      a.pessoas=a.meses>0?a.pessoas/a.meses:0;
+      a.hePct=a.hn>0?a.he/a.hn*100:0;
+      a.absPct=(a.temAus&&a.hn>0)?a.aus/a.hn*100:null;
+      return a;
+    });
+  }
   function doMes(mes, ano){
     mes=String(mes||'').trim().toUpperCase().slice(0,3); ano=parseInt(ano,10);
     return carregar().filter(function(r){ return String(r.mes||'').trim().toUpperCase().slice(0,3)===mes && parseInt(r.ano,10)===ano; })
@@ -4913,8 +4946,13 @@ window.SetorHE = (function(){
   }
   /* Nome curto para frase: "7-LINHA DE PINTURA" → "linha de pintura". */
   function nome(setor){ return String(setor).replace(/^\d+\s*-\s*/,'').toLowerCase(); }
+  /* resumo('AGO',2026) segue valendo; resumo(null,2026) dá o ano inteiro e
+     resumo(['JUN','JUL','AGO'],2026) um trimestre. */
   function resumo(mes, ano){
-    var lin=doMes(mes, ano);
+    var lin, rotulo;
+    if(mes===null||mes===undefined||mes===''){ lin=doPeriodo(ano,null); rotulo=String(ano); }
+    else if(Object.prototype.toString.call(mes)==='[object Array]'){ lin=doPeriodo(ano,mes); rotulo=(mes.length===1?mes[0]+'/'+String(ano).slice(2):mes[0]+'–'+mes[mes.length-1]+'/'+String(ano).slice(2)); }
+    else { lin=doPeriodo(ano,[mes]); rotulo=String(mes).toUpperCase().slice(0,3)+'/'+String(ano).slice(2); }
     if(!lin.length) return null;
     var absCrit=(typeof ABS_ATENCAO!=='undefined')?ABS_ATENCAO:6;
     var dir=lin.filter(function(x){ return x.direto; }), ind=lin.filter(function(x){ return !x.direto; });
@@ -4929,14 +4967,14 @@ window.SetorHE = (function(){
     });
     dir.sort(function(a,b){ return b.he-a.he; });
     var top=dir.slice(0,3).filter(function(x){ return x.he>0; });
-    return { mes:mes, ano:ano, setores:dir, indiretos:ind, heDir:heDir, hnDir:hnDir, heInd:heInd, hnInd:hnInd,
+    return { mes:mes, ano:ano, rotulo:rotulo, varios:(rotulo===String(ano)||/–/.test(rotulo)), setores:dir, indiretos:ind, heDir:heDir, hnDir:hnDir, heInd:heInd, hnInd:hnInd,
              refPct:ref, absDir:(temAusDir&&hnDir>0)?ausDir/hnDir*100:null, absCrit:absCrit,
              top:top, topParte:top.reduce(function(t,x){ return t+x.parte; },0),
              cobrindo:dir.filter(function(x){ return x.leitura==='cobrindo falta'; }),
              capacidade:dir.filter(function(x){ return x.leitura==='capacidade'; }) };
   }
   function lista(arr){ var v=arr.map(function(x){ return nome(x.setor); }); return v.join(', ').replace(/, ([^,]*)$/,' e $1'); }
-  return { SK:SK_SET, carregar:carregar, doMes:doMes, resumo:resumo, nome:nome, lista:lista };
+  return { SK:SK_SET, carregar:carregar, doMes:doMes, doPeriodo:doPeriodo, resumo:resumo, nome:nome, lista:lista };
 })();
 function save(d){
   d=(d||[]).map(normalizarRegistro);
@@ -5139,8 +5177,14 @@ function _lerRespostaWebApp(txt, status){
 function renderSetoresHE(d){
   var box=document.getElementById('ef-setores');
   if(!box||!window.SetorHE) return;
-  var RS=null, i;
-  for(i=(d||[]).length-1;i>=0&&!RS;i--){ RS=SetorHE.resumo(d[i].mes,d[i].ano); if(RS&&!(RS.setores.length&&RS.heDir>0)) RS=null; }
+  /* Segue o filtro da lateral: soma os meses do período em vez de mostrar só
+     o último. Com mais de um ano no filtro vale o mais recente, porque somar
+     anos diferentes misturaria quadros de pessoal distintos. */
+  var regs=(d||[]).filter(function(r){ return r && r.ano && r.mes; });
+  var ano=regs.length?Math.max.apply(null,regs.map(function(r){ return r.ano; })):null;
+  var meses=regs.filter(function(r){ return r.ano===ano; }).map(function(r){ return r.mes; });
+  var RS=(ano&&meses.length)?SetorHE.resumo(meses.length===1?meses[0]:meses, ano):null;
+  if(RS&&!(RS.setores.length&&RS.heDir>0)) RS=null;
   if(!RS){ box.innerHTML='<div class="cEmpty" style="display:block">Sem hora extra por setor no período: a aba PONTO_SETOR não tem estes meses (processe o extrato do ponto com o PontoRH.gs atual).</div>'; return; }
   var fi2=function(v){ return isFinite(v)?Math.round(v).toLocaleString('pt-BR'):'—'; };
   var fd2=function(v,k){ return isFinite(v)?v.toLocaleString('pt-BR',{minimumFractionDigits:k,maximumFractionDigits:k}):'—'; };
@@ -5155,9 +5199,9 @@ function renderSetoresHE(d){
   }).join('');
   if(RS.indiretos.length) linhas+='<tr><td class="lid-tx" style="color:var(--t3)!important">Indiretos ('+RS.indiretos.length+' setores, fora da dependência de HE)</td><td>'+fi2(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi2(RS.heInd)+'</td><td>'+(RS.hnInd>0?fd2(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>';
   linhas+='<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi2(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi2(RS.heDir)+'</td><td>'+fd2(RS.refPct,1)+'%</td><td>100%</td><td>'+(RS.absDir===null?'—':fd2(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr>';
-  box.innerHTML='<div class="cHdr"><span class="cTtl">▸ '+RS.mes+'/'+String(RS.ano).slice(2)+' · '+fd2(RS.topParte,0)+'% da hora extra em '+SetorHE.lista(RS.top)+'</span></div>'
+  box.innerHTML='<div class="cHdr"><span class="cTtl">▸ '+RS.rotulo+' · '+fd2(RS.topParte,0)+'% da hora extra em '+SetorHE.lista(RS.top)+'</span></div>'
     +'<table class="lid-tab" style="font-size:.72rem"><thead><tr><th>Setor</th><th>Pessoas</th><th>HE (h)</th><th title="extra50 + extra100 ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th><th title="Parte do setor nas horas extras dos diretos">% da HE</th><th title="falta + atestado + afastado + atraso ÷ horas normais do setor (controle do RH)">Falta</th><th title="Cobrindo falta: HE alta e falta acima de '+RS.absCrit+'%. Capacidade: HE alta com falta dentro do limite">Leitura</th></tr></thead><tbody>'+linhas+'</tbody></table>'
-    +'<div style="font-size:.62rem;color:var(--t3);margin-top:8px">Fonte: aba PONTO_SETOR (extrato do ponto + controle de faltas do RH). Hora por setor, não peça por setor: a produção é da fábrica inteira. Setor = o atual da pessoa na FUNCIONARIOS. HE "alta" = acima da razão da fábrica no mês ('+fd2(RS.refPct,1)+'%); o limite de 8% do painel é sobre peças e não se aplica por setor.</div>';
+    +'<div style="font-size:.62rem;color:var(--t3);margin-top:8px">Fonte: aba PONTO_SETOR (extrato do ponto + controle de faltas do RH). '+(RS.varios?'Horas somadas no período; pessoas é a média mensal. ':'')+'Hora por setor, não peça por setor: a produção é da fábrica inteira. Setor = o atual da pessoa na FUNCIONARIOS. HE "alta" = acima da razão da fábrica no mês ('+fd2(RS.refPct,1)+'%); o limite de 8% do painel é sobre peças e não se aplica por setor.</div>';
 }
 
 /* A mesma leitura da abertura, exposta como promessa para quem precisa da
@@ -19964,7 +20008,7 @@ function printAtiva(){
       +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro do limite: é capacidade.':'');
     return '<div class="reu-setores" style="margin:10px 2px 0">'
       +'<div class="reu-set-h" style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:3px">'
-        +'▸ Onde está a hora extra · '+mes+'/'+String(ano).slice(2)+'</div>'
+        +'▸ Onde está a hora extra · '+RS.rotulo+'</div>'
       +'<div class="reu-set-p" style="font-size:.8rem;color:var(--t1);opacity:.85;line-height:1.35;margin-bottom:5px">'+frase+'</div>'
       +'<style>.reu-set-tab th{color:var(--t2)!important;font-size:.63rem;letter-spacing:.07em;text-transform:uppercase;padding:3px 6px;border-bottom:1px solid var(--b)}'
         +'.reu-set-tab td{padding:3px 6px;border-top:1px solid rgba(255,255,255,.05)}'
@@ -19988,7 +20032,9 @@ function printAtiva(){
       +'<tr class="reu-set-tot"><td class="reu-set-nome" style="font-weight:700">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
       +'</tbody></table></div>'
       +'<div class="reu-set-nota" style="font-size:.66rem;color:var(--t3);margin-top:4px;line-height:1.3">'
-        +'Horas do ponto, não peças: a produção é da fábrica inteira. Indiretos, fora da dependência de HE: '
+        +'Horas do ponto, não peças: a produção é da fábrica inteira. '
+        +(RS.varios?'Horas somadas no período; pessoas é a média mensal. ':'')
+        +'Indiretos, fora da dependência de HE: '
         +fi(RS.heInd)+' h'+(RS.hnInd>0?(' ('+fd(RS.heInd/RS.hnInd*100,1)+'%)'):'')+'.'
       +'</div></div>';
   }
@@ -20555,7 +20601,7 @@ function printAtiva(){
       +manchete
       +faixa('1','O plano cabe sem hora extra?', r1Curta, c1, b2,
              (r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
-             +(anoTodo?'':reuBlocoSetores(mes,ano)))
+             +reuBlocoSetores(anoTodo?null:mes, ano))
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
       +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
              '<div class="reu-row3" style="display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:8px;align-items:start">'
@@ -21698,9 +21744,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b94.5';
+var APP_VERSAO = 'b94.6';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b94.6', data:'18/09/2026', itens:[
+    'Tabela por setor da aba Eficiencia & Horas passa a somar o periodo do filtro lateral, em vez de mostrar so o ultimo mes com dados. Com mais de um ano no filtro vale o mais recente.',
+    'Ano todo passa a mostrar a hora extra por setor somada no ano, em vez de esconder o bloco. As horas somam e a coluna Pessoas vira media mensal: somar 93 pessoas de oito meses daria 744. A nota do bloco avisa quando o numero e de periodo.'
+  ]},
   { v:'b94.5', data:'18/09/2026', itens:[
     'Tabela por setor da aba Eficiencia & Horas ganha a mesma correcao que a da Reuniao: coluna Leitura com cor (o tema escuro declara td{color:var(--t1)!important} e vencia o estilo da celula, entao cobrindo falta, capacidade e HE alta saiam todos brancos) e numeros em peso 600 com tabular-nums, alinhados a direita.'
   ]},
