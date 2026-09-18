@@ -7934,9 +7934,13 @@ function init(){
     d=PLANILHA.map(function(r){return Object.assign({id:uid()},r)});
     salvarLocal(d);
   } else {
-    /* MIGRAÇÃO SEGURA: se algum registro tiver campos faltando,
-       adiciona o campo com valor padrão — NUNCA apaga dados importados.
-       Isso preserva meses como MAR/2026 que não estão no PLANILHA hardcoded. */
+    /* MIGRAÇÃO SEGURA: se algum registro tiver campos faltando, adiciona o
+       campo com valor padrão — NUNCA apaga dados importados.
+       salvarLocal, não save: isto conserta a CÓPIA LOCAL para a tela não
+       quebrar com um campo ausente. Os valores são padrões (qtdeFaturado vira
+       producaoReal, diasTrabalhados vira 0), não dado apurado, e não podem
+       subir para a HISTORICO por conta própria. Campo faltando de verdade se
+       corrige na planilha. */
     var migrou=false;
     d=d.map(function(r){
       var dirty=false;
@@ -7947,7 +7951,7 @@ function init(){
       if(dirty) migrou=true;
       return r;
     });
-    if(migrou) save(d);
+    if(migrou) salvarLocal(d);
   }
 
   /* Filtro padrão ao abrir: ano e mês atuais (data do sistema).
@@ -9858,10 +9862,17 @@ function cfInicializar() {
   };
 
   /* ══════════════════════════════════════════════════════════════
-     MIGRAÇÃO DE DADOS — preenche diasTrabalhados e qtdeFaturado
-     nos registros que vieram do array PLANILHA (dados hardcoded)
-     e portanto não possuíam esses campos.
-     Executa UMA vez, somente se houver registros sem diasTrabalhados.
+     MIGRAÇÃO DE DADOS — preenche diasTrabalhados e qtdeFaturado nos
+     registros que vieram do array PLANILHA e portanto não possuíam
+     esses campos.
+
+     As duas tabelas abaixo estão congeladas no arquivo. Até b95.2 isto
+     chamava save(), que sincroniza: um mês cujo valor estivesse zerado na
+     planilha recebia de volta o número gravado aqui, sem ninguém pedir, e
+     rodando a cada abertura do painel. Passou a usar salvarLocal — conserta
+     a tela e não toca na HISTORICO. Com a planilha como fonte desde b87,
+     isto é resíduo: quando a HISTORICO tiver dias e faturado em todos os
+     meses de 2025 e JAN–FEV/26, as duas tabelas podem sair.
   ══════════════════════════════════════════════════════════════ */
   var _DIAS_REAIS = {
     '2026-JAN': 17, '2026-FEV': 20,
@@ -9877,7 +9888,7 @@ function cfInicializar() {
   };
 
   (function _migrarDados() {
-    if (typeof load !== 'function' || typeof save !== 'function') return;
+    if (typeof load !== 'function' || typeof salvarLocal !== 'function') return;
     var dados = load();
     if (!dados || !dados.length) return;
 
@@ -9900,9 +9911,9 @@ function cfInicializar() {
     });
 
     if (alterado) {
-      save(dados);
+      salvarLocal(dados);
       /* Avisa no console para diagnóstico */
-      console.log('[Ajustes v2] diasTrabalhados/qtdeFaturado migrados para registros existentes.');
+      console.log('[Ajustes v2] diasTrabalhados/qtdeFaturado preenchidos na cópia local (a planilha não foi tocada).');
     }
   })();
 
@@ -21767,9 +21778,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b95.2';
+var APP_VERSAO = 'b95.3';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b95.3', data:'18/09/2026', itens:[
+    'Varredura dos caminhos que escrevem na HISTORICO. Sobravam dois automaticos, que rodavam sozinhos a cada abertura do painel: a migracao de campos faltantes do init() e o preenchimento de diasTrabalhados e qtdeFaturado por duas tabelas congeladas no arquivo. Os dois gravavam valor padrao ou congelado na planilha sem ninguem pedir. Agora usam salvarLocal: consertam a copia local e nao tocam na HISTORICO. Restam tres caminhos, todos deliberados: salvar ou excluir um mes no formulario, e o botao Gravar calculos, que le a planilha antes.',
+    'importarExcel continua no codigo e grava na planilha, mas sem botao desde b88 (so pelo console). Mesma classe do Carregar JSON que saiu: uma planilha antiga sobrescreveria a HISTORICO. Fica para decisao.'
+  ]},
   { v:'b95.2', data:'18/09/2026', itens:[
     'CORRECAO GRAVE: o Resetar apagava a copia local, o init() caia no dataset PLANILHA embutido no arquivo (congelado em JUN/26) e chamava save(), que sincroniza — o embutido era empurrado para a HISTORICO. Em 18/09/26 isso devolveu JAN a JUN aos valores anteriores ao ponto e zerou JUL e AGO. Agora o Resetar rele a planilha pelo Web App e nao grava nada nela; se a leitura falhar, a tela abre com o embutido apenas no navegador. A carga inicial usa salvarLocal, que nunca sincroniza. O texto do botao passou a dizer o que ele faz: descartar a copia local e reler a planilha.'
   ]},
