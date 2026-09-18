@@ -4249,7 +4249,7 @@ body.lid-on{overflow:hidden}
       <!-- Filtro próprio da aba. Antes o período vinha só da barra lateral,
            que fica escondida no modo TV e em tela de reunião — trocar de mês
            no meio da apresentação exigia sair da tela. -->
-      <div id="reu-filtro" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end"></div>
+      <div id="reu-filtro" style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:flex-end;min-width:0"></div>
       <span id="reu-per-lbl" style="font-family:var(--mono);font-size:1rem;font-weight:800;letter-spacing:.06em;
         color:#F5A623;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.45);
         border-radius:8px;padding:7px 16px;white-space:nowrap">—</span>
@@ -19959,11 +19959,12 @@ function printAtiva(){
       +(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' a falta também passa de '+RS.absCrit+'%: hora extra cobrindo presença.':'')
       +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro do limite: é capacidade.':'');
     return '<div class="reu-setores" style="margin:10px 2px 0">'
-      +'<div class="reu-set-h" style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:5px">'
+      +'<div class="reu-set-h" style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:3px">'
         +'▸ Onde está a hora extra · '+mes+'/'+String(ano).slice(2)+'</div>'
-      +'<div class="reu-set-p" style="font-size:.8rem;color:var(--t1);opacity:.85;line-height:1.4;margin-bottom:7px">'+frase+'</div>'
-      +'<style>.reu-set-tab th{color:var(--t2)!important;font-size:.63rem;letter-spacing:.07em;text-transform:uppercase;padding:4px 6px;border-bottom:1px solid var(--b)}'
-        +'.reu-set-tab td{padding:5px 6px;border-top:1px solid rgba(255,255,255,.05)}'
+      +'<div class="reu-set-p" style="font-size:.8rem;color:var(--t1);opacity:.85;line-height:1.35;margin-bottom:5px">'+frase+'</div>'
+      +'<style>.reu-set-tab th{color:var(--t2)!important;font-size:.63rem;letter-spacing:.07em;text-transform:uppercase;padding:3px 6px;border-bottom:1px solid var(--b)}'
+        +'.reu-set-tab td{padding:3px 6px;border-top:1px solid rgba(255,255,255,.05)}'
+        +'.reu-set-resto:hover td{background:rgba(245,166,35,.07)}'
         +'.reu-set-tab .reu-set-tot td{border-top:1px solid var(--b)}</style>'
       +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="width:100%;border-collapse:collapse;font-size:.76rem;min-width:600px">'
       +'<thead><tr>'
@@ -19976,12 +19977,15 @@ function printAtiva(){
         +'<th style="text-align:left;width:16%;white-space:nowrap" title="Cobrindo falta: HE acima da fábrica e falta acima de '+RS.absCrit+'%. Capacidade: HE acima da fábrica com falta dentro">Leitura</th>'
       +'</tr></thead><tbody>'
       +top.map(linha).join('')
-      +(resto.length?'<tr class="reu-set-resto"><td class="reu-set-nome" style="color:var(--t3)!important">Outros '+resto.length+' setores diretos</td><td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>':'')
+      +(resto.length?('<tr class="reu-set-resto" onclick="reuSetoresMais()" title="Abrir os outros setores" style="cursor:pointer">'
+          +'<td class="reu-set-nome" style="color:var(--t3)!important"><span id="reu-set-lbl">▸ Outros '+resto.length+' setores diretos</span></td>'
+          +'<td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>'
+          +resto.map(function(x){ return linha(x).replace('<tr>','<tr class="reu-set-extra" style="display:none">'); }).join('')):'')
       +'<tr class="reu-set-tot"><td class="reu-set-nome" style="font-weight:700">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
       +'</tbody></table></div>'
-      +'<div class="reu-set-nota" style="font-size:.68rem;color:var(--t3);margin-top:5px;line-height:1.35">'
-        +'Horas do ponto por setor. É hora por setor, não peça por setor: a produção é da fábrica inteira. '
-        +'Indiretos, fora da dependência de HE: '+fi(RS.heInd)+' h'+(RS.hnInd>0?(' ('+fd(RS.heInd/RS.hnInd*100,1)+'% das horas normais deles)'):'')+'.'
+      +'<div class="reu-set-nota" style="font-size:.66rem;color:var(--t3);margin-top:4px;line-height:1.3">'
+        +'Horas do ponto, não peças: a produção é da fábrica inteira. Indiretos, fora da dependência de HE: '
+        +fi(RS.heInd)+' h'+(RS.hnInd>0?(' ('+fd(RS.heInd/RS.hnInd*100,1)+'%)'):'')+'.'
       +'</div></div>';
   }
 
@@ -20249,7 +20253,7 @@ function printAtiva(){
           +'<input type="checkbox" '+(mostrarFechadas?'checked':'')+' onchange="reuAcaoMostrar(this.checked)" style="width:auto">mostrar concluídas e canceladas</label>'
         +'<span style="font-size:.66rem;color:var(--t3)">Plano em aberto:</span>'
         +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'zap\')" title="Todas as ações em aberto numa mensagem de WhatsApp">💬 WhatsApp</button>'
-        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Enviar todas as ações em aberto agora, pela caixa do PPCP, para a lista da aba EMAIL">✉ E-mail</button>'
+        +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'email\')" title="Enviar todas as ações em aberto agora, pela caixa do PPCP, para a lista da aba EMAIL">✉️ E-mail</button>'
         +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(null,\'copiar\')" title="Copiar o plano em aberto como texto">📋 Copiar</button>'
         +'<span style="margin-left:auto;font-size:.62rem;color:var(--t3)">aba ACOES da planilha · cópia local para abrir offline</span>'
       +'</div>'
@@ -20269,20 +20273,26 @@ function printAtiva(){
       if((r.producaoReal||0)>0 && anos.indexOf(r.ano)<0) anos.push(r.ano); });
     anos.sort(function(a,b){ return a-b; });
 
-    var bt=function(txt,on,attr,titulo){
+    /* Os meses quebravam em três linhas a 1600px e o cabeçalho crescia
+       conforme o ano andava. Agora são dois grupos que não quebram: anos e
+       "Ano todo" de um lado, os doze meses do outro, mais estreitos. Se um dia
+       não couberem, o grupo dos meses rola na horizontal em vez de empurrar a
+       tela para baixo. */
+    var bt=function(txt,on,attr,titulo,estreito){
       return '<button type="button" data-reu="'+attr+'" title="'+(titulo||'')+'" style="'
-        +'font-family:var(--mono);font-size:.68rem;font-weight:700;letter-spacing:.04em;'
-        +'padding:5px 9px;border-radius:5px;cursor:pointer;white-space:nowrap;'
+        +'font-family:var(--mono);font-size:'+(estreito?'.64rem':'.68rem')+';font-weight:700;letter-spacing:.03em;'
+        +'padding:'+(estreito?'4px 6px':'5px 9px')+';border-radius:5px;cursor:pointer;white-space:nowrap;flex:none;'
         +(on?'background:rgba(245,166,35,.18);border:1px solid #F5A623;color:#F5A623;'
             :'background:transparent;border:1px solid var(--b);color:var(--lbl-2,#9AA9B8);')
         +'">'+txt+'</button>';
     };
-    var h='';
-    anos.forEach(function(a){ h+=bt(String(a), a===anoAtual, 'ano:'+a, 'Ver o ano de '+a); });
-    h+='<span style="width:8px"></span>';
-    h+=bt('Ano todo', !mesAtual, 'mes:', 'Acumulado do ano inteiro');
-    mesesDoAno.forEach(function(m){ h+=bt(m, m===mesAtual, 'mes:'+m, m+'/'+anoAtual); });
-    alvo.innerHTML=h;
+    var gAnos='';
+    anos.forEach(function(a){ gAnos+=bt(String(a), a===anoAtual, 'ano:'+a, 'Ver o ano de '+a); });
+    gAnos+=bt('Ano todo', !mesAtual, 'mes:', 'Acumulado do ano inteiro');
+    var gMeses='';
+    mesesDoAno.forEach(function(m){ gMeses+=bt(m, m===mesAtual, 'mes:'+m, m+'/'+anoAtual, true); });
+    alvo.innerHTML='<span style="display:flex;gap:5px;flex-wrap:nowrap;flex:none">'+gAnos+'</span>'
+      +'<span style="display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;min-width:0;padding-bottom:1px">'+gMeses+'</span>';
     alvo.querySelectorAll('button[data-reu]').forEach(function(b){
       b.onclick=function(){
         var v=b.getAttribute('data-reu');
@@ -20583,7 +20593,8 @@ function printAtiva(){
       +'.reu-set-p{font-size:8.5pt!important;color:#1F2933!important;opacity:1!important;margin-bottom:5px!important}'
       +'.reu-set-tab td.n{text-align:right;font-family:Consolas,monospace}'
       +'.reu-set-tab td.reu-set-nome{text-align:left;font-family:inherit}'
-      +'.reu-set-resto td{color:#7B8794!important}'
+      +'.reu-set-extra{display:table-row!important}'
+      +'.reu-set-resto{display:none!important}'
       +'.reu-set-tot td{font-weight:700;border-top:1.2px solid #C6CBD3!important}'
       +'.reu-set-nota{font-size:6.8pt!important;color:#7B8794!important;margin-top:4px!important}'
       +'.reu-setores{break-inside:avoid;page-break-inside:avoid;margin-top:8px!important}'
@@ -21167,6 +21178,21 @@ function printAtiva(){
      aviso, porque o painel não sabia que a planilha tinha mudado. Se a
      releitura falhar, não grava: perder o clique é melhor que desfazer uma
      correção feita na planilha. */
+  /* Os cinco maiores respondem a pergunta na reunião; o resto fica a um
+     clique, para quem perguntar "e o meu setor?". No relatório impresso todos
+     saem abertos e a linha de abrir some: papel é documento, não tela de
+     decisão. */
+  window.reuSetoresMais=function(){
+    var tab=document.querySelector('.reu-set-tab'); if(!tab) return;
+    var extras=tab.querySelectorAll('tr.reu-set-extra'); if(!extras.length) return;
+    var abrir=(extras[0].style.display==='none');
+    [].forEach.call(extras,function(tr){ tr.style.display=abrir?'':'none'; });
+    var lbl=document.getElementById('reu-set-lbl');
+    if(lbl) lbl.textContent=(abrir?'▾ Ocultar os outros ':'▸ Outros ')+extras.length+' setores diretos';
+    var lin=tab.querySelector('tr.reu-set-resto');
+    if(lin) lin.title=abrir?'Ocultar os outros setores':'Abrir os outros setores';
+  };
+
   window.reuGravarCalculos=function(){
     if(typeof save!=='function'||typeof load!=='function') return;
     var fim=function(){
@@ -21668,10 +21694,16 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b94.3';
+var APP_VERSAO = 'b94.4';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
-  { v:'b94.2', data:'18/09/2026', itens:[
+  { v:'b94.4', data:'18/09/2026', itens:[
+    'Bloco por setor mais compacto e o filtro numa linha so: a Reuniao encolheu cerca de 90px de rolagem.',
+    'Meses da Reuniao param de quebrar em varias linhas: anos e "Ano todo" num grupo, os doze meses noutro, mais estreitos e sem quebra. A 1600px eram tres linhas e o cabecalho crescia conforme o ano andava.',
+    'Linha "Outros N setores diretos" abre no clique e mostra os demais, e fecha de novo. Os cinco maiores respondem a pergunta na reuniao; o resto fica a um clique para quem perguntar pelo proprio setor. No relatorio impresso todos saem abertos e a linha de abrir some.',
+    'Botao de e-mail do plano de acao com o envelope no mesmo padrao dos vizinhos: 💬 e 📋 saem coloridos no Chrome e o ✉ saia monocromatico, com os tres lado a lado.'
+  ]},
+  { v:'b94.3', data:'18/09/2026', itens:[
     'Coluna Leitura da tabela por setor volta a ter cor: vermelho para cobrindo falta, ambar para capacidade. O tema escuro declara td{color:var(--t1)!important} e vencia o estilo da celula, entao tudo saia branco e a cor nao dizia nada.',
     'Tabela de hora extra por setor da Reuniao: numeros em peso 600 com tabular-nums e corpo um pouco maior. Consolas com peso 400 a 12px sobre o fundo escuro ficava fino ao lado do texto da mesma linha e o numero parecia embacado. Cabecalho e linhas ganharam espacamento e fio proprios.'
   ]},
