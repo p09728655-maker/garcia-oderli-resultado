@@ -313,13 +313,25 @@ function gravarHistorico(ss, recebidos) {
       atualizados++;
     }
 
+    /* Um registro SEM horas é um mês que aquele navegador não tem fechado —
+       dado local velho, ou o mês ainda não lançado. Ele não pode apagar o
+       que a planilha já tem: em set/26 um sync assim zerou colaboradores,
+       horas e produção de JUL e AGO/26, e sobraram só as colunas que o
+       painel não manda (as do ERP). Regra: registro sem horas só escreve
+       valor não vazio e não zero; registro com horas é um fechamento de
+       verdade e continua podendo zerar um campo de propósito. */
+    var semHoras = idx !== undefined && atualizados > 0
+      && !(num(rec.horasNormais) > 0) && !(num(rec.totalExtras) > 0) && !(num(rec.colaboradores) > 0);
     Object.keys(rec).forEach(function (campo) {
       var n = normaliza(campo);
       if (n === 'id') return;
       if (COLUNAS_PROTEGIDAS.indexOf(n) >= 0) return;
       var c = col[n];
       if (c === undefined) return;      /* campo que a planilha não tem: ignora */
-      linha[c] = rec[campo];
+      var v = rec[campo];
+      if (semHoras && (v === '' || v === null || v === undefined || (typeof v === 'number' && v === 0))
+          && linha[c] !== '' && linha[c] !== null && linha[c] !== undefined && linha[c] !== 0) return;
+      linha[c] = v;
     });
     linha[col.mes] = mes;
     linha[col.ano] = ano;

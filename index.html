@@ -21944,14 +21944,23 @@ window.CompAnos = (function () {
              aFalta:r.ausFalta||0, aAtest:r.ausAtestado||0, aAfast:r.ausAfastado||0, atraso:r.atraso||0,
              cumpriu:plano>0&&P>=plano, at:plano>0?P/plano*100:null };
   }
+  /* Fechado = produção E horas. Desde que producaoReal vem do reporte do
+     ERP sozinho (PROD_ERP_DESDE), um mês pode ter 32 mil peças e nenhuma
+     hora lançada — foi o caso de JUL e AGO/26. Com producaoReal>0 como
+     único critério, esse mês entrava na apresentação com 0 h de extra e o
+     slide comemorava "0% na hora extra". Hora zero não é resultado, é dado
+     que falta; o mês fica de fora até as horas entrarem. */
+  function lidFechado(r){
+    return (r.producaoReal||0)>0 && ((r.horasNormais||0)+(r.totalExtras||0))>0;
+  }
   function lidModelo(){
     var todos=load();
     var ano=reuAno||((typeof anoAtivo!=='undefined'&&anoAtivo)?anoAtivo:null);
     if(!ano){
-      var anos=todos.filter(function(r){ return (r.producaoReal||0)>0; }).map(function(r){ return r.ano; });
+      var anos=todos.filter(lidFechado).map(function(r){ return r.ano; });
       ano=anos.length?Math.max.apply(null,anos):new Date().getFullYear();
     }
-    var fech=todos.filter(function(r){ return r.ano===ano&&(r.producaoReal||0)>0; })
+    var fech=todos.filter(function(r){ return r.ano===ano&&lidFechado(r); })
       .sort(function(a,b){ return ORDEM_M.indexOf(a.mes)-ORDEM_M.indexOf(b.mes); });
     if(!fech.length) return null;
     var refR=(reuMes&&fech.filter(function(r){ return r.mes===reuMes; })[0])||fech[fech.length-1];
@@ -21959,7 +21968,7 @@ window.CompAnos = (function () {
     var ref=meses[meses.length-1];
     /* ano anterior, mês a mês: base do slide de quilos por hora */
     var antPor={};
-    todos.filter(function(r){ return r.ano===ano-1&&(r.producaoReal||0)>0; }).forEach(function(r){ antPor[r.mes]=lidMes(r); });
+    todos.filter(function(r){ return r.ano===ano-1&&lidFechado(r); }).forEach(function(r){ antPor[r.mes]=lidMes(r); });
     var M={ ano:ano, meses:meses, ref:ref, n:meses.length, antPor:antPor,
             limHE:(typeof META_DEP_HE!=='undefined')?META_DEP_HE:8,
             metaAbs:(typeof META_ABS!=='undefined')?META_ABS:3,
@@ -22734,9 +22743,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b94';
+var APP_VERSAO = 'b94.1';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b94.1', data:'18/09/2026', itens:[
+    'Apresentacao para lideres: mes sem horas lancadas fica de fora. Desde que producaoReal vem do reporte do ERP sozinho (b91), JUL e AGO/26 entravam como fechados com 32 mil pecas e zero hora — e o slide comemorava "0% na hora extra". Fechado agora e producao E horas, mesma regra do bloco de ponte. Hora zero e dado que falta, nao resultado.',
+    'Code.gs: um sync do painel com registro SEM horas (mes que aquele navegador nao tem fechado — dado local velho, ou mes ainda nao lancado) nao apaga mais o que a HISTORICO ja tem. Foi assim que colaboradores, horas e producao de JUL e AGO/26 foram zerados: sobraram so as colunas que o painel nao manda, as do ERP. Registro com horas continua podendo zerar um campo de proposito. As horas apagadas se recuperam pelo historico de versoes da planilha.'
+  ]},
   { v:'b94', data:'18/09/2026', itens:[
     'Aba nova Comparativo 2025 x 2026, no grupo PPCP/Capacidade: responde o que MUDOU no mix, nao quanto foi produzido. Comparativo geral (pecas, peso, produtos distintos, peso medio), tabela produto a produto com situacao, analise por linha de produto, o que entrou e o que saiu do mix, impacto por linha, ranking de peso medio, matriz volume x peso e relatorio proprio em PDF.',
     'A aba abre na base MESMOS MESES, nao no ano cheio. Somar 2025 inteiro contra um 2026 em andamento mostraria uma queda de calendario como se fosse queda de producao — em setembro dariam 12 meses contra 7. A base de ano cheio fica ao lado, marcada como parcial.',
