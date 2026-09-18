@@ -5144,12 +5144,16 @@ function renderSetoresHE(d){
   if(!RS){ box.innerHTML='<div class="cEmpty" style="display:block">Sem hora extra por setor no período: a aba PONTO_SETOR não tem estes meses (processe o extrato do ponto com o PontoRH.gs atual).</div>'; return; }
   var fi2=function(v){ return isFinite(v)?Math.round(v).toLocaleString('pt-BR'):'—'; };
   var fd2=function(v,k){ return isFinite(v)?v.toLocaleString('pt-BR',{minimumFractionDigits:k,maximumFractionDigits:k}):'—'; };
-  var cor=function(x){ return x.leitura==='cobrindo falta'?'var(--red)':(x.leitura?'var(--amber)':'var(--t3)'); };
+  /* o tema escuro declara td{color:var(--t1)!important}: sem !important no
+     inline a coluna Leitura sai branca e a cor não distingue nada. Mesmo
+     defeito que a tabela da Reunião tinha. */
+  var cor=function(x){ return (x.leitura==='cobrindo falta'?'var(--red)':(x.leitura?'var(--amber)':'var(--t3)'))+'!important'; };
+  var nC=' style="text-align:right;font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap"';
   var linhas=RS.setores.map(function(x){
-    return '<tr><td>'+x.setor+'</td><td>'+fi2(x.pessoas)+'</td><td>'+fi2(x.he)+'</td><td'+(x.heAlta?' style="font-weight:700"':'')+'>'+fd2(x.hePct,1)+'%</td><td>'+fd2(x.parte,0)+'%</td>'
-      +'<td>'+(x.absPct===null?'—':fd2(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor(x)+'">'+(x.leitura||'—')+'</td></tr>';
+    return '<tr><td>'+x.setor+'</td><td'+nC+'>'+fi2(x.pessoas)+'</td><td'+nC+'>'+fi2(x.he)+'</td><td style="text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:'+(x.heAlta?'800':'600')+'">'+fd2(x.hePct,1)+'%</td><td'+nC+'>'+fd2(x.parte,0)+'%</td>'
+      +'<td'+nC+'>'+(x.absPct===null?'—':fd2(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor(x)+';font-weight:'+(x.leitura?'700':'400')+'">'+(x.leitura||'—')+'</td></tr>';
   }).join('');
-  if(RS.indiretos.length) linhas+='<tr><td class="lid-tx" style="color:var(--t3)">Indiretos ('+RS.indiretos.length+' setores, fora da dependência de HE)</td><td>'+fi2(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi2(RS.heInd)+'</td><td>'+(RS.hnInd>0?fd2(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>';
+  if(RS.indiretos.length) linhas+='<tr><td class="lid-tx" style="color:var(--t3)!important">Indiretos ('+RS.indiretos.length+' setores, fora da dependência de HE)</td><td>'+fi2(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi2(RS.heInd)+'</td><td>'+(RS.hnInd>0?fd2(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>';
   linhas+='<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi2(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi2(RS.heDir)+'</td><td>'+fd2(RS.refPct,1)+'%</td><td>100%</td><td>'+(RS.absDir===null?'—':fd2(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr>';
   box.innerHTML='<div class="cHdr"><span class="cTtl">▸ '+RS.mes+'/'+String(RS.ano).slice(2)+' · '+fd2(RS.topParte,0)+'% da hora extra em '+SetorHE.lista(RS.top)+'</span></div>'
     +'<table class="lid-tab" style="font-size:.72rem"><thead><tr><th>Setor</th><th>Pessoas</th><th>HE (h)</th><th title="extra50 + extra100 ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th><th title="Parte do setor nas horas extras dos diretos">% da HE</th><th title="falta + atestado + afastado + atraso ÷ horas normais do setor (controle do RH)">Falta</th><th title="Cobrindo falta: HE alta e falta acima de '+RS.absCrit+'%. Capacidade: HE alta com falta dentro do limite">Leitura</th></tr></thead><tbody>'+linhas+'</tbody></table>'
@@ -21694,9 +21698,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b94.4';
+var APP_VERSAO = 'b94.5';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b94.5', data:'18/09/2026', itens:[
+    'Tabela por setor da aba Eficiencia & Horas ganha a mesma correcao que a da Reuniao: coluna Leitura com cor (o tema escuro declara td{color:var(--t1)!important} e vencia o estilo da celula, entao cobrindo falta, capacidade e HE alta saiam todos brancos) e numeros em peso 600 com tabular-nums, alinhados a direita.'
+  ]},
   { v:'b94.4', data:'18/09/2026', itens:[
     'Bloco por setor mais compacto e o filtro numa linha so: a Reuniao encolheu cerca de 90px de rolagem.',
     'Meses da Reuniao param de quebrar em varias linhas: anos e "Ano todo" num grupo, os doze meses noutro, mais estreitos e sem quebra. A 1600px eram tres linhas e o cabecalho crescia conforme o ano andava.',
