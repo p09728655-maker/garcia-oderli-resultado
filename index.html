@@ -19929,7 +19929,7 @@ function printAtiva(){
       +'<summary style="cursor:pointer;font-weight:700;color:'+cor+'">'+titulo+'</summary>'
       +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px">'
         +'<button type="button" class="btn btn-g btn-sm reu-noprint" onclick="reuGravarCalculos()" title="Recalcula todos os meses, de todos os anos, pela regra do painel e envia para a HISTORICO">Gravar cálculos na planilha</button>'
-        +'<span style="font-size:.7rem;color:var(--t3)">Refaz as colunas calculadas de todos os anos pela regra atual (metas incluídas) e grava na HISTORICO, para a planilha e o Power BI lerem o mesmo número. Use depois de mudar uma meta ou corrigir uma entrada.</span></div>'
+        +'<span style="font-size:.7rem;color:var(--t3)">Refaz as colunas calculadas de todos os anos pela regra atual (metas incluídas) e grava na HISTORICO, para a planilha mostrar o mesmo número da tela. Use depois de mudar uma meta ou corrigir uma entrada.</span></div>'
       +(I.itens.length
         ? '<div style="color:var(--t3);margin:6px 0 4px;line-height:1.4">Conferido contra a própria linha, o reporte do ERP e o Plano Mestre. '
           +'As colunas calculadas saem da regra do painel; "planilha desatualizada" significa que a HISTORICO ainda guarda a conta antiga. '
@@ -21549,9 +21549,13 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b93.7';
+var APP_VERSAO = 'b93.8';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b93.8', data:'18/09/2026', itens:[
+    'Referencia ao Power BI sai da tela e do DICIONARIO: o PPCP nao usa. O motivo de gravar os calculos na planilha continua o mesmo e agora esta escrito certo — a planilha mostrar o mesmo numero da tela.',
+    'PontoRH.gs, aceitarPontoNaHistorico: aceita o ano com dois digitos e separador de espaco ou traco. "JAN/26" era recusado com "nenhum mes reconhecido" e so "JAN/2026" funcionava.'
+  ]},
   { v:'b93.7', data:'18/09/2026', itens:[
     'Hora extra por setor: a coluna Falta passa a somar atraso do PONTO (atrasosPonto) quando existe, e so cai no atraso do controle sem ponto — a mesma regra do resto do painel. Em AGO/26 a tabela dava 11,1% de falta na fabrica contra os 12,4% do card de absenteismo, na mesma tela.'
   ]},
