@@ -19913,6 +19913,70 @@ function printAtiva(){
      legível da tela era justamente o que dizia por que os cards estavam ali.
      Dentro da faixa, o card que responde a pergunta é o grande; os outros
      explicam. */
+  /* HORA EXTRA POR SETOR NA REUNIÃO
+     A dependência de HE do mês é um número só; ele diz que existe hora extra,
+     não onde nem por quê. Este bloco responde as duas coisas com a PONTO_SETOR:
+     os cinco setores que mais consomem HE, a razão de cada um sobre as próprias
+     horas normais, e a leitura — HE acima da fábrica com falta acima do limite
+     é reposição de presença; com falta dentro, é capacidade. A decisão de turno,
+     headcount ou ação de presença muda conforme a resposta.
+     O Relatório reaproveita o HTML da tela, então o bloco sai impresso junto.
+     Sem a PONTO_SETOR do mês (extrato do ponto não processado), não aparece. */
+  function reuBlocoSetores(mes,ano){
+    if(!window.SetorHE||!SetorHE.resumo) return '';
+    var RS=null; try{ RS=SetorHE.resumo(mes,ano); }catch(e){ return ''; }
+    if(!RS||!RS.setores.length||!(RS.heDir>0)) return '';
+    var comHE=RS.setores.filter(function(x){ return x.he>0; });   /* já vem em ordem de HE */
+    if(!comHE.length) return '';
+    /* Cinco maiores + qualquer setor que a frase vá nomear: citar "corte" numa
+       frase e não ter a linha de corte na tabela manda o leitor procurar o que
+       não está lá. */
+    var top=comHE.slice(0,5);
+    comHE.slice(5).forEach(function(x){ if(x.leitura) top.push(x); });
+    top.sort(function(a,b){ return b.he-a.he; });
+    var dentro={}; top.forEach(function(x){ dentro[x.setor]=1; });
+    var resto=comHE.filter(function(x){ return !dentro[x.setor]; });
+    var hRest=resto.reduce(function(t,x){ return t+x.he; },0);
+    var tres=comHE.slice(0,3);
+    var parteTres=tres.reduce(function(t,x){ return t+x.parte; },0);
+    var corLeitura=function(x){ return x.leitura==='cobrindo falta'?'#F44336':(x.leitura?'#FF9800':'var(--t3)'); };
+    var nCel=' class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap"';
+    var linha=function(x){
+      return '<tr><td class="reu-set-nome">'+x.setor+'</td>'
+        +'<td'+nCel+'>'+fi(x.pessoas)+'</td>'
+        +'<td'+nCel+'>'+fi(x.he)+'</td>'
+        +'<td class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-weight:'+(x.heAlta?'800':'400')+'">'+fd(x.hePct,1)+'%</td>'
+        +'<td'+nCel+'>'+fd(x.parte,0)+'%</td>'
+        +'<td'+nCel+'>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td>'
+        +'<td style="color:'+corLeitura(x)+';font-weight:'+(x.leitura?'700':'400')+'">'+(x.leitura||'—')+'</td></tr>';
+    };
+    var frase=fd(parteTres,0)+'% da hora extra está em '+SetorHE.lista(tres)+'.'
+      +(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' a falta também passa de '+RS.absCrit+'%: hora extra cobrindo presença.':'')
+      +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro do limite: é capacidade.':'');
+    return '<div class="reu-setores" style="margin:10px 2px 0">'
+      +'<div class="reu-set-h" style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:5px">'
+        +'▸ Onde está a hora extra · '+mes+'/'+String(ano).slice(2)+'</div>'
+      +'<div class="reu-set-p" style="font-size:.8rem;color:var(--t1);opacity:.85;line-height:1.4;margin-bottom:7px">'+frase+'</div>'
+      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="width:100%;border-collapse:collapse;font-size:.72rem;min-width:600px">'
+      +'<thead><tr>'
+        +'<th style="text-align:left;width:auto">Setor</th>'
+        +'<th style="text-align:right;width:8%;white-space:nowrap">Pessoas</th>'
+        +'<th style="text-align:right;width:9%;white-space:nowrap" title="extra50 + extra100 do ponto">HE (h)</th>'
+        +'<th style="text-align:right;width:12%;white-space:nowrap" title="HE ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th>'
+        +'<th style="text-align:right;width:8%;white-space:nowrap" title="Parte do setor nas horas extras dos diretos">% da HE</th>'
+        +'<th style="text-align:right;width:9%;white-space:nowrap" title="falta, atestado, afastado e atraso ÷ horas normais do setor">Falta</th>'
+        +'<th style="text-align:left;width:16%;white-space:nowrap" title="Cobrindo falta: HE acima da fábrica e falta acima de '+RS.absCrit+'%. Capacidade: HE acima da fábrica com falta dentro">Leitura</th>'
+      +'</tr></thead><tbody>'
+      +top.map(linha).join('')
+      +(resto.length?'<tr class="reu-set-resto"><td class="reu-set-nome" style="color:var(--t3)">Outros '+resto.length+' setores diretos</td><td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td>—</td></tr>':'')
+      +'<tr class="reu-set-tot"><td class="reu-set-nome" style="font-weight:700">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td>—</td></tr>'
+      +'</tbody></table></div>'
+      +'<div class="reu-set-nota" style="font-size:.68rem;color:var(--t3);margin-top:5px;line-height:1.35">'
+        +'Horas do ponto por setor. É hora por setor, não peça por setor: a produção é da fábrica inteira. '
+        +'Indiretos, fora da dependência de HE: '+fi(RS.heInd)+' h'+(RS.hnInd>0?(' ('+fd(RS.heInd/RS.hnInd*100,1)+'% das horas normais deles)'):'')+'.'
+      +'</div></div>';
+  }
+
   function faixa(num,pergunta,resposta,corResp,cards,extra){
     return '<div class="reu-sec" style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:13px 0 7px;padding-left:2px">'
       +'<span class="reu-sec-n" style="font-family:var(--mono);font-size:.8rem;font-weight:800;color:#F5A623">'+num+'</span>'
@@ -20468,7 +20532,8 @@ function printAtiva(){
     corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025}), ano)
       +manchete
       +faixa('1','O plano cabe sem hora extra?', r1Curta, c1, b2,
-             r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
+             (r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
+             +(anoTodo?'':reuBlocoSetores(mes,ano)))
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
       +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
              '<div class="reu-row3" style="display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:8px;align-items:start">'
@@ -20506,6 +20571,14 @@ function printAtiva(){
       +'.reu-tab th{font-size:6.5pt!important;color:#52606D!important;text-align:left;padding:3px 5px!important;border-bottom:1px solid #D3D8DE}'
       +'.reu-tab td{padding:4px 5px!important;border-top:1px solid #edf2f7;vertical-align:top;color:#1F2933!important}'
       +'.reu-tab tr{opacity:1!important}'
+      +'.reu-set-h{font-size:7pt!important;color:#52606D!important;margin-bottom:3px!important}'
+      +'.reu-set-p{font-size:8.5pt!important;color:#1F2933!important;opacity:1!important;margin-bottom:5px!important}'
+      +'.reu-set-tab td.n{text-align:right;font-family:Consolas,monospace}'
+      +'.reu-set-tab td.reu-set-nome{text-align:left;font-family:inherit}'
+      +'.reu-set-resto td{color:#7B8794!important}'
+      +'.reu-set-tot td{font-weight:700;border-top:1.2px solid #C6CBD3!important}'
+      +'.reu-set-nota{font-size:6.8pt!important;color:#7B8794!important;margin-top:4px!important}'
+      +'.reu-setores{break-inside:avoid;page-break-inside:avoid;margin-top:8px!important}'
       /* Card chapado e sem fio colorido: quem julga na folha e a manchete. */
       +'.reu-card{background:#fff!important;border:1px solid #D3D8DE!important;'
         +'border-radius:5px!important;padding:8px 10px!important}'
@@ -21587,9 +21660,12 @@ function printAtiva(){
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b94';
+var APP_VERSAO = 'b94.1';
 var APP_DATA   = '18/09/2026';
 var APP_HISTORICO = [
+  { v:'b94.1', data:'18/09/2026', itens:[
+    'Reuniao do Mes ganha "Onde esta a hora extra", logo abaixo da pergunta 1: os cinco setores que mais consomem HE, a razao de cada um sobre as proprias horas normais, a parte na HE da fabrica, a falta do setor e a leitura (cobrindo presenca ou capacidade). O Relatorio reaproveita o HTML da tela, entao o bloco sai impresso junto, com CSS proprio e sem quebrar entre paginas. Aparece so no mes escolhido, nao em Ano todo, e so quando o extrato do mes ja foi processado.'
+  ]},
   { v:'b94', data:'18/09/2026', itens:[
     'aceitarPontoNaHistorico aceita o ano inteiro: digite 2026 e ele regrava todos os meses que tiverem extrato processado, na ordem do calendario. Em branco assume o ano corrente. Mes a mes obrigava a lembrar quais faltavam, e quem esquece um mes fica com o ano em duas reguas — foi o que aconteceu com MAR e JUN. Mes que ja estava igual ao ponto so e contado, nao polui o aviso, e o aviso termina dizendo para usar Gravar calculos na planilha.'
   ]},
