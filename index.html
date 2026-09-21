@@ -17344,7 +17344,92 @@ window.MesEmCurso = (function(){
     return saida(estado, Object.assign(nums, { titulo:titulo, frase:frase, acao:acao }));
   }
 
-  return { apurar:apurar, apurarKg:apurarKg, diasUteis:diasUteis, diasUteisDoMes:diasUteisDoMes, ultimoCorte:ultimoCorte,
+  /* ── Como ler os ritmos ──
+     Cinco números com o mesmo nome de unidade (pç/dia) e réguas diferentes.
+     Aqui cada um ganha as três linhas que todo indicador do painel deve ter
+     — o que é, como calcula (com os números do momento) e como ler — mais
+     uma leitura de conjunto e as duas confusões que aparecem em reunião.
+     Puro: recebe os totais, devolve texto; a tela e o PDF só renderizam.
+     u = { planoAno, diasPlanoAno, planoFech, diasPlanFech, normalFech, diasFech,
+           heP, planoAberto, diasAbertos, fechados:'JAN a AGO',
+           curso:{ mes, ate, realizado, diasDecorridos, ritmoNecRestante, kg }|null } */
+  function explicarRitmos(u){
+    u=u||{};
+    var rPlano=u.diasPlanoAno>0?u.planoAno/u.diasPlanoAno:0;
+    var rExig=u.diasPlanFech>0?u.planoFech/u.diasPlanFech:rPlano;
+    var rDem=u.diasFech>0?u.normalFech/u.diasFech:0;
+    var rComHE=u.diasFech>0?(u.normalFech+(u.heP||0))/u.diasFech:0;
+    var rNec=u.diasAbertos>0?u.planoAberto/u.diasAbertos:0;
+    var c=u.curso||null, rAtual=(c&&c.diasDecorridos>0)?c.realizado/c.diasDecorridos:0;
+    var fech=u.fechados||'os meses fechados';
+    var pctDemExig=rExig>0?(rDem/rExig-1)*100:0, pctNecDem=rDem>0?(rNec/rDem-1)*100:0;
+    var temNR=c&&c.ritmoNecRestante!==null&&c.ritmoNecRestante!==undefined;
+    var itens=[];
+    itens.push({ chave:'plano', nome:'Ritmo do plano', valor:rPlano,
+      oQueE:'O que o plano supõe que a fábrica produz por dia útil, na média do ano inteiro. É a régua nominal: ninguém a mediu.',
+      comoCalcula:'Plano do ano ÷ dias úteis planejados = '+fi(u.planoAno)+' ÷ '+fi(u.diasPlanoAno)+' = '+fi(rPlano)+' pç/dia.',
+      comoLer:rNec>0?(rNec>rPlano
+        ? 'O que resta pede '+fi(rNec)+', acima da média: o plano é mais pesado no fim do ano.'
+        : 'O que resta pede '+fi(rNec)+', abaixo da média: o plano é mais leve no fim do ano.')
+        : 'Sem meses abertos com plano, é só a média do ano.' });
+    itens.push({ chave:'exigido', nome:'Ritmo exigido', valor:rExig,
+      oQueE:'O que o plano cobrou nos meses já fechados, nos dias que a fábrica de fato trabalhou.',
+      comoCalcula:u.diasPlanFech>0
+        ? 'Plano de '+fech+' ÷ dias trabalhados = '+fi(u.planoFech)+' ÷ '+fi(u.diasPlanFech)+' = '+fi(rExig)+' pç/dia.'
+        : 'Sem mês fechado com horas lançadas: vale o ritmo do plano.',
+      comoLer:'É a régua justa para o demonstrado: os dois dividem pelos mesmos dias. A diferença entre eles é produtividade, não calendário.' });
+    itens.push({ chave:'demonstrado', nome:'Ritmo demonstrado', valor:rDem,
+      oQueE:'O que a fábrica entrega por dia trabalhado sem hora extra.',
+      comoCalcula:u.diasFech>0
+        ? 'Produção na jornada normal de '+fech+' ÷ dias trabalhados = '+fi(u.normalFech)+' ÷ '+fi(u.diasFech)+' = '+fi(rDem)+' pç/dia. Jornada normal = produção do mês descontada na proporção das horas extras.'
+        : 'Sem mês fechado com horas lançadas, não há como medir.',
+      comoLer:(rComHE>0?'Com hora extra a fábrica fez '+fi(rComHE)+' pç/dia. ':'')+'Hora extra é capacidade comprada, não instalada. A pergunta do plano é se ele cabe no turno.' });
+    itens.push({ chave:'necessario', nome:'Ritmo necessário', valor:rNec,
+      oQueE:'O que o restante do plano pede por dia útil, daqui até o fim do horizonte planejado.',
+      comoCalcula:u.diasAbertos>0
+        ? 'Falta produzir ÷ dias úteis restantes = '+fi(u.planoAberto)+' ÷ '+fi(u.diasAbertos)+' = '+fi(rNec)+' pç/dia.'
+        : 'Não há meses abertos com plano.',
+      comoLer:(rNec>0&&rDem>0)?(rNec>rDem
+        ? fd(pctNecDem,0)+'% acima do demonstrado: não cabe na jornada normal. Fecha com hora extra estrutural, mais gente ou plano menor.'
+        : 'Abaixo do demonstrado ('+fi(rDem)+'): cabe na jornada normal.')
+        : 'Sem demonstrado ou sem restante, não há comparação.' });
+    if(c&&rAtual>0){
+      var cabeMes=temNR&&rDem>0&&c.ritmoNecRestante<=rDem;
+      itens.push({ chave:'atual', nome:'Ritmo do mês em curso', valor:rAtual,
+        oQueE:'O que '+c.mes+' está fazendo até o corte, com hora extra e com o mix do mês.',
+        comoCalcula:'Realizado até '+c.ate+' ÷ dias úteis decorridos = '+fi(c.realizado)+' ÷ '+fi(c.diasDecorridos)+' = '+fi(rAtual)+' pç/dia.',
+        comoLer:'Não compare direto com o demonstrado: este inclui hora extra e a peça do mix do mês. O bloco compara o que falta do mês'
+          +(temNR?' ('+fi(Math.max(0,c.ritmoNecRestante))+')':'')+' com o demonstrado ('+fi(rDem)+')'
+          +(temNR?(cabeMes?' — cabe.':' — não cabe.'):'.')
+          +(c.kg&&c.kg.kgDiaAno?' Em quilos, o mês move '+fd(c.kg.kgDiaMes/1000,1)+' t/dia contra '+fd(c.kg.kgDiaAno/1000,1)+' da média do ano.':'') });
+    }
+    var leitura=[];
+    if(rExig>0&&rDem>0){
+      leitura.push('O plano supõe '+fi(rPlano)+' pç/dia. Até '+fech+' cobrou '+fi(rExig)+'. A fábrica entregou '+fi(rDem)+' sem hora extra — '
+        +fd(Math.abs(pctDemExig),1)+'% '+(pctDemExig>=0?'acima':'abaixo')+'.');
+      if(rNec>0) leitura.push(rNec>rDem
+        ? 'O que resta pede '+fi(rNec)+', '+fd(pctNecDem,0)+'% acima do demonstrado'
+          +(rNec>rPlano?': o trecho mais pesado do ano ainda vem.':' — mais leve que a média do ano, mas acima do que a fábrica entrega.')
+          +' Não fecha na jornada normal.'
+        : 'O que resta pede '+fi(rNec)+', abaixo do demonstrado: fecha na jornada normal se o ritmo se mantiver.');
+    }
+    if(c&&rAtual>0){
+      leitura.push(c.mes+' roda a '+fi(rAtual)+' pç/dia com hora extra'
+        +(temNR?'; o que falta dele pede '+fi(Math.max(0,c.ritmoNecRestante))+(rDem>0?(c.ritmoNecRestante<=rDem?' — cabe na jornada.':' — não cabe na jornada.'):'.'):'.')
+        +(c.kg&&c.kg.kgDiaAno&&c.kg.difDiaPct<-5?' Em quilos, porém, move '+fd(Math.abs(c.kg.difDiaPct),0)+'% menos que a média do ano: peça leve, não fábrica mais rápida.':''));
+    }
+    var confusoes=[];
+    if(rExig>0&&rPlano>0&&rExig<rPlano&&rNec>rPlano)
+      confusoes.push({ p:'"O exigido ('+fi(rExig)+') é menor que o do plano ('+fi(rPlano)+'). O plano estava folgado?"',
+        r:'Não. Os meses já fechados foram planejados mais leves; os que faltam pedem '+fi(rNec)+'. A fábrica ficou para trás no trecho fácil.' });
+    if(c&&rAtual>0&&rNec>0&&rAtual>rNec)
+      confusoes.push({ p:'"'+c.mes+' faz '+fi(rAtual)+' e o resto do ano pede '+fi(rNec)+'. Então sobra?"',
+        r:'Não. '+fi(rAtual)+' é com hora extra e com a peça do mix de '+c.mes+'. A régua do plano é a jornada normal ('+fi(rDem)+'), e o mix do mês seguinte pode ser outro.' });
+    return { itens:itens, leitura:leitura, confusoes:confusoes,
+             ritmoPlano:rPlano, ritmoExig:rExig, ritmoDem:rDem, ritmoComHE:rComHE, ritmoNec:rNec, ritmoAtual:rAtual };
+  }
+
+  return { apurar:apurar, apurarKg:apurarKg, explicarRitmos:explicarRitmos, diasUteis:diasUteis, diasUteisDoMes:diasUteisDoMes, ultimoCorte:ultimoCorte,
            deIso:deIso, ddmm:ddmm, ORDEM_M:ORDEM_M, DIAS_CORTE_VELHO:DIAS_CORTE_VELHO };
 })();
 
@@ -17535,6 +17620,48 @@ window.MesEmCurso = (function(){
   function statusCurso(){ return semaforo('Em andamento','#F5A623','245,166,35'); }
   function ton(kg){ return isFinite(kg)?fd(kg/1000,1)+' t':'—'; }
   function pctSinal(v){ return (v>=0?'+':'')+fd(v,1)+'%'; }
+
+  /* ── Como ler os ritmos ──
+     Cinco cards com o mesmo "pç/dia" e réguas diferentes é onde a reunião
+     trava. O bloco traz, para cada um, o que é, a conta com os números do
+     momento e como ler — na tela e no PDF, não em tooltip que ninguém abre
+     no tablet. Aberto por padrão; quem já sabe fecha, e a escolha fica. */
+  var COMO_LER_SK='pm_como_ler';
+  function comoLerAberto(){ try { return localStorage.getItem(COMO_LER_SK)!=='0'; } catch(e){ return true; } }
+  window.pmComoLer=function(abrir){
+    try { localStorage.setItem(COMO_LER_SK, abrir?'1':'0'); } catch(e){}
+    var b=document.getElementById('pm-como-ler-body'), t=document.getElementById('pm-como-ler-toggle');
+    if(b) b.style.display=abrir?'':'none';
+    if(t) t.textContent=abrir?'Ocultar':'Mostrar';
+  };
+  function blocoComoLer(ex){
+    if(!ex||!ex.itens.length) return '';
+    var aberto=comoLerAberto();
+    function linha(rot,txt){ return '<div style="display:flex;gap:8px;margin-top:5px;font-size:.76rem;line-height:1.45">'
+      +'<span style="flex:0 0 86px;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);padding-top:3px">'+rot+'</span>'
+      +'<span style="color:var(--t1)">'+txt+'</span></div>'; }
+    var cards=ex.itens.map(function(it){
+      return '<div style="background:var(--panel);border:1px solid var(--b);border-radius:var(--r);padding:12px 14px">'
+        +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">'
+        +'<span style="font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--t2)">'+it.nome+'</span>'
+        +'<span style="font-family:var(--mono);font-size:1rem;font-weight:700;color:var(--t1)">'+fi(it.valor)+' pç/dia</span></div>'
+        +linha('O que é',it.oQueE)+linha('Como calcula',it.comoCalcula)+linha('Como ler',it.comoLer)+'</div>';
+    }).join('');
+    var leitura=ex.leitura.length
+      ? '<div style="margin-top:12px;padding:11px 14px;background:rgba(255,255,255,.03);border-left:2px solid var(--t3);border-radius:6px;font-size:.84rem;line-height:1.55;color:var(--t1)">'
+        +'<b>Leitura:</b> '+ex.leitura.join(' ')+'</div>' : '';
+    var conf=ex.confusoes.length
+      ? '<div style="margin-top:10px;font-size:.78rem;line-height:1.5;color:var(--t2)">'
+        +ex.confusoes.map(function(q){ return '<div style="margin-top:6px"><b style="color:var(--t1)">'+q.p+'</b> '+q.r+'</div>'; }).join('')+'</div>' : '';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px;padding-left:2px">'
+      +'<div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)">▸ Como ler os ritmos — todos em peças por dia útil</div>'
+      +'<button id="pm-como-ler-toggle" onclick="pmComoLer(document.getElementById(\'pm-como-ler-body\').style.display===\'none\')" '
+      +'style="background:none;border:1px solid var(--b);border-radius:4px;color:var(--t2);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;cursor:pointer">'
+      +(aberto?'Ocultar':'Mostrar')+'</button></div>'
+      +'<div id="pm-como-ler-body" style="'+(aberto?'':'display:none')+'">'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:10px">'+cards+'</div>'
+      +leitura+conf+'</div>';
+  }
   function blocoMesEmCurso(c){
     if(!c) return '';
     var mm=('0'+(ORDEM_M.indexOf(c.mes)+1)).slice(-2);
@@ -17731,12 +17858,18 @@ window.MesEmCurso = (function(){
     var ritmoExig=diasPlanFech>0?planoFech/diasPlanFech:ritmoPlano;
     var ritmoNecR=diasAbertos>0?planoAberto/diasAbertos:0;    /* só o que falta */
     var pctFolga=ritmoExig>0?((ritmoDem/ritmoExig)-1)*100:0;
+    /* Rótulo dos meses fechados com horas ("JAN a AGO"), para a explicação
+       dos ritmos dizer de onde vem cada conta. */
+    var comHoras=mesesTab.filter(function(m){ return m.normal!==null&&m.normal>0; }).map(function(m){ return m.mes; });
+    var fechados=comHoras.length?(comHoras.length===1?comHoras[0]:comHoras[0]+' a '+comHoras[comHoras.length-1]):'os meses fechados';
     /* Mês em curso: comparado com o ritmo demonstrado do ano (jornada normal)
        e com o limite de hora extra da aba METAS. */
     var curso=cursoRec?MesEmCurso.apurar({ plano:cursoRec.plano, realizado:+cursoRec.parc.produtos, dataCorte:cursoRec.parc.dataCorte,
       diasPlanejados:cursoRec.diasP, ritmoDem:ritmoDem, limHE:(typeof META_DEP_HE!=='undefined')?META_DEP_HE:8,
       feriados:feriados, hoje:hojeIso(), melhorMesDia:melhorDia,
       pesoMes:+cursoRec.parc.peso, kgAno:kgAno }):null;
+    var explic=MesEmCurso.explicarRitmos({ planoAno:planoAno, diasPlanoAno:diasPlanoAno, planoFech:planoFech, diasPlanFech:diasPlanFech,
+      normalFech:normalFech, diasFech:diasFech, heP:heP, planoAberto:planoAberto, diasAbertos:diasAbertos, fechados:fechados, curso:curso });
 
     var cor,rgb,titulo,frase,acao;
     /* A leitura do que resta depende de contra o que se compara. "Mais leve
@@ -17842,6 +17975,7 @@ window.MesEmCurso = (function(){
       +card('Falta produzir', fi(planoAberto)+' pç', diasAbertos+' dias úteis planejados', '#FF9800')
       +card('Dependência de hora extra', fi(heP)+' pç', 'Saíram só por hora extra', heP>0?'#FF9800':'#4CAF50')
       +'</div>'
+      +blocoComoLer(explic)
       +blocoDemanda(planoFech,fatFech,venFech)
       +blocoProjecao(realAcum,diasFech,planoAno,planoAberto,diasAbertos,ritmoDem)
       +blocoVolumes(todos,ano,planoAno,planoAberto)
@@ -17855,7 +17989,7 @@ window.MesEmCurso = (function(){
              ritmoExig:ritmoExig, diasPlanFech:diasPlanFech,
              ritmoDem:ritmoDem, ritmoNecR:ritmoNecR, pctFolga:pctFolga, heP:heP,
              planoFech:planoFech, fatFech:fatFech, venFech:venFech, semPlano:semPlano,
-             titulo:titulo, frase:frase, acao:acao, cor:cor, curso:curso, meses:mesesTab };
+             titulo:titulo, frase:frase, acao:acao, cor:cor, curso:curso, explic:explic, meses:mesesTab };
   }
 
   /* ── O plano cobre a demanda? ──
@@ -18644,6 +18778,15 @@ window.MesEmCurso = (function(){
         +kpi('Falta Produzir', (u.planoAberto>0?fi(u.planoAberto)+' pçs':'—'), u.diasAbertos+' dias úteis')
         +kpi('Dependência de HE', fi(u.heP)+' pçs', 'Só por hora extra')
       +'</div>'
+      +(u.explic&&u.explic.itens.length
+        ? '<div class="st">Como ler os ritmos — todos em peças por dia útil</div>'
+          +'<table><thead><tr><th>Ritmo</th><th class="n">pç/dia</th><th>O que é</th><th>Como calcula</th><th>Como ler</th></tr></thead><tbody>'
+          +u.explic.itens.map(function(it){ return '<tr><td><b>'+it.nome+'</b></td><td class="n"><b>'+fi(it.valor)+'</b></td>'
+            +'<td>'+it.oQueE+'</td><td>'+it.comoCalcula+'</td><td>'+it.comoLer+'</td></tr>'; }).join('')
+          +'</tbody></table>'
+          +(u.explic.leitura.length?'<div class="ac"><b>Leitura:</b> '+u.explic.leitura.join(' ')+'</div>':'')
+          +u.explic.confusoes.map(function(q){ return '<div class="ac" style="border-left:3px solid #718096"><b>'+q.p+'</b> '+q.r+'</div>'; }).join('')
+        : '')
       +(u.planoFech>0&&u.venFech>0
         ? '<div class="st">O Plano Cobre a Demanda?</div>'
           +'<div class="kg" style="grid-template-columns:repeat(4,1fr)">'
@@ -22899,9 +23042,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.8';
+var APP_VERSAO = 'b96.9';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.9', data:'21/09/2026', itens:[
+    'Plano Mestre ganha o bloco COMO LER OS RITMOS, abaixo dos cards do ano: cinco numeros com a mesma unidade (pc/dia) e reguas diferentes — do plano, exigido, demonstrado, necessario e o do mes em curso — cada um com o que e, a conta com os numeros do momento (362.296 / 240 = 1.510…) e como ler. Mais a leitura de conjunto e as duas confusoes que aparecem em reuniao (exigido menor que o do plano nao e folga; o ritmo do mes com hora extra nao se compara com o demonstrado). Aberto por padrao, com botao para ocultar; a escolha fica no navegador. O relatorio em PDF traz a mesma tabela.',
+    'A explicacao e calculada, nao escrita: MesEmCurso.explicarRitmos recebe os totais e devolve o texto, entao tela e PDF nunca divergem, e o teste confere as frases contra os numeros reais de 21/09/26 (21 casos).'
+  ]},
   { v:'b96.8', data:'21/09/2026', itens:[
     'Mes em curso ganha a leitura EM QUILOS. O plano e generico, em pecas, e o mix muda o peso da peca: o corte de 01 a 18/09 tinha 37% mais pecas que o mesmo trecho de junho e 9,5% menos quilos (17,5 kg/pc contra 26,5). Em pecas setembro batia o plano; em quilos movia menos massa. Tres cards — massa por dia, peso por peca e o plano convertido em quilos no mix do mes e no mix do ano — e uma frase que diz qual das duas leituras vale. Nao muda o semaforo do plano: e a segunda leitura, com cor propria (laranja quando a massa por dia esta mais de 5% abaixo da media do ano).',
     'Sem fonte nova: o peso do corte ja vinha na PARCIAL_MES (soma das linhas de produto do reporte, peso bruto) e os meses fechados tem quilosProduzidos na HISTORICO — mesma base, mesmo relatorio. Sem quilos nos meses fechados, o bloco mostra so o do corte e diz o que falta.',
