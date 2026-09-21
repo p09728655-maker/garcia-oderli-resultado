@@ -23092,9 +23092,17 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.10';
+var APP_VERSAO = 'b96.11';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.11', data:'21/09/2026', itens:[
+    'Tela de divulgacao PLANO x REALIZADO, em endereco proprio: /plano (ou /tv). Uma tela, sem rolagem, feita para a TV do chao de fabrica e para o celular — nao e aba do painel porque numa TV nao ha quem clique, e o link e o que se manda no WhatsApp. A aba Planejamento Mestre continua sendo o diagnostico do PPCP; esta responde uma pergunta so: a fabrica esta no plano?',
+    'Duas colunas, dois vereditos: em 21/09 o mes esta no ritmo e o ano esta atras. Mostrar so um dos dois seria mentir por omissao. Os dois lados respondem a MESMA pergunta — o que falta pede X por dia, a fabrica faz Y na jornada normal — que e o unico numero que decide e e comparavel. Projecao so na jornada normal: hora extra e capacidade comprada.',
+    'A marca da barra do ANO e a curva do plano (planoFech / planoAno = 65%), nao o tempo decorrido (68%). Pelo tempo a barra diria "em dia" enquanto o veredito diz "atras", e a tela se contradiria em cinco segundos — o plano e mais pesado no fim do ano. Na fita mes a mes, o mes ainda aberto sai com contorno tracejado e asterisco: um parcial de 75% nao se compara com um mes fechado ao lado.',
+    'Hora extra e peso da peca no rodape, uma linha cada. Se saissem, a manchete em pecas mentiria (setembro bate o plano com peca 33% mais leve); se virassem blocos, ninguem leria a manchete.',
+    'Nenhuma conta nova: tudo vem do pmApurado() da aba Mestre, que ja e testado. O painel carrega inteiro por tras (sync, render, modulos) e so o #app fica escondido — a tela nunca diverge da aba. Sem corte parcial lancado, cai no ultimo mes fechado e segue valendo. Recarrega sozinha a cada 15 min, para TV ligada o dia todo.',
+    'vercel.json ganha os rewrites de /plano e /tv para o index.html, com no-cache. testes/plano-realizado.test.js: 48 casos sobre a traducao do apurado e sobre quais enderecos abrem a tela (437 no total).'
+  ]},
   { v:'b96.10', data:'21/09/2026', itens:[
     'Mes em curso ganha a HORA EXTRA, lida ao vivo do apontamento diario da Embalagem (planilha MODELO_HORA_A_HORA, aba de resumo com DATA, REALIZADO, META, HE e HE CX). O reporte do ERP nao separa jornada normal de extra; a Embalagem separa, por dia. Tres cards — % de hora extra ate o corte contra o limite META_DEP_HE (8%), ritmo sem hora extra contra o demonstrado, e a projecao do mes sem hora extra contra o plano — e a frase que diz se cobre. Em 01 a 18/09: 16,3% do volume em HE (4.534 de 27.899 caixas, 20 h), acima do limite.',
     'Premissa dita na tela: a fatia de hora extra em caixas vale como fatia em pecas. Os dias apontados pela Embalagem sao os dias trabalhados de fato — se diferirem do calendario (sabado, por exemplo), o bloco avisa e usa os apontados. Nao muda o semaforo do plano: o que falta cabe ou nao cabe na jornada independe do que ja foi feito com HE.',
@@ -23794,6 +23802,346 @@ var APP_HISTORICO = [
       console.warn('SW falhou ao registrar (app continua funcionando normal):', err);
     });
   });
+})();
+</script>
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   PLANO × REALIZADO — tela de divulgação, endereço próprio
+   ─────────────────────────────────────────────────────────────────────────
+   A aba Planejamento Mestre é o diagnóstico do PPCP: nove blocos, trinta
+   cards, quatro mil pixels. Serve para decidir carga-máquina e não serve
+   para divulgar. Esta tela responde uma pergunta só — a fábrica está no
+   plano? — em cinco segundos, de pé, a dez metros da TV.
+
+   ENDEREÇO PRÓPRIO, não aba do painel: numa TV não há quem clique, e o link
+   é o que se manda no WhatsApp. /plano e /tv caem aqui por rewrite da
+   Vercel (vercel.json); ?tela=plano também funciona, para o caso de o
+   rewrite ainda não estar publicado. Fora desses endereços, este módulo não
+   faz nada — o painel abre como sempre.
+
+   NENHUMA CONTA NOVA: tudo vem de pmApurado(), o mesmo apurado da aba
+   Mestre, que já é testado. modelo() só traduz aquilo para o que a tela
+   mostra; é puro e tem teste próprio (testes/plano-realizado.test.js).
+
+   O QUE A TELA DECIDE MOSTRAR, e por quê:
+   • duas colunas, dois vereditos — em 21/09/26 o mês está verde e o ano
+     vermelho. Uma tela que mostrasse só um dos dois mentiria por omissão;
+   • a mesma pergunta nos dois lados: o que falta pede X por dia, a fábrica
+     faz Y na jornada normal. É o único número que decide e é comparável;
+   • a marca da barra do ANO é a curva do plano, não o tempo decorrido. O
+     plano é mais pesado no fim do ano: pelo tempo a barra diria "em dia"
+     (67% feito, 68% do tempo) enquanto o veredito diz "atrás", e a tela se
+     contradiria. Pelo plano (65% esperado) as duas leituras fecham;
+   • projeção só na jornada normal — hora extra é capacidade comprada;
+   • hora extra e peso da peça no rodapé, uma linha cada. Se saíssem, a
+     manchete em peças mentiria (setembro bate o plano com peça 33% mais
+     leve); se virassem blocos, ninguém leria a manchete.
+══════════════════════════════════════════════════════════════════════════ */
+window.PlanoRealizado = (function(){
+  'use strict';
+  var ORDEM_M=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  var NOME_MES={JAN:'Janeiro',FEV:'Fevereiro',MAR:'Março',ABR:'Abril',MAI:'Maio',JUN:'Junho',
+                JUL:'Julho',AGO:'Agosto',SET:'Setembro',OUT:'Outubro',NOV:'Novembro',DEZ:'Dezembro'};
+  var COR={ ok:'#4CAF50', ruim:'#F44336', he:'#FF9800', vazio:'#2A2A2A' };
+  function fi(n){ return isFinite(n)?Math.round(n).toLocaleString('pt-BR'):'—'; }
+  function fd(n,d){ return isFinite(n)?n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  /* Cor do mês na fita, pela mesma régua de statusMes da aba Mestre. */
+  function corStatus(st){
+    if(st==='Cumpriu') return COR.ok;
+    if(st==='Cumpriu c/ HE'||st==='Em andamento'||st==='Em fechamento') return COR.he;
+    if(st==='Não cumpriu') return COR.ruim;
+    return COR.vazio;
+  }
+
+  /* ── modelo: pmApurado() → o que a tela mostra. Puro. ── */
+  function modelo(u, agora){
+    if(!u||!(u.planoAno>0)) return null;
+    var dem=+u.ritmoDem||0;
+    var m={ ano:u.ano, dem:dem, atualizado:agora||null };
+
+    /* O MÊS. Com corte parcial é o mês em curso; sem ele, o último fechado —
+       a tela continua valendo na segunda-feira em que ninguém emitiu o corte. */
+    var c=u.curso;
+    if(c&&c.plano>0){
+      var falta=Math.max(0,c.faltaProduzir), dias=c.diasRestantes;
+      var nec=dias>0?falta/dias:0, cabe=falta<=0||(dem>0&&nec<=dem);
+      m.mes={ tipo:'curso', nome:NOME_MES[c.mes]||c.mes, ate:c.ate,
+        plano:c.plano, real:c.realizado, falta:falta, dias:dias,
+        pctPlano:c.plano>0?c.realizado/c.plano*100:0, pctRef:c.pctMes,
+        refLbl:'do mês', refSub:c.diasDecorridos+' de '+c.diasPlanejados+' dias',
+        nec:nec, cabe:cabe, cor:cabe?COR.ok:COR.ruim,
+        veredito:falta<=0?'PLANO CUMPRIDO':(cabe?'NO RITMO':'ABAIXO DO RITMO'),
+        fecha:dem>0?c.realizado+dem*dias:null };
+    } else {
+      var fech=(u.meses||[]).filter(function(x){ return x.plano>0&&x.real!==null&&x.real>0; });
+      var uf=fech.length?fech[fech.length-1]:null;
+      if(!uf) return null;
+      var okN=uf.normal!==null&&uf.normal>=uf.plano, okT=uf.real>=uf.plano;
+      m.mes={ tipo:'fechado', nome:NOME_MES[uf.mes]||uf.mes, ate:null,
+        plano:uf.plano, real:uf.real, falta:Math.max(0,uf.plano-uf.real), dias:0,
+        pctPlano:uf.plano>0?uf.real/uf.plano*100:0, pctRef:100,
+        refLbl:'do mês', refSub:'mês fechado', nec:0, cabe:okT,
+        cor:okN?COR.ok:(okT?COR.he:COR.ruim),
+        veredito:okN?'CUMPRIU NA JORNADA NORMAL':(okT?'CUMPRIU COM HORA EXTRA':'NÃO CUMPRIU'),
+        fecha:null };
+    }
+
+    /* O ANO. A marca é a curva do plano (planoFech), não o tempo. */
+    var pa=+u.planoAberto||0, da=+u.diasAbertos||0;
+    var necA=da>0?pa/da:0, cabeA=pa<=0||(dem>0&&necA<=dem);
+    m.ano2={ plano:u.planoAno, real:u.realAcum, falta:pa, dias:da,
+      pctPlano:u.realAcum/u.planoAno*100,
+      pctRef:u.planoFech>0?u.planoFech/u.planoAno*100:null,
+      refLbl:'esperado pelo plano', refSub:'meses fechados',
+      nec:necA, cabe:cabeA, cor:cabeA?COR.ok:COR.ruim,
+      veredito:cabeA?'NO RITMO':'ATRÁS DO RITMO',
+      fecha:dem>0?u.realAcum+dem*da:null,
+      sobraFech:(u.planoFech>0)?u.realAcum-u.planoFech:null,
+      acimaPct:(dem>0&&necA>dem)?(necA/dem-1)*100:null };
+
+    /* Fita do ano: um retângulo por mês, altura pelo % do plano. */
+    var porMes={}; (u.meses||[]).forEach(function(x){ porMes[x.mes]=x; });
+    m.fita=ORDEM_M.map(function(mes){
+      var x=porMes[mes];
+      if(!x||!(x.plano>0)) return { mes:mes, pct:null, cor:COR.vazio, st:'sem plano' };
+      var emCurso=x.status==='Em andamento';
+      var real=(x.real!==null&&x.real>0)?x.real:(x.parcial?x.parcial.produtos:null);
+      return { mes:mes, pct:real!==null?real/x.plano*100:null, parcial:emCurso,
+               cor:corStatus(x.status), st:x.status };
+    });
+
+    /* Rodapé: as ressalvas que a manchete em peças não conta. */
+    m.notas=[];
+    if(c&&c.he) m.notas.push({ txt:'Hora extra no mês: <b>'+fd(c.he.hePct,1)+'%</b> do volume — '
+      +(c.he.nivel==='dentro'?'dentro do limite de '+fd(c.he.limHE,0)+'%':'acima do limite de '+fd(c.he.limHE,0)+'%'),
+      alerta:c.he.nivel!=='dentro' });
+    if(c&&c.kg&&c.kg.kgPecaAno) m.notas.push({ txt:'Peça do mês: <b>'+fd(c.kg.kgPecaMes,1)
+      +' kg</b> · média do ano <b>'+fd(c.kg.kgPecaAno,1)+' kg</b>', alerta:false });
+    else if(u.heP>0) m.notas.push({ txt:'Dependência de hora extra no ano: <b>'+fi(u.heP)+'</b> peças', alerta:true });
+    return m;
+  }
+
+  /* ── html: o modelo vira tela. Sem conta aqui dentro. ── */
+  function coluna(lbl, d, dem, extra){
+    var barra=Math.max(0,Math.min(100,d.pctPlano));
+    var marca=(d.pctRef!==null&&d.pctRef!==undefined)?Math.max(0,Math.min(100,d.pctRef)):null;
+    return '<section class="pr-col" style="--cor:'+d.cor+'">'
+      +'<div class="pr-lbl">'+esc(lbl)+'</div>'
+      +'<div class="pr-st"><span class="pr-dot"></span><span class="pr-v">'+esc(d.veredito)+'</span></div>'
+      +'<div class="pr-big"><span class="pr-n">'+fi(d.real)+'</span>'
+        +'<span class="pr-d">de '+fi(d.plano)+' peças</span></div>'
+      +'<div class="pr-bar"><div class="pr-track"><div class="pr-fill" style="width:'+barra.toFixed(1)+'%"></div>'
+        +(marca!==null?'<div class="pr-tick" style="left:'+marca.toFixed(1)+'%"></div>':'')+'</div>'
+        +'<div class="pr-legs"><span style="color:var(--cor)"><b>'+fd(d.pctPlano,0)+'%</b> do plano</span>'
+        +(marca!==null?'<span class="pr-leg2">▲ <b>'+fd(d.pctRef,0)+'%</b> '+esc(d.refLbl2||d.refLbl)
+          +' · '+esc(d.refSub)+'</span>':'<span class="pr-leg2">'+esc(d.refSub)+'</span>')
+        +'</div></div>'
+      +(d.dias>0
+        ? '<div class="pr-calc"><div class="pr-calc-l">Faltam '+fi(d.falta)+' peças em '+fi(d.dias)+' dias úteis</div>'
+          +'<div class="pr-calc-r"><span class="pr-calc-n">'+fi(d.nec)+'</span><span class="pr-calc-u">peças por dia</span></div>'
+          +(dem>0?'<div class="pr-calc-vs">a fábrica faz <b>'+fi(dem)+'</b> por dia na jornada normal</div>':'')
+          +'<div class="pr-ver">'+(d.cabe?'✓ cabe na jornada normal'
+            :'✗ '+(d.acimaPct?fd(d.acimaPct,0)+'% acima — ':'')+'não cabe na jornada normal')+'</div></div>'
+        : '')
+      +(extra||'')+'</section>';
+  }
+  function html(m){
+    if(!m) return '<div class="pr-vazio"><div class="pr-vazio-t">Sem plano para mostrar</div>'
+      +'<div class="pr-vazio-s">Lance a previsão na aba PLANO MESTRE da planilha. '
+      +'Esta tela usa o mesmo apurado do Planejamento Mestre.</div></div>';
+    var mes=m.mes, ano=m.ano2;
+    var pMes=(mes.fecha!==null&&mes.dias>0)
+      ? '<div class="pr-proj">Mantido o ritmo da jornada normal, o mês fecha em <b style="color:'
+        +(mes.fecha>=mes.plano?COR.ok:COR.ruim)+'">'+fi(mes.fecha)+'</b> peças — <b>'
+        +(mes.fecha>=mes.plano?'+':'')+fi(mes.fecha-mes.plano)+'</b> '
+        +(mes.fecha>=mes.plano?'acima':'abaixo')+' do plano.<span>Sem contar hora extra.</span></div>' : '';
+    var pAno=(ano.fecha!==null&&ano.dias>0)
+      ? '<div class="pr-proj">Mantido o ritmo da jornada normal, o ano fecha em <b style="color:'
+        +(ano.fecha>=ano.plano?COR.ok:COR.ruim)+'">'+fi(ano.fecha)+'</b> peças — <b>'
+        +(ano.fecha>=ano.plano?'+':'')+fi(ano.fecha-ano.plano)+'</b> '
+        +(ano.fecha>=ano.plano?'acima':'abaixo')+' do plano.'
+        +(ano.sobraFech!==null?'<span>Os meses fechados entregaram '+(ano.sobraFech>=0?'+':'')
+          +fi(ano.sobraFech)+' peças sobre o que o plano pedia. O que falta é mais pesado.</span>':'')
+        +'</div>' : '';
+    var fita=m.fita.map(function(x){
+      var alt=x.pct!==null?Math.max(6,Math.min(100,x.pct*0.7)):(x.cor===COR.vazio?8:45);
+      return '<div class="pr-m'+(x.parcial?' pr-m-parc':'')+'" style="--mc:'+x.cor+'" '
+        +'title="'+esc(x.mes+' — '+x.st+(x.parcial?' (parcial, mês não fechado)':''))+'">'
+        +'<div class="pr-m-p">'+(x.pct!==null?fd(x.pct,0)+'%'+(x.parcial?'*':''):'')+'</div>'
+        +'<div class="pr-m-b" style="height:'+alt.toFixed(0)+'%"></div>'
+        +'<div class="pr-m-n">'+x.mes+'</div></div>';
+    }).join('');
+    return '<div class="pr-hd">'
+        +'<div class="pr-mark"><span>P</span></div>'
+        +'<div><div class="pr-hd-t">Produção · Plano × Realizado</div>'
+        +'<div class="pr-hd-s">Patrimar Móveis · Jaci/SP</div></div>'
+        +'<div class="pr-hd-r"><div class="pr-per">'+esc(mes.nome)+' '+m.ano+'</div>'
+        +'<div class="pr-at">'+(mes.ate?'dados até '+esc(mes.ate)+' · ':'')
+        +'atualizado '+esc(m.atualizado||'—')+'</div></div></div>'
+      +'<div class="pr-wrap"><div class="pr-main">'
+        +coluna('O mês', mes, m.dem, pMes)
+        +coluna('O ano', ano, m.dem, pAno)
+      +'</div>'
+      +'<div class="pr-strip"><div class="pr-strip-hd">'
+        +'<span class="pr-strip-l">Mês a mês — realizado sobre o plano</span>'
+        +'<span class="pr-strip-leg">'
+          +'<span><i style="background:'+COR.ok+'"></i>cumpriu na jornada normal</span>'
+          +'<span><i style="background:'+COR.he+'"></i>cumpriu com hora extra</span>'
+          +'<span><i style="background:'+COR.ruim+'"></i>não cumpriu</span>'
+          +'<span><i style="background:'+COR.vazio+'"></i>a produzir</span>'
+          +(m.fita.some(function(x){ return x.parcial; })
+            ? '<span style="color:var(--t3)">* mês em andamento, parcial</span>' : '')
+        +'</span></div><div class="pr-strip-row">'+fita+'</div></div></div>'
+      +'<div class="pr-ft">'
+        +m.notas.map(function(n){ return '<span'+(n.alerta?' class="w"':'')+'>'+n.txt+'</span>'; }).join('')
+        +'<span class="pr-src">Fonte: reporte do ERP (3 - REPORTE) e apontamento da Embalagem</span></div>';
+  }
+
+  /* Endereços que abrem a tela sozinha. O rewrite da Vercel preserva o
+     caminho, então /plano e /tv chegam aqui como pathname. */
+  function solo(loc){
+    loc=loc||window.location;
+    return /^\/(plano|tv)\/?$/i.test(loc.pathname||'')
+        || /(?:^|[?&])tela=(plano|tv)/i.test(loc.search||'');
+  }
+  return { modelo:modelo, html:html, solo:solo, corStatus:corStatus, COR:COR };
+})();
+
+/* ── Montagem da tela sozinha ────────────────────────────────────────────
+   O painel inteiro continua carregando por trás (sync, render, módulos):
+   é dele que sai o pmApurado(). Só o #app fica escondido. Assim nenhuma
+   carga de dados é duplicada e a tela nunca diverge da aba Mestre. */
+(function(){
+  'use strict';
+  if(!window.PlanoRealizado || !PlanoRealizado.solo()) return;
+
+  var CSS='#app{display:none!important}body{overflow:auto}'
+    +'#pr-solo{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg);'
+      +'color:var(--t1);font-family:var(--sans);z-index:5000;overflow:hidden}'
+    +'#pr-solo .pr-hd{display:flex;align-items:center;gap:16px;padding:14px 32px;'
+      +'border-bottom:1px solid var(--b);border-top:3px solid var(--cyan);flex-shrink:0}'
+    +'#pr-solo .pr-mark{width:34px;height:34px;border-radius:5px;background:var(--cyan);'
+      +'display:flex;align-items:center;justify-content:center;flex-shrink:0}'
+    +'#pr-solo .pr-mark span{color:#111;font-weight:800;font-size:1.05rem;line-height:1}'
+    +'#pr-solo .pr-hd-t{font-size:1rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase}'
+    +'#pr-solo .pr-hd-s{font-size:.72rem;color:var(--t2);margin-top:2px;letter-spacing:.05em}'
+    +'#pr-solo .pr-hd-r{margin-left:auto;text-align:right}'
+    +'#pr-solo .pr-per{font-size:1.15rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan)}'
+    +'#pr-solo .pr-at{font-size:.72rem;color:var(--t3);font-family:var(--mono);margin-top:3px}'
+    +'#pr-solo .pr-wrap{flex:1;display:flex;flex-direction:column;gap:16px;padding:16px 32px;min-height:0}'
+    +'#pr-solo .pr-main{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}'
+    +'#pr-solo .pr-col{background:var(--panel);border:1px solid var(--b);border-radius:8px;'
+      +'border-left:5px solid var(--cor);padding:24px 24px 16px;display:flex;flex-direction:column;min-height:0}'
+    +'#pr-solo .pr-lbl{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--t3)}'
+    +'#pr-solo .pr-st{display:flex;align-items:center;gap:10px;margin-top:6px}'
+    +'#pr-solo .pr-dot{width:14px;height:14px;border-radius:50%;background:var(--cor);'
+      +'box-shadow:0 0 12px var(--cor);flex-shrink:0}'
+    +'#pr-solo .pr-v{font-size:1.6rem;font-weight:800;color:var(--cor);letter-spacing:-.01em}'
+    +'#pr-solo .pr-big{display:flex;align-items:baseline;gap:12px;margin-top:16px;flex-wrap:wrap}'
+    +'#pr-solo .pr-n{font-family:var(--mono);font-size:4.6rem;font-weight:700;line-height:1;letter-spacing:-.02em}'
+    +'#pr-solo .pr-d{font-size:1.05rem;color:var(--t2)}'
+    +'#pr-solo .pr-bar{margin-top:24px}'
+    +'#pr-solo .pr-track{position:relative;height:18px;background:var(--b);border-radius:9px}'
+    +'#pr-solo .pr-fill{height:100%;border-radius:9px;background:var(--cor)}'
+    +'#pr-solo .pr-tick{position:absolute;top:-6px;bottom:-6px;width:3px;background:var(--t1);border-radius:2px}'
+    +'#pr-solo .pr-legs{display:flex;justify-content:space-between;margin-top:8px;font-size:.78rem;gap:12px}'
+    +'#pr-solo .pr-legs b{font-family:var(--mono);font-size:.92rem}'
+    +'#pr-solo .pr-leg2{color:var(--t2);text-align:right}'
+    +'#pr-solo .pr-calc{margin-top:24px;background:var(--card);border:1px solid var(--b);'
+      +'border-left:3px solid var(--cor);border-radius:8px;padding:16px 24px}'
+    +'#pr-solo .pr-calc-l{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t3)}'
+    +'#pr-solo .pr-calc-r{display:flex;align-items:baseline;gap:16px;margin-top:8px;flex-wrap:wrap}'
+    +'#pr-solo .pr-calc-n{font-family:var(--mono);font-size:3rem;font-weight:700;color:var(--cor);line-height:1}'
+    +'#pr-solo .pr-calc-u{font-size:1rem;color:var(--t2)}'
+    +'#pr-solo .pr-calc-vs{font-size:1rem;color:var(--t2);margin-top:8px}'
+    +'#pr-solo .pr-calc-vs b{color:var(--t1);font-family:var(--mono)}'
+    +'#pr-solo .pr-ver{margin-top:10px;font-size:1.15rem;font-weight:700;color:var(--cor)}'
+    +'#pr-solo .pr-proj{margin-top:16px;padding-top:16px;border-top:1px solid var(--b);'
+      +'font-size:1.05rem;color:var(--t1);line-height:1.5}'
+    +'#pr-solo .pr-proj b{font-family:var(--mono)}'
+    +'#pr-solo .pr-proj span{display:block;font-size:.8rem;color:var(--t3);margin-top:4px}'
+    +'#pr-solo .pr-strip{flex:1;min-height:0;background:var(--panel);border:1px solid var(--b);'
+      +'border-radius:8px;padding:16px 24px;display:flex;flex-direction:column}'
+    +'#pr-solo .pr-strip-hd{display:flex;align-items:baseline;gap:24px;flex-wrap:wrap}'
+    +'#pr-solo .pr-strip-l{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--t3)}'
+    +'#pr-solo .pr-strip-leg{display:flex;gap:16px;font-size:.74rem;color:var(--t2);flex-wrap:wrap;margin-left:auto}'
+    +'#pr-solo .pr-strip-leg i{display:inline-block;width:11px;height:11px;border-radius:2px;'
+      +'margin-right:6px;vertical-align:-1px}'
+    +'#pr-solo .pr-strip-row{flex:1;min-height:0;display:grid;grid-template-columns:repeat(12,1fr);'
+      +'gap:6px;margin-top:12px;align-items:end}'
+    +'#pr-solo .pr-m{display:flex;flex-direction:column;justify-content:flex-end;height:100%;text-align:center}'
+    +'#pr-solo .pr-m-p{font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--mc);'
+      +'margin-bottom:5px;min-height:1.1em}'
+    +'#pr-solo .pr-m-b{border-radius:3px;background:var(--mc);opacity:.92;min-height:6px}'
+    /* mês ainda aberto: contorno em vez de sólido — o % é parcial e não se
+       compara com o de um mês fechado ao lado */
+    +'#pr-solo .pr-m-parc .pr-m-b{background:transparent;border:2px dashed var(--mc);opacity:.85}'
+    +'#pr-solo .pr-m-n{font-size:.68rem;color:var(--t3);margin-top:6px;letter-spacing:.06em}'
+    +'#pr-solo .pr-ft{display:flex;align-items:center;gap:24px;padding:12px 32px;'
+      +'border-top:1px solid var(--b);font-size:.8rem;color:var(--t2);flex-shrink:0;flex-wrap:wrap}'
+    +'#pr-solo .pr-ft b{color:var(--t1);font-family:var(--mono)}'
+    +'#pr-solo .pr-ft .w{color:var(--amber)}'
+    +'#pr-solo .pr-src{margin-left:auto;color:var(--t3);font-size:.72rem}'
+    +'#pr-solo .pr-vazio{margin:auto;text-align:center;max-width:520px;padding:32px}'
+    +'#pr-solo .pr-vazio-t{font-size:1.3rem;font-weight:700;color:var(--t2)}'
+    +'#pr-solo .pr-vazio-s{font-size:.9rem;color:var(--t3);margin-top:10px;line-height:1.6}'
+    /* telão: o número é o que se lê a dez metros */
+    +'@media(min-width:1600px){#pr-solo{font-size:19px}'
+      +'#pr-solo .pr-n{font-size:6.4rem}#pr-solo .pr-calc-n{font-size:4rem}#pr-solo .pr-v{font-size:2.6rem}'
+      +'#pr-solo .pr-per{font-size:1.6rem}#pr-solo .pr-dot{width:18px;height:18px}'
+      +'#pr-solo .pr-track{height:24px;border-radius:12px}#pr-solo .pr-fill{border-radius:12px}'
+      +'#pr-solo .pr-ver{font-size:1.4rem}#pr-solo .pr-proj{font-size:1.25rem}'
+      +'#pr-solo .pr-m-p{font-size:1.05rem}#pr-solo .pr-m-n{font-size:.78rem}}'
+    /* celular: empilha; posição fixa sai, senão o rodapé sobe sobre o conteúdo */
+    +'@media(max-width:760px){#pr-solo{position:static;height:auto;min-height:100vh;overflow:visible}'
+      +'#pr-solo .pr-main{grid-template-columns:1fr}#pr-solo .pr-wrap{padding:12px 16px}'
+      +'#pr-solo .pr-hd,#pr-solo .pr-ft{padding-left:16px;padding-right:16px}'
+      +'#pr-solo .pr-hd{flex-wrap:wrap;row-gap:6px}'
+      +'#pr-solo .pr-hd-t{font-size:.82rem;letter-spacing:.08em}#pr-solo .pr-hd-s{font-size:.66rem}'
+      +'#pr-solo .pr-per{font-size:.95rem}#pr-solo .pr-at{font-size:.62rem;line-height:1.35}'
+      +'#pr-solo .pr-n{font-size:2.9rem}#pr-solo .pr-calc-n{font-size:2rem}#pr-solo .pr-v{font-size:1.35rem}'
+      +'#pr-solo .pr-col{padding:16px}#pr-solo .pr-proj{font-size:.92rem}#pr-solo .pr-ver{font-size:1rem}'
+      +'#pr-solo .pr-strip{flex:none}#pr-solo .pr-strip-row{grid-template-columns:repeat(6,1fr);'
+        +'grid-auto-rows:100px;row-gap:16px}'
+      +'#pr-solo .pr-strip-leg{margin-left:0;font-size:.68rem;gap:12px}'
+      +'#pr-solo .pr-m-p{font-size:.78rem}#pr-solo .pr-m-n{font-size:.66rem}'
+      +'#pr-solo .pr-ft{font-size:.74rem;gap:12px}#pr-solo .pr-src{margin-left:0;width:100%}}';
+
+  var RECARGA_MIN=15;   /* TV ligada o dia todo: recarrega para pegar o sync */
+  var _ultimoHtml=null;
+
+  function hora(){
+    var d=new Date(); function p(n){ return (n<10?'0':'')+n; }
+    return p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes());
+  }
+  function pintar(){
+    var el=document.getElementById('pr-solo'); if(!el) return;
+    var u=(typeof window.pmApurado==='function')?window.pmApurado():null;
+    var novo=PlanoRealizado.html(PlanoRealizado.modelo(u, hora()));
+    if(novo!==_ultimoHtml){ el.innerHTML=novo; _ultimoHtml=novo; }
+  }
+  function montar(){
+    if(document.getElementById('pr-solo')) return;
+    var st=document.createElement('style'); st.id='pr-solo-css'; st.textContent=CSS;
+    document.head.appendChild(st);
+    var d=document.createElement('div'); d.id='pr-solo'; document.body.appendChild(d);
+    document.title='Plano × Realizado — Patrimar';
+    pintar();
+    /* O apurado só existe depois que a aba Mestre renderiza; ela responde aos
+       mesmos eventos do painel. Tentativas curtas cobrem a primeira carga. */
+    [400,1200,2500,5000].forEach(function(ms){ setTimeout(pintar, ms); });
+    if(window.DashBus&&window.DashBus.on){
+      window.DashBus.on('render:feito', function(){ setTimeout(pintar,60); });
+      window.DashBus.on('dados:salvos', function(){ setTimeout(pintar,60); });
+    }
+    setInterval(pintar, 60000);
+    setTimeout(function(){ location.reload(); }, RECARGA_MIN*60000);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',montar);
+  else montar();
 })();
 </script>
 </body></html>
