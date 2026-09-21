@@ -13,6 +13,12 @@
    período; este teste a prende, junto com o agrupamento produto × volume
    que o corte parcial reaproveita do resumo mensal.
 
+   E o leitor de linhas: a conversão do Google entrega todas as linhas de
+   uma página num parágrafo só, separadas por espaço. A régua antiga, linha
+   a linha, leu 1.136 de 26.178 produtos no corte de SET/26 sem acusar nada.
+   Aqui o mesmo trecho entra nos dois formatos e a soma tem de bater com a
+   linha "Geral" do próprio relatório — o checksum que o PDF já trazia.
+
    O .gs é JavaScript: o arquivo é avaliado num escopo isolado, com os
    objetos do Apps Script ausentes — só as funções puras são chamadas.
 ══════════════════════════════════════════════════════════════════════════ */
@@ -22,7 +28,7 @@ const path = require('path');
 
 function carregarRV() {
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'ReporteVolumes.gs'), 'utf8');
-  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvNum, RV_RE_VOL };';
+  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvTotalGeralDoTexto, rvConferirTotal, rvNum, RV_RE_VOL };';
   return new Function('Logger', src + '\n' + exp)({ log() {} });
 }
 const RV = carregarRV();
@@ -82,6 +88,31 @@ afirma('5 linhas com código (subtotal e rodapé ficam de fora)', L.length === 5
 afirma('linha = [mes, ano, codigo, descricao, qtde, peso]', L[0][0] === 'SET' && L[0][1] === 2026 && L[0][2] === '100.009.001' && L[0][3] === 'TOUCADOR MAGIC NEW BRANCO');
 ok('quantidade em padrão BR (259,000 → 259)', L[0][4], 259, 0);
 ok('peso em padrão BR (4.299,400 → 4299,4)', L[0][5], 4299.4, 0.001);
+
+/* ══ Formato da conversão do Google: a página inteira num parágrafo ══ */
+sec('rvLinhasDoTexto — parágrafo único (como o Google converte o PDF)');
+const PARAGRAFO = 'Vlr. Custo 106.042.118 PAINEL INTENSE OFF WHITE/FREIJO 249,000 6.249,900 22.239,78 106.042.119 PAINEL INTENSE BRANCO ACETINADO/FREIJO 49,000 1.229,900 4.394,01 '
+  + 'Grupo: 106 PAINEIS/HOME 298,000 7.479,800 26.633,79 108.007.001 MESA COMP SPACE BRANCO 48,000 1.444,800 5.217,73 109.042.124 MESA CENTRO DECOR 700 WHISKY 76,000 570,000 11.257,29 '
+  + '105.026.116 RACK SIRIUS 0.9 CINAMOMO 1,000 21,050 106,79 501.113.002 VOL 1/1 PAINEL INTENSE OFF WHITE/FREIJO 249,000 6.249,900 22.239,78\n\n'
+  + '.»\n\nPATRIMAR MOVEIS LTDA\n\nCNPJ: 02.948.278/0001-10 I.E.: 393001450118\n\nVlr. Custo Geral 672,000 15.765,450 69.849,38';
+const LP = RV.rvLinhasDoTexto(PARAGRAFO, { mes: 'SET', ano: 2026 });
+afirma('6 linhas com código (cabeçalho, "Grupo:", CNPJ e "Geral" ficam de fora)', LP.length === 6);
+afirma('descrição com número no meio ("DECOR 700 WHISKY", "SIRIUS 0.9") não corta a régua',
+  LP.some(l => l[3] === 'MESA CENTRO DECOR 700 WHISKY' && l[4] === 76) && LP.some(l => l[3] === 'RACK SIRIUS 0.9 CINAMOMO' && l[4] === 1));
+afirma('descrição termina antes dos números (sem "249,000" grudado)', LP[0][3] === 'PAINEL INTENSE OFF WHITE/FREIJO' && LP[0][4] === 249);
+afirma('linha VOL no parágrafo é reconhecida', LP.some(l => /^VOL 1\/1 PAINEL/.test(l[3])));
+afirma('o mesmo trecho, uma linha por registro, dá as mesmas 6 linhas',
+  RV.rvLinhasDoTexto(PARAGRAFO.replace(/ (?=\d{3}\.\d{3}\.\d{3} )/g, '\n'), { mes: 'SET', ano: 2026 }).length === 6);
+ok('peso da 1ª linha em padrão BR', LP[0][5], 6249.9, 0.001);
+
+sec('rvConferirTotal — a soma lida tem de bater com o "Geral" do relatório');
+afirma('Geral lido do texto: 672 pç (249+49+48+76+1+249)', RV.rvTotalGeralDoTexto(PARAGRAFO).qtd === 672);
+afirma('"Total:" do resumo por transação também serve', RV.rvTotalGeralDoTexto('Total: 54.342,000 929.854,700 5.191.871,38').qtd === 54342);
+afirma('soma 672 = Geral 672 → confere', /confere com o Geral 672/.test(RV.rvConferirTotal(LP, PARAGRAFO)));
+afirma('faltando uma linha → recusa (leitura incompleta)', (() => { try { RV.rvConferirTotal(LP.slice(1), PARAGRAFO); return false; } catch (e) { return /leitura incompleta/.test(e.message) && /somam 423 /.test(e.message); } })());
+afirma('sem linha Geral no texto → segue, avisando', /sem linha Geral/.test(RV.rvConferirTotal(LP, 'texto sem total')));
+afirma('uma peça a menos (54.341 contra Geral 54.342) → recusa', (() => { try { RV.rvConferirTotal([['SET',2026,'x','y',54341,0]], 'Geral 54.342,000 1,000'); return false; } catch (e) { return /somam 54341 /.test(e.message); } })());
+afirma('só arredondamento (54.342,4 contra 54.342) → passa', /confere/.test(RV.rvConferirTotal([['SET',2026,'x','y',54342.4,0]], 'Geral 54.342,000 1,000')));
 
 /* ══ Agrupamento — a régua compartilhada entre resumo mensal e corte parcial ══ */
 sec('rvAgruparLinhas + rvVolumesDoMes — produto × caixas');

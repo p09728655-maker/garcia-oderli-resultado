@@ -314,9 +314,10 @@ function processarReportesDrive() {
         + ') — vai na pasta "' + RV_PASTA_PARCIAL + '", não aqui');
       var linhas = rvLinhasDoTexto(texto, mesAno);
       if (!linhas.length) throw new Error('nenhuma linha de produto/volume reconhecida');
+      var confere = rvConferirTotal(linhas, texto);
       rvSubstituirMes(mesAno, linhas);
       rvMoverParaProcessados(pasta, pdf);
-      feitos.push(pdf.getName() + ' → ' + mesAno.mes + '/' + mesAno.ano + ' (' + linhas.length + ' linhas)');
+      feitos.push(pdf.getName() + ' → ' + mesAno.mes + '/' + mesAno.ano + ' (' + linhas.length + ' linhas' + confere + ')');
     } catch (e) {
       falhas.push(pdf.getName() + ': ' + (e && e.message || e));
     }
@@ -387,30 +388,53 @@ function rvPeriodoDoTexto(texto) {
 }
 function rvUltimoDiaDoMes(ano, mes) { return new Date(Date.UTC(ano, mes, 0)).getUTCDate(); }
 
-/* Mesma régua do PDF: código 000.000.000, descrição, três números no fim
-   (quantidade, peso, custo). Linha de cabeçalho/rodapé não casa e é
-   ignorada de graça.
+/* Régua do PDF: código 000.000.000, descrição, três números (quantidade e
+   peso com três decimais, custo com dois). Varre o TEXTO INTEIRO, não linha
+   a linha: a conversão do Google entrega todas as linhas de uma página num
+   parágrafo só, separadas por espaço, e a régua antiga (uma linha, ^…$)
+   pegava só o que por acaso caía isolado — em SET/26 leu 1.136 de 26.178
+   produtos e ninguém viu, porque o número é plausível. Os decimais fixos
+   são o que ancora o fim da descrição; a descrição fica limitada a 60
+   caracteres (o relatório corta em ~40) para um código sem números nunca
+   engolir a linha seguinte. Cabeçalho, subtotal "Grupo:" e rodapé não têm
+   código e ficam de fora sozinhos.
 
-   O PESO (m[4]) era lido e jogado fora desde o começo — a régua sempre o
-   capturou para conseguir achar a quantidade, só não o guardava. Sem ele
-   não existe peso POR PRODUTO em lugar nenhum: a HISTORICO só tem o total
-   do mês, e por isso não dava para dizer se o mix mudou para peça mais
-   pesada ou se a fábrica só produziu mais. Agora vai para a coluna F.
-
-   É o peso TOTAL da linha (kg do que foi reportado daquele produto no mês),
-   na mesma régua do custo ao lado — não o peso unitário. O unitário sai de
-   peso ÷ quantidade, e o painel confere a soma contra o quilosProduzidos da
-   HISTORICO antes de usar. */
+   O PESO (m[4]) é o total da linha (kg do que foi reportado daquele produto
+   no período), na mesma régua do custo ao lado — não o peso unitário. O
+   unitário sai de peso ÷ quantidade, e o painel confere a soma contra o
+   quilosProduzidos da HISTORICO antes de usar. */
+var RV_RE_LINHA = /(\d{3}\.\d{3}\.\d{3})\s+([\s\S]{1,60}?)\s+([\d.]+,\d{3})\s+([\d.]+,\d{3})\s+([\d.]+,\d{2})(?=\s|$)/g;
 function rvLinhasDoTexto(texto, mesAno) {
-  var out = [];
-  texto.split('\n').forEach(function (ln) {
-    var m = ln.trim().match(/^(\d{3}\.\d{3}\.\d{3})\s+(.+?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)$/);
-    if (!m) return;
+  var out = [], m;
+  RV_RE_LINHA.lastIndex = 0;
+  while ((m = RV_RE_LINHA.exec(texto))) {
     var qtd = rvNum(m[3]);
-    if (!qtd) return;
-    out.push([mesAno.mes, mesAno.ano, m[1], m[2].trim(), qtd, rvNum(m[4])]);
-  });
+    if (!qtd) continue;
+    out.push([mesAno.mes, mesAno.ano, m[1], m[2].replace(/\s+/g, ' ').trim(), qtd, rvNum(m[4])]);
+  }
   return out;
+}
+
+/* O relatório traz o próprio checksum: a linha "Geral" (ou "Total:" no
+   resumo por transação) com a quantidade de TODAS as linhas, produto e
+   volume. A soma do que foi lido tem de bater com ela EXATAMENTE (o meio
+   ponto é só arredondamento): uma linha de 1 peça perdida já é leitura
+   parcial, e nada pode ser gravado, nem no mês fechado nem no corte. Sem
+   a linha no texto, segue sem conferir e diz isso. */
+function rvTotalGeralDoTexto(texto) {
+  var m = texto.match(/\b(?:Geral|Total:)\s+([\d.]+,\d{3})\s+([\d.]+,\d{3})/);
+  return m ? { qtd: rvNum(m[1]), peso: rvNum(m[2]) } : null;
+}
+function rvConferirTotal(linhas, texto) {
+  var g = rvTotalGeralDoTexto(texto);
+  if (!g) return ' (sem linha Geral no PDF para conferir)';
+  var soma = 0;
+  linhas.forEach(function (l) { soma += rvNum(l[4]); });
+  if (Math.abs(soma - g.qtd) > 0.5) {
+    throw new Error('as linhas lidas somam ' + soma + ' e o total Geral do relatório é ' + g.qtd
+      + ' — leitura incompleta, nada foi gravado');
+  }
+  return ' (confere com o Geral ' + g.qtd + ')';
 }
 
 /* Garante o cabeçalho PESO na coluna F de uma aba que nasceu com cinco
@@ -500,13 +524,15 @@ function rvProcessarParciais() {
       if (per.ini.slice(-2) !== '01') throw new Error('o corte tem de começar no dia 1 (veio ' + per.ini + ') — o painel soma do início do mês');
       var linhas = rvLinhasDoTexto(texto, per);
       if (!linhas.length) throw new Error('nenhuma linha de produto/volume reconhecida');
+      var confere = rvConferirTotal(linhas, texto);
       var agr = rvAgruparLinhas(linhas);
       var g = agr.meses[agr.ordem[0]];
       rvVolumesDoMes(g, cadastro);
       rvGravarParcial(ss, [g.mes, g.ano, per.fim, g.prod, g.vol, Math.round(g.peso * 10) / 10,
                             new Date().toISOString(), pdf.getName()]);
       rvMoverParaProcessados(pasta, pdf);
-      feitos.push(pdf.getName() + ' → ' + g.mes + '/' + g.ano + ' até ' + per.fim + ': ' + g.prod + ' produtos');
+      feitos.push(pdf.getName() + ' → ' + g.mes + '/' + g.ano + ' até ' + per.fim + ': ' + g.prod + ' produtos, '
+        + g.vol + ' volumes em ' + linhas.length + ' linhas' + confere);
     } catch (e) {
       falhas.push(pdf.getName() + ': ' + (e && e.message || e));
     }

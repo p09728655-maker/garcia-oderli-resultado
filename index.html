@@ -22836,9 +22836,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.3';
+var APP_VERSAO = 'b96.4';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.4', data:'21/09/2026', itens:[
+    'ReporteVolumes.gs: o leitor do PDF lia linha a linha, e a conversao do Google entrega a pagina inteira num paragrafo so — no primeiro corte parcial de SET/26 entraram 1.136 de 26.178 produtos, sem erro nenhum, porque o numero e plausivel. A regua agora varre o texto inteiro (codigo + descricao + quantidade, peso e custo, ancorados pelos decimais fixos) e le os dois formatos.',
+    'Conferencia contra o proprio relatorio: a linha Geral (ou Total:) do PDF e o checksum de todas as linhas; a soma lida tem de bater com ela (0,1%) ou nada e gravado — nos dois caminhos, mes fechado e corte parcial. Antes uma leitura pela metade viraria produtosReportados e producaoReal do mes sem ninguem ver.',
+    'Para refazer o corte de SET/26: mover o PDF de PROCESSADOS de volta para REPORTES PARCIAIS e rodar Volumes > Processar so os cortes parciais — a linha da PARCIAL_MES e substituida (mesmo mes, ano e data de corte). Nao precisa reimplantar o Web App: o doGet nao mudou.',
+    'testes/reporte-parcial.test.js: 40 casos (13 novos) — o trecho real do PDF nos dois formatos, descricao com numero no meio (DECOR 700, SIRIUS 0.9), Geral e Total:, recusa por soma diferente, tolerancia.'
+  ]},
   { v:'b96.3', data:'21/09/2026', itens:[
     'Plano Mestre ganha o bloco MES EM CURSO: o mesmo relatorio 3 - REPORTE do ERP, emitido de 01/MM ate a data de hoje e salvo na pasta REPORTES PARCIAIS do Drive, vira uma linha na aba PARCIAL_MES e o painel diz, com dias ainda no calendario, se o plano do mes cabe no que resta. Ate entao o painel so sabia se o mes cumpriu depois de fechado.',
     'Regras: dias uteis decorridos = segunda a sexta menos a aba FERIADOS (menu Plano Mestre > Criar aba FERIADOS; nasce com os feriados nacionais de 2026, recesso entra a mao); ritmo necessario restante = (plano - realizado) / dias uteis restantes; semaforo contra o ritmo DEMONSTRADO na jornada normal, o mesmo do veredito do ano: verde cabe na jornada, amarelo cabe com hora extra dentro do limite META_DEP_HE, vermelho nao cabe; corte com mais de 7 dias vira CORTE DESATUALIZADO. A curva de esperado ate a data e linear e a tela diz isso.',
