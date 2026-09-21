@@ -4692,8 +4692,6 @@ function fi(v){
 function depHE(r){ return (r&&r.producaoReal>0&&r.prodSemExtras>0)?((r.producaoReal-r.prodSemExtras)/r.producaoReal)*100:null; }
 function clDep(v){ return v===null||v===undefined?'':(v<=META_DEP_HE?'v':v<=15?'y':'r'); }
 function clDepStr(v){ return v===null||v===undefined?'':(v<=META_DEP_HE?'verde':v<=15?'amarelo':'vermelho'); }
-function clEf(e){return e>=90?'v':e>=80?'y':'r'}
-function clEfStr(e){return e>=90?'verde':e>=80?'amarelo':'vermelho'}
 
 function toast(msg,tipo){
   var el=document.getElementById('toast');
@@ -5973,8 +5971,6 @@ function renderAbas(todos){
   if(el)el.innerHTML='';
   renderSidebar(todos)
 }
-function addTab(el,txt,val){
-  /* noop — sidebar substitui */ }
 
 
 /* ════════════════════════════════════════════════════════════
@@ -9297,7 +9293,6 @@ function cfInicializar() {
 
   /* ── helpers internos ── */
   function _pEl(id)   { return document.getElementById(id); }
-  function _pSet(id, v) { var e = _pEl(id); if (e) e.textContent = v; }
 
   /* ══════════════════════════════════════════════════════════════
      AJUSTE 1 — TAKT TIME
@@ -11008,41 +11003,6 @@ function cfInicializar() {
     ctx.fillStyle = DS.C.canvasLabel; ctx.fillText(l2, pad.l+78, 16);
   }
 
-  /* Canvas: barras simples */
-  function pDrawBar(id, labels, values, color, suffix) {
-    var cv = pEl(id); if (!cv) return;
-    var dpr = window.devicePixelRatio || 1;
-    var W   = cv.offsetWidth || (cv.parentElement && cv.parentElement.offsetWidth) || 360;
-    var H   = 190;
-    cv.width = W*dpr; cv.height = H*dpr;
-    cv.style.width = W+'px'; cv.style.height = H+'px';
-    var ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, W, H);
-    var pad = {t:18, r:12, b:36, l:52};
-    var gW  = W - pad.l - pad.r;
-    var gH  = H - pad.t - pad.b;
-    var n   = labels.length; if (!n) return;
-    var maxV = Math.max.apply(null, values.filter(isFinite)) * 1.15 || 1;
-    var slotW = gW / n;
-    var bW    = Math.max(4, Math.min(28, slotW * 0.6));
-    ctx.strokeStyle = 'rgba(26,45,69,.6)'; ctx.lineWidth = 1;
-    for (var g = 0; g <= 4; g++) {
-      var gy = pad.t + (gH/4)*g;
-      ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l+gW, gy); ctx.stroke();
-      ctx.fillStyle = DS.C.canvasLabel; ctx.font='12px Consolas'; ctx.textAlign = 'right';
-      ctx.fillText(Math.round(maxV*(1-g/4)), pad.l-4, gy+3);
-    }
-    values.forEach(function(v, i) {
-      var x   = pad.l + slotW*i + slotW/2 - bW/2;
-      var bH  = Math.max(2, (v / maxV) * gH);
-      ctx.fillStyle = color + 'bb';
-      ctx.fillRect(x, pad.t + gH - bH, bW, bH);
-      ctx.fillStyle = DS.C.canvasLabel; ctx.font='12px Consolas'; ctx.textAlign = 'center';
-      ctx.fillText(labels[i], x + bW/2, H - pad.b + 14);
-    });
-  }
-
   /* Canvas: barras com valores positivos/negativos */
   function pDrawBarSigned(id, labels, values, suffix) {
     var cv = pEl(id); if (!cv) return;
@@ -12305,7 +12265,6 @@ function cfInicializar() {
     JAN:20, FEV:20, MAR:21, ABR:19, MAI:21, JUN:19,
     JUL:23, AGO:21, SET:22, OUT:23, NOV:19, DEZ:15
   };
-  function _getDias(r) { return r.diasTrabalhados > 0 ? r.diasTrabalhados : (_DIAS_FB[r.mes] || 22); }
   function _getFat(r)  { return DashUtils.demanda(r); }   /* vendido → faturado → produção: a base do veredito */
   function _getProd(r) { return r.prodSemExtras > 0 ? r.prodSemExtras  : (r.producaoReal  || 0); }
 
@@ -20921,15 +20880,6 @@ window.CompAnos = (function () {
       aderPlano: P.aderPlano,
       _P: P
     };
-  }
-
-  /* Ritmo de referência do ano anterior, para dizer se a fábrica acelerou ou
-     desacelerou. Sem essa comparação, "1,71 pç/h" não significa nada. */
-  function ritmoAnoAnterior(todos, ano){
-    var ant = (todos||[]).filter(function(r){ return r.ano === ano-1; });
-    if(!ant.length) return null;
-    var P = DashUtils.periodo(ant);
-    return P.ritmoNormal;
   }
 
   /* Seleção própria da aba. Null = segue a barra lateral (comportamento
