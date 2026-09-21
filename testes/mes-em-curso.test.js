@@ -26,7 +26,7 @@ const HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 function carregarMesEmCurso() {
   const ini = HTML.indexOf('window.MesEmCurso = (function(){');
   if (ini < 0) throw new Error('MesEmCurso não encontrado no index.html');
-  const marca = HTML.indexOf('return { apurar:apurar, diasUteis:diasUteis', ini);
+  const marca = HTML.indexOf('return { apurar:apurar, apurarKg:apurarKg', ini);
   if (marca < 0) throw new Error('fim de MesEmCurso não reconhecido');
   const fim = HTML.indexOf('})();', marca) + '})();'.length;
   const escopo = { window: {} };
@@ -142,6 +142,28 @@ afirma('dezembro sem recesso na FERIADOS: calendário 22 ≠ plano 15 → aviso'
   const x = M.apurar({ plano: 24860, realizado: 5000, dataCorte: '2026-12-04', diasPlanejados: 15, ritmoDem: 1315, limHE: 8, feriados: FER_2026, hoje: '2026-12-07' });
   return x.avisos.some(a => /calendário dá 22 dias úteis em DEZ e o plano usa 15/.test(a));
 })());
+
+/* ══ Em quilos — o plano é em peças, o mix muda o peso da peça ══ */
+sec('apurarKg — massa por dia e peso por peça contra os meses fechados');
+/* corte real de SET/26: 457.677 kg em 26.178 peças e 13 dias; "ano" = junho, 26,52 kg/pç */
+const KG_ANO = { kg: 807600, pecas: 30451, dias: 20, meses: 1 };
+const k = M.apurarKg(457677.2, 26178, 13, 34810, KG_ANO);
+ok('kg/dia do mês = 457.677 ÷ 13',            k.kgDiaMes, 35205.94, 0.01);
+ok('kg/peça do mês = 457.677 ÷ 26.178',       k.kgPecaMes, 17.483, 0.001);
+ok('kg/dia do ano = 807.600 ÷ 20',            k.kgDiaAno, 40380, 0.01);
+ok('kg/peça do ano = 807.600 ÷ 30.451',       k.kgPecaAno, 26.521, 0.001);
+ok('massa por dia −12,8%',                    k.difDiaPct, -12.81, 0.01);
+ok('peça 34% mais leve',                      k.difPecaPct, -34.08, 0.01);
+ok('plano em quilos no mix do mês = 34.810 × 457.677 ÷ 26.178', k.planoKgMes, 608592.84, 0.01);
+ok('plano em quilos no mix do ano = 34.810 × 807.600 ÷ 30.451', k.planoKgAno, 923206.33, 0.01);
+afirma('massa por dia abaixo de −5% → atenção, laranja', k.nivel === 'atencao' && k.cor === '#FF9800');
+afirma('texto diz que o plano está sendo batido pelo mix leve', /mix leve/.test(k.texto));
+afirma('−3% de massa → ok (dentro da folga de 5%)', M.apurarKg(39169 * 13, 26178, 13, 34810, KG_ANO).nivel === 'ok');
+afirma('massa igual e peça mais leve → ok, e a frase registra a peça mais leve', (() => { const x = M.apurarKg(40380 * 13, 26178, 13, 34810, KG_ANO); return x.nivel === 'ok' && /mais leve/.test(x.texto); })());
+afirma('sem quilos no ano → nível "sem", mas kg/dia e kg/peça do mês existem', (() => { const x = M.apurarKg(457677.2, 26178, 13, 34810, { kg: 0, pecas: 0, dias: 0 }); return x.nivel === 'sem' && x.kgDiaAno === null && Math.abs(x.kgDiaMes - 35205.94) < 0.01 && x.planoKgAno === null; })());
+afirma('sem peso no corte → null (o bloco esconde a linha)', M.apurarKg(0, 26178, 13, 34810, KG_ANO) === null);
+afirma('apurar() carrega kg quando pesoMes e kgAno vêm junto', (() => { const x = com({ pesoMes: 457677.2, kgAno: KG_ANO }); return x.kg && x.kg.nivel === 'atencao' && x.estado === 'verde'; })());
+afirma('apurar() sem pesoMes → kg null e o resto igual', com({}).kg === null);
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

@@ -17219,13 +17219,48 @@ window.MesEmCurso = (function(){
   function ddmm(isoStr){ var d=deIso(isoStr); return d?pad(d.getUTCDate())+'/'+pad(d.getUTCMonth()+1):'—'; }
   function fi(n){ return isFinite(n)?Math.round(n).toLocaleString('pt-BR'):'—'; }
   function fd(n,d){ return isFinite(n)?n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'; }
+  function ton(kg){ return isFinite(kg)?fd(kg/1000,1)+' t':'—'; }
+  function pctSinal(v){ return (v>=0?'+':'')+fd(v,1)+'%'; }
+
+  /* ── Em quilos ──
+     O plano é genérico, em peças; o mix muda o peso da peça de um mês para o
+     outro (SET/26: 17,5 kg/pç contra 26,5 em junho). Em peças, setembro batia
+     o plano; em quilos, movia 9% menos massa que junho. As duas leituras são
+     verdadeiras — esta é a que fala de capacidade. Compara com a MESMA base:
+     quilos do corte (produtos acabados, peso bruto do reporte, com HE) contra
+     quilosProduzidos dos meses fechados do ano (o mesmo relatório, com HE).
+     Não muda o semáforo do plano; é uma segunda leitura, com cor própria. */
+  function apurarKg(pesoMes, real, diasDec, plano, ano){
+    var peso=+pesoMes||0; ano=ano||{};
+    if(!(peso>0)||!(real>0)||!(diasDec>0)) return null;
+    var kgDiaMes=peso/diasDec, kgPecaMes=peso/real;
+    var temAno=+ano.kg>0&&+ano.pecas>0&&+ano.dias>0;
+    var kgDiaAno=temAno?ano.kg/ano.dias:null, kgPecaAno=temAno?ano.kg/ano.pecas:null;
+    var difDia=temAno?(kgDiaMes/kgDiaAno-1)*100:null, difPeca=temAno?(kgPecaMes/kgPecaAno-1)*100:null;
+    var o={ pesoMes:peso, kgDiaMes:kgDiaMes, kgPecaMes:kgPecaMes, kgDiaAno:kgDiaAno, kgPecaAno:kgPecaAno,
+            difDiaPct:difDia, difPecaPct:difPeca, planoKgMes:plano>0?plano*kgPecaMes:null,
+            planoKgAno:(plano>0&&temAno)?plano*kgPecaAno:null, mesesAno:ano.meses||0 };
+    if(!temAno){
+      o.nivel='sem'; o.cor='#888888';
+      o.texto='O corte pesa '+ton(peso)+' ('+fd(kgPecaMes,1)+' kg por peça). Sem quilos nos meses fechados do ano (coluna quilosProduzidos da HISTORICO) não há com o que comparar.';
+    } else if(difDia>=-5){
+      o.nivel='ok'; o.cor='#4CAF50';
+      o.texto='A fábrica move <b>'+ton(kgDiaMes)+'/dia</b>, '+pctSinal(difDia)+' contra a média do ano ('+ton(kgDiaAno)+'/dia): o ritmo em peças vem acompanhado de massa'
+        +(difPeca<-10?', mesmo com a peça '+fd(-difPeca,0)+'% mais leve.':'.');
+    } else {
+      o.nivel='atencao'; o.cor='#FF9800';
+      o.texto='A fábrica move <b>'+ton(kgDiaMes)+'/dia</b>, <b>'+pctSinal(difDia)+'</b> contra a média do ano ('+ton(kgDiaAno)+'/dia). A peça do mês pesa <b>'+fd(kgPecaMes,1)+' kg</b> contra '+fd(kgPecaAno,1)+' no ano ('+pctSinal(difPeca)+'): o plano em peças está sendo batido pelo mix leve, não por capacidade a mais.';
+    }
+    return o;
+  }
 
   var COR={ verde:['#4CAF50','76,175,80'], amarelo:['#FF9800','255,152,0'], vermelho:['#F44336','244,67,54'],
             velho:['#888888','136,136,136'], sem:['#888888','136,136,136'], encerrado:['#00E5FF','0,229,255'] };
 
   /* p = { plano, realizado, dataCorte:'AAAA-MM-DD', diasPlanejados, ritmoDem,
            limHE (% — META_DEP_HE), feriados:['AAAA-MM-DD'…], hoje:'AAAA-MM-DD',
-           melhorMesDia (pç/dia com HE do melhor mês fechado, para a sanidade) } */
+           melhorMesDia (pç/dia com HE do melhor mês fechado, para a sanidade),
+           pesoMes (kg do corte), kgAno:{ kg, pecas, dias, meses } dos meses fechados } */
   function apurar(p){
     p=p||{};
     var plano=+p.plano||0, real=+p.realizado||0, avisos=[];
@@ -17264,7 +17299,8 @@ window.MesEmCurso = (function(){
     if(+p.melhorMesDia>0&&ritmoAtual>1.3*p.melhorMesDia)
       avisos.push('Ritmo de '+fi(ritmoAtual)+' pç/dia é '+fd((ritmoAtual/p.melhorMesDia-1)*100,0)+'% acima do melhor mês fechado ('+fi(p.melhorMesDia)+'). Confira o período do corte antes de confiar no veredito.');
 
-    var nums={ diasDecorridos:diasDec, diasRestantes:diasRest, diasPlanejados:diasPlan, diasCalendario:diasCal,
+    var nums={ kg:apurarKg(p.pesoMes, real, diasDec, plano, p.kgAno),
+               diasDecorridos:diasDec, diasRestantes:diasRest, diasPlanejados:diasPlan, diasCalendario:diasCal,
                faltaProduzir:falta, ritmoNecRestante:ritmoNec, ritmoAtualMes:ritmoAtual, projecaoMes:proj,
                esperadoAte:esperado, aderenciaAte:ader, pctFeito:pctFeito, pctMes:pctMes,
                ritmoRef:ref, ritmoRefNome:refNome, limHE:limHE, idadeCorte:idade, mes:ORDEM_M[m], ano:y };
@@ -17308,7 +17344,7 @@ window.MesEmCurso = (function(){
     return saida(estado, Object.assign(nums, { titulo:titulo, frase:frase, acao:acao }));
   }
 
-  return { apurar:apurar, diasUteis:diasUteis, diasUteisDoMes:diasUteisDoMes, ultimoCorte:ultimoCorte,
+  return { apurar:apurar, apurarKg:apurarKg, diasUteis:diasUteis, diasUteisDoMes:diasUteisDoMes, ultimoCorte:ultimoCorte,
            deIso:deIso, ddmm:ddmm, ORDEM_M:ORDEM_M, DIAS_CORTE_VELHO:DIAS_CORTE_VELHO };
 })();
 
@@ -17497,6 +17533,8 @@ window.MesEmCurso = (function(){
   function lerLocal(k){ try { var v=JSON.parse(localStorage.getItem(k)||'null'); return Array.isArray(v)?v:[]; } catch(e){ return []; } }
   function hojeIso(){ var d=new Date(); function p(n){ return (n<10?'0':'')+n; } return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
   function statusCurso(){ return semaforo('Em andamento','#F5A623','245,166,35'); }
+  function ton(kg){ return isFinite(kg)?fd(kg/1000,1)+' t':'—'; }
+  function pctSinal(v){ return (v>=0?'+':'')+fd(v,1)+'%'; }
   function blocoMesEmCurso(c){
     if(!c) return '';
     var mm=('0'+(ORDEM_M.indexOf(c.mes)+1)).slice(-2);
@@ -17527,6 +17565,18 @@ window.MesEmCurso = (function(){
         +card('Projeção do mês', fi(c.projecaoMes)+' pç', 'no ritmo atual de '+fi(c.ritmoAtualMes)+' pç/dia', c.projecaoMes>=c.plano?'#4CAF50':'#FF9800')
         +'</div>';
     }
+    var kg='';
+    if(c.kg&&c.estado!=='encerrado'){
+      var k=c.kg, tem=k.kgDiaAno!==null;
+      kg='<div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:16px 0 8px;padding-left:2px">▸ Em quilos — o plano é em peças; o mix muda o peso da peça</div>'
+        +'<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">'
+        +card('Massa por dia', ton(k.kgDiaMes), tem?('vs '+ton(k.kgDiaAno)+' média do ano · '+pctSinal(k.difDiaPct)):'sem base no ano', k.cor)
+        +card('Peso por peça', fd(k.kgPecaMes,1)+' kg', tem?('vs '+fd(k.kgPecaAno,1)+' kg no ano · '+pctSinal(k.difPecaPct)):'sem base no ano', k.cor)
+        +card('Plano em quilos', ton(k.planoKgMes), fi(c.plano)+' pç no mix do mês'+(k.planoKgAno!==null?' · '+ton(k.planoKgAno)+' no mix do ano':''), '#00E5FF')
+        +'</div>'
+        +'<div style="margin-top:10px;padding:9px 13px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.8rem;color:var(--t1);line-height:1.5;'
+        +'border-left:2px solid '+k.cor+'">'+k.texto+'</div>';
+    }
     return cab
       +'<div style="background:linear-gradient(135deg,var(--panel),rgba('+c.rgb+',.05));border:1px solid var(--b);'
       +'border-left:5px solid '+c.cor+';border-radius:var(--r);padding:18px 22px;margin-bottom:16px">'
@@ -17539,8 +17589,8 @@ window.MesEmCurso = (function(){
       +'<div style="font-size:.88rem;color:var(--t1);line-height:1.55;max-width:960px;margin-top:10px">'+c.frase+'</div>'
       +(c.acao?'<div style="margin-top:10px;padding:9px 13px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.78rem;color:var(--t2);'
         +'border-left:2px solid rgba('+c.rgb+',.45)"><b style="color:var(--t1)">Ação recomendada:</b> '+c.acao+'</div>':'')
-      +cards+avisos
-      +'<div style="font-size:.66rem;color:var(--t3);margin-top:8px">Fonte: "3 - REPORTE" de 01/'+mm+' a '+c.ate+' (aba PARCIAL_MES) — produtos acabados, com hora extra. '
+      +cards+kg+avisos
+      +'<div style="font-size:.66rem;color:var(--t3);margin-top:8px">Fonte: "3 - REPORTE" de 01/'+mm+' a '+c.ate+' (aba PARCIAL_MES) — produtos acabados, com hora extra; quilos = peso bruto das linhas de produto, a mesma base do quilosProduzidos dos meses fechados. '
       +'O "esperado" é a curva linear do plano: referência para ler o atraso, não meta diária.</div>'
       +'</div>';
   }
@@ -17589,6 +17639,7 @@ window.MesEmCurso = (function(){
     var planoAno=0, realAcum=0, planoAberto=0, diasAbertos=0, normalFech=0, diasFech=0, heP=0, linhas='';
     var diasPlanoAno=0, fatFech=0, venFech=0, planoFech=0, diasPlanFech=0, semPlano=[], mesesTab=[];
     var parciais=lerLocal('dash_parcial_v1'), feriados=lerLocal('dash_feriados_v1'), cursoRec=null, melhorDia=0;
+    var kgAno={ kg:0, pecas:0, dias:0, meses:0 };   /* quilos dos meses fechados, para a leitura em massa */
     recs.forEach(function(r){
       var plano=r.previsaoProducao||0, real=r.producaoReal||0, normal=r.prodSemExtras||0;
       var fechado=real>0;
@@ -17609,6 +17660,7 @@ window.MesEmCurso = (function(){
       var horasFechadas=fechado&&normal>0&&dias>0;
       if(fechado){ realAcum+=real; }
       if(fechado&&dias>0) melhorDia=Math.max(melhorDia, real/dias);
+      if(fechado&&dias>0&&(r.quilosProduzidos||0)>0){ kgAno.kg+=r.quilosProduzidos; kgAno.pecas+=real; kgAno.dias+=dias; kgAno.meses++; }
       if(parc&&!cursoRec) cursoRec={ plano:plano, parc:parc, diasP:diasP };
       /* HE só é atribuível quando as horas do mês já entraram; senão o mês
          inteiro seria contado como hora extra. */
@@ -17683,7 +17735,8 @@ window.MesEmCurso = (function(){
        e com o limite de hora extra da aba METAS. */
     var curso=cursoRec?MesEmCurso.apurar({ plano:cursoRec.plano, realizado:+cursoRec.parc.produtos, dataCorte:cursoRec.parc.dataCorte,
       diasPlanejados:cursoRec.diasP, ritmoDem:ritmoDem, limHE:(typeof META_DEP_HE!=='undefined')?META_DEP_HE:8,
-      feriados:feriados, hoje:hojeIso(), melhorMesDia:melhorDia }):null;
+      feriados:feriados, hoje:hojeIso(), melhorMesDia:melhorDia,
+      pesoMes:+cursoRec.parc.peso, kgAno:kgAno }):null;
 
     var cor,rgb,titulo,frase,acao;
     /* A leitura do que resta depende de contra o que se compara. "Mais leve
@@ -22846,9 +22899,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.7';
+var APP_VERSAO = 'b96.8';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.8', data:'21/09/2026', itens:[
+    'Mes em curso ganha a leitura EM QUILOS. O plano e generico, em pecas, e o mix muda o peso da peca: o corte de 01 a 18/09 tinha 37% mais pecas que o mesmo trecho de junho e 9,5% menos quilos (17,5 kg/pc contra 26,5). Em pecas setembro batia o plano; em quilos movia menos massa. Tres cards — massa por dia, peso por peca e o plano convertido em quilos no mix do mes e no mix do ano — e uma frase que diz qual das duas leituras vale. Nao muda o semaforo do plano: e a segunda leitura, com cor propria (laranja quando a massa por dia esta mais de 5% abaixo da media do ano).',
+    'Sem fonte nova: o peso do corte ja vinha na PARCIAL_MES (soma das linhas de produto do reporte, peso bruto) e os meses fechados tem quilosProduzidos na HISTORICO — mesma base, mesmo relatorio. Sem quilos nos meses fechados, o bloco mostra so o do corte e diz o que falta.',
+    'Conferido com o reporte de 01 a 18/06 (enviado para o teste): 62,6% das pecas em 65% dos dias uteis — a curva do mes e linear, a premissa do esperado vale; se algo, a segunda quinzena e 11% mais rapida. testes/mes-em-curso.test.js: 16 casos da leitura em quilos (70 no arquivo, 351 no total).'
+  ]},
   { v:'b96.7', data:'21/09/2026', itens:[
     'Veredito do Plano Mestre: a frase sobre o que resta do plano dizia sempre "mes mais leve que a media do ano" — texto fixo, escrito quando o restante era agosto (1.148 pc/dia). Em SET/26 o restante pede 1.658 pc/dia, 24% acima do demonstrado, e a tela chamava isso de leve. Agora a frase compara: acima do demonstrado diz quanto e chama de trecho mais pesado do ano; acima so da media do ano diz isso; abaixo das duas, mais leve.'
   ]},
