@@ -54,7 +54,9 @@ const U = {
   curso: { mes: 'SET', ate: '18/09', plano: 34810, realizado: 26178, faltaProduzir: 8632,
            diasDecorridos: 13, diasRestantes: 8, diasPlanejados: 21, pctMes: 61.9,
            ritmoNecRestante: 1079, estado: 'verde',
-           he: { hePct: 16.25, limHE: 8, nivel: 'acima' },
+           he: { cx: 27899, heCx: 4534, heHoras: 20, hePct: 16.2515, diasApontados: 13,
+                 nivel: 'acima', cor: '#F44336', limHE: 8,
+                 realSemHE: 21923.69, ritmoSemHE: 1686.44, projSemHE: 35415.19 },
            kg: { kgPecaMes: 17.483, kgPecaAno: 26.521, kgDiaMes: 35206, kgDiaAno: 39000, difDiaPct: -9.7 } },
   meses: [
     { mes:'JAN', plano:22828, real:22437, normal:19300, status:'Não cumpriu', parcial:null },
@@ -110,10 +112,31 @@ afirma('meses fechados não são parciais', M.fita.slice(0, 8).every(x => !x.par
 afirma('OUT a DEZ sem % e cinza', M.fita.slice(9).every(x => x.pct === null && x.cor === '#2A2A2A'));
 afirma('mês cumprido na jornada normal seria verde', PR.corStatus('Cumpriu') === '#4CAF50');
 
+/* ══ Hora extra — qualifica o veredito, não fica no rodapé ══
+   "NO RITMO" em verde sem dizer que 16% do volume saiu de hora extra é meia
+   verdade, e no rodapé ninguém lê depois de um número grande e verde. */
+sec('Hora extra — ao lado do veredito do mês');
+afirma('o mês carrega a hora extra', !!M.mes.he);
+ok('fatia de hora extra = 4.534 ÷ 27.899', M.mes.he.pct, 16.2515, 0.0001);
+ok('limite',                    M.mes.he.lim, 8, 0);
+afirma('acima do limite → nível "acima" e cor vermelha', M.mes.he.nivel === 'acima' && M.mes.he.cor === '#F44336');
+afirma('sem hora extra o mês ainda cobre o plano (35.415 ≥ 34.810)', M.mes.he.cobreSemHE === true);
+afirma('o html traz o selo ao lado do veredito', /16,3% em hora extra/.test(PR.html(M)));
+afirma('e a frase diz que a hora extra não está indo para o plano',
+  /não está indo para ele/.test(PR.html(M)));
+afirma('dentro do limite → verde e a frase muda', (() => {
+  const x = PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso,
+    { he: { hePct: 6.2, limHE: 8, nivel: 'dentro', cor: '#4CAF50', heHoras: 8, projSemHE: 36000 } }) }), 'x');
+  return x.mes.he.nivel === 'dentro' && /dentro do limite de 8%/.test(PR.html(x));
+})());
+afirma('sem dado da Embalagem → sem selo e sem linha, a tela não quebra', (() => {
+  const x = PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { he: null }) }), 'x');
+  return x.mes.he === null && !/em hora extra/.test(PR.html(x));
+})());
+afirma('a hora extra saiu do rodapé', !M.notas.some(n => /Hora extra no mês/.test(n.txt)));
+
 /* ══ Rodapé ══ */
-sec('Rodapé — as ressalvas que a manchete em peças não conta');
-afirma('hora extra acima do limite entra como alerta',
-  M.notas.some(n => /16,3%/.test(n.txt) && /acima do limite de 8%/.test(n.txt) && n.alerta));
+sec('Rodapé — a ressalva que a manchete em peças não conta');
 afirma('peso da peça contra a média do ano',
   M.notas.some(n => /17,5 kg/.test(n.txt) && /26,5 kg/.test(n.txt)));
 
