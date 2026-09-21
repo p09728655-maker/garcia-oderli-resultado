@@ -22580,9 +22580,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.1';
-var APP_DATA   = '18/09/2026';
+var APP_VERSAO = 'b96.2';
+var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.2', data:'21/09/2026', itens:[
+    'Limpeza interna, sem mudanca de tela: saem as tres geracoes mortas de cfCalcular (v1, v3 e v4). A conta de capacidade era definida cinco vezes no mesmo nome e so a da CORRECAO FINAL (embrulhada pelo patch v11) chegava a rodar; a declaracao original, bem comentada, era o lugar natural de procurar a formula, e editar ali nao mudava nada na tela. Fica um ponteiro para a implementacao viva.',
+    'Saem tambem sete funcoes nunca chamadas (clEf, clEfStr, addTab, _pSet, pDrawBar, _getDias, ritmoAnoAnterior) e 17 regras de CSS de elementos que nao existem mais, entre elas o painel de validacao da importacao de Excel, removida em b95.5.',
+    'Conferencia: 232 testes; screenshot e texto das 16 abas identicos antes e depois em 1400px, 390px, modo TV, impressao e recarga com cache local. Menos 400 linhas no index.html.'
+  ]},
   { v:'b96.1', data:'18/09/2026', itens:[
     'Matriz volume x peso legivel com o mix real. O eixo de quantidade passa a ser logaritmico: a fabrica produz de 1 a 20 mil pecas do mesmo produto no ano — quatro ordens de grandeza — e em escala linear metade dos 423 produtos ficava empilhada nos primeiros pixels, virando mancha em vez de grafico. Em log cada marca vale 10x a anterior e a nuvem se abre onde os produtos estao.',
     'Os produtos que mais pesaram no ano aparecem com nome na propria matriz, mais o mais pesado por unidade. Bolha anonima em meio a 400 nao responde a pergunta que a matriz existe para responder: QUAIS produtos estao em cima e a direita. Rotulo que cairia sobre outro e descartado — falta um nome e melhor que dois nomes ilegiveis.',
