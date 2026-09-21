@@ -64,6 +64,12 @@ var ABA_GRUPOS  = 'GRUPOS';
 var ABA_ACOES = 'ACOES';
 /* Aba de metas oficiais. Chaves = nomes das constantes do painel. */
 var ABA_METAS = 'METAS';
+/* Cortes parciais do mês em curso (ReporteVolumes.gs, pasta REPORTES PARCIAIS):
+   uma linha por corte — mes, ano, dataCorte, produtos, volumes, peso. */
+var ABA_PARCIAL = 'PARCIAL_MES';
+/* Feriados e recessos (data, descricao): é o que faz "dias úteis decorridos"
+   do mês em curso sair exato. Mantida pelo PPCP, sem deploy. */
+var ABA_FERIADOS = 'FERIADOS';
 var METAS_PADRAO = [
   ['chave','valor','unidade','vigencia','origem','observacao'],
   ['META_ABS',    3,   '%',   '2026-01', 'RH',        'Absenteísmo (faltas + atrasos ÷ h. normais): dentro da meta até este valor. Histórico 2025-26: 9% a 17%'],
@@ -88,6 +94,8 @@ var DICIONARIO_LINHAS = [
   ['naoTrabalhadas', 'automático', 'ponto', 'PontoRH.gs: jornada cheia do mês (carga mais frequente entre os diretos) × diretos − Normais. Tudo que não foi trabalhado, férias incluídas.'],
   ['faltasPonto / atrasosPonto', 'automático', 'ponto', 'Colunas Faltas e Atras. do extrato, somadas para os diretos. O ponto só conta falta sem justificativa; atestado, afastamento e licença reduzem a Carga.'],
   ['(aba PONTO_SETOR)', 'automático', 'ponto + controle', 'Uma linha por mês/ano/setor, diretos e indiretos: pessoas, horasCarga, horasNormais, faltasPonto, atrasosPonto, extra50, extra100, totalExtras, hePctHoras (totalExtras ÷ horasNormais do setor) e as ausências do controle. Hora por setor, não peça por setor; setor = o atual da pessoa na FUNCIONARIOS. Não digitar: o script regrava.'],
+  ['(aba PARCIAL_MES)', 'automático', 'ERP', 'Uma linha por corte parcial do mês em curso: o "3 - REPORTE" de 01/MM até a data do corte, salvo na pasta REPORTES PARCIAIS do Drive. produtos = produtos acabados até a data (com hora extra). Alimenta o bloco "Mês em curso" do Plano Mestre; NÃO entra em producaoReal — o mês segue aberto até o reporte fechado.'],
+  ['(aba FERIADOS)', 'entrada', 'PPCP', 'Uma linha por feriado ou dia de recesso (data, descricao). Dias úteis decorridos do mês em curso = segunda a sexta menos estas datas. Sem a aba, feriado conta como dia útil e o painel avisa.'],
   ['ausFalta / ausAtestado / ausAfastado / ausAtraso', 'automático', 'controle de faltas', 'PontoRH.gs: aba BASE do CONTROLE_FALTAS, horas por STATUS, só para os diretos (mesma base das horas do ponto). Até SET/26 as faltas vinham do departamento 2-PRODUÇÃO inteiro, 18 setores.'],
   ['horasFerias', 'automático', 'controle de faltas', 'HORAS FÉRIAS da BASE, só para os diretos. Sem controle processado: o digitado.'],
   ['faltas / atraso', 'calculado', 'painel', 'Com o controle lançado: faltas = ausFalta + ausAtestado + ausAfastado; atraso = atrasosPonto (o ponto mede o relógio; o controle só registra o que o líder anota) ou, sem ponto, ausAtraso. Sem controle, com ponto: atraso = atrasosPonto; faltas = naoTrabalhadas − horasFerias − atraso. Sem nenhum dos dois: o digitado.'],
@@ -188,6 +196,9 @@ function doGet() {
               setores: (typeof prLerSetores === 'function') ? prLerSetores(ss) : [],
               acoes: lerAcoes(ss),
               metas: lerMetas(ss),
+              /* Mês em curso: cortes parciais e feriados (bloco do Plano Mestre). */
+              parcial: lerParcialMes(ss),
+              feriados: lerFeriados(ss),
               /* Para o painel dizer PARA QUEM vai enviar antes de enviar. */
               destinatarios: lerDestinatarios(ss),
               geradoEm: new Date().toISOString() };
@@ -618,6 +629,83 @@ function aplicarPlano(dados, plano) {
     var volAno = plano.volumes[String(r.ano)];
     if (volAno && volAno[r.mes] > 0) r.previsaoVolumes = volAno[r.mes];
   });
+}
+
+/* ══ PARCIAL_MES — cortes do mês em curso ══
+   Devolve todas as linhas válidas; o painel escolhe o corte mais recente de
+   cada mês. dataCorte sai como 'AAAA-MM-DD' (texto na aba; se alguém
+   converter em data, acaoTxt normaliza). */
+function lerParcialMes(ss) {
+  var aba = ss.getSheetByName(ABA_PARCIAL);
+  if (!aba || aba.getLastRow() < 2) return [];
+  var linhas = aba.getDataRange().getValues();
+  var cab = linhas[0].map(function (c) { return normaliza(c); });
+  var col = {};
+  ['mes', 'ano', 'datacorte', 'produtos', 'volumes', 'peso', 'geradoem'].forEach(function (k) { col[k] = cab.indexOf(k); });
+  if (col.mes < 0 || col.ano < 0 || col.datacorte < 0 || col.produtos < 0) return [];
+  var out = [];
+  for (var r = 1; r < linhas.length; r++) {
+    var l = linhas[r];
+    var mes = txt(l[col.mes]).toUpperCase().slice(0, 3), ano = parseInt(l[col.ano], 10);
+    var corte = acaoTxt(l[col.datacorte]).slice(0, 10), prod = num(l[col.produtos]);
+    if (MESES.indexOf(mes) < 0 || !ano || !/^\d{4}-\d{2}-\d{2}$/.test(corte) || !(prod > 0)) continue;
+    out.push({ mes: mes, ano: ano, dataCorte: corte, produtos: prod,
+               volumes: col.volumes >= 0 ? num(l[col.volumes]) : 0,
+               peso: col.peso >= 0 ? num(l[col.peso]) : 0,
+               geradoEm: col.geradoem >= 0 ? acaoTxt(l[col.geradoem]) : '' });
+  }
+  return out;
+}
+
+/* ══ FERIADOS ══
+   Coluna A = data (Date do Sheets ou texto AAAA-MM-DD / dd/mm/aaaa), B = descrição.
+   Devolve só as datas, como 'AAAA-MM-DD'. Aba ausente → [] e o painel avisa. */
+function lerFeriados(ss) {
+  var aba = ss.getSheetByName(ABA_FERIADOS);
+  if (!aba || aba.getLastRow() < 2) return [];
+  var linhas = aba.getDataRange().getValues();
+  var out = [];
+  for (var r = 1; r < linhas.length; r++) {
+    var v = linhas[r][0], s = acaoTxt(v);
+    var br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (br) s = br[3] + '-' + br[2] + '-' + br[1];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) out.push(s);
+  }
+  return out;
+}
+
+/* Feriados nacionais de 2026 como ponto de partida. Recesso coletivo (o
+   dezembro de 15 dias úteis do plano) e feriado municipal entram à mão —
+   o painel avisa quando o calendário e os dias do plano divergem. */
+var FERIADOS_PADRAO = [
+  ['data', 'descricao'],
+  ['2026-01-01', 'Confraternização Universal'],
+  ['2026-02-16', 'Carnaval'],
+  ['2026-02-17', 'Carnaval'],
+  ['2026-04-03', 'Sexta-feira Santa'],
+  ['2026-04-21', 'Tiradentes'],
+  ['2026-05-01', 'Dia do Trabalho'],
+  ['2026-06-04', 'Corpus Christi'],
+  ['2026-09-07', 'Independência'],
+  ['2026-10-12', 'Nossa Senhora Aparecida'],
+  ['2026-11-02', 'Finados'],
+  ['2026-11-20', 'Consciência Negra'],
+  ['2026-12-25', 'Natal']
+];
+function criarAbaFeriados() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(ABA_FERIADOS)) {
+    SpreadsheetApp.getUi().alert('Aba ' + ABA_FERIADOS + ' já existe — nada foi alterado.');
+    return;
+  }
+  var aba = ss.insertSheet(ABA_FERIADOS);
+  var faixa = aba.getRange(1, 1, FERIADOS_PADRAO.length, 2);
+  faixa.setNumberFormat('@');
+  faixa.setValues(FERIADOS_PADRAO);
+  aba.setFrozenRows(1);
+  aba.getRange(1, 1, 1, 2).setFontWeight('bold');
+  aba.setColumnWidth(2, 260);
+  try { SpreadsheetApp.getUi().alert('Aba ' + ABA_FERIADOS + ' criada com os feriados nacionais de 2026. Acrescente recesso coletivo e feriado municipal (uma data por linha, AAAA-MM-DD). O painel usa no próximo sync.'); } catch (e) {}
 }
 
 /* ══ METAS ══

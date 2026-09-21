@@ -101,65 +101,12 @@ function calcularVolumesMes() {
   var cadastro = rvLerCadastro(ss);
 
   var linhas = aba.getRange(2, 1, Math.max(aba.getLastRow() - 1, 1), 5).getValues();
-  var meses = {}, ordem = [];
-  linhas.forEach(function (l) {
-    var mes = String(l[0] || '').trim().toUpperCase().slice(0, 3);
-    var ano = parseInt(l[1], 10);
-    var desc = String(l[3] || '').trim();
-    var qtd = rvNum(l[4]);
-    if (RV_MESES.indexOf(mes) < 0 || !ano || !desc || !qtd) return;
-    var chave = mes + '/' + ano;
-    if (!meses[chave]) {
-      meses[chave] = { mes: mes, ano: ano, vol: 0, prod: 0, grupos: {}, produtos: [] };
-      ordem.push(chave);
-    }
-    var g = meses[chave], m = desc.match(RV_RE_VOL);
-    if (m) {
-      /* grupo por produto: quantas caixas ele tem (o "de" do x/de) e quanto
-         foi reportado nessas linhas */
-      var nome = m[3].trim().toUpperCase();
-      var grp = g.grupos[nome] || (g.grupos[nome] = { n: 1, q: 0 });
-      grp.n = Math.max(grp.n, parseInt(m[2], 10) || 1);
-      grp.q += qtd;
-    } else {
-      g.prod += qtd;
-      g.produtos.push({ nome: desc.toUpperCase(), qtd: qtd });
-    }
-  });
+  var agr = rvAgruparLinhas(linhas), meses = agr.meses, ordem = agr.ordem;
   if (!ordem.length) return rvErro('Nenhuma linha válida em ' + RV_ABA + ' (MES, ANO, CODIGO, DESCRICAO, QUANTIDADE).');
 
   var saida = ordem.map(function (chave) {
     var g = meses[chave];
-    /* VOLUMES = quantidade do produto × nº de caixas dele.
-       Somar as linhas VOL parecia mais direto, mas elas divergem do produto
-       quando a caixa é apontada em mês diferente (39 de 138 produtos em
-       JAN/26), e aí o fator chega a ficar abaixo de 1 — impossível, já que
-       nenhum produto sai em menos de uma caixa. Multiplicar é imune a essa
-       defasagem: cada unidade produzida gera as caixas que a embalagem dela
-       exige. O nº de caixas vem da estrutura VOL x/de do próprio mês; sem
-       linha VOL, vem do cadastro; sem cadastro, 1 caixa. */
-    var pend = {}, usados = {};
-    g.produtos.forEach(function (p) {
-      var achou = null;
-      Object.keys(g.grupos).some(function (nv) {
-        if (p.nome.indexOf(nv) === 0 || rvAbrevia(nv, p.nome)) { achou = nv; return true; }
-        return false;
-      });
-      if (achou) { g.vol += p.qtd * g.grupos[achou].n; usados[achou] = true; return; }
-      var nVols = 0;
-      Object.keys(cadastro).some(function (nc) {
-        if (p.nome.indexOf(nc) === 0 || rvAbrevia(nc, p.nome)) { nVols = cadastro[nc]; return true; }
-        return false;
-      });
-      if (nVols > 0) { g.vol += p.qtd * nVols; }
-      else           { g.vol += p.qtd; pend[p.nome] = true; }
-    });
-    /* Linhas VOL sem produto correspondente no mês: entram como reportadas,
-       senão a caixa apontada some da conta. */
-    Object.keys(g.grupos).forEach(function (nv) {
-      if (!usados[nv]) g.vol += g.grupos[nv].q;
-    });
-    var pendentes = Object.keys(pend);
+    var pendentes = rvVolumesDoMes(g, cadastro);
     return [g.mes, g.ano, g.vol, g.prod, g.prod > 0 ? g.vol / g.prod : '',
             pendentes.length
               ? pendentes.length + ' produto(s) sem SKU de volume (contados como 1 caixa): ' + pendentes.slice(0, 8).join('; ')
@@ -172,6 +119,73 @@ function calcularVolumesMes() {
   aba.getRange(2, RV_COL_RESUMO, saida.length, 6).setValues(saida);
   rvAvisar('Resumo calculado para ' + saida.length + ' mês(es). Confira VOLUMES e PRODUTOS e rode lancarVolumesNaHistorico(). '
     + 'Produto listado como pendência: cadastre os SKUs de volume dele na ' + RV_ABA_CADASTRO + ' para a conta ficar exata.');
+}
+
+/* Agrupa linhas [MES, ANO, CODIGO, DESCRICAO, QUANTIDADE, (PESO)] por mês,
+   separando produto acabado de linha VOL. Puro: serve ao resumo mensal e ao
+   corte parcial, com a mesma régua. */
+function rvAgruparLinhas(linhas) {
+  var meses = {}, ordem = [];
+  linhas.forEach(function (l) {
+    var mes = String(l[0] || '').trim().toUpperCase().slice(0, 3);
+    var ano = parseInt(l[1], 10);
+    var desc = String(l[3] || '').trim();
+    var qtd = rvNum(l[4]);
+    if (RV_MESES.indexOf(mes) < 0 || !ano || !desc || !qtd) return;
+    var chave = mes + '/' + ano;
+    if (!meses[chave]) {
+      meses[chave] = { mes: mes, ano: ano, vol: 0, prod: 0, peso: 0, grupos: {}, produtos: [] };
+      ordem.push(chave);
+    }
+    var g = meses[chave], m = desc.match(RV_RE_VOL);
+    if (m) {
+      /* grupo por produto: quantas caixas ele tem (o "de" do x/de) e quanto
+         foi reportado nessas linhas */
+      var nome = m[3].trim().toUpperCase();
+      var grp = g.grupos[nome] || (g.grupos[nome] = { n: 1, q: 0 });
+      grp.n = Math.max(grp.n, parseInt(m[2], 10) || 1);
+      grp.q += qtd;
+    } else {
+      g.prod += qtd;
+      g.peso += rvNum(l[5]);
+      g.produtos.push({ nome: desc.toUpperCase(), qtd: qtd });
+    }
+  });
+  return { meses: meses, ordem: ordem };
+}
+
+/* Preenche g.vol de um mês agrupado e devolve os produtos sem SKU de volume.
+   VOLUMES = quantidade do produto × nº de caixas dele.
+   Somar as linhas VOL parecia mais direto, mas elas divergem do produto
+   quando a caixa é apontada em mês diferente (39 de 138 produtos em
+   JAN/26), e aí o fator chega a ficar abaixo de 1 — impossível, já que
+   nenhum produto sai em menos de uma caixa. Multiplicar é imune a essa
+   defasagem: cada unidade produzida gera as caixas que a embalagem dela
+   exige. O nº de caixas vem da estrutura VOL x/de do próprio mês; sem
+   linha VOL, vem do cadastro; sem cadastro, 1 caixa. */
+function rvVolumesDoMes(g, cadastro) {
+  var pend = {}, usados = {};
+  g.produtos.forEach(function (p) {
+    var achou = null;
+    Object.keys(g.grupos).some(function (nv) {
+      if (p.nome.indexOf(nv) === 0 || rvAbrevia(nv, p.nome)) { achou = nv; return true; }
+      return false;
+    });
+    if (achou) { g.vol += p.qtd * g.grupos[achou].n; usados[achou] = true; return; }
+    var nVols = 0;
+    Object.keys(cadastro).some(function (nc) {
+      if (p.nome.indexOf(nc) === 0 || rvAbrevia(nc, p.nome)) { nVols = cadastro[nc]; return true; }
+      return false;
+    });
+    if (nVols > 0) { g.vol += p.qtd * nVols; }
+    else           { g.vol += p.qtd; pend[p.nome] = true; }
+  });
+  /* Linhas VOL sem produto correspondente no mês: entram como reportadas,
+     senão a caixa apontada some da conta. */
+  Object.keys(g.grupos).forEach(function (nv) {
+    if (!usados[nv]) g.vol += g.grupos[nv].q;
+  });
+  return Object.keys(pend);
 }
 
 /* ══ 4 · LANÇAMENTO NA HISTORICO ══
@@ -246,6 +260,7 @@ var RV_PROCESSADOS = 'PROCESSADOS';
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('📦 Volumes')
     .addItem('Processar PDFs da pasta do Drive', 'processarReportesDrive')
+    .addItem('Processar só os cortes parciais (mês em curso)', 'processarParciaisDrive')
     .addItem('Recalcular resumo (dados colados)', 'calcularVolumesMes')
     .addItem('Lançar na HISTORICO', 'lancarVolumesNaHistorico')
     .addSeparator()
@@ -268,6 +283,8 @@ function onOpen() {
     .addItem('Derivar 2025 de 2026 (−5%) — plano derivado, não o da época', 'derivarPlano2025De2026')
     .addItem('Refazer 2025 de 2026 com outro fator…', 'refazerPlano2025De2026')
     .addItem('Formatar colunas de 2025 como as de 2026', 'formatarPlanoDerivado2025')
+    .addSeparator()
+    .addItem('Criar aba FERIADOS (dias úteis do mês em curso)', 'criarAbaFeriados')
     .addToUi();
   SpreadsheetApp.getUi().createMenu('🎯 Metas')
     .addItem('Criar aba METAS (se não existir)', 'criarAbaMetas')
@@ -275,7 +292,24 @@ function onOpen() {
     .addToUi();
 }
 
+/* Duas execuções ao mesmo tempo (clique duplo no menu, menu + gatilho das 6h)
+   leem a mesma pasta e gravam duas vezes — foi assim que a PARCIAL_MES ganhou
+   duas linhas iguais em SET/26. O lock serializa: a segunda espera até 30 s e,
+   se a primeira ainda não acabou, desiste avisando em vez de gravar em cima. */
+function rvComLock(nome, fn) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    rvAvisar(nome + ': outro processamento ainda está rodando — aguarde ele terminar e rode de novo.');
+    return null;
+  }
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+
 function processarReportesDrive() {
+  rvComLock('Reportes', rvProcessarReportes);
+}
+
+function rvProcessarReportes() {
   var pastas = DriveApp.getFoldersByName(RV_PASTA);
   if (!pastas.hasNext()) {
     return rvErro('Pasta "' + RV_PASTA + '" não encontrada no Drive — crie a pasta e solte os PDFs do relatório nela.');
@@ -290,11 +324,17 @@ function processarReportesDrive() {
       var texto = rvPdfParaTexto(pdf.getId());
       var mesAno = rvPeriodoDoTexto(texto);
       if (!mesAno) throw new Error('não achei "Período: dd/mm/aa" no PDF');
+      /* Um corte parcial aqui fecharia o mês com número pela metade: esta
+         pasta substitui o mês inteiro e lança em produtosReportados, que é o
+         producaoReal do painel. Fica na pasta, com o motivo. */
+      if (mesAno.parcial) throw new Error('é um corte PARCIAL (' + mesAno.ini + ' a ' + mesAno.fim
+        + ') — vai na pasta "' + RV_PASTA_PARCIAL + '", não aqui');
       var linhas = rvLinhasDoTexto(texto, mesAno);
       if (!linhas.length) throw new Error('nenhuma linha de produto/volume reconhecida');
+      var confere = rvConferirTotal(linhas, texto);
       rvSubstituirMes(mesAno, linhas);
       rvMoverParaProcessados(pasta, pdf);
-      feitos.push(pdf.getName() + ' → ' + mesAno.mes + '/' + mesAno.ano + ' (' + linhas.length + ' linhas)');
+      feitos.push(pdf.getName() + ' → ' + mesAno.mes + '/' + mesAno.ano + ' (' + linhas.length + ' linhas' + confere + ')');
     } catch (e) {
       falhas.push(pdf.getName() + ': ' + (e && e.message || e));
     }
@@ -304,8 +344,11 @@ function processarReportesDrive() {
     calcularVolumesMes();
     lancarVolumesNaHistorico();
   }
+  /* Mesma varredura cuida dos cortes do mês em curso (pasta própria). */
+  var parc = rvProcessarParciais();
   rvAvisar((feitos.length ? 'Processados:\n' + feitos.join('\n') : 'Nenhum PDF novo na pasta.')
-    + (falhas.length ? '\n\nFALHARAM (ficaram na pasta):\n' + falhas.join('\n') : ''));
+    + (falhas.length ? '\n\nFALHARAM (ficaram na pasta):\n' + falhas.join('\n') : '')
+    + '\n\n' + parc.resumo);
 }
 
 /* Um gatilho por dia, de manhã. Reinstalar não duplica. */
@@ -314,8 +357,8 @@ function instalarProcessamentoDiario() {
     if (t.getHandlerFunction() === 'processarReportesDrive') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('processarReportesDrive').timeBased().everyDays(1).atHour(6).create();
-  rvAvisar('Instalado: a pasta "' + RV_PASTA + '" é varrida todo dia por volta das 6h. '
-    + 'É só salvar o PDF do mês lá dentro; o resultado aparece na HISTORICO e o dashboard pega no sync.');
+  rvAvisar('Instalado: as pastas "' + RV_PASTA + '" e "' + RV_PASTA_PARCIAL + '" são varridas todo dia por volta das 6h. '
+    + 'PDF do mês fechado na primeira, corte parcial (01/MM até hoje) na segunda; o painel pega no sync.');
 }
 
 /* Copia o PDF como Documento Google (o Drive extrai o texto), lê e apaga a
@@ -339,38 +382,76 @@ function rvPdfParaTexto(fileId) {
   }
 }
 
+/* "Período: 01/09/26 até 30/09/26". Lê as DUAS datas: o mês é o da
+   inicial, e o PDF é PARCIAL quando não vai do dia 1 ao último dia do mês —
+   é isso que separa o reporte fechado (REPORTES DE VOLUMES → HISTORICO) do
+   corte do mês em curso (REPORTES PARCIAIS → PARCIAL_MES). Tolera o texto
+   vir com "até" antes das datas ou quebrado em duas linhas, que é como a
+   conversão do PDF às vezes entrega. Sem a data final (layout antigo), vale
+   como fechado — comportamento de sempre. */
 function rvPeriodoDoTexto(texto) {
-  var m = texto.match(/Per[íi]odo:\s*\d{2}\/(\d{2})\/(\d{2,4})/);
+  var m = texto.match(/Per[íi]odo:[\s\S]{0,20}?(\d{2})\/(\d{2})\/(\d{2,4})(?:[\s\S]{0,12}?(\d{2})\/(\d{2})\/(\d{2,4}))?/);
   if (!m) return null;
-  var ano = parseInt(m[2], 10);
-  if (ano < 100) ano += 2000;
-  return { mes: RV_MESES[parseInt(m[1], 10) - 1], ano: ano };
+  function ano4(a) { a = parseInt(a, 10); return a < 100 ? a + 2000 : a; }
+  function isoD(d, mo, a) { return a + '-' + mo + '-' + d; }
+  var mes = parseInt(m[2], 10), ano = ano4(m[3]);
+  var out = { mes: RV_MESES[mes - 1], ano: ano, ini: isoD(m[1], m[2], ano), fim: null, parcial: false };
+  if (m[4]) {
+    out.fim = isoD(m[4], m[5], ano4(m[6]));
+    var diaIni = parseInt(m[1], 10), diaFim = parseInt(m[4], 10), mesFim = parseInt(m[5], 10);
+    out.parcial = diaIni !== 1 || mesFim !== mes || ano4(m[6]) !== ano || diaFim !== rvUltimoDiaDoMes(ano, mes);
+  }
+  return out;
+}
+function rvUltimoDiaDoMes(ano, mes) { return new Date(Date.UTC(ano, mes, 0)).getUTCDate(); }
+
+/* Régua do PDF: código 000.000.000, descrição, três números (quantidade e
+   peso com três decimais, custo com dois). Varre o TEXTO INTEIRO, não linha
+   a linha: a conversão do Google entrega todas as linhas de uma página num
+   parágrafo só, separadas por espaço, e a régua antiga (uma linha, ^…$)
+   pegava só o que por acaso caía isolado — em SET/26 leu 1.136 de 26.178
+   produtos e ninguém viu, porque o número é plausível. Os decimais fixos
+   são o que ancora o fim da descrição; a descrição fica limitada a 60
+   caracteres (o relatório corta em ~40) para um código sem números nunca
+   engolir a linha seguinte. Cabeçalho, subtotal "Grupo:" e rodapé não têm
+   código e ficam de fora sozinhos.
+
+   O PESO (m[4]) é o total da linha (kg do que foi reportado daquele produto
+   no período), na mesma régua do custo ao lado — não o peso unitário. O
+   unitário sai de peso ÷ quantidade, e o painel confere a soma contra o
+   quilosProduzidos da HISTORICO antes de usar. */
+var RV_RE_LINHA = /(\d{3}\.\d{3}\.\d{3})\s+([\s\S]{1,60}?)\s+([\d.]+,\d{3})\s+([\d.]+,\d{3})\s+([\d.]+,\d{2})(?=\s|$)/g;
+function rvLinhasDoTexto(texto, mesAno) {
+  var out = [], m;
+  RV_RE_LINHA.lastIndex = 0;
+  while ((m = RV_RE_LINHA.exec(texto))) {
+    var qtd = rvNum(m[3]);
+    if (!qtd) continue;
+    out.push([mesAno.mes, mesAno.ano, m[1], m[2].replace(/\s+/g, ' ').trim(), qtd, rvNum(m[4])]);
+  }
+  return out;
 }
 
-/* Mesma régua do PDF: código 000.000.000, descrição, três números no fim
-   (quantidade, peso, custo). Linha de cabeçalho/rodapé não casa e é
-   ignorada de graça.
-
-   O PESO (m[4]) era lido e jogado fora desde o começo — a régua sempre o
-   capturou para conseguir achar a quantidade, só não o guardava. Sem ele
-   não existe peso POR PRODUTO em lugar nenhum: a HISTORICO só tem o total
-   do mês, e por isso não dava para dizer se o mix mudou para peça mais
-   pesada ou se a fábrica só produziu mais. Agora vai para a coluna F.
-
-   É o peso TOTAL da linha (kg do que foi reportado daquele produto no mês),
-   na mesma régua do custo ao lado — não o peso unitário. O unitário sai de
-   peso ÷ quantidade, e o painel confere a soma contra o quilosProduzidos da
-   HISTORICO antes de usar. */
-function rvLinhasDoTexto(texto, mesAno) {
-  var out = [];
-  texto.split('\n').forEach(function (ln) {
-    var m = ln.trim().match(/^(\d{3}\.\d{3}\.\d{3})\s+(.+?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)$/);
-    if (!m) return;
-    var qtd = rvNum(m[3]);
-    if (!qtd) return;
-    out.push([mesAno.mes, mesAno.ano, m[1], m[2].trim(), qtd, rvNum(m[4])]);
-  });
-  return out;
+/* O relatório traz o próprio checksum: a linha "Geral" (ou "Total:" no
+   resumo por transação) com a quantidade de TODAS as linhas, produto e
+   volume. A soma do que foi lido tem de bater com ela EXATAMENTE (o meio
+   ponto é só arredondamento): uma linha de 1 peça perdida já é leitura
+   parcial, e nada pode ser gravado, nem no mês fechado nem no corte. Sem
+   a linha no texto, segue sem conferir e diz isso. */
+function rvTotalGeralDoTexto(texto) {
+  var m = texto.match(/\b(?:Geral|Total:)\s+([\d.]+,\d{3})\s+([\d.]+,\d{3})/);
+  return m ? { qtd: rvNum(m[1]), peso: rvNum(m[2]) } : null;
+}
+function rvConferirTotal(linhas, texto) {
+  var g = rvTotalGeralDoTexto(texto);
+  if (!g) return ' (sem linha Geral no PDF para conferir)';
+  var soma = 0;
+  linhas.forEach(function (l) { soma += rvNum(l[4]); });
+  if (Math.abs(soma - g.qtd) > 0.5) {
+    throw new Error('as linhas lidas somam ' + soma + ' e o total Geral do relatório é ' + g.qtd
+      + ' — leitura incompleta, nada foi gravado');
+  }
+  return ' (confere com o Geral ' + g.qtd + ')';
 }
 
 /* Garante o cabeçalho PESO na coluna F de uma aba que nasceu com cinco
@@ -421,6 +502,116 @@ function rvMoverParaProcessados(pasta, pdf) {
   var sub = pasta.getFoldersByName(RV_PROCESSADOS);
   var destino = sub.hasNext() ? sub.next() : pasta.createFolder(RV_PROCESSADOS);
   pdf.moveTo(destino);
+}
+
+/* ══ 5b · CORTE PARCIAL — o mês em curso ══
+   O reporte fechado só existe depois do dia 30. Para saber DURANTE o mês se
+   o plano cabe no que resta, o mesmo "3 - REPORTE" é emitido de 01/MM até a
+   data de hoje e salvo na pasta REPORTES PARCIAIS. Cada PDF vira UMA LINHA na
+   aba PARCIAL_MES (mes, ano, dataCorte, produtos, volumes, peso, geradoEm,
+   arquivo): acumulado, não a semana isolada — um corte perdido não quebra a
+   soma, o mais recente sempre vale. Reprocessar o mesmo corte substitui a
+   linha. Nada aqui toca a HISTORICO: o mês continua aberto para todo o
+   painel; só o bloco "Mês em curso" do Plano Mestre lê esta aba. */
+var RV_PASTA_PARCIAL = 'REPORTES PARCIAIS';
+var RV_ABA_PARCIAL   = 'PARCIAL_MES';
+var RV_PARCIAL_CAB   = ['mes', 'ano', 'dataCorte', 'produtos', 'volumes', 'peso', 'geradoEm', 'arquivo'];
+
+function processarParciaisDrive() {
+  rvComLock('Cortes parciais', function () { rvAvisar(rvProcessarParciais().resumo); });
+}
+
+/* Devolve { feitos, falhas, resumo } — chamado pelo gatilho diário e pelo menu. */
+function rvProcessarParciais() {
+  var pastas = DriveApp.getFoldersByName(RV_PASTA_PARCIAL);
+  var pasta = pastas.hasNext() ? pastas.next() : DriveApp.createFolder(RV_PASTA_PARCIAL);
+  var arquivos = pasta.getFilesByType(MimeType.PDF);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var cadastro = rvLerCadastro(ss);
+  var feitos = [], falhas = [];
+
+  while (arquivos.hasNext()) {
+    var pdf = arquivos.next();
+    try {
+      var texto = rvPdfParaTexto(pdf.getId());
+      var per = rvPeriodoDoTexto(texto);
+      if (!per) throw new Error('não achei "Período: dd/mm/aa até dd/mm/aa" no PDF');
+      if (!per.fim) throw new Error('não achei a data final do período');
+      if (!per.parcial) throw new Error('é o mês FECHADO (' + per.ini + ' a ' + per.fim + ') — vai na pasta "' + RV_PASTA + '"');
+      if (per.ini.slice(-2) !== '01') throw new Error('o corte tem de começar no dia 1 (veio ' + per.ini + ') — o painel soma do início do mês');
+      var linhas = rvLinhasDoTexto(texto, per);
+      if (!linhas.length) throw new Error('nenhuma linha de produto/volume reconhecida');
+      var confere = rvConferirTotal(linhas, texto);
+      var agr = rvAgruparLinhas(linhas);
+      var g = agr.meses[agr.ordem[0]];
+      rvVolumesDoMes(g, cadastro);
+      rvGravarParcial(ss, [g.mes, g.ano, per.fim, g.prod, g.vol, Math.round(g.peso * 10) / 10,
+                            new Date().toISOString(), pdf.getName()]);
+      rvMoverParaProcessados(pasta, pdf);
+      feitos.push(pdf.getName() + ' → ' + g.mes + '/' + g.ano + ' até ' + per.fim + ': ' + g.prod + ' produtos, '
+        + g.vol + ' volumes em ' + linhas.length + ' linhas' + confere);
+    } catch (e) {
+      falhas.push(pdf.getName() + ': ' + (e && e.message || e));
+    }
+  }
+  var resumo = 'Cortes parciais — ' + (feitos.length ? 'lançados na ' + RV_ABA_PARCIAL + ':\n' + feitos.join('\n')
+    : 'nenhum PDF novo em "' + RV_PASTA_PARCIAL + '".')
+    + (falhas.length ? '\nFALHARAM (ficaram na pasta):\n' + falhas.join('\n') : '');
+  return { feitos: feitos, falhas: falhas, resumo: resumo };
+}
+
+function rvGarantirAbaParcial(ss) {
+  var aba = ss.getSheetByName(RV_ABA_PARCIAL);
+  if (aba) return aba;
+  aba = ss.insertSheet(RV_ABA_PARCIAL);
+  aba.getRange(1, 1, 1, RV_PARCIAL_CAB.length).setValues([RV_PARCIAL_CAB]).setFontWeight('bold');
+  aba.setFrozenRows(1);
+  /* dataCorte e geradoEm como texto: uma data convertida pelo Sheets voltaria
+     em outro fuso e moveria o corte de sexta para quinta. */
+  aba.getRange(2, 3, 1000, 1).setNumberFormat('@');
+  aba.getRange(2, 7, 1000, 1).setNumberFormat('@');
+  return aba;
+}
+
+/* Célula que pode ter virado Date: o Sheets converte '2026-09-18' ao gravar
+   por appendRow, mesmo com a coluna em texto, e String(Date) é "Thu Sep 18
+   2026…" — foi assim que o mesmo corte entrou três vezes na PARCIAL_MES: a
+   chave nunca casava. Devolve 'AAAA-MM-DD' no calendário da planilha (os
+   getters locais, como o acaoTxt do Code.gs); texto passa como está. */
+function rvIsoDia(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    if (isNaN(v.getTime())) return '';
+    var m = v.getMonth() + 1, d = v.getDate();
+    return v.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+  }
+  return String(v === null || v === undefined ? '' : v).trim().slice(0, 10);
+}
+
+/* Escreve a linha com dataCorte e geradoEm forçados a texto ANTES do valor
+   entrar — setNumberFormat('@') na célula e depois setValues; appendRow não
+   respeita o formato e reconverte. */
+function rvEscreverParcial(aba, row, linha) {
+  aba.getRange(row, 3).setNumberFormat('@');
+  aba.getRange(row, 7).setNumberFormat('@');
+  aba.getRange(row, 1, 1, linha.length).setValues([linha]);
+}
+
+/* Uma linha por (mes, ano, dataCorte): o mesmo corte reprocessado substitui.
+   Se a chave já estiver duplicada, a primeira linha recebe o valor novo e as
+   demais saem — de baixo para cima, para os índices não se moverem no meio
+   da remoção. */
+function rvGravarParcial(ss, linha) {
+  var aba = rvGarantirAbaParcial(ss);
+  var n = Math.max(aba.getLastRow() - 1, 0);
+  var atuais = n ? aba.getRange(2, 1, n, 3).getValues() : [];
+  var iguais = [];
+  for (var i = 0; i < atuais.length; i++) {
+    if (String(atuais[i][0]).toUpperCase().slice(0, 3) === linha[0] && parseInt(atuais[i][1], 10) === linha[1]
+        && rvIsoDia(atuais[i][2]) === linha[2]) iguais.push(i + 2);
+  }
+  if (!iguais.length) { rvEscreverParcial(aba, aba.getLastRow() + 1, linha); return; }
+  rvEscreverParcial(aba, iguais[0], linha);
+  for (var k = iguais.length - 1; k >= 1; k--) aba.deleteRow(iguais[k]);
 }
 
 /* ══ 6 · PLANO MESTRE EM VOLUMES ══
