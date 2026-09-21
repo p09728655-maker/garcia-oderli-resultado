@@ -32,6 +32,19 @@ function carregar() {
 }
 const PR = carregar();
 
+/* O kg travado é gerado pelo apurarKg de verdade, não escrito à mão: fixture
+   de objeto travado envelhece e passa a testar o que eu imaginei, não o que
+   o módulo devolve. */
+function carregarMesEmCurso() {
+  const ini = HTML.indexOf('window.MesEmCurso = (function(){');
+  const marca = HTML.indexOf('return { apurar:apurar, apurarKg:apurarKg', ini);
+  const fim = HTML.indexOf('})();', marca) + '})();'.length;
+  const escopo = { window: {} };
+  new Function('window', HTML.slice(ini, fim)).call(escopo, escopo.window);
+  return escopo.window.MesEmCurso;
+}
+const MEC = carregarMesEmCurso();
+
 let falhas = 0, total = 0;
 function ok(nome, obtido, esperado, tol = 0.01) {
   total++;
@@ -165,6 +178,25 @@ afirma('sem quilos no ano → sem selo de peso, a tela não quebra', (() => {
   const x = PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { kg: null }) }), 'x');
   return x.mes.kg === null && (PR.html(x).match(/class="pr-selo"/g) || []).length === 1;
 })());
+
+/* ══ Trava de base — a TV cala quando os quilos não são comparáveis ══
+   O quilosProduzidos da HISTORICO é digitado à mão; lançar ali a linha
+   "Geral" do relatório (produto MAIS volume) dobra o peso do ano e a tela
+   afirmaria "peça 50% mais leve" com toda a confiança, num telão, para a
+   fábrica inteira. apurarKg anula a comparação; aqui se prova que a tela
+   de divulgação fica em silêncio em vez de repetir o número. */
+sec('Trava de base — peso suspeito não vai para a tela');
+/* mesmo corte de SET/26, com o peso do ano dobrado (o erro conhecido) */
+const KG_TRAVADO = MEC.apurarKg(457677.2, 26178, 13, 34810,
+  { kg: 807600 * 2, pecas: 30451, dias: 20, meses: 1 });
+const T = PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { kg: KG_TRAVADO }) }), 'x');
+afirma('o apurarKg de verdade marcou suspeita', KG_TRAVADO.nivel === 'suspeita' && KG_TRAVADO.kgPecaAno === null);
+afirma('o mês não carrega peso', T.mes.kg === null);
+afirma('sobra só o selo da hora extra', (PR.html(T).match(/class="pr-selo"/g) || []).length === 1);
+afirma('nada de "mais leve" na tela inteira', !/mais leve/.test(PR.html(T)));
+afirma('a nota de peso do rodapé também sai', !T.notas.some(n => /Peça do mês/.test(n.txt)));
+afirma('o veredito do mês em peças não muda — o plano é em peças',
+  T.mes.status === PR.modelo(U, 'x').mes.status);
 
 /* ══ Rodapé ══ */
 sec('Rodapé — a ressalva que a manchete em peças não conta');

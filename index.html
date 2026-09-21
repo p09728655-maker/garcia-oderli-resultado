@@ -17251,17 +17251,53 @@ window.MesEmCurso = (function(){
      quilos do corte (produtos acabados, peso bruto do reporte, com HE) contra
      quilosProduzidos dos meses fechados do ano (o mesmo relatório, com HE).
      Não muda o semáforo do plano; é uma segunda leitura, com cor própria. */
+  /* ── Trava de base ──
+     kg por peça é propriedade do mix, e mix se move devagar: trocar o
+     portfólio inteiro em um mês não acontece. Meia vez para menos ou uma vez
+     e meia para mais contra a média do ano não é mix, é base diferente.
+     O caso conhecido: o peso do corte sai das linhas de PRODUTO do relatório
+     e só é gravado se a soma bater com a linha "Geral" do próprio PDF; o
+     quilosProduzidos da HISTORICO é digitado à mão, e digitar o "Geral" (que
+     soma produto E volume) praticamente dobra o peso do mês fechado. O erro
+     não dá erro nenhum — dá um número plausível e uma conclusão invertida.
+     Fora da faixa, a comparação com o ano é ANULADA (kgDiaAno, kgPecaAno e
+     as diferenças voltam null): todo consumidor já testa esses campos antes
+     de falar, então o painel cai para o número do mês, a tela de divulgação
+     não mostra selo de peso, e só o texto do bloco diz o que conferir.
+     Calar é melhor que afirmar errado num telão.
+
+     A régua é 1,67× em qualquer direção (0,60 a 1,67), calibrada pelo erro
+     que se quer pegar e não pelo dado que se tem: a duplicação cai em 0,50 e
+     sobra margem, e mix de 40% mais leve ou 67% mais pesado continua passando.
+     Ela é um piso, não um atestado: mês genuinamente pesado com base do ano
+     dobrada pode cair dentro da faixa (1,30 × 0,50 = 0,65). Quem resolve de
+     verdade é trocar a coluna digitada pelo peso vindo do mesmo relatório
+     conferido; enquanto ela existir, a trava só evita a afirmação errada
+     mais provável. */
+  var KG_RAZAO_MIN=0.6, KG_RAZAO_MAX=1/0.6;
+
   function apurarKg(pesoMes, real, diasDec, plano, ano){
     var peso=+pesoMes||0; ano=ano||{};
     if(!(peso>0)||!(real>0)||!(diasDec>0)) return null;
     var kgDiaMes=peso/diasDec, kgPecaMes=peso/real;
     var temAno=+ano.kg>0&&+ano.pecas>0&&+ano.dias>0;
     var kgDiaAno=temAno?ano.kg/ano.dias:null, kgPecaAno=temAno?ano.kg/ano.pecas:null;
+    var razao=temAno?kgPecaMes/kgPecaAno:null;
+    var baseOk=!temAno||(razao>=KG_RAZAO_MIN&&razao<=KG_RAZAO_MAX);
+    if(!baseOk){ temAno=false; kgDiaAno=null; kgPecaAno=null; }
     var difDia=temAno?(kgDiaMes/kgDiaAno-1)*100:null, difPeca=temAno?(kgPecaMes/kgPecaAno-1)*100:null;
     var o={ pesoMes:peso, kgDiaMes:kgDiaMes, kgPecaMes:kgPecaMes, kgDiaAno:kgDiaAno, kgPecaAno:kgPecaAno,
             difDiaPct:difDia, difPecaPct:difPeca, planoKgMes:plano>0?plano*kgPecaMes:null,
-            planoKgAno:(plano>0&&temAno)?plano*kgPecaAno:null, mesesAno:ano.meses||0 };
-    if(!temAno){
+            planoKgAno:(plano>0&&temAno)?plano*kgPecaAno:null, mesesAno:ano.meses||0,
+            baseOk:baseOk, razaoBase:razao, kgPecaAnoBruto:baseOk?null:ano.kg/ano.pecas };
+    if(!baseOk){
+      o.nivel='suspeita'; o.cor='#F44336';
+      o.texto='A peça do corte pesa <b>'+fd(kgPecaMes,1)+' kg</b> e a média dos meses fechados dá <b>'+fd(o.kgPecaAnoBruto,1)
+        +' kg</b> — '+fd(o.kgPecaAnoBruto/kgPecaMes,1)+'× de diferença. Isso não é mudança de mix: as duas pontas não saem da mesma base. '
+        +'O peso do corte só é gravado se a soma das linhas de produto bater com a linha "Geral" do próprio relatório; '
+        +'o <code>quilosProduzidos</code> da HISTORICO é digitado à mão. <b>Confira um mês fechado:</b> se o valor lançado for o da linha '
+        +'"Geral", ele soma produto e volume e praticamente dobra o peso. Até conferir, o mês não é comparado em quilos e o peso não entra na tela de divulgação.';
+    } else if(!temAno){
       o.nivel='sem'; o.cor='#888888';
       o.texto='O corte pesa '+ton(peso)+' ('+fd(kgPecaMes,1)+' kg por peça). Sem quilos nos meses fechados do ano (coluna quilosProduzidos da HISTORICO) não há com o que comparar.';
     } else if(difDia>=-5){
@@ -17488,7 +17524,8 @@ window.MesEmCurso = (function(){
   }
 
   return { apurar:apurar, apurarKg:apurarKg, apurarHE:apurarHE, explicarRitmos:explicarRitmos, diasUteis:diasUteis, diasUteisDoMes:diasUteisDoMes, ultimoCorte:ultimoCorte,
-           deIso:deIso, ddmm:ddmm, ORDEM_M:ORDEM_M, DIAS_CORTE_VELHO:DIAS_CORTE_VELHO };
+           deIso:deIso, ddmm:ddmm, ORDEM_M:ORDEM_M, DIAS_CORTE_VELHO:DIAS_CORTE_VELHO,
+           KG_RAZAO_MIN:KG_RAZAO_MIN, KG_RAZAO_MAX:KG_RAZAO_MAX };
 })();
 
 /* ══ PLANEJAMENTO MESTRE ══
@@ -17753,10 +17790,13 @@ window.MesEmCurso = (function(){
     var kg='';
     if(c.kg&&c.estado!=='encerrado'){
       var k=c.kg, tem=k.kgDiaAno!==null;
+      /* sem base e base que não confere são coisas diferentes: uma é falta de
+         dado, a outra é dado errado. O rótulo do card tem de distinguir. */
+      var semAno=k.nivel==='suspeita'?'base do ano não confere':'sem base no ano';
       kg='<div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:16px 0 8px;padding-left:2px">▸ Em quilos — o plano é em peças; o mix muda o peso da peça</div>'
         +'<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">'
-        +card('Massa por dia', ton(k.kgDiaMes), tem?('vs '+ton(k.kgDiaAno)+' média do ano · '+pctSinal(k.difDiaPct)):'sem base no ano', k.cor)
-        +card('Peso por peça', fd(k.kgPecaMes,1)+' kg', tem?('vs '+fd(k.kgPecaAno,1)+' kg no ano · '+pctSinal(k.difPecaPct)):'sem base no ano', k.cor)
+        +card('Massa por dia', ton(k.kgDiaMes), tem?('vs '+ton(k.kgDiaAno)+' média do ano · '+pctSinal(k.difDiaPct)):semAno, k.cor)
+        +card('Peso por peça', fd(k.kgPecaMes,1)+' kg', tem?('vs '+fd(k.kgPecaAno,1)+' kg no ano · '+pctSinal(k.difPecaPct)):semAno, k.cor)
         +card('Plano em quilos', ton(k.planoKgMes), fi(c.plano)+' pç no mix do mês'+(k.planoKgAno!==null?' · '+ton(k.planoKgAno)+' no mix do ano':''), '#00E5FF')
         +'</div>'
         +'<div style="margin-top:10px;padding:9px 13px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.8rem;color:var(--t1);line-height:1.5;'
@@ -17786,7 +17826,7 @@ window.MesEmCurso = (function(){
       +(c.acao?'<div style="margin-top:10px;padding:9px 13px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.78rem;color:var(--t2);'
         +'border-left:2px solid rgba('+c.rgb+',.45)"><b style="color:var(--t1)">Ação recomendada:</b> '+c.acao+'</div>':'')
       +cards+kg+he+avisos
-      +'<div style="font-size:.66rem;color:var(--t3);margin-top:8px">Fonte: "3 - REPORTE" de 01/'+mm+' a '+c.ate+' (aba PARCIAL_MES) — produtos acabados, com hora extra; quilos = peso bruto das linhas de produto, a mesma base do quilosProduzidos dos meses fechados; hora extra = resumo diário da Embalagem (MODELO_HORA_A_HORA), lido ao vivo. '
+      +'<div style="font-size:.66rem;color:var(--t3);margin-top:8px">Fonte: "3 - REPORTE" de 01/'+mm+' a '+c.ate+' (aba PARCIAL_MES) — produtos acabados, com hora extra; quilos = peso bruto das linhas de produto'+((c.kg&&c.kg.baseOk===false)?', que NÃO fechou com o quilosProduzidos dos meses fechados (ver o bloco de quilos)':', a mesma base do quilosProduzidos dos meses fechados')+'; hora extra = resumo diário da Embalagem (MODELO_HORA_A_HORA), lido ao vivo. '
       +'O "esperado" é a curva linear do plano: referência para ler o atraso, não meta diária.</div>'
       +'</div>';
   }
@@ -23111,9 +23151,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.15';
+var APP_VERSAO = 'b96.16';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.16', data:'21/09/2026', itens:[
+    'Trava de base nos quilos. O peso do corte parcial so e gravado se a soma das linhas de produto bater com a linha "Geral" do proprio relatorio; ja o quilosProduzidos dos meses fechados e digitado a mao na HISTORICO. Lancar ali a linha "Geral" — que soma produto E volume — praticamente dobra o peso do mes, e a tela concluia "peca mais leve, mix" com toda a confianca. O erro nao da erro: da numero plausivel e conclusao invertida.',
+    'Agora o apurarKg compara o kg por peca do corte com a media do ano e, fora da faixa de 0,60 a 1,67 (1,67x em qualquer direcao), ANULA a comparacao: kg/dia do ano, kg/peca do ano e as diferencas voltam vazios. Como todo consumidor ja testava esses campos antes de falar, o efeito e automatico — o painel cai para o numero do mes e marca "base do ano nao confere", a explicacao dos ritmos para de citar quilos, e a tela /plano nao mostra selo de peso nem a nota do rodape. Num telao, calar e melhor que afirmar errado.',
+    'So o bloco de quilos do painel fala, e fala para quem resolve: mostra os dois valores, quantas vezes diferem, e manda conferir um mes fechado contra a linha "Geral". A regua foi calibrada pelo erro que se quer pegar (a duplicacao cai em 0,50, com margem) e nao pelo dado que se tem — mix de 40% mais leve ou 67% mais pesado continua passando. Ela e piso, nao atestado: mes genuinamente pesado com base dobrada pode escapar. A solucao de verdade e o peso dos meses fechados vir do mesmo relatorio conferido, em vez de coluna digitada.',
+    '22 testes novos, com o objeto travado gerado pelo apurarKg de verdade em vez de escrito a mao. 479 no total, e as 16 abas do painel com diff zero de pixel e de texto.'
+  ]},
   { v:'b96.15', data:'21/09/2026', itens:[
     'Tela /plano: os percentuais eram os menores numeros da tela, justamente os que dizem plano x realizado. O % do plano sob a barra vai de 15 px para 34 px no telao (23 no notebook, 20 no celular) e o % de cada mes na fita de 17 para 23 px.',
     'A causa era estrutural, nao so escolha de tamanho: toda a tela usa rem, que e relativo a RAIZ e nao ao elemento, entao o font-size:19px do modo telao nao escalava nada — so cresciam os tamanhos sobrescritos um a um na media query, e o % do plano nunca tinha sido. Os quatro percentuais agora estao declarados em cada faixa.',

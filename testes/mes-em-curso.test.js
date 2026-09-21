@@ -165,6 +165,51 @@ afirma('sem peso no corte → null (o bloco esconde a linha)', M.apurarKg(0, 261
 afirma('apurar() carrega kg quando pesoMes e kgAno vêm junto', (() => { const x = com({ pesoMes: 457677.2, kgAno: KG_ANO }); return x.kg && x.kg.nivel === 'atencao' && x.estado === 'verde'; })());
 afirma('apurar() sem pesoMes → kg null e o resto igual', com({}).kg === null);
 
+/* ══ Trava de base — quando os quilos do ano não são comparáveis ══
+   O peso do corte é conferido contra a linha "Geral" do próprio relatório;
+   o quilosProduzidos da HISTORICO é digitado. Lançar ali o "Geral" (produto
+   MAIS volume) dobra o peso do mês fechado, e a tela conclui "mix leve" com
+   toda a confiança. A trava não conserta o dado — cala a comparação. */
+sec('Trava de base — diferença grande demais para ser mix');
+/* o erro conhecido: ano com o dobro do peso real (26,5 → 53,0 kg/pç) */
+const KG_DOBRADO = { kg: 807600 * 2, pecas: 30451, dias: 20, meses: 1 };
+const kd = M.apurarKg(457677.2, 26178, 13, 34810, KG_DOBRADO);
+afirma('base dobrada → nível "suspeita", vermelho', kd.nivel === 'suspeita' && kd.cor === '#F44336');
+afirma('baseOk false e a razão registrada', kd.baseOk === false && Math.abs(kd.razaoBase - 0.3297) < 0.001);
+afirma('a comparação com o ano é anulada em TODOS os campos',
+  kd.kgDiaAno === null && kd.kgPecaAno === null && kd.difDiaPct === null
+  && kd.difPecaPct === null && kd.planoKgAno === null);
+afirma('mas o mês continua medido: a trava cala a comparação, não apaga o corte',
+  Math.abs(kd.kgDiaMes - 35205.94) < 0.01 && Math.abs(kd.kgPecaMes - 17.483) < 0.001
+  && Math.abs(kd.planoKgMes - 608592.84) < 0.01);
+afirma('guarda o número bruto do ano para quem for conferir', Math.abs(kd.kgPecaAnoBruto - 53.043) < 0.001);
+afirma('o texto manda conferir a linha "Geral" do relatório', /Geral/.test(kd.texto) && /quilosProduzidos/.test(kd.texto));
+afirma('o texto não conclui nada sobre mix', !/mix leve/.test(kd.texto));
+
+/* a régua: 1,67× em qualquer direção, medida do módulo e não copiada */
+const razaoPara = (r) => M.apurarKg(457677.2, 26178, 13, 34810,
+  { kg: (17.483 / r) * 30451, pecas: 30451, dias: 20, meses: 1 });
+afirma('a régua é 0,60 a 1,67', Math.abs(M.KG_RAZAO_MIN - 0.6) < 1e-9 && Math.abs(M.KG_RAZAO_MAX - 1 / 0.6) < 1e-9);
+afirma('razão 0,62 (peça 38% mais leve) ainda é mix → compara', razaoPara(0.62).baseOk === true);
+afirma('razão 0,58 (peça 42% mais leve) já não é mix → trava', razaoPara(0.58).baseOk === false);
+afirma('o erro é simétrico: razão 1,80 (ano bem mais leve) também trava', razaoPara(1.80).baseOk === false);
+afirma('razão 1,60 passa', razaoPara(1.60).baseOk === true);
+afirma('caso normal marca baseOk true', k.baseOk === true && k.razaoBase !== null);
+afirma('sem quilos no ano → baseOk true (falta de dado não é dado errado)',
+  M.apurarKg(457677.2, 26178, 13, 34810, { kg: 0, pecas: 0, dias: 0 }).baseOk === true);
+afirma('apurar() propaga a suspeita sem mexer no semáforo do plano', (() => {
+  const x = com({ pesoMes: 457677.2, kgAno: KG_DOBRADO });
+  return x.kg.nivel === 'suspeita' && x.estado === com({ pesoMes: 457677.2, kgAno: KG_ANO }).estado;
+})());
+afirma('a explicação dos ritmos para de citar quilos quando a base não confere', (() => {
+  /* explicarRitmos lê o mês em u.curso; só o que sobrevive à trava chega lá */
+  const conta = (kgAno) => JSON.stringify(M.explicarRitmos(
+    { diasPlanoAno: 240, planoAno: 400000, diasPlanFech: 160, planoFech: 260000,
+      diasFech: 160, normalFech: 213440, diasAbertos: 60, planoAberto: 99000,
+      curso: com({ pesoMes: 457677.2, kgAno: kgAno }) }));
+  return !/t\/dia contra/.test(conta(KG_DOBRADO)) && /t\/dia contra/.test(conta(KG_ANO));
+})());
+
 /* ══ Como ler os ritmos — a explicação é calculada, com os números de 21/09/26 ══ */
 sec('explicarRitmos — cinco réguas, uma conta cada, com os números da tela');
 const U = { planoAno: 362296, diasPlanoAno: 240, planoFech: 236317, diasPlanFech: 162, normalFech: 216108, diasFech: 162, heP: 27269,
