@@ -5296,6 +5296,7 @@ function _recarregarDoSheets(){
          a chave e nada muda. */
       if (json.parcial)  { try { localStorage.setItem('dash_parcial_v1',  JSON.stringify(json.parcial));  } catch (e) {} }
       if (json.feriados) { try { localStorage.setItem('dash_feriados_v1', JSON.stringify(json.feriados)); } catch (e) {} }
+      if (json.embalagemDia) { try { localStorage.setItem('dash_emb_dia_v1', JSON.stringify(json.embalagemDia)); } catch (e) {} }
       if (json.metas) { try { aplicarMetas(json.metas, true); } catch (e) {} }
       return dados;
     });
@@ -5340,6 +5341,7 @@ function _carregarDoSheetsAoAbrir(){
          a chave e nada muda. */
       if (json.parcial)  { try { localStorage.setItem('dash_parcial_v1',  JSON.stringify(json.parcial));  } catch (e) {} }
       if (json.feriados) { try { localStorage.setItem('dash_feriados_v1', JSON.stringify(json.feriados)); } catch (e) {} }
+      if (json.embalagemDia) { try { localStorage.setItem('dash_emb_dia_v1', JSON.stringify(json.embalagemDia)); } catch (e) {} }
       /* Plano de ação da Reunião (aba ACOES). Mescla com o local: a versão
          mais nova de cada ação vence, e o que só existe aqui é reenviado. */
       if (json.acoes && window.Acoes) { try { window.Acoes.mesclar(json.acoes); } catch (e) { console.warn('ACOES:', e); } }
@@ -17260,7 +17262,8 @@ window.MesEmCurso = (function(){
   /* p = { plano, realizado, dataCorte:'AAAA-MM-DD', diasPlanejados, ritmoDem,
            limHE (% — META_DEP_HE), feriados:['AAAA-MM-DD'…], hoje:'AAAA-MM-DD',
            melhorMesDia (pç/dia com HE do melhor mês fechado, para a sanidade),
-           pesoMes (kg do corte), kgAno:{ kg, pecas, dias, meses } dos meses fechados } */
+           pesoMes (kg do corte), kgAno:{ kg, pecas, dias, meses } dos meses fechados,
+           embDias:[{ data, realizado, heCx, heHoras }] do resumo diário da Embalagem } */
   function apurar(p){
     p=p||{};
     var plano=+p.plano||0, real=+p.realizado||0, avisos=[];
@@ -17300,11 +17303,13 @@ window.MesEmCurso = (function(){
       avisos.push('Ritmo de '+fi(ritmoAtual)+' pç/dia é '+fd((ritmoAtual/p.melhorMesDia-1)*100,0)+'% acima do melhor mês fechado ('+fi(p.melhorMesDia)+'). Confira o período do corte antes de confiar no veredito.');
 
     var nums={ kg:apurarKg(p.pesoMes, real, diasDec, plano, p.kgAno),
+               he:apurarHE(p.embDias, p.dataCorte, real, diasDec, diasRest, plano, ritmoDem, limHE),
                diasDecorridos:diasDec, diasRestantes:diasRest, diasPlanejados:diasPlan, diasCalendario:diasCal,
                faltaProduzir:falta, ritmoNecRestante:ritmoNec, ritmoAtualMes:ritmoAtual, projecaoMes:proj,
                esperadoAte:esperado, aderenciaAte:ader, pctFeito:pctFeito, pctMes:pctMes,
                ritmoRef:ref, ritmoRefNome:refNome, limHE:limHE, idadeCorte:idade, mes:ORDEM_M[m], ano:y };
 
+    if(nums.he&&nums.he.avisos.length) nums.he.avisos.forEach(function(a){ avisos.push(a); });
     if(diasDec<=0) return saida('sem', Object.assign(nums, { titulo:'SEM DIA ÚTIL NO CORTE',
       frase:'O corte de '+base.ate+' não tem dia útil decorrido — confira a data.', acao:'' }));
 
@@ -17342,6 +17347,40 @@ window.MesEmCurso = (function(){
       acao='Decidir hoje: hora extra acima do limite, transferir lote para o mês seguinte ou repactuar o plano com o comercial.';
     }
     return saida(estado, Object.assign(nums, { titulo:titulo, frase:frase, acao:acao }));
+  }
+
+  /* ── Hora extra do mês em curso ──
+     O reporte não separa jornada normal de extra; a Embalagem separa, por
+     dia (caixas e horas em HE). Filtra os dias do mês até o corte e devolve
+     a fatia de HE contra o limite (META_DEP_HE), os dias apontados de fato
+     e o que o mês faria sem hora extra. Premissa dita na tela: a fatia de
+     HE em caixas vale como fatia em peças. Não muda o semáforo do plano. */
+  function apurarHE(dias, dataCorte, real, diasDec, diasRest, plano, ritmoDem, limHE){
+    if(!Array.isArray(dias)||!dias.length) return null;
+    var corte=deIso(dataCorte); if(!corte) return null;
+    var ym=dataCorte.slice(0,7), ate=dataCorte.slice(0,10);
+    var cx=0, heCx=0, heH=0, n=0;
+    dias.forEach(function(d){
+      if(!d||String(d.data||'').slice(0,7)!==ym||String(d.data)>ate) return;
+      var r=+d.realizado||0; if(!(r>0)) return;
+      cx+=r; heCx+=(+d.heCx||0); heH+=(+d.heHoras||0); n++;
+    });
+    if(!(cx>0)) return null;
+    var hePct=heCx/cx*100, lim=(+limHE>=0)?+limHE:8;
+    var nivel=hePct<=lim?'dentro':(hePct<=lim*1.1?'perto':'acima');
+    var cor=nivel==='dentro'?'#4CAF50':(nivel==='perto'?'#FF9800':'#F44336');
+    var diasBase=n>0?n:diasDec;
+    var realSemHE=real*(1-hePct/100);
+    var ritmoSemHE=diasBase>0?realSemHE/diasBase:0;
+    var projSemHE=realSemHE+ritmoSemHE*diasRest;
+    var avisos=[];
+    if(n!==diasDec) avisos.push('A Embalagem apontou '+n+' dias até '+ddmm(dataCorte)+' e o calendário dá '+diasDec+' dias úteis — o ritmo sem hora extra usa os dias apontados.');
+    var texto='Hora extra até <b>'+ddmm(dataCorte)+'</b>: <b>'+fd(hePct,1)+'%</b> do volume ('+fi(heCx)+' de '+fi(cx)+' caixas, '+fi(heH)+' h em '+n+' dias) — '
+      +(nivel==='dentro'?'dentro do limite de '+fd(lim,0)+'%.':nivel==='perto'?'bem perto do limite de '+fd(lim,0)+'%.':'<b>acima do limite de '+fd(lim,0)+'%</b>.')
+      +' Sem hora extra o mês faria <b>'+fi(ritmoSemHE)+' pç/dia</b>'+(ritmoDem>0?' (demonstrado: '+fi(ritmoDem)+')':'')
+      +' e fecharia em <b>'+fi(projSemHE)+'</b> peças'+(plano>0?(projSemHE>=plano?' — cobre o plano.':' — '+fi(plano-projSemHE)+' abaixo do plano.'):'.');
+    return { cx:cx, heCx:heCx, heHoras:heH, hePct:hePct, diasApontados:n, nivel:nivel, cor:cor, limHE:lim,
+             realSemHE:realSemHE, ritmoSemHE:ritmoSemHE, projSemHE:projSemHE, texto:texto, avisos:avisos };
   }
 
   /* ── Como ler os ritmos ──
@@ -17429,7 +17468,7 @@ window.MesEmCurso = (function(){
              ritmoPlano:rPlano, ritmoExig:rExig, ritmoDem:rDem, ritmoComHE:rComHE, ritmoNec:rNec, ritmoAtual:rAtual };
   }
 
-  return { apurar:apurar, apurarKg:apurarKg, explicarRitmos:explicarRitmos, diasUteis:diasUteis, diasUteisDoMes:diasUteisDoMes, ultimoCorte:ultimoCorte,
+  return { apurar:apurar, apurarKg:apurarKg, apurarHE:apurarHE, explicarRitmos:explicarRitmos, diasUteis:diasUteis, diasUteisDoMes:diasUteisDoMes, ultimoCorte:ultimoCorte,
            deIso:deIso, ddmm:ddmm, ORDEM_M:ORDEM_M, DIAS_CORTE_VELHO:DIAS_CORTE_VELHO };
 })();
 
@@ -17704,6 +17743,17 @@ window.MesEmCurso = (function(){
         +'<div style="margin-top:10px;padding:9px 13px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.8rem;color:var(--t1);line-height:1.5;'
         +'border-left:2px solid '+k.cor+'">'+k.texto+'</div>';
     }
+    var he='';
+    if(c.he&&c.estado!=='encerrado'){
+      he='<div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:16px 0 8px;padding-left:2px">▸ Hora extra — apontamento diário da Embalagem</div>'
+        +'<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">'
+        +card('Hora extra até '+c.ate, fd(c.he.hePct,1)+'%', fi(c.he.heCx)+' de '+fi(c.he.cx)+' caixas · '+fi(c.he.heHoras)+' h · limite '+fd(c.he.limHE,0)+'%', c.he.cor)
+        +card('Ritmo sem hora extra', fi(c.he.ritmoSemHE)+' pç/dia', 'vs '+fi(c.ritmoRef)+' '+c.ritmoRefNome, c.he.ritmoSemHE>=c.ritmoRef?'#4CAF50':'#FF9800')
+        +card('Projeção sem hora extra', fi(c.he.projSemHE)+' pç', c.he.projSemHE>=c.plano?'cobre o plano de '+fi(c.plano):fi(c.plano-c.he.projSemHE)+' abaixo do plano', c.he.projSemHE>=c.plano?'#4CAF50':'#FF9800')
+        +'</div>'
+        +'<div style="margin-top:10px;padding:9px 13px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.8rem;color:var(--t1);line-height:1.5;'
+        +'border-left:2px solid '+c.he.cor+'">'+c.he.texto+' <span style="color:var(--t3)">A fatia de hora extra em caixas vale como fatia em peças.</span></div>';
+    }
     return cab
       +'<div style="background:linear-gradient(135deg,var(--panel),rgba('+c.rgb+',.05));border:1px solid var(--b);'
       +'border-left:5px solid '+c.cor+';border-radius:var(--r);padding:18px 22px;margin-bottom:16px">'
@@ -17716,8 +17766,8 @@ window.MesEmCurso = (function(){
       +'<div style="font-size:.88rem;color:var(--t1);line-height:1.55;max-width:960px;margin-top:10px">'+c.frase+'</div>'
       +(c.acao?'<div style="margin-top:10px;padding:9px 13px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.78rem;color:var(--t2);'
         +'border-left:2px solid rgba('+c.rgb+',.45)"><b style="color:var(--t1)">Ação recomendada:</b> '+c.acao+'</div>':'')
-      +cards+kg+avisos
-      +'<div style="font-size:.66rem;color:var(--t3);margin-top:8px">Fonte: "3 - REPORTE" de 01/'+mm+' a '+c.ate+' (aba PARCIAL_MES) — produtos acabados, com hora extra; quilos = peso bruto das linhas de produto, a mesma base do quilosProduzidos dos meses fechados. '
+      +cards+kg+he+avisos
+      +'<div style="font-size:.66rem;color:var(--t3);margin-top:8px">Fonte: "3 - REPORTE" de 01/'+mm+' a '+c.ate+' (aba PARCIAL_MES) — produtos acabados, com hora extra; quilos = peso bruto das linhas de produto, a mesma base do quilosProduzidos dos meses fechados; hora extra = resumo diário da Embalagem (MODELO_HORA_A_HORA), lido ao vivo. '
       +'O "esperado" é a curva linear do plano: referência para ler o atraso, não meta diária.</div>'
       +'</div>';
   }
@@ -17867,7 +17917,7 @@ window.MesEmCurso = (function(){
     var curso=cursoRec?MesEmCurso.apurar({ plano:cursoRec.plano, realizado:+cursoRec.parc.produtos, dataCorte:cursoRec.parc.dataCorte,
       diasPlanejados:cursoRec.diasP, ritmoDem:ritmoDem, limHE:(typeof META_DEP_HE!=='undefined')?META_DEP_HE:8,
       feriados:feriados, hoje:hojeIso(), melhorMesDia:melhorDia,
-      pesoMes:+cursoRec.parc.peso, kgAno:kgAno }):null;
+      pesoMes:+cursoRec.parc.peso, kgAno:kgAno, embDias:lerLocal('dash_emb_dia_v1') }):null;
     var explic=MesEmCurso.explicarRitmos({ planoAno:planoAno, diasPlanoAno:diasPlanoAno, planoFech:planoFech, diasPlanFech:diasPlanFech,
       normalFech:normalFech, diasFech:diasFech, heP:heP, planoAberto:planoAberto, diasAbertos:diasAbertos, fechados:fechados, curso:curso });
 
@@ -23042,9 +23092,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.9';
+var APP_VERSAO = 'b96.10';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.10', data:'21/09/2026', itens:[
+    'Mes em curso ganha a HORA EXTRA, lida ao vivo do apontamento diario da Embalagem (planilha MODELO_HORA_A_HORA, aba de resumo com DATA, REALIZADO, META, HE e HE CX). O reporte do ERP nao separa jornada normal de extra; a Embalagem separa, por dia. Tres cards — % de hora extra ate o corte contra o limite META_DEP_HE (8%), ritmo sem hora extra contra o demonstrado, e a projecao do mes sem hora extra contra o plano — e a frase que diz se cobre. Em 01 a 18/09: 16,3% do volume em HE (4.534 de 27.899 caixas, 20 h), acima do limite.',
+    'Premissa dita na tela: a fatia de hora extra em caixas vale como fatia em pecas. Os dias apontados pela Embalagem sao os dias trabalhados de fato — se diferirem do calendario (sabado, por exemplo), o bloco avisa e usa os apontados. Nao muda o semaforo do plano: o que falta cabe ou nao cabe na jornada independe do que ja foi feito com HE.',
+    'Code.gs: lerEmbalagemDia abre a planilha da Embalagem por ID (EMB_SHEET_ID) e acha a aba pelo cabecalho, nao pelo nome; falha vira lista vazia com o motivo, nunca erro no doGet. REIMPLANTE O WEB APP. testes/mes-em-curso.test.js: 18 casos com os 13 dias reais de setembro (389 no total).'
+  ]},
   { v:'b96.9', data:'21/09/2026', itens:[
     'Plano Mestre ganha o bloco COMO LER OS RITMOS, abaixo dos cards do ano: cinco numeros com a mesma unidade (pc/dia) e reguas diferentes — do plano, exigido, demonstrado, necessario e o do mes em curso — cada um com o que e, a conta com os numeros do momento (362.296 / 240 = 1.510…) e como ler. Mais a leitura de conjunto e as duas confusoes que aparecem em reuniao (exigido menor que o do plano nao e folga; o ritmo do mes com hora extra nao se compara com o demonstrado). Aberto por padrao, com botao para ocultar; a escolha fica no navegador. O relatorio em PDF traz a mesma tabela.',
     'A explicacao e calculada, nao escrita: MesEmCurso.explicarRitmos recebe os totais e devolve o texto, entao tela e PDF nunca divergem, e o teste confere as frases contra os numeros reais de 21/09/26 (21 casos).'

@@ -70,6 +70,12 @@ var ABA_PARCIAL = 'PARCIAL_MES';
 /* Feriados e recessos (data, descricao): é o que faz "dias úteis decorridos"
    do mês em curso sair exato. Mantida pelo PPCP, sem deploy. */
 var ABA_FERIADOS = 'FERIADOS';
+/* Planilha do apontamento hora a hora da Embalagem (RitmoPatrimar · Embalagem,
+   MODELO_HORA_A_HORA). É outra planilha, lida ao vivo por ID: a aba de resumo
+   diário traz, por dia, caixas realizadas, meta, horas e caixas de hora extra.
+   É o único lugar onde a hora extra do mês em curso existe antes do ponto
+   fechar. A aba é achada pelo cabeçalho, não pelo nome. */
+var EMB_SHEET_ID = '1W9bK_IoWknk8eKFbSWCMxILAQcaXuWD2gG7B0jcwFzg';
 var METAS_PADRAO = [
   ['chave','valor','unidade','vigencia','origem','observacao'],
   ['META_ABS',    3,   '%',   '2026-01', 'RH',        'Absenteísmo (faltas + atrasos ÷ h. normais): dentro da meta até este valor. Histórico 2025-26: 9% a 17%'],
@@ -96,6 +102,7 @@ var DICIONARIO_LINHAS = [
   ['(aba PONTO_SETOR)', 'automático', 'ponto + controle', 'Uma linha por mês/ano/setor, diretos e indiretos: pessoas, horasCarga, horasNormais, faltasPonto, atrasosPonto, extra50, extra100, totalExtras, hePctHoras (totalExtras ÷ horasNormais do setor) e as ausências do controle. Hora por setor, não peça por setor; setor = o atual da pessoa na FUNCIONARIOS. Não digitar: o script regrava.'],
   ['(aba PARCIAL_MES)', 'automático', 'ERP', 'Uma linha por corte parcial do mês em curso: o "3 - REPORTE" de 01/MM até a data do corte, salvo na pasta REPORTES PARCIAIS do Drive. produtos = produtos acabados até a data (com hora extra). Alimenta o bloco "Mês em curso" do Plano Mestre; NÃO entra em producaoReal — o mês segue aberto até o reporte fechado.'],
   ['(aba FERIADOS)', 'entrada', 'PPCP', 'Uma linha por feriado ou dia de recesso (data, descricao). Dias úteis decorridos do mês em curso = segunda a sexta menos estas datas. Sem a aba, feriado conta como dia útil e o painel avisa.'],
+  ['(Embalagem — resumo diário)', 'automático', 'RitmoPatrimar Embalagem', 'Lido ao vivo da planilha MODELO_HORA_A_HORA (EMB_SHEET_ID), aba com DATA, REALIZADO, META, HE e HE CX: caixas por dia, horas e caixas de hora extra. Alimenta a linha de hora extra do bloco "Mês em curso": % de HE até o corte contra META_DEP_HE, dias apontados de fato, ritmo e projeção sem HE. Nada é gravado lá.'],
   ['ausFalta / ausAtestado / ausAfastado / ausAtraso', 'automático', 'controle de faltas', 'PontoRH.gs: aba BASE do CONTROLE_FALTAS, horas por STATUS, só para os diretos (mesma base das horas do ponto). Até SET/26 as faltas vinham do departamento 2-PRODUÇÃO inteiro, 18 setores.'],
   ['horasFerias', 'automático', 'controle de faltas', 'HORAS FÉRIAS da BASE, só para os diretos. Sem controle processado: o digitado.'],
   ['faltas / atraso', 'calculado', 'painel', 'Com o controle lançado: faltas = ausFalta + ausAtestado + ausAfastado; atraso = atrasosPonto (o ponto mede o relógio; o controle só registra o que o líder anota) ou, sem ponto, ausAtraso. Sem controle, com ponto: atraso = atrasosPonto; faltas = naoTrabalhadas − horasFerias − atraso. Sem nenhum dos dois: o digitado.'],
@@ -199,6 +206,8 @@ function doGet() {
               /* Mês em curso: cortes parciais e feriados (bloco do Plano Mestre). */
               parcial: lerParcialMes(ss),
               feriados: lerFeriados(ss),
+              /* Hora extra do mês em curso, por dia (planilha da Embalagem). */
+              embalagemDia: lerEmbalagemDia(),
               /* Para o painel dizer PARA QUEM vai enviar antes de enviar. */
               destinatarios: lerDestinatarios(ss),
               geradoEm: new Date().toISOString() };
@@ -655,6 +664,61 @@ function lerParcialMes(ss) {
                geradoEm: col.geradoem >= 0 ? acaoTxt(l[col.geradoem]) : '' });
   }
   return out;
+}
+
+/* ══ EMBALAGEM — resumo diário, de outra planilha ══
+   Devolve [{ data:'AAAA-MM-DD', realizado, meta, eficiencia, heHoras, heCx,
+   mediaCxH }] para todos os dias da aba. Qualquer falha (ID errado, sem
+   permissão, aba sem o cabeçalho) devolve [] com o motivo em `erro` — o
+   painel mostra a linha só quando há dado e diz o que falta quando não há. */
+function lerEmbalagemDia() {
+  var out = [];
+  try {
+    var ss = SpreadsheetApp.openById(EMB_SHEET_ID);
+    var abas = ss.getSheets();
+    for (var s = 0; s < abas.length; s++) {
+      var aba = abas[s];
+      if (aba.getLastRow() < 2) continue;
+      var linhas = aba.getDataRange().getValues();
+      var iCab = -1, col = {};
+      for (var i = 0; i < Math.min(linhas.length, 6) && iCab < 0; i++) {
+        var cab = linhas[i].map(function (c) { return normaliza(c); });
+        if (cab.indexOf('data') >= 0 && cab.indexOf('realizado') >= 0 && cab.indexOf('he cx') >= 0) {
+          iCab = i;
+          cab.forEach(function (n, c) {
+            if (n === 'data') col.data = c;
+            else if (n === 'realizado') col.real = c;
+            else if (n === 'meta') col.meta = c;
+            else if (n.indexOf('eficiencia') === 0) col.ef = c;
+            else if (n === 'he') col.heH = c;
+            else if (n === 'he cx') col.heCx = c;
+            else if (n.indexOf('media cx') === 0) col.med = c;
+          });
+        }
+      }
+      if (iCab < 0) continue;
+      for (var r = iCab + 1; r < linhas.length; r++) {
+        var l = linhas[r], d = embIsoDia(l[col.data]);
+        if (!d) continue;
+        out.push({ data: d, realizado: num(l[col.real]), meta: col.meta >= 0 ? num(l[col.meta]) : 0,
+                   eficiencia: col.ef >= 0 ? num(l[col.ef]) : 0,
+                   heHoras: col.heH >= 0 ? num(l[col.heH]) : 0, heCx: col.heCx >= 0 ? num(l[col.heCx]) : 0,
+                   mediaCxH: col.med >= 0 ? num(l[col.med]) : 0 });
+      }
+      return out;   /* a primeira aba com esse cabeçalho é a de resumo */
+    }
+    out.erro = 'nenhuma aba com DATA, REALIZADO e HE CX';
+  } catch (e) {
+    out.erro = String(e && e.message || e);
+  }
+  return out;
+}
+/* Data da Embalagem: Date do Sheets ou texto dd/mm/aaaa → 'AAAA-MM-DD'. */
+function embIsoDia(v) {
+  var s = acaoTxt(v);
+  var br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (br) return br[3] + '-' + br[2] + '-' + br[1];
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
 }
 
 /* ══ FERIADOS ══

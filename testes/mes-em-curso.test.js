@@ -26,7 +26,7 @@ const HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 function carregarMesEmCurso() {
   const ini = HTML.indexOf('window.MesEmCurso = (function(){');
   if (ini < 0) throw new Error('MesEmCurso não encontrado no index.html');
-  const marca = HTML.indexOf('return { apurar:apurar, apurarKg:apurarKg, explicarRitmos:explicarRitmos', ini);
+  const marca = HTML.indexOf('return { apurar:apurar, apurarKg:apurarKg, apurarHE:apurarHE, explicarRitmos:explicarRitmos', ini);
   if (marca < 0) throw new Error('fim de MesEmCurso não reconhecido');
   const fim = HTML.indexOf('})();', marca) + '})();'.length;
   const escopo = { window: {} };
@@ -194,6 +194,34 @@ afirma('sem meses fechados: exigido vale o do plano e o texto diz por quê', (()
 afirma('restante mais leve que o demonstrado → "cabe na jornada normal"', /cabe na jornada normal/.test(M.explicarRitmos(Object.assign({}, U, { planoAberto: 90000 })).itens[3].comoLer));
 afirma('restante entre o demonstrado e a média do plano (1.380): "mais leve que a média, mas acima do que a fábrica entrega"',
   /mais leve que a média do ano, mas acima do que a fábrica entrega/.test(M.explicarRitmos(Object.assign({}, U, { planoAberto: 1380 * 76 })).leitura[1]));
+
+/* ══ Hora extra — resumo diário da Embalagem, os 13 dias reais de 01 a 18/09/26 ══ */
+sec('apurarHE — fatia de hora extra até o corte, dias apontados, ritmo e projeção sem HE');
+const EMB = [ ['2026-09-01',2441,2,660],['2026-09-02',2537,2,678],['2026-09-03',2562,2,752],['2026-09-04',1602,2,350],
+  ['2026-09-08',2588,0,0],['2026-09-09',1452,0,0],['2026-09-10',1273,2,115],['2026-09-11',1561,2,326],['2026-09-14',1272,0,0],
+  ['2026-09-15',3217,2,224],['2026-09-16',1797,2,285],['2026-09-17',3913,2,673],['2026-09-18',1684,2,471],
+  ['2026-09-21',900,0,0],                       /* depois do corte: fica de fora */
+  ['2026-08-31',2000,2,500] ]                   /* outro mês: fica de fora */
+  .map(r => ({ data: r[0], realizado: r[1], heHoras: r[2], heCx: r[3] }));
+const H = M.apurarHE(EMB, '2026-09-18', 26178, 13, 8, 34810, 1334, 8);
+ok('caixas até 18/09 = 27.899 (só o mês, só até o corte)', H.cx, 27899, 0);
+ok('caixas em hora extra = 4.534',                     H.heCx, 4534, 0);
+ok('horas de hora extra = 20',                         H.heHoras, 20, 0);
+ok('fatia de hora extra = 16,25%',                     H.hePct, 16.25, 0.01);
+ok('dias apontados = 13',                              H.diasApontados, 13, 0);
+ok('realizado sem HE = 26.178 × (1 − 4.534 ÷ 27.899)',  H.realSemHE, 21923.69, 0.01);
+ok('ritmo sem HE = 21.923,69 ÷ 13',                    H.ritmoSemHE, 1686.44, 0.01);
+ok('projeção sem HE = 21.923,69 × 21 ÷ 13',            H.projSemHE, 35415.19, 0.01);
+afirma('16,3% > 8% → acima do limite, vermelho', H.nivel === 'acima' && H.cor === '#F44336' && /acima do limite de 8%/.test(H.texto));
+afirma('projeção sem HE (35.416) cobre o plano (34.810) → "cobre o plano"', /cobre o plano/.test(H.texto));
+afirma('13 dias apontados = 13 do calendário → sem aviso', H.avisos.length === 0);
+afirma('sábado apontado (14 dias) → aviso e ritmo pelos 14', (() => { const x = M.apurarHE(EMB.concat([{ data: '2026-09-12', realizado: 800, heHoras: 4, heCx: 800 }]), '2026-09-18', 26178, 13, 8, 34810, 1334, 8); return x.diasApontados === 14 && x.avisos.some(a => /apontou 14 dias/.test(a)) && Math.abs(x.ritmoSemHE - x.realSemHE / 14) < 0.01; })());
+afirma('limite 20% → dentro, verde', M.apurarHE(EMB, '2026-09-18', 26178, 13, 8, 34810, 1334, 20).nivel === 'dentro');
+afirma('limite 15% → 16,25 ≤ 16,5 → "bem perto", laranja', (() => { const x = M.apurarHE(EMB, '2026-09-18', 26178, 13, 8, 34810, 1334, 15); return x.nivel === 'perto' && x.cor === '#FF9800'; })());
+afirma('sem dias do mês → null (linha escondida)', M.apurarHE(EMB, '2026-10-09', 5000, 6, 15, 34810, 1334, 8) === null);
+afirma('lista vazia → null', M.apurarHE([], '2026-09-18', 26178, 13, 8, 34810, 1334, 8) === null);
+afirma('apurar() carrega he quando embDias vem junto, e o estado segue verde', (() => { const x = com({ embDias: EMB }); return x.he && x.he.nivel === 'acima' && x.estado === 'verde'; })());
+afirma('apurar() sem embDias → he null', com({}).he === null);
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
