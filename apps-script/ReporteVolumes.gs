@@ -573,10 +573,33 @@ function rvGarantirAbaParcial(ss) {
   return aba;
 }
 
+/* Célula que pode ter virado Date: o Sheets converte '2026-09-18' ao gravar
+   por appendRow, mesmo com a coluna em texto, e String(Date) é "Thu Sep 18
+   2026…" — foi assim que o mesmo corte entrou três vezes na PARCIAL_MES: a
+   chave nunca casava. Devolve 'AAAA-MM-DD' no calendário da planilha (os
+   getters locais, como o acaoTxt do Code.gs); texto passa como está. */
+function rvIsoDia(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    if (isNaN(v.getTime())) return '';
+    var m = v.getMonth() + 1, d = v.getDate();
+    return v.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+  }
+  return String(v === null || v === undefined ? '' : v).trim().slice(0, 10);
+}
+
+/* Escreve a linha com dataCorte e geradoEm forçados a texto ANTES do valor
+   entrar — setNumberFormat('@') na célula e depois setValues; appendRow não
+   respeita o formato e reconverte. */
+function rvEscreverParcial(aba, row, linha) {
+  aba.getRange(row, 3).setNumberFormat('@');
+  aba.getRange(row, 7).setNumberFormat('@');
+  aba.getRange(row, 1, 1, linha.length).setValues([linha]);
+}
+
 /* Uma linha por (mes, ano, dataCorte): o mesmo corte reprocessado substitui.
-   Se a chave já estiver duplicada (gravação concorrente de antes do lock), a
-   primeira linha recebe o valor novo e as demais saem — de baixo para cima,
-   para os índices não se moverem no meio da remoção. */
+   Se a chave já estiver duplicada, a primeira linha recebe o valor novo e as
+   demais saem — de baixo para cima, para os índices não se moverem no meio
+   da remoção. */
 function rvGravarParcial(ss, linha) {
   var aba = rvGarantirAbaParcial(ss);
   var n = Math.max(aba.getLastRow() - 1, 0);
@@ -584,10 +607,10 @@ function rvGravarParcial(ss, linha) {
   var iguais = [];
   for (var i = 0; i < atuais.length; i++) {
     if (String(atuais[i][0]).toUpperCase().slice(0, 3) === linha[0] && parseInt(atuais[i][1], 10) === linha[1]
-        && String(atuais[i][2]).slice(0, 10) === linha[2]) iguais.push(i + 2);
+        && rvIsoDia(atuais[i][2]) === linha[2]) iguais.push(i + 2);
   }
-  if (!iguais.length) { aba.appendRow(linha); return; }
-  aba.getRange(iguais[0], 1, 1, linha.length).setValues([linha]);
+  if (!iguais.length) { rvEscreverParcial(aba, aba.getLastRow() + 1, linha); return; }
+  rvEscreverParcial(aba, iguais[0], linha);
   for (var k = iguais.length - 1; k >= 1; k--) aba.deleteRow(iguais[k]);
 }
 

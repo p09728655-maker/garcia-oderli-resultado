@@ -22836,9 +22836,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.5';
+var APP_VERSAO = 'b96.6';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.6', data:'21/09/2026', itens:[
+    'ReporteVolumes.gs: a causa real das linhas repetidas na PARCIAL_MES nao era concorrencia — o Sheets converte a dataCorte em Date ao gravar, e a chave (mes, ano, dataCorte) nunca casava com o texto; cada reprocessamento acrescentava. A comparacao passa a normalizar Date para AAAA-MM-DD e a gravacao forca a celula a texto antes de escrever (setNumberFormat + setValues, sem appendRow). Reprocessar o corte de SET/26 colapsa as linhas repetidas numa so. O lock da b96.5 fica: protege de execucao dupla de verdade.',
+    'testes/reporte-parcial.test.js: 3 casos com dataCorte como Date (colapsa, nao confunde dia, escrita sem appendRow) — 49 no arquivo, 335 no total.'
+  ]},
   { v:'b96.5', data:'21/09/2026', itens:[
     'ReporteVolumes.gs: duas execucoes ao mesmo tempo (clique duplo no menu, ou menu + gatilho) liam a mesma pasta e gravavam duas vezes — a PARCIAL_MES ganhou duas linhas iguais de SET/26. Os dois pontos de entrada (Processar PDFs e Processar cortes parciais) passam por LockService: a segunda execucao espera ate 30 s e, se a primeira nao acabou, desiste avisando. A gravacao na PARCIAL_MES tambem colapsa duplicatas da mesma chave (mes, ano, dataCorte) em vez de acrescentar.',
     'testes/reporte-parcial.test.js: 6 casos da gravacao, com uma planilha falsa — acrescenta, substitui, colapsa duplicata, distingue data e mes, casa chave com mes em minusculas e ano em texto.'

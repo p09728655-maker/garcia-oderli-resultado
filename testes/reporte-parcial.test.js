@@ -133,7 +133,7 @@ sec('rvGravarParcial — uma linha por (mes, ano, dataCorte), duplicata colapsa'
 function FakeSheet(rows) {                       /* rows[0] = cabeçalho */
   this.rows = rows;
   this.getLastRow = () => this.rows.length;
-  this.appendRow = (l) => { this.rows.push(l.slice()); };
+  this.appendRow = () => { throw new Error('appendRow reconverte texto em Date — não usar'); };
   this.deleteRow = (r) => { this.rows.splice(r - 1, 1); };
   this.setFrozenRows = () => {};
   this.getRange = (r, c, nr = 1, nc = 1) => ({
@@ -160,6 +160,13 @@ afirma('duplicata da mesma chave colapsa numa linha e a de OUT fica', sh.rows.le
 sh = ss([CAB.slice(), ['set', '2026', '2026-09-18T00:00:00', 1, 1, 1, 't', 'x']]).getSheetByName();
 RV.rvGravarParcial({ getSheetByName: () => sh }, L18);
 afirma('chave casa com mes em minúsculas, ano em texto e data com hora', sh.rows.length === 2 && sh.rows[1][3] === 26178);
+/* o caso que gerou três linhas: o Sheets devolve dataCorte como Date */
+sh = ss([CAB.slice(), ['SET', 2026, new Date(2026, 8, 18), 1136, 1136, 24855.5, 't0', 'a.pdf'],
+                      ['SET', 2026, new Date(2026, 8, 18, 0, 0, 0), 26178, 30069, 457677.2, 't1', 'a.pdf']]).getSheetByName();
+RV.rvGravarParcial({ getSheetByName: () => sh }, L18);
+afirma('dataCorte como Date na planilha casa com a chave ISO → colapsa em 1 linha', sh.rows.length === 2 && sh.rows[1][6] === 't1' && sh.rows[1][3] === 26178);
+afirma('Date de outro dia não casa', (() => { sh = ss([CAB.slice(), ['SET', 2026, new Date(2026, 8, 11), 17000, 0, 0, 't', 'x']]).getSheetByName(); RV.rvGravarParcial({ getSheetByName: () => sh }, L18); return sh.rows.length === 3; })());
+afirma('escrita não usa appendRow (linha nova vai por setValues, com a célula em texto)', typeof sh.appendRow === 'function' && sh.rows[2][2] === '2026-09-18');
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
