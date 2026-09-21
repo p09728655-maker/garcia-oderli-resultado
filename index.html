@@ -17686,9 +17686,19 @@ window.MesEmCurso = (function(){
       feriados:feriados, hoje:hojeIso(), melhorMesDia:melhorDia }):null;
 
     var cor,rgb,titulo,frase,acao;
+    /* A leitura do que resta depende de contra o que se compara. "Mais leve
+       que a média do ano" era texto fixo, escrito quando o restante era agosto
+       (1.148 pç/dia); em SET/26 o restante pedia 1.658 — 24% acima do
+       demonstrado, o trecho mais pesado do ano — e a frase dizia "leve". */
+    var relRest = ritmoNecR<=0 ? ''
+      : (ritmoDem>0 && ritmoNecR>ritmoDem)
+        ? ' — <b>'+fd((ritmoNecR/ritmoDem-1)*100,0)+'% acima</b> do ritmo demonstrado: o trecho mais pesado do ano'
+      : (ritmoPlano>0 && ritmoNecR>ritmoPlano)
+        ? ' — acima da média do ano ('+fi(ritmoPlano)+'), mas dentro do que a fábrica vem entregando'
+      : ' — mais leve que a média do ano';
     var restante = planoAberto>0
       ? ' O que resta do plano (<b>'+fi(planoAberto)+'</b> peças em <b>'+diasAbertos
-        +'</b> dias) pede <b>'+fi(ritmoNecR)+'</b> pç/dia — mês mais leve que a média do ano.'
+        +'</b> dias) pede <b>'+fi(ritmoNecR)+'</b> pç/dia'+relRest+'.'
       : '';
 
     var nominal = (ritmoPlano>0 && Math.abs(ritmoPlano-ritmoExig)>=5)
@@ -22836,9 +22846,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.6';
+var APP_VERSAO = 'b96.7';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.7', data:'21/09/2026', itens:[
+    'Veredito do Plano Mestre: a frase sobre o que resta do plano dizia sempre "mes mais leve que a media do ano" — texto fixo, escrito quando o restante era agosto (1.148 pc/dia). Em SET/26 o restante pede 1.658 pc/dia, 24% acima do demonstrado, e a tela chamava isso de leve. Agora a frase compara: acima do demonstrado diz quanto e chama de trecho mais pesado do ano; acima so da media do ano diz isso; abaixo das duas, mais leve.'
+  ]},
   { v:'b96.6', data:'21/09/2026', itens:[
     'ReporteVolumes.gs: a causa real das linhas repetidas na PARCIAL_MES nao era concorrencia — o Sheets converte a dataCorte em Date ao gravar, e a chave (mes, ano, dataCorte) nunca casava com o texto; cada reprocessamento acrescentava. A comparacao passa a normalizar Date para AAAA-MM-DD e a gravacao forca a celula a texto antes de escrever (setNumberFormat + setValues, sem appendRow). Reprocessar o corte de SET/26 colapsa as linhas repetidas numa so. O lock da b96.5 fica: protege de execucao dupla de verdade.',
     'testes/reporte-parcial.test.js: 3 casos com dataCorte como Date (colapsa, nao confunde dia, escrita sem appendRow) — 49 no arquivo, 335 no total.'
