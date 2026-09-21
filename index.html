@@ -23111,9 +23111,16 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.14';
+var APP_VERSAO = 'b96.15';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.15', data:'21/09/2026', itens:[
+    'Tela /plano: os percentuais eram os menores numeros da tela, justamente os que dizem plano x realizado. O % do plano sob a barra vai de 15 px para 34 px no telao (23 no notebook, 20 no celular) e o % de cada mes na fita de 17 para 23 px.',
+    'A causa era estrutural, nao so escolha de tamanho: toda a tela usa rem, que e relativo a RAIZ e nao ao elemento, entao o font-size:19px do modo telao nao escalava nada — so cresciam os tamanhos sobrescritos um a um na media query, e o % do plano nunca tinha sido. Os quatro percentuais agora estao declarados em cada faixa.',
+    'Conferido medindo o tamanho renderizado em 1920x1080, 1600x900, 1400x900, 1280x800 e 390x844, sem estouro e sem sobreposicao com o rodape.',
+    'App instalado cortava a linha da hora extra: a janela do app tem menos altura util que a aba do navegador (sem barra de endereco o sistema devolve menos, nao mais), e a tela era fixa em overflow:hidden — o que nao cabia sumia calado. Os numeros grandes passam a acompanhar a ALTURA da janela (clamp com vh) e a tela ganha rolagem de seguranca: em altura curta ela encolhe em vez de cortar. Conferido medindo o fundo do rotulo contra o topo do rodape em 1920x1080, 1920x1050 e 1920x1010 (alturas do app instalado), 1600x900, 1400x900, 1280x800 e 390x844.',
+    'O peso da peca ganha o mesmo tratamento que a hora extra ganhou na b96.14. O plano e generico, contado em pecas: bater o plano com peca 34% mais leve nao e a mesma carga de fabrica, e isso estava so no rodape. Vira selo ao lado do veredito (peca 34% mais leve), e so aparece quando a diferenca contra a media do ano chega a 5% — abaixo disso e oscilacao de mix, nao mudanca de mix, e selo que aparece sempre para de ser lido.'
+  ]},
   { v:'b96.14', data:'21/09/2026', itens:[
     'Tela /plano: a hora extra sai do rodape e sobe para a coluna do mes, onde qualifica o veredito. NO RITMO em verde sem dizer que 16,3% do volume saiu de hora extra e meia verdade — e rodape, depois de um numero grande e verde, ninguem le. Vira selo ao lado do veredito (16,3% em hora extra, na cor do limite) e uma linha na propria coluna: quanto saiu de hora extra, quantas horas, se esta acima do limite de 8%, e quanto o mes fecharia sem ela.',
     'A frase fecha o raciocinio: sem hora extra o mes fecharia em 35.415 pecas, que ainda cobre o plano de 34.810 — entao a hora extra nao esta indo para o plano. E a pergunta para quem programa HE.',
@@ -23912,7 +23919,13 @@ window.PlanoRealizado = (function(){
            e uma linha na própria coluna. */
         he:c.he?{ pct:c.he.hePct, lim:c.he.limHE, nivel:c.he.nivel, cor:c.he.cor,
                   horas:c.he.heHoras, projSemHE:c.he.projSemHE,
-                  cobreSemHE:c.he.projSemHE>=c.plano } : null };
+                  cobreSemHE:c.he.projSemHE>=c.plano } : null,
+        /* O plano é em peças e o mix muda o peso da peça: bater o plano com
+           peça 33% mais leve não é a mesma fábrica. Mesmo tratamento da hora
+           extra — selo ao lado do veredito, não nota de rodapé. */
+        kg:(c.kg&&c.kg.kgPecaAno)?{ peca:c.kg.kgPecaMes, ano:c.kg.kgPecaAno,
+              difPct:c.kg.difPecaPct, leve:c.kg.difPecaPct<0,
+              relevante:Math.abs(c.kg.difPecaPct)>=5 } : null };
     } else {
       var fech=(u.meses||[]).filter(function(x){ return x.plano>0&&x.real!==null&&x.real>0; });
       var uf=fech.length?fech[fech.length-1]:null;
@@ -23954,15 +23967,19 @@ window.PlanoRealizado = (function(){
     /* Rodapé: as ressalvas que a manchete em peças não conta. */
     m.notas=[];
     if(c&&c.kg&&c.kg.kgPecaAno) m.notas.push({ txt:'Peça do mês: <b>'+fd(c.kg.kgPecaMes,1)
-      +' kg</b> · média do ano <b>'+fd(c.kg.kgPecaAno,1)+' kg</b>', alerta:false });
+      +' kg</b> · média do ano <b>'+fd(c.kg.kgPecaAno,1)+' kg</b> — o plano é em peças, e peça mais leve '
+      +'não é a mesma carga de fábrica', alerta:false });
     else if(u.heP>0) m.notas.push({ txt:'Dependência de hora extra no ano: <b>'+fi(u.heP)+'</b> peças', alerta:true });
     return m;
   }
 
   /* ── html: o modelo vira tela. Sem conta aqui dentro. ── */
   function selo(d){
-    if(!d.he) return '';
-    return '<span class="pr-selo" style="--sc:'+d.he.cor+'">'+fd(d.he.pct,1)+'% em hora extra</span>';
+    var s='';
+    if(d.he) s+='<span class="pr-selo" style="--sc:'+d.he.cor+'">'+fd(d.he.pct,1)+'% em hora extra</span>';
+    if(d.kg&&d.kg.relevante) s+='<span class="pr-selo" style="--sc:'+COR.he+'">peça '
+      +fd(Math.abs(d.kg.difPct),0)+'% mais '+(d.kg.leve?'leve':'pesada')+'</span>';
+    return s;
   }
   function linhaHE(d){
     if(!d.he) return '';
@@ -24086,7 +24103,8 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-hd-r{margin-left:auto;text-align:right}'
     +'#pr-solo .pr-per{font-size:1.15rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan)}'
     +'#pr-solo .pr-at{font-size:.72rem;color:var(--t3);font-family:var(--mono);margin-top:3px}'
-    +'#pr-solo .pr-wrap{flex:1;display:flex;flex-direction:column;gap:16px;padding:16px 32px;min-height:0}'
+    +'#pr-solo .pr-wrap{flex:1;display:flex;flex-direction:column;gap:16px;padding:16px 32px;'
+      +'min-height:0;overflow:auto}'
     +'#pr-solo .pr-main{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;min-height:0}'
     +'#pr-solo .pr-col{background:var(--panel);border:1px solid var(--b);border-radius:8px;'
       +'border-left:5px solid var(--cor);padding:24px 24px 16px;display:flex;flex-direction:column;min-height:0}'
@@ -24103,20 +24121,24 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-he b{font-family:var(--mono)}'
     +'#pr-solo .pr-he span{color:var(--t2)}'
     +'#pr-solo .pr-big{display:flex;align-items:baseline;gap:12px;margin-top:16px;flex-wrap:wrap}'
-    +'#pr-solo .pr-n{font-family:var(--mono);font-size:4.6rem;font-weight:700;line-height:1;letter-spacing:-.02em}'
+    +'#pr-solo .pr-n{font-family:var(--mono);font-size:clamp(2.4rem,7.2vh,4.6rem);font-weight:700;'
+      +'line-height:1;letter-spacing:-.02em}'
     +'#pr-solo .pr-d{font-size:1.05rem;color:var(--t2)}'
     +'#pr-solo .pr-bar{margin-top:24px}'
     +'#pr-solo .pr-track{position:relative;height:18px;background:var(--b);border-radius:9px}'
     +'#pr-solo .pr-fill{height:100%;border-radius:9px;background:var(--cor)}'
     +'#pr-solo .pr-tick{position:absolute;top:-6px;bottom:-6px;width:3px;background:var(--t1);border-radius:2px}'
-    +'#pr-solo .pr-legs{display:flex;justify-content:space-between;margin-top:8px;font-size:.78rem;gap:12px}'
-    +'#pr-solo .pr-legs b{font-family:var(--mono);font-size:.92rem}'
-    +'#pr-solo .pr-leg2{color:var(--t2);text-align:right}'
+    +'#pr-solo .pr-legs{display:flex;justify-content:space-between;align-items:baseline;'
+      +'margin-top:10px;font-size:.82rem;gap:12px}'
+    +'#pr-solo .pr-legs b{font-family:var(--mono);font-size:1.45rem;font-weight:700;letter-spacing:-.01em}'
+    +'#pr-solo .pr-leg2{color:var(--t2);text-align:right;font-size:.78rem}'
+    +'#pr-solo .pr-leg2 b{font-size:1rem;color:var(--t1)}'
     +'#pr-solo .pr-calc{margin-top:24px;background:var(--card);border:1px solid var(--b);'
       +'border-left:3px solid var(--cor);border-radius:8px;padding:16px 24px}'
     +'#pr-solo .pr-calc-l{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t3)}'
     +'#pr-solo .pr-calc-r{display:flex;align-items:baseline;gap:16px;margin-top:8px;flex-wrap:wrap}'
-    +'#pr-solo .pr-calc-n{font-family:var(--mono);font-size:3rem;font-weight:700;color:var(--cor);line-height:1}'
+    +'#pr-solo .pr-calc-n{font-family:var(--mono);font-size:clamp(1.8rem,4.8vh,3rem);font-weight:700;'
+      +'color:var(--cor);line-height:1}'
     +'#pr-solo .pr-calc-u{font-size:1rem;color:var(--t2)}'
     +'#pr-solo .pr-calc-vs{font-size:1rem;color:var(--t2);margin-top:8px}'
     +'#pr-solo .pr-calc-vs b{color:var(--t1);font-family:var(--mono)}'
@@ -24137,7 +24159,7 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-strip-row{flex:1;min-height:0;display:grid;grid-template-columns:repeat(12,1fr);'
       +'gap:6px;margin-top:12px;align-items:end}'
     +'#pr-solo .pr-m{display:flex;flex-direction:column;justify-content:flex-end;height:100%;text-align:center}'
-    +'#pr-solo .pr-m-p{font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--mc);'
+    +'#pr-solo .pr-m-p{font-family:var(--mono);font-size:1.05rem;font-weight:700;color:var(--mc);'
       +'margin-bottom:5px;min-height:1.1em}'
     +'#pr-solo .pr-m-b{border-radius:3px;background:var(--mc);opacity:.92;min-height:6px}'
     /* mês ainda aberto: contorno em vez de sólido — o % é parcial e não se
@@ -24154,14 +24176,17 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-vazio-s{font-size:.9rem;color:var(--t3);margin-top:10px;line-height:1.6}'
     /* telão: o número é o que se lê a dez metros */
     +'@media(min-width:1600px){#pr-solo{font-size:19px}'
-      +'#pr-solo .pr-n{font-size:6.4rem}#pr-solo .pr-calc-n{font-size:4rem}#pr-solo .pr-v{font-size:2.6rem}'
+      +'#pr-solo .pr-n{font-size:clamp(3rem,9vh,6.4rem)}#pr-solo .pr-calc-n{font-size:clamp(2rem,5.6vh,4rem)}'
+      +'#pr-solo .pr-v{font-size:2.6rem}'
       +'#pr-solo .pr-per{font-size:1.6rem}#pr-solo .pr-dot{width:18px;height:18px}'
       +'#pr-solo .pr-mark img{height:44px}'
       +'#pr-solo .pr-track{height:24px;border-radius:12px}#pr-solo .pr-fill{border-radius:12px}'
       +'#pr-solo .pr-ver{font-size:1.4rem}#pr-solo .pr-proj{font-size:1.25rem}'
       +'#pr-solo .pr-selo{font-size:.92rem;padding:5px 14px}#pr-solo .pr-he{font-size:1.05rem}'
-      +'#pr-solo .pr-strip{min-height:190px}#pr-solo .pr-strip-row{min-height:96px}'
-      +'#pr-solo .pr-m-p{font-size:1.05rem}#pr-solo .pr-m-n{font-size:.78rem}}'
+      +'#pr-solo .pr-strip{min-height:clamp(150px,17vh,190px)}#pr-solo .pr-strip-row{min-height:90px}'
+      +'#pr-solo .pr-legs{font-size:1rem}#pr-solo .pr-legs b{font-size:2.1rem}'
+      +'#pr-solo .pr-leg2{font-size:.95rem}#pr-solo .pr-leg2 b{font-size:1.2rem}'
+      +'#pr-solo .pr-m-p{font-size:1.45rem}#pr-solo .pr-m-n{font-size:.86rem}}'
     /* celular: empilha; posição fixa sai, senão o rodapé sobe sobre o conteúdo */
     +'@media(max-width:760px){#pr-solo{position:static;height:auto;min-height:100vh;overflow:visible}'
       +'#pr-solo .pr-main{grid-template-columns:1fr}#pr-solo .pr-wrap{padding:12px 16px}'
@@ -24177,7 +24202,8 @@ window.PlanoRealizado = (function(){
       +'#pr-solo .pr-strip{flex:none}#pr-solo .pr-strip-row{grid-template-columns:repeat(6,1fr);'
         +'grid-auto-rows:100px;row-gap:16px}'
       +'#pr-solo .pr-strip-leg{margin-left:0;font-size:.68rem;gap:12px}'
-      +'#pr-solo .pr-m-p{font-size:.78rem}#pr-solo .pr-m-n{font-size:.66rem}'
+      +'#pr-solo .pr-legs b{font-size:1.25rem}#pr-solo .pr-leg2 b{font-size:.92rem}'
+      +'#pr-solo .pr-m-p{font-size:.92rem}#pr-solo .pr-m-n{font-size:.66rem}'
       +'#pr-solo .pr-ft{font-size:.74rem;gap:12px}#pr-solo .pr-src{margin-left:0;width:100%}}';
 
   var RECARGA_MIN=15;   /* TV ligada o dia todo: recarrega para pegar o sync */
