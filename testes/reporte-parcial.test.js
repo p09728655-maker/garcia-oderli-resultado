@@ -28,7 +28,7 @@ const path = require('path');
 
 function carregarRV() {
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'ReporteVolumes.gs'), 'utf8');
-  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvTotalGeralDoTexto, rvConferirTotal, rvNum, RV_RE_VOL };';
+  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvTotalGeralDoTexto, rvConferirTotal, rvGravarParcial, rvNum, RV_RE_VOL };';
   return new Function('Logger', src + '\n' + exp)({ log() {} });
 }
 const RV = carregarRV();
@@ -127,6 +127,39 @@ ok('volumes = 259×2 (VOL do mês) + 94×3 (cadastro) + 1×1 (sem nada)', g.vol,
 afirma('pendência = só a SAPATEIRA (sem VOL e sem cadastro)', pend.length === 1 && pend[0] === 'SAPATEIRA SPAZIO BRANCO');
 afirma('lista vazia → nenhum mês', RV.rvAgruparLinhas([]).ordem.length === 0);
 afirma('linha sem quantidade é ignorada', RV.rvAgruparLinhas([['SET', 2026, '1', 'X', 0, 0]]).ordem.length === 0);
+
+/* ══ Gravação na PARCIAL_MES — com uma planilha falsa, só o que o script usa ══ */
+sec('rvGravarParcial — uma linha por (mes, ano, dataCorte), duplicata colapsa');
+function FakeSheet(rows) {                       /* rows[0] = cabeçalho */
+  this.rows = rows;
+  this.getLastRow = () => this.rows.length;
+  this.appendRow = (l) => { this.rows.push(l.slice()); };
+  this.deleteRow = (r) => { this.rows.splice(r - 1, 1); };
+  this.setFrozenRows = () => {};
+  this.getRange = (r, c, nr = 1, nc = 1) => ({
+    getValues: () => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => (this.rows[r - 1 + i] || [])[c - 1 + j] ?? '')),
+    setValues: (vals) => { vals.forEach((v, i) => { const row = this.rows[r - 1 + i] || (this.rows[r - 1 + i] = []); v.forEach((x, j) => { row[c - 1 + j] = x; }); }); },
+    setNumberFormat: () => ({}), setFontWeight: () => ({}),
+  });
+}
+const CAB = ['mes', 'ano', 'dataCorte', 'produtos', 'volumes', 'peso', 'geradoEm', 'arquivo'];
+const ss = (rows) => ({ getSheetByName: () => new FakeSheet(rows), insertSheet: () => { throw new Error('não deveria criar'); } });
+const L18 = ['SET', 2026, '2026-09-18', 26178, 30069, 457677.2, 't1', 'a.pdf'];
+let sh = ss([CAB.slice()]).getSheetByName(); RV.rvGravarParcial({ getSheetByName: () => sh }, L18);
+afirma('aba vazia → acrescenta (1 linha)', sh.rows.length === 2 && sh.rows[1][3] === 26178);
+RV.rvGravarParcial({ getSheetByName: () => sh }, ['SET', 2026, '2026-09-18', 26200, 30100, 457700, 't2', 'b.pdf']);
+afirma('mesma chave → substitui, continua 1 linha', sh.rows.length === 2 && sh.rows[1][3] === 26200 && sh.rows[1][6] === 't2');
+RV.rvGravarParcial({ getSheetByName: () => sh }, ['SET', 2026, '2026-09-25', 30000, 34000, 520000, 't3', 'c.pdf']);
+afirma('outra data de corte → acrescenta (2 linhas)', sh.rows.length === 3 && sh.rows[2][2] === '2026-09-25');
+RV.rvGravarParcial({ getSheetByName: () => sh }, ['OUT', 2026, '2026-09-25', 1, 1, 1, 't4', 'd.pdf']);
+afirma('outro mês, mesma data → acrescenta (3 linhas)', sh.rows.length === 4);
+/* o caso real: duas linhas iguais gravadas por execuções concorrentes */
+sh = ss([CAB.slice(), L18.slice(), ['SET', 2026, '2026-09-18', 26178, 30069, 457677.2, 't1b', 'a.pdf'], ['OUT', 2026, '2026-10-02', 5, 5, 5, 't5', 'e.pdf']]).getSheetByName();
+RV.rvGravarParcial({ getSheetByName: () => sh }, ['SET', 2026, '2026-09-18', 26178, 30069, 457677.2, 't6', 'a.pdf']);
+afirma('duplicata da mesma chave colapsa numa linha e a de OUT fica', sh.rows.length === 3 && sh.rows[1][6] === 't6' && sh.rows[2][0] === 'OUT');
+sh = ss([CAB.slice(), ['set', '2026', '2026-09-18T00:00:00', 1, 1, 1, 't', 'x']]).getSheetByName();
+RV.rvGravarParcial({ getSheetByName: () => sh }, L18);
+afirma('chave casa com mes em minúsculas, ano em texto e data com hora', sh.rows.length === 2 && sh.rows[1][3] === 26178);
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

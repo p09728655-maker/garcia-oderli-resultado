@@ -292,7 +292,24 @@ function onOpen() {
     .addToUi();
 }
 
+/* Duas execuções ao mesmo tempo (clique duplo no menu, menu + gatilho das 6h)
+   leem a mesma pasta e gravam duas vezes — foi assim que a PARCIAL_MES ganhou
+   duas linhas iguais em SET/26. O lock serializa: a segunda espera até 30 s e,
+   se a primeira ainda não acabou, desiste avisando em vez de gravar em cima. */
+function rvComLock(nome, fn) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    rvAvisar(nome + ': outro processamento ainda está rodando — aguarde ele terminar e rode de novo.');
+    return null;
+  }
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+
 function processarReportesDrive() {
+  rvComLock('Reportes', rvProcessarReportes);
+}
+
+function rvProcessarReportes() {
   var pastas = DriveApp.getFoldersByName(RV_PASTA);
   if (!pastas.hasNext()) {
     return rvErro('Pasta "' + RV_PASTA + '" não encontrada no Drive — crie a pasta e solte os PDFs do relatório nela.');
@@ -501,7 +518,7 @@ var RV_ABA_PARCIAL   = 'PARCIAL_MES';
 var RV_PARCIAL_CAB   = ['mes', 'ano', 'dataCorte', 'produtos', 'volumes', 'peso', 'geradoEm', 'arquivo'];
 
 function processarParciaisDrive() {
-  rvAvisar(rvProcessarParciais().resumo);
+  rvComLock('Cortes parciais', function () { rvAvisar(rvProcessarParciais().resumo); });
 }
 
 /* Devolve { feitos, falhas, resumo } — chamado pelo gatilho diário e pelo menu. */
@@ -556,19 +573,22 @@ function rvGarantirAbaParcial(ss) {
   return aba;
 }
 
-/* Uma linha por (mes, ano, dataCorte): o mesmo corte reprocessado substitui. */
+/* Uma linha por (mes, ano, dataCorte): o mesmo corte reprocessado substitui.
+   Se a chave já estiver duplicada (gravação concorrente de antes do lock), a
+   primeira linha recebe o valor novo e as demais saem — de baixo para cima,
+   para os índices não se moverem no meio da remoção. */
 function rvGravarParcial(ss, linha) {
   var aba = rvGarantirAbaParcial(ss);
   var n = Math.max(aba.getLastRow() - 1, 0);
   var atuais = n ? aba.getRange(2, 1, n, 3).getValues() : [];
+  var iguais = [];
   for (var i = 0; i < atuais.length; i++) {
     if (String(atuais[i][0]).toUpperCase().slice(0, 3) === linha[0] && parseInt(atuais[i][1], 10) === linha[1]
-        && String(atuais[i][2]).slice(0, 10) === linha[2]) {
-      aba.getRange(i + 2, 1, 1, linha.length).setValues([linha]);
-      return;
-    }
+        && String(atuais[i][2]).slice(0, 10) === linha[2]) iguais.push(i + 2);
   }
-  aba.appendRow(linha);
+  if (!iguais.length) { aba.appendRow(linha); return; }
+  aba.getRange(iguais[0], 1, 1, linha.length).setValues([linha]);
+  for (var k = iguais.length - 1; k >= 1; k--) aba.deleteRow(iguais[k]);
 }
 
 /* ══ 6 · PLANO MESTRE EM VOLUMES ══
