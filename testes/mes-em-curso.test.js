@@ -26,7 +26,7 @@ const HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 function carregarMesEmCurso() {
   const ini = HTML.indexOf('window.MesEmCurso = (function(){');
   if (ini < 0) throw new Error('MesEmCurso não encontrado no index.html');
-  const marca = HTML.indexOf('return { apurar:apurar, apurarKg:apurarKg', ini);
+  const marca = HTML.indexOf('return { apurar:apurar, apurarKg:apurarKg, apurarHE:apurarHE, explicarRitmos:explicarRitmos', ini);
   if (marca < 0) throw new Error('fim de MesEmCurso não reconhecido');
   const fim = HTML.indexOf('})();', marca) + '})();'.length;
   const escopo = { window: {} };
@@ -164,6 +164,64 @@ afirma('sem quilos no ano → nível "sem", mas kg/dia e kg/peça do mês existe
 afirma('sem peso no corte → null (o bloco esconde a linha)', M.apurarKg(0, 26178, 13, 34810, KG_ANO) === null);
 afirma('apurar() carrega kg quando pesoMes e kgAno vêm junto', (() => { const x = com({ pesoMes: 457677.2, kgAno: KG_ANO }); return x.kg && x.kg.nivel === 'atencao' && x.estado === 'verde'; })());
 afirma('apurar() sem pesoMes → kg null e o resto igual', com({}).kg === null);
+
+/* ══ Como ler os ritmos — a explicação é calculada, com os números de 21/09/26 ══ */
+sec('explicarRitmos — cinco réguas, uma conta cada, com os números da tela');
+const U = { planoAno: 362296, diasPlanoAno: 240, planoFech: 236317, diasPlanFech: 162, normalFech: 216108, diasFech: 162, heP: 27269,
+            planoAberto: 125979, diasAbertos: 76, fechados: 'JAN a AGO',
+            curso: { mes: 'SET', ate: '18/09', realizado: 26178, diasDecorridos: 13, ritmoNecRestante: 1079, kg: { kgDiaMes: 35206, kgDiaAno: 39000, difDiaPct: -9.7 } } };
+const E = M.explicarRitmos(U);
+const por = (k) => E.itens.filter(i => i.chave === k)[0];
+ok('ritmo do plano = 362.296 ÷ 240',        E.ritmoPlano, 1509.57, 0.01);
+ok('ritmo exigido = 236.317 ÷ 162',         E.ritmoExig, 1458.75, 0.01);
+ok('ritmo demonstrado = 216.108 ÷ 162',     E.ritmoDem, 1334, 0.01);
+ok('com hora extra = (216.108 + 27.269) ÷ 162', E.ritmoComHE, 1502.33, 0.01);
+ok('ritmo necessário = 125.979 ÷ 76',       E.ritmoNec, 1657.62, 0.01);
+ok('ritmo do mês = 26.178 ÷ 13',            E.ritmoAtual, 2013.69, 0.01);
+afirma('cinco itens, na ordem plano → exigido → demonstrado → necessário → mês', E.itens.map(i => i.chave).join(',') === 'plano,exigido,demonstrado,necessario,atual');
+afirma('cada item tem as três linhas (o que é, como calcula, como ler)', E.itens.every(i => i.oQueE && i.comoCalcula && i.comoLer));
+afirma('a conta do plano traz os números: "362.296 ÷ 240 = 1.510"', /362\.296 ÷ 240 = 1\.510/.test(por('plano').comoCalcula));
+afirma('a conta do exigido nomeia os meses: "Plano de JAN a AGO ÷ dias trabalhados"', /Plano de JAN a AGO ÷ dias trabalhados = 236\.317 ÷ 162/.test(por('exigido').comoCalcula));
+afirma('demonstrado explica a jornada normal e cita o ritmo com hora extra (1.502)', /descontada na proporção das horas extras/.test(por('demonstrado').comoCalcula) && /1\.502 pç\/dia/.test(por('demonstrado').comoLer));
+afirma('necessário: "24% acima do demonstrado: não cabe na jornada normal"', /24% acima do demonstrado: não cabe/.test(por('necessario').comoLer));
+afirma('plano mais pesado no fim (1.658 > 1.510)', /mais pesado no fim do ano/.test(por('plano').comoLer));
+afirma('mês em curso: "26.178 ÷ 13 = 2.014" e "cabe" (1.079 ≤ 1.334), com os quilos', /26\.178 ÷ 13 = 2\.014/.test(por('atual').comoCalcula) && /— cabe\./.test(por('atual').comoLer) && /35,2 t\/dia contra 39,0/.test(por('atual').comoLer));
+afirma('leitura: 8,6% abaixo, trecho mais pesado ainda vem, peça leve', /8,6% abaixo/.test(E.leitura[0]) && /trecho mais pesado do ano ainda vem/.test(E.leitura[1]) && /peça leve, não fábrica mais rápida/.test(E.leitura[2]));
+afirma('confusão 1: exigido menor que o do plano não é folga', E.confusoes.some(q => /estava folgado/.test(q.p) && /trecho fácil/.test(q.r)));
+afirma('confusão 2: 2.014 do mês não se compara com o necessário do ano', E.confusoes.some(q => /Então sobra/.test(q.p) && /jornada normal \(1\.334\)/.test(q.r)));
+afirma('sem mês em curso: quatro itens e nenhuma confusão sobre o mês', (() => { const x = M.explicarRitmos(Object.assign({}, U, { curso: null })); return x.itens.length === 4 && !x.confusoes.some(q => /sobra/.test(q.p)); })());
+afirma('sem meses fechados: exigido vale o do plano e o texto diz por quê', (() => { const x = M.explicarRitmos({ planoAno: 362296, diasPlanoAno: 240, planoAberto: 362296, diasAbertos: 240 }); return Math.abs(x.ritmoExig - x.ritmoPlano) < 0.01 && /vale o ritmo do plano/.test(por.call(null, 'exigido') ? x.itens[1].comoCalcula : '') && x.leitura.length === 0; })());
+afirma('restante mais leve que o demonstrado → "cabe na jornada normal"', /cabe na jornada normal/.test(M.explicarRitmos(Object.assign({}, U, { planoAberto: 90000 })).itens[3].comoLer));
+afirma('restante entre o demonstrado e a média do plano (1.380): "mais leve que a média, mas acima do que a fábrica entrega"',
+  /mais leve que a média do ano, mas acima do que a fábrica entrega/.test(M.explicarRitmos(Object.assign({}, U, { planoAberto: 1380 * 76 })).leitura[1]));
+
+/* ══ Hora extra — resumo diário da Embalagem, os 13 dias reais de 01 a 18/09/26 ══ */
+sec('apurarHE — fatia de hora extra até o corte, dias apontados, ritmo e projeção sem HE');
+const EMB = [ ['2026-09-01',2441,2,660],['2026-09-02',2537,2,678],['2026-09-03',2562,2,752],['2026-09-04',1602,2,350],
+  ['2026-09-08',2588,0,0],['2026-09-09',1452,0,0],['2026-09-10',1273,2,115],['2026-09-11',1561,2,326],['2026-09-14',1272,0,0],
+  ['2026-09-15',3217,2,224],['2026-09-16',1797,2,285],['2026-09-17',3913,2,673],['2026-09-18',1684,2,471],
+  ['2026-09-21',900,0,0],                       /* depois do corte: fica de fora */
+  ['2026-08-31',2000,2,500] ]                   /* outro mês: fica de fora */
+  .map(r => ({ data: r[0], realizado: r[1], heHoras: r[2], heCx: r[3] }));
+const H = M.apurarHE(EMB, '2026-09-18', 26178, 13, 8, 34810, 1334, 8);
+ok('caixas até 18/09 = 27.899 (só o mês, só até o corte)', H.cx, 27899, 0);
+ok('caixas em hora extra = 4.534',                     H.heCx, 4534, 0);
+ok('horas de hora extra = 20',                         H.heHoras, 20, 0);
+ok('fatia de hora extra = 16,25%',                     H.hePct, 16.25, 0.01);
+ok('dias apontados = 13',                              H.diasApontados, 13, 0);
+ok('realizado sem HE = 26.178 × (1 − 4.534 ÷ 27.899)',  H.realSemHE, 21923.69, 0.01);
+ok('ritmo sem HE = 21.923,69 ÷ 13',                    H.ritmoSemHE, 1686.44, 0.01);
+ok('projeção sem HE = 21.923,69 × 21 ÷ 13',            H.projSemHE, 35415.19, 0.01);
+afirma('16,3% > 8% → acima do limite, vermelho', H.nivel === 'acima' && H.cor === '#F44336' && /acima do limite de 8%/.test(H.texto));
+afirma('projeção sem HE (35.416) cobre o plano (34.810) → "cobre o plano"', /cobre o plano/.test(H.texto));
+afirma('13 dias apontados = 13 do calendário → sem aviso', H.avisos.length === 0);
+afirma('sábado apontado (14 dias) → aviso e ritmo pelos 14', (() => { const x = M.apurarHE(EMB.concat([{ data: '2026-09-12', realizado: 800, heHoras: 4, heCx: 800 }]), '2026-09-18', 26178, 13, 8, 34810, 1334, 8); return x.diasApontados === 14 && x.avisos.some(a => /apontou 14 dias/.test(a)) && Math.abs(x.ritmoSemHE - x.realSemHE / 14) < 0.01; })());
+afirma('limite 20% → dentro, verde', M.apurarHE(EMB, '2026-09-18', 26178, 13, 8, 34810, 1334, 20).nivel === 'dentro');
+afirma('limite 15% → 16,25 ≤ 16,5 → "bem perto", laranja', (() => { const x = M.apurarHE(EMB, '2026-09-18', 26178, 13, 8, 34810, 1334, 15); return x.nivel === 'perto' && x.cor === '#FF9800'; })());
+afirma('sem dias do mês → null (linha escondida)', M.apurarHE(EMB, '2026-10-09', 5000, 6, 15, 34810, 1334, 8) === null);
+afirma('lista vazia → null', M.apurarHE([], '2026-09-18', 26178, 13, 8, 34810, 1334, 8) === null);
+afirma('apurar() carrega he quando embDias vem junto, e o estado segue verde', (() => { const x = com({ embDias: EMB }); return x.he && x.he.nivel === 'acima' && x.estado === 'verde'; })());
+afirma('apurar() sem embDias → he null', com({}).he === null);
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
