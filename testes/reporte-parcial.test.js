@@ -28,7 +28,7 @@ const path = require('path');
 
 function carregarRV() {
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'ReporteVolumes.gs'), 'utf8');
-  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvTotalGeralDoTexto, rvConferirTotal, rvGravarParcial, rvNum, RV_RE_VOL };';
+  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvTotalGeralDoTexto, rvConferirTotal, rvGravarParcial, rvNum, RV_RE_VOL, rvTipoDoTexto, rvConferirTipo, rvOrfaosVol, RV_TIPO_OK };';
   return new Function('Logger', src + '\n' + exp)({ log() {} });
 }
 const RV = carregarRV();
@@ -167,6 +167,63 @@ RV.rvGravarParcial({ getSheetByName: () => sh }, L18);
 afirma('dataCorte como Date na planilha casa com a chave ISO → colapsa em 1 linha', sh.rows.length === 2 && sh.rows[1][6] === 't1' && sh.rows[1][3] === 26178);
 afirma('Date de outro dia não casa', (() => { sh = ss([CAB.slice(), ['SET', 2026, new Date(2026, 8, 11), 17000, 0, 0, 't', 'x']]).getSheetByName(); RV.rvGravarParcial({ getSheetByName: () => sh }, L18); return sh.rows.length === 3; })());
 afirma('escrita não usa appendRow (linha nova vai por setValues, com a célula em texto)', typeof sh.appendRow === 'function' && sh.rows[2][2] === '2026-09-18');
+
+
+/* ══ Tipo do relatório — as peças saem iguais, os volumes não ══
+   O ERP emite o mesmo "3 - REPORTE" como "Todos" (produto + linhas VOL) e
+   como "P - PRODUTOS ACABADOS" (só produto). Medido nos PDFs reais: as peças
+   e os quilos saem iguais nos dois, porque o leitor separa produto de VOL
+   pela descrição; mas sem as linhas VOL os VOLUMES caem para 1 caixa por
+   produto — JUN/26 deu 30.851 contra 38.499 reais. Por isso o padrão é
+   "Todos", e o PDF fora dele é recusado em vez de gravado pela metade. */
+sec('Tipo do relatório — só "Todos" traz os volumes');
+afirma('lê o layout novo', RV.rvTipoDoTexto('Depósito: 1 Transação: 3 - REPORTE\nTipo: Todos\nProduto') === 'TODOS');
+afirma('lê o layout antigo, com ponto-e-vírgula entre as células',
+  RV.rvTipoDoTexto('Tipo: ; P - PRODUTOS ACABADOS ;;;;\nProduto') === 'P - PRODUTOS ACABADOS');
+afirma('sem a linha Tipo → null (não dá para exigir o que o papel não diz)',
+  RV.rvTipoDoTexto('Relatório Mensal\nProduto') === null);
+afirma('o padrão é Todos', RV.RV_TIPO_OK === 'TODOS');
+afirma('Todos passa', /Todos/.test(RV.rvConferirTipo('Tipo: Todos\nx')));
+afirma('sem linha Tipo passa, dizendo que não conferiu',
+  /sem linha/.test(RV.rvConferirTipo('Relatório\nx')));
+afirma('Tipo P é RECUSADO, e o erro diz o que se perde', (() => {
+  try { RV.rvConferirTipo('Tipo: P - PRODUTOS ACABADOS\nx'); return false; }
+  catch (e) { return /Tipo: Todos/.test(e.message) && /38\.499/.test(e.message) && /Nada foi gravado/.test(e.message); }
+})());
+
+/* ══ VOL órfão — o que o casamento de nomes deixa passar ══
+   Caixa apontada cujo produto não aparece como linha de produto: hoje entra
+   só em VOLUMES e as peças e o peso somem. O casamento por nome abreviado
+   cobre quase tudo ("PENT CAMARIM 1PT 2GAV DIAMANTE B" casa com
+   "PENTEADEIRA CAMARIM 1PT 2GAV DIAMANTE BRANCO"), mas não é garantia. */
+sec('VOL órfão — contado e dito, nunca engolido');
+const LINHAS_ORF = [
+  ['SET', 2026, '100.009.001', 'TOUCADOR MAGIC NEW BRANCO', 100, 1660],
+  ['SET', 2026, '501.060.001', 'VOL 1/2 TOUCADOR MAGIC NEW BRANCO', 100, 830],
+  ['SET', 2026, '501.060.002', 'VOL 2/2 TOUCADOR MAGIC NEW BRANCO', 100, 830],
+  ['SET', 2026, '501.099.001', 'VOL 1/2 CANT CAFE AURORA CINAMOMO', 60, 900],
+  ['SET', 2026, '501.099.002', 'VOL 2/2 CANT CAFE AURORA CINAMOMO', 60, 600]
+];
+const gOrf = (() => { const a = RV.rvAgruparLinhas(LINHAS_ORF); const g = a.meses[a.ordem[0]]; RV.rvVolumesDoMes(g, {}); return g; })();
+const orf = RV.rvOrfaosVol(gOrf);
+afirma('acha o produto que só existe como VOL', orf.nomes.length === 1 && /CANT CAFE AURORA/.test(orf.nomes[0]));
+ok('as peças que ficaram de fora (120 caixas ÷ 2 por produto)', orf.pecas, 60);
+ok('e os quilos que foram junto',                                orf.peso, 1500);
+afirma('o produto que TEM linha de produto não é órfão', !orf.nomes.some(n => /TOUCADOR/.test(n)));
+afirma('nome abreviado casa com o produto por extenso — não vira órfão falso', (() => {
+  const L = [['SET', 2026, '1', 'PENTEADEIRA CAMARIM 1PT 2GAV DIAMANTE BRANCO', 50, 2275],
+             ['SET', 2026, '2', 'VOL 1/2 PENT CAMARIM 1PT 2GAV DIAMANTE B', 50, 1400],
+             ['SET', 2026, '3', 'VOL 2/2 PENT CAMARIM 1PT 2GAV DIAMANTE B', 50, 875]];
+  const a = RV.rvAgruparLinhas(L); const g = a.meses[a.ordem[0]]; RV.rvVolumesDoMes(g, {});
+  return RV.rvOrfaosVol(g).pecas === 0;
+})());
+afirma('sem linha VOL nenhuma → nenhum órfão', (() => {
+  const a = RV.rvAgruparLinhas([['JUN', 2026, '1', 'TOUCADOR MAGIC NEW BRANCO', 94, 1560.4]]);
+  const g = a.meses[a.ordem[0]]; RV.rvVolumesDoMes(g, {});
+  return RV.rvOrfaosVol(g).pecas === 0 && RV.rvOrfaosVol(g).nomes.length === 0;
+})());
+afirma('o peso das linhas VOL é guardado — sem ele não dá para dizer quanto se perde',
+  gOrf.grupos['CANT CAFE AURORA CINAMOMO'].p === 1500);
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
