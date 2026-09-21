@@ -10,6 +10,25 @@
 <meta name="apple-mobile-web-app-title" content="RP Resultado">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
+<script>
+/* /plano e /tv são um app à parte: manifesto, nome e ícone próprios, para
+   quem instalar não ficar com dois atalhos iguais na tela inicial. Roda aqui
+   no <head> e DEPOIS das tags que altera — o parser só criou até aqui, e um
+   script antes delas trocava o manifesto e deixava ícone e título do iOS
+   intactos. Antes do load, porém: trocar depois não vale para o prompt de
+   instalação. A regra de endereço é a mesma de PlanoRealizado.solo(),
+   repetida porque o módulo ainda não existe neste ponto. */
+(function(){
+  var l=location;
+  if(!(/^\/(plano|tv)\/?$/i.test(l.pathname)||/(?:^|[?&])tela=(plano|tv)/i.test(l.search))) return;
+  function set(sel,attr,val){ var e=document.querySelector(sel); if(e) e.setAttribute(attr,val); }
+  set('link[rel="manifest"]','href','/manifest-plano.json');
+  set('link[rel="icon"]','href','/icon-plano-192.png');
+  set('link[rel="apple-touch-icon"]','href','/icon-plano-192.png');
+  set('meta[name="apple-mobile-web-app-title"]','content','Plano × Realizado');
+  document.title='Plano × Realizado — Patrimar';
+})();
+</script>
 <!--
   ╔══════════════════════════════════════════════════════════════╗
   ║  100% OFFLINE — ZERO dependências externas                  ║
@@ -23092,9 +23111,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.12';
+var APP_VERSAO = 'b96.13';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.13', data:'21/09/2026', itens:[
+    'A tela /plano vira app instalavel a parte, com manifesto, nome e icone proprios (manifest-plano.json, start_url /plano, escopo /plano). Quem instalar nao fica com dois atalhos iguais na tela inicial: o icone novo e escuro com barras ambar cortadas pela linha do plano, da mesma familia da estrela do painel. No celular: Chrome > menu > Instalar aplicativo; iPhone: Compartilhar > Adicionar a Tela de Inicio.',
+    'A troca de manifesto, icone, favicon e titulo acontece no <head>, depois das tags que altera e antes do load — um script antes delas trocava so o manifesto, e o icone do iOS ficava o do painel. Fora de /plano e /tv nada muda: o painel continua com o manifesto de sempre.',
+    'sw.js: /plano, o manifesto novo e os icones entram no cache, e sem rede a tela cai em /plano em vez do painel. Abrir o app instalado offline mostra a ultima versao vista, nao a tela errada.'
+  ]},
   { v:'b96.12', data:'21/09/2026', itens:[
     'Tela /plano: entra a logo da Patrimar no cabecalho, a mesma do painel (logo-patrimar.jpg em caixa branca), com o mesmo fallback — se o arquivo nao carregar, volta a marca P em vez de um quadrado vazio. Escala junto no telao (44 px) e no celular (24 px).'
   ]},

@@ -1,0 +1,19 @@
+{
+  "id": "/plano",
+  "name": "Plano × Realizado — Patrimar",
+  "short_name": "Plano",
+  "description": "Plano × Realizado da produção — o mês e o ano, em uma tela. PPCP Patrimar Móveis.",
+  "lang": "pt-BR",
+  "start_url": "/plano",
+  "scope": "/plano",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": [
+    { "src": "/icon-plano-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-plano-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-plano-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-plano-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

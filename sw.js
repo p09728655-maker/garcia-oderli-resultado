@@ -2,14 +2,20 @@
    Network-first (sem cache HTTP) para o shell do app, permite abrir offline
    com os últimos dados sincronizados. */
 
-var CACHE_NAME = 'ppcp-dashboard-v118';
+var CACHE_NAME = 'ppcp-dashboard-v119';
 var URLS_TO_CACHE = [
   '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
   '/logo-patrimar.jpg',
-  '/patrimar-logo.png'
+  '/patrimar-logo.png',
+  /* Tela de divulgação instalável à parte (manifest-plano.json): sem estes
+     no cache, abrir o app instalado sem rede cairia no painel em vez da tela. */
+  '/plano',
+  '/manifest-plano.json',
+  '/icon-plano-192.png',
+  '/icon-plano-512.png'
 ];
 
 /* Sem skipWaiting automático: o worker novo fica em espera e só assume
@@ -53,7 +59,12 @@ self.addEventListener('fetch', function(event){
           caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, clone); });
           return resp;
         })
-        .catch(function(){ return caches.match(event.request).then(function(r){ return r || caches.match('/'); }); })
+        .catch(function(){
+          /* Sem rede: devolve a própria página pedida; se nunca foi aberta,
+             cai em /plano para quem veio do app instalado e em / para o resto. */
+          var alvo = /^\/(plano|tv)\/?$/i.test(url.pathname) ? '/plano' : '/';
+          return caches.match(event.request).then(function(r){ return r || caches.match(alvo); });
+        })
     );
     return;
   }
