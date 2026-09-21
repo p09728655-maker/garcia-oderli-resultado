@@ -23092,9 +23092,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.11';
+var APP_VERSAO = 'b96.12';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.12', data:'21/09/2026', itens:[
+    'Tela /plano: entra a logo da Patrimar no cabecalho, a mesma do painel (logo-patrimar.jpg em caixa branca), com o mesmo fallback — se o arquivo nao carregar, volta a marca P em vez de um quadrado vazio. Escala junto no telao (44 px) e no celular (24 px).'
+  ]},
   { v:'b96.11', data:'21/09/2026', itens:[
     'Tela de divulgacao PLANO x REALIZADO, em endereco proprio: /plano (ou /tv). Uma tela, sem rolagem, feita para a TV do chao de fabrica e para o celular — nao e aba do painel porque numa TV nao ha quem clique, e o link e o que se manda no WhatsApp. A aba Planejamento Mestre continua sendo o diagnostico do PPCP; esta responde uma pergunta so: a fabrica esta no plano?',
     'Duas colunas, dois vereditos: em 21/09 o mes esta no ritmo e o ano esta atras. Mostrar so um dos dois seria mentir por omissao. Os dois lados respondem a MESMA pergunta — o que falta pede X por dia, a fabrica faz Y na jornada normal — que e o unico numero que decide e e comparavel. Projecao so na jornada normal: hora extra e capacidade comprada.',
@@ -23975,7 +23978,10 @@ window.PlanoRealizado = (function(){
         +'<div class="pr-m-n">'+x.mes+'</div></div>';
     }).join('');
     return '<div class="pr-hd">'
-        +'<div class="pr-mark"><span>P</span></div>'
+        /* mesma logo e o mesmo fallback do cabeçalho do painel: se o arquivo
+           não carregar, entra a marca "P" em vez de um quadrado vazio */
+        +'<div class="pr-mark"><img src="logo-patrimar.jpg" alt="Patrimar Móveis" '
+          +'onerror="this.parentElement.classList.add(\'pr-mark-txt\');this.parentElement.innerHTML=\'<span>P</span>\'"></div>'
         +'<div><div class="pr-hd-t">Produção · Plano × Realizado</div>'
         +'<div class="pr-hd-s">Patrimar Móveis · Jaci/SP</div></div>'
         +'<div class="pr-hd-r"><div class="pr-per">'+esc(mes.nome)+' '+m.ano+'</div>'
@@ -24023,8 +24029,10 @@ window.PlanoRealizado = (function(){
       +'color:var(--t1);font-family:var(--sans);z-index:5000;overflow:hidden}'
     +'#pr-solo .pr-hd{display:flex;align-items:center;gap:16px;padding:14px 32px;'
       +'border-bottom:1px solid var(--b);border-top:3px solid var(--cyan);flex-shrink:0}'
-    +'#pr-solo .pr-mark{width:34px;height:34px;border-radius:5px;background:var(--cyan);'
+    +'#pr-solo .pr-mark{border-radius:5px;background:#fff;padding:6px 12px;'
       +'display:flex;align-items:center;justify-content:center;flex-shrink:0}'
+    +'#pr-solo .pr-mark img{height:32px;width:auto;display:block}'
+    +'#pr-solo .pr-mark-txt{background:var(--cyan);padding:0;width:34px;height:34px}'
     +'#pr-solo .pr-mark span{color:#111;font-weight:800;font-size:1.05rem;line-height:1}'
     +'#pr-solo .pr-hd-t{font-size:1rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase}'
     +'#pr-solo .pr-hd-s{font-size:.72rem;color:var(--t2);margin-top:2px;letter-spacing:.05em}'
@@ -24092,6 +24100,7 @@ window.PlanoRealizado = (function(){
     +'@media(min-width:1600px){#pr-solo{font-size:19px}'
       +'#pr-solo .pr-n{font-size:6.4rem}#pr-solo .pr-calc-n{font-size:4rem}#pr-solo .pr-v{font-size:2.6rem}'
       +'#pr-solo .pr-per{font-size:1.6rem}#pr-solo .pr-dot{width:18px;height:18px}'
+      +'#pr-solo .pr-mark img{height:44px}'
       +'#pr-solo .pr-track{height:24px;border-radius:12px}#pr-solo .pr-fill{border-radius:12px}'
       +'#pr-solo .pr-ver{font-size:1.4rem}#pr-solo .pr-proj{font-size:1.25rem}'
       +'#pr-solo .pr-m-p{font-size:1.05rem}#pr-solo .pr-m-n{font-size:.78rem}}'
@@ -24101,6 +24110,7 @@ window.PlanoRealizado = (function(){
       +'#pr-solo .pr-hd,#pr-solo .pr-ft{padding-left:16px;padding-right:16px}'
       +'#pr-solo .pr-hd{flex-wrap:wrap;row-gap:6px}'
       +'#pr-solo .pr-hd-t{font-size:.82rem;letter-spacing:.08em}#pr-solo .pr-hd-s{font-size:.66rem}'
+      +'#pr-solo .pr-mark{padding:4px 8px}#pr-solo .pr-mark img{height:24px}'
       +'#pr-solo .pr-per{font-size:.95rem}#pr-solo .pr-at{font-size:.62rem;line-height:1.35}'
       +'#pr-solo .pr-n{font-size:2.9rem}#pr-solo .pr-calc-n{font-size:2rem}#pr-solo .pr-v{font-size:1.35rem}'
       +'#pr-solo .pr-col{padding:16px}#pr-solo .pr-proj{font-size:.92rem}#pr-solo .pr-ver{font-size:1rem}'
