@@ -5290,6 +5290,12 @@ function _recarregarDoSheets(){
       localStorage.setItem(SK, JSON.stringify(dados));
       _idbSave(dados);
       if (json.setores) { try { localStorage.setItem(SetorHE.SK, JSON.stringify(json.setores)); } catch (e) {} }
+      /* Corte parcial do mês em curso (aba PARCIAL_MES) e feriados (aba FERIADOS):
+         alimentam o bloco "Mês em curso" do Plano Mestre. Lista vazia também
+         grava, para não sobrar corte de rodada antiga. Web App antigo não manda
+         a chave e nada muda. */
+      if (json.parcial)  { try { localStorage.setItem('dash_parcial_v1',  JSON.stringify(json.parcial));  } catch (e) {} }
+      if (json.feriados) { try { localStorage.setItem('dash_feriados_v1', JSON.stringify(json.feriados)); } catch (e) {} }
       if (json.metas) { try { aplicarMetas(json.metas, true); } catch (e) {} }
       return dados;
     });
@@ -5328,6 +5334,12 @@ function _carregarDoSheetsAoAbrir(){
          A planilha é a fonte: lista vazia também grava, para não sobrar setor
          de rodada antiga. Web App antigo não manda a chave e nada muda. */
       if (json.setores) { try { localStorage.setItem(SetorHE.SK, JSON.stringify(json.setores)); } catch (e) {} }
+      /* Corte parcial do mês em curso (aba PARCIAL_MES) e feriados (aba FERIADOS):
+         alimentam o bloco "Mês em curso" do Plano Mestre. Lista vazia também
+         grava, para não sobrar corte de rodada antiga. Web App antigo não manda
+         a chave e nada muda. */
+      if (json.parcial)  { try { localStorage.setItem('dash_parcial_v1',  JSON.stringify(json.parcial));  } catch (e) {} }
+      if (json.feriados) { try { localStorage.setItem('dash_feriados_v1', JSON.stringify(json.feriados)); } catch (e) {} }
       /* Plano de ação da Reunião (aba ACOES). Mescla com o local: a versão
          mais nova de cada ação vence, e o que só existe aqui é reenviado. */
       if (json.acoes && window.Acoes) { try { window.Acoes.mesclar(json.acoes); } catch (e) { console.warn('ACOES:', e); } }
@@ -17125,6 +17137,181 @@ function printAtiva(){
 })();
 </script>
 <script>
+/* ══════════════════════════════════════════════════════════════════
+   MÊS EM CURSO — aderência ao plano DENTRO do mês
+   ─────────────────────────────────────────────────────────────────
+   O Plano Mestre só sabia se o mês cumpriu depois de fechado: producaoReal
+   vem do reporte mensal do ERP, processado depois do dia 30. Aqui entra o
+   corte parcial (o mesmo "3 - REPORTE", de 01/MM até a data do corte, salvo
+   na pasta REPORTES PARCIAIS e lançado na aba PARCIAL_MES) e a conta que
+   diz, ainda com dias no calendário, se o plano cabe no que resta.
+
+   Nada aqui toca producaoReal: o mês em curso continua "aberto" para a
+   Reunião, para o ritmo demonstrado e para a projeção do ano. Este bloco é
+   só leitura de um dado a mais.
+
+   Regras (todas com número, nenhuma com adjetivo):
+     diasDecorridos   = dias úteis de 01/MM até dataCorte (seg–sex, menos FERIADOS)
+     diasRestantes    = diasPlanejados − diasDecorridos
+     faltaProduzir    = plano − realizado
+     ritmoNecRestante = faltaProduzir ÷ diasRestantes
+     ritmoAtualMes    = realizado ÷ diasDecorridos      (com hora extra: o reporte não separa)
+     projecaoMes      = realizado + ritmoAtualMes × diasRestantes
+     esperadoAte      = plano × diasDecorridos ÷ diasPlanejados   (curva linear — premissa dita na tela)
+     aderenciaAte     = realizado ÷ esperadoAte
+
+   Semáforo contra o ritmo DEMONSTRADO na jornada normal (o mesmo do
+   veredito do ano), porque hora extra não é capacidade:
+     verde    ritmoNecRestante ≤ ritmoDem
+     amarelo  ritmoNecRestante ≤ ritmoDem × (1 + META_DEP_HE/100)  → fecha com HE dentro do limite
+     vermelho acima disso
+     velho    corte com mais de 7 dias — sem dado não há veredito
+   Sanidade: ritmoAtualMes > 1,3 × melhor mês fechado → "confira o corte",
+   em vez de comemorar. Puro: sem DOM, sem localStorage — testes/mes-em-curso.test.js.
+══════════════════════════════════════════════════════════════════ */
+window.MesEmCurso = (function(){
+  var ORDEM_M=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  var DIAS_CORTE_VELHO=7;
+
+  /* Datas só em UTC e só como 'AAAA-MM-DD': o fuso do navegador não pode
+     mover um corte de sexta para quinta. */
+  function pad(n){ return (n<10?'0':'')+n; }
+  function iso(y,m,d){ return y+'-'+pad(m+1)+'-'+pad(d); }
+  function deIso(s){
+    var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||'').trim());
+    if(!m) return null;
+    var d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));
+    return isNaN(d.getTime())?null:d;
+  }
+  function ultimoDia(y,m){ return new Date(Date.UTC(y,m+1,0)).getUTCDate(); }
+  function conjunto(lista){
+    var s={}; (lista||[]).forEach(function(f){ var d=deIso(f); if(d) s[d.toISOString().slice(0,10)]=true; });
+    return s;
+  }
+
+  /* Dias úteis entre duas datas, inclusive: segunda a sexta, menos feriados. */
+  function diasUteis(iniIso, fimIso, feriados){
+    var a=deIso(iniIso), b=deIso(fimIso);
+    if(!a||!b||b<a) return 0;
+    var fer=Array.isArray(feriados)?conjunto(feriados):(feriados||{});
+    var n=0;
+    for(var t=a.getTime(); t<=b.getTime(); t+=86400000){
+      var d=new Date(t), dow=d.getUTCDay();
+      if(dow>=1&&dow<=5&&!fer[d.toISOString().slice(0,10)]) n++;
+    }
+    return n;
+  }
+  function diasUteisDoMes(ano, mesIdx, feriados){
+    return diasUteis(iso(ano,mesIdx,1), iso(ano,mesIdx,ultimoDia(ano,mesIdx)), feriados);
+  }
+
+  /* O corte mais recente de um mês, entre todas as linhas da PARCIAL_MES. */
+  function ultimoCorte(parciais, mes, ano){
+    var melhor=null;
+    (parciais||[]).forEach(function(p){
+      if(!p||String(p.mes||'').toUpperCase().slice(0,3)!==mes||+p.ano!==+ano) return;
+      if(!(+p.produtos>0)||!deIso(p.dataCorte)) return;
+      if(!melhor||String(p.dataCorte)>String(melhor.dataCorte)) melhor=p;
+    });
+    return melhor;
+  }
+
+  function ddmm(isoStr){ var d=deIso(isoStr); return d?pad(d.getUTCDate())+'/'+pad(d.getUTCMonth()+1):'—'; }
+  function fi(n){ return isFinite(n)?Math.round(n).toLocaleString('pt-BR'):'—'; }
+  function fd(n,d){ return isFinite(n)?n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'; }
+
+  var COR={ verde:['#4CAF50','76,175,80'], amarelo:['#FF9800','255,152,0'], vermelho:['#F44336','244,67,54'],
+            velho:['#888888','136,136,136'], sem:['#888888','136,136,136'], encerrado:['#00E5FF','0,229,255'] };
+
+  /* p = { plano, realizado, dataCorte:'AAAA-MM-DD', diasPlanejados, ritmoDem,
+           limHE (% — META_DEP_HE), feriados:['AAAA-MM-DD'…], hoje:'AAAA-MM-DD',
+           melhorMesDia (pç/dia com HE do melhor mês fechado, para a sanidade) } */
+  function apurar(p){
+    p=p||{};
+    var plano=+p.plano||0, real=+p.realizado||0, avisos=[];
+    var corte=deIso(p.dataCorte);
+    var base={ plano:plano, realizado:real, dataCorte:p.dataCorte||null, ate:corte?ddmm(p.dataCorte):'—', avisos:avisos };
+    function saida(estado, extra){
+      var o=Object.assign({}, base, extra||{});
+      o.estado=estado; o.cor=COR[estado][0]; o.rgb=COR[estado][1];
+      return o;
+    }
+    if(!(plano>0)||!corte||!(real>=0)) return saida('sem', { titulo:'SEM CORTE', frase:'Sem plano ou sem corte parcial para este mês.', acao:'' });
+
+    var y=corte.getUTCFullYear(), m=corte.getUTCMonth();
+    var feriados=Array.isArray(p.feriados)?p.feriados:[];
+    var temFer=feriados.length>0;
+    var iniIso=iso(y,m,1), fimIso=iso(y,m,ultimoDia(y,m));
+    var diasDec=diasUteis(iniIso, p.dataCorte, feriados);
+    var diasCal=diasUteis(iniIso, fimIso, feriados);
+    var diasPlan=(+p.diasPlanejados>0)?+p.diasPlanejados:diasCal;
+    if(!temFer) avisos.push('Sem aba FERIADOS na planilha: feriado conta como dia útil nos dias decorridos.');
+    if(temFer&&diasCal!==diasPlan) avisos.push('O calendário dá '+diasCal+' dias úteis em '+ORDEM_M[m]+' e o plano usa '+diasPlan+' — confira a aba FERIADOS ou os dias do plano.');
+
+    var diasRest=Math.max(0, diasPlan-diasDec);
+    var falta=plano-real;
+    var ritmoAtual=diasDec>0?real/diasDec:0;
+    var ritmoNec=diasRest>0?falta/diasRest:null;
+    var proj=real+ritmoAtual*diasRest;
+    var esperado=diasPlan>0?plano*diasDec/diasPlan:0;
+    var ader=esperado>0?real/esperado*100:null;
+    var pctFeito=real/plano*100, pctMes=diasPlan>0?diasDec/diasPlan*100:0;
+    var hoje=deIso(p.hoje), idade=hoje?Math.round((hoje-corte)/86400000):0;
+    var ritmoDem=+p.ritmoDem||0, limHE=(+p.limHE>=0)?+p.limHE:8;
+    var ref=ritmoDem, refNome='demonstrado na jornada normal';
+    if(!(ref>0)){ ref=ritmoAtual; refNome='do próprio mês (com hora extra)';
+      avisos.push('Sem mês fechado com horas lançadas: o ritmo necessário foi comparado com o do próprio mês, que inclui hora extra.'); }
+    if(+p.melhorMesDia>0&&ritmoAtual>1.3*p.melhorMesDia)
+      avisos.push('Ritmo de '+fi(ritmoAtual)+' pç/dia é '+fd((ritmoAtual/p.melhorMesDia-1)*100,0)+'% acima do melhor mês fechado ('+fi(p.melhorMesDia)+'). Confira o período do corte antes de confiar no veredito.');
+
+    var nums={ diasDecorridos:diasDec, diasRestantes:diasRest, diasPlanejados:diasPlan, diasCalendario:diasCal,
+               faltaProduzir:falta, ritmoNecRestante:ritmoNec, ritmoAtualMes:ritmoAtual, projecaoMes:proj,
+               esperadoAte:esperado, aderenciaAte:ader, pctFeito:pctFeito, pctMes:pctMes,
+               ritmoRef:ref, ritmoRefNome:refNome, limHE:limHE, idadeCorte:idade, mes:ORDEM_M[m], ano:y };
+
+    if(diasDec<=0) return saida('sem', Object.assign(nums, { titulo:'SEM DIA ÚTIL NO CORTE',
+      frase:'O corte de '+base.ate+' não tem dia útil decorrido — confira a data.', acao:'' }));
+
+    if(idade>DIAS_CORTE_VELHO) return saida('velho', Object.assign(nums, { titulo:'CORTE DESATUALIZADO',
+      frase:'O último corte é de <b>'+base.ate+'</b>, há '+idade+' dias. Até lá: <b>'+fi(real)+'</b> de <b>'+fi(plano)+'</b> peças ('+fd(pctFeito,0)+'% do plano com '+fd(pctMes,0)+'% do mês).',
+      acao:'Emitir o "3 - REPORTE" de 01/'+pad(m+1)+' até hoje e salvar na pasta REPORTES PARCIAIS. Sem corte recente não há veredito.' }));
+
+    if(diasRest<=0){
+      var ok=real>=plano;
+      return saida('encerrado', Object.assign(nums, { titulo:ok?'MÊS ENCERRADO — PLANO COBERTO':'MÊS ENCERRADO — ABAIXO DO PLANO',
+        frase:'Os '+diasPlan+' dias úteis do plano já passaram. Até '+base.ate+': <b>'+fi(real)+'</b> de <b>'+fi(plano)+'</b> ('+fd(pctFeito,1)+'%).',
+        acao:'Aguardar o reporte mensal e as horas do mês para o fechamento oficial.' }));
+    }
+
+    var estado, titulo, frase, acao;
+    var cabe=falta<=0||ritmoNec<=ref;
+    var cabeHE=!cabe&&ritmoNec<=ref*(1+limHE/100);
+    var cabec='Até <b>'+base.ate+'</b>: <b>'+fi(real)+'</b> de <b>'+fi(plano)+'</b> peças — '+fd(pctFeito,0)+'% do plano com '+fd(pctMes,0)+'% do mês'
+      +(ader!==null?' (aderência de <b>'+fd(ader,0)+'%</b> sobre a curva linear)':'')+'. ';
+    if(falta<=0){
+      estado='verde'; titulo='PLANO DO MÊS JÁ CUMPRIDO';
+      frase=cabec+'O plano foi coberto com <b>'+diasRest+'</b> dias úteis ainda no calendário.';
+      acao='Usar os dias restantes para adiantar o mês seguinte ou reduzir hora extra.';
+    } else if(cabe){
+      estado='verde'; titulo='FECHA NA JORNADA NORMAL';
+      frase=cabec+'Faltam <b>'+fi(falta)+'</b> peças em <b>'+diasRest+'</b> dias úteis: <b>'+fi(ritmoNec)+'</b> pç/dia, abaixo do ritmo '+refNome+' (<b>'+fi(ref)+'</b>).';
+      acao='Manter o ritmo. Não programar hora extra para este mês.';
+    } else if(cabeHE){
+      estado='amarelo'; titulo='FECHA SÓ COM HORA EXTRA';
+      frase=cabec+'Faltam <b>'+fi(falta)+'</b> peças em <b>'+diasRest+'</b> dias úteis: <b>'+fi(ritmoNec)+'</b> pç/dia contra <b>'+fi(ref)+'</b> '+refNome+' — cabe com hora extra dentro do limite de '+fd(limHE,0)+'%.';
+      acao='Programar a hora extra agora, distribuída nos '+diasRest+' dias — não na última semana.';
+    } else {
+      estado='vermelho'; titulo='NÃO FECHA NO RITMO ATUAL';
+      frase=cabec+'Faltam <b>'+fi(falta)+'</b> peças em <b>'+diasRest+'</b> dias úteis: <b>'+fi(ritmoNec)+'</b> pç/dia, '+fd((ritmoNec/ref-1)*100,0)+'% acima do ritmo '+refNome+' (<b>'+fi(ref)+'</b>) e além do que a hora extra no limite cobre.';
+      acao='Decidir hoje: hora extra acima do limite, transferir lote para o mês seguinte ou repactuar o plano com o comercial.';
+    }
+    return saida(estado, Object.assign(nums, { titulo:titulo, frase:frase, acao:acao }));
+  }
+
+  return { apurar:apurar, diasUteis:diasUteis, diasUteisDoMes:diasUteisDoMes, ultimoCorte:ultimoCorte,
+           deIso:deIso, ddmm:ddmm, ORDEM_M:ORDEM_M, DIAS_CORTE_VELHO:DIAS_CORTE_VELHO };
+})();
+
 /* ══ PLANEJAMENTO MESTRE ══
    O PDF da planilha mostra o plano e o que já saiu. A pergunta que ele não
    responde é a que interessa em reunião: com o ritmo que a fábrica vem
@@ -17303,6 +17490,61 @@ function printAtiva(){
     return semaforo('Não cumpriu','#F44336','244,67,54');
   }
 
+  /* ── Mês em curso ──
+     Corte parcial (aba PARCIAL_MES) e feriados (aba FERIADOS) chegam pelo sync
+     e ficam no localStorage; a conta é do MesEmCurso, acima. Sem corte, o
+     bloco não aparece e a tabela segue como sempre. */
+  function lerLocal(k){ try { var v=JSON.parse(localStorage.getItem(k)||'null'); return Array.isArray(v)?v:[]; } catch(e){ return []; } }
+  function hojeIso(){ var d=new Date(); function p(n){ return (n<10?'0':'')+n; } return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+  function statusCurso(){ return semaforo('Em andamento','#F5A623','245,166,35'); }
+  function blocoMesEmCurso(c){
+    if(!c) return '';
+    var mm=('0'+(ORDEM_M.indexOf(c.mes)+1)).slice(-2);
+    var cab='<div style="font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:0 0 10px;padding-left:2px">'
+      +'▸ Mês em curso — '+c.mes+'/'+String(c.ano).slice(2)+' · corte de '+c.ate+'</div>';
+    var avisos=(c.avisos&&c.avisos.length)
+      ? '<div style="margin-top:10px;padding:9px 13px;background:rgba(255,152,0,.08);border-left:2px solid rgba(255,152,0,.5);border-radius:6px;font-size:.74rem;color:var(--t2);line-height:1.5">'
+        +c.avisos.map(function(a){ return '<div><b style="color:#FF9800">Atenção:</b> '+a+'</div>'; }).join('')+'</div>'
+      : '';
+    if(c.estado==='sem'){
+      return cab+'<div style="background:var(--panel);border:1px solid var(--b);border-left:5px solid '+c.cor+';border-radius:var(--r);padding:16px 20px;margin-bottom:16px">'
+        +'<div style="font-size:1.1rem;font-weight:800;color:'+c.cor+'">'+c.titulo+'</div>'
+        +'<div style="font-size:.85rem;color:var(--t1);margin-top:6px">'+c.frase+'</div>'+avisos+'</div>';
+    }
+    var pF=Math.min(100,Math.max(0,c.pctFeito)), pM=Math.min(100,Math.max(0,c.pctMes));
+    var barra='<div style="margin:10px 0 4px;position:relative;height:12px;background:var(--b);border-radius:6px;overflow:visible">'
+      +'<div style="height:100%;width:'+pF.toFixed(1)+'%;background:'+c.cor+';border-radius:6px"></div>'
+      +'<div title="Esperado até '+c.ate+' pela curva linear: '+fi(c.esperadoAte)+' pç" style="position:absolute;top:-4px;bottom:-4px;left:'+pM.toFixed(1)+'%;width:2px;background:var(--t1);opacity:.8"></div>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:.66rem;color:var(--t3)">'
+      +'<span>'+fd(c.pctFeito,0)+'% do plano realizado</span><span>│ '+fd(c.pctMes,0)+'% do mês decorrido ('+c.diasDecorridos+' de '+c.diasPlanejados+' dias úteis)</span></div>';
+    var cards='';
+    if(c.estado!=='encerrado'){
+      cards='<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:14px">'
+        +card('Realizado até '+c.ate, fi(c.realizado)+' pç', 'de '+fi(c.plano)+' do plano', '#F5A623')
+        +card('Falta produzir', fi(Math.max(0,c.faltaProduzir))+' pç', c.diasRestantes+' dias úteis restantes', '#00E5FF')
+        +card('Ritmo necessário', (c.ritmoNecRestante!==null?fi(Math.max(0,c.ritmoNecRestante)):'—')+' pç/dia', 'vs '+fi(c.ritmoRef)+' '+c.ritmoRefNome, c.cor)
+        +card('Projeção do mês', fi(c.projecaoMes)+' pç', 'no ritmo atual de '+fi(c.ritmoAtualMes)+' pç/dia', c.projecaoMes>=c.plano?'#4CAF50':'#FF9800')
+        +'</div>';
+    }
+    return cab
+      +'<div style="background:linear-gradient(135deg,var(--panel),rgba('+c.rgb+',.05));border:1px solid var(--b);'
+      +'border-left:5px solid '+c.cor+';border-radius:var(--r);padding:18px 22px;margin-bottom:16px">'
+      +'<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px">'
+        +'<span style="font-size:1.35rem;font-weight:800;color:'+c.cor+'">'+c.titulo+'</span>'
+        +(c.aderenciaAte!==null?'<span style="font-family:var(--mono);font-size:1rem;font-weight:700;color:'+c.cor+'">'+fd(c.aderenciaAte,0)+'%</span>'
+          +'<span style="font-size:.7rem;color:var(--t2)">realizado ÷ esperado até '+c.ate+'</span>':'')
+      +'</div>'
+      +barra
+      +'<div style="font-size:.88rem;color:var(--t1);line-height:1.55;max-width:960px;margin-top:10px">'+c.frase+'</div>'
+      +(c.acao?'<div style="margin-top:10px;padding:9px 13px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.78rem;color:var(--t2);'
+        +'border-left:2px solid rgba('+c.rgb+',.45)"><b style="color:var(--t1)">Ação recomendada:</b> '+c.acao+'</div>':'')
+      +cards+avisos
+      +'<div style="font-size:.66rem;color:var(--t3);margin-top:8px">Fonte: "3 - REPORTE" de 01/'+mm+' a '+c.ate+' (aba PARCIAL_MES) — produtos acabados, com hora extra. '
+      +'O "esperado" é a curva linear do plano: referência para ler o atraso, não meta diária.</div>'
+      +'</div>';
+  }
+
   function card(lbl,val,sub,cor){
     return '<div class="kCard" style="border-top:3px solid '+cor+'">'
       +'<div class="kLbl">'+lbl+'</div>'
@@ -17346,9 +17588,14 @@ function printAtiva(){
 
     var planoAno=0, realAcum=0, planoAberto=0, diasAbertos=0, normalFech=0, diasFech=0, heP=0, linhas='';
     var diasPlanoAno=0, fatFech=0, venFech=0, planoFech=0, diasPlanFech=0, semPlano=[], mesesTab=[];
+    var parciais=lerLocal('dash_parcial_v1'), feriados=lerLocal('dash_feriados_v1'), cursoRec=null, melhorDia=0;
     recs.forEach(function(r){
       var plano=r.previsaoProducao||0, real=r.producaoReal||0, normal=r.prodSemExtras||0;
       var fechado=real>0;
+      /* Mês aberto com corte parcial lançado: entra como "Em andamento". real
+         continua zero para todo o resto do painel — só a tabela e o bloco
+         acima dela enxergam o parcial. */
+      var parc=(!fechado&&plano>0)?MesEmCurso.ultimoCorte(parciais,r.mes,ano):null;
       /* Mês simulado usa os dias do cenário: o plano dele nasceu de ritmo × esses
          dias, então dividir por outro denominador devolveria um ritmo necessário
          que não é o do cenário. */
@@ -17361,6 +17608,8 @@ function printAtiva(){
          cálculo como zero peças em N dias, puxando a média para baixo. */
       var horasFechadas=fechado&&normal>0&&dias>0;
       if(fechado){ realAcum+=real; }
+      if(fechado&&dias>0) melhorDia=Math.max(melhorDia, real/dias);
+      if(parc&&!cursoRec) cursoRec={ plano:plano, parc:parc, diasP:diasP };
       /* HE só é atribuível quando as horas do mês já entraram; senão o mês
          inteiro seria contado como hora extra. */
       if(horasFechadas){
@@ -17390,13 +17639,14 @@ function printAtiva(){
       var corRitmo=(ritmoReal!==null&&ritmoNec!==null)?(ritmoReal>=ritmoNec?'var(--green)':'var(--red)'):'var(--t1)';
       mesesTab.push({mes:r.mes, plano:plano, real:fechado?real:null, normal:fechado?normal:null, desvio:desvio,
                      dias:dias, ritmoNec:ritmoNec, ritmoReal:ritmoReal,
-                     status:(plano<=0?'sem plano':(real<=0?'A produzir':(normal<=0?'Em fechamento'
+                     parcial:parc?{ produtos:+parc.produtos, dataCorte:parc.dataCorte, ate:MesEmCurso.ddmm(parc.dataCorte) }:null,
+                     status:(parc?'Em andamento':plano<=0?'sem plano':(real<=0?'A produzir':(normal<=0?'Em fechamento'
                        :(normal>=plano?'Cumpriu':(real>=plano?'Cumpriu c/ HE':'Não cumpriu')))))});
       linhas+='<tr>'
         +'<td>'+r.mes+'/'+String(ano).slice(2)+'</td>'
-        +'<td>'+statusMes(plano,real,normal)+'</td>'
+        +'<td>'+(parc?statusCurso():statusMes(plano,real,normal))+'</td>'
         +'<td style="text-align:right">'+(plano>0?fi(plano):'—')+'</td>'
-        +'<td style="text-align:right">'+(fechado?fi(real):'—')+'</td>'
+        +'<td style="text-align:right">'+(fechado?fi(real):(parc?fi(parc.produtos)+' <span style="font-size:.62rem;color:var(--t3)">até '+MesEmCurso.ddmm(parc.dataCorte)+'</span>':'—'))+'</td>'
         +'<td style="text-align:right;color:'+corDesvio+'"'
           +(desvio===null?'':' title="'+fi(real)+' entregues (com hora extra) − '+fi(plano)+' do plano = '+(desvio>=0?'+':'')+fi(desvio)+' peças"')
           +'>'+(desvio===null?'—':(desvio>=0?'+':'')+fi(desvio))+'</td>'
@@ -17429,6 +17679,11 @@ function printAtiva(){
     var ritmoExig=diasPlanFech>0?planoFech/diasPlanFech:ritmoPlano;
     var ritmoNecR=diasAbertos>0?planoAberto/diasAbertos:0;    /* só o que falta */
     var pctFolga=ritmoExig>0?((ritmoDem/ritmoExig)-1)*100:0;
+    /* Mês em curso: comparado com o ritmo demonstrado do ano (jornada normal)
+       e com o limite de hora extra da aba METAS. */
+    var curso=cursoRec?MesEmCurso.apurar({ plano:cursoRec.plano, realizado:+cursoRec.parc.produtos, dataCorte:cursoRec.parc.dataCorte,
+      diasPlanejados:cursoRec.diasP, ritmoDem:ritmoDem, limHE:(typeof META_DEP_HE!=='undefined')?META_DEP_HE:8,
+      feriados:feriados, hoje:hojeIso(), melhorMesDia:melhorDia }):null;
 
     var cor,rgb,titulo,frase,acao;
     var restante = planoAberto>0
@@ -17514,7 +17769,8 @@ function printAtiva(){
 
     var pctPlano=planoAno>0?(realAcum/planoAno)*100:0;
     document.getElementById('pm-kpis').innerHTML=
-      '<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(235px,1fr))">'
+      blocoMesEmCurso(curso)
+      +'<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(235px,1fr))">'
       +card('Plano do ano', fi(planoAno)+' pç', diasPlanoAno+' dias úteis planejados', '#00E5FF')
       +card('Realizado até agora', fi(realAcum)+' pç', fd(pctPlano,1)+'% do plano', '#F5A623')
       +card('Ritmo do plano', fi(ritmoPlano)+' pç/dia', 'Plano do ano ÷ dias úteis', '#00E5FF')
@@ -17536,7 +17792,7 @@ function printAtiva(){
              ritmoExig:ritmoExig, diasPlanFech:diasPlanFech,
              ritmoDem:ritmoDem, ritmoNecR:ritmoNecR, pctFolga:pctFolga, heP:heP,
              planoFech:planoFech, fatFech:fatFech, venFech:venFech, semPlano:semPlano,
-             titulo:titulo, frase:frase, acao:acao, cor:cor, meses:mesesTab };
+             titulo:titulo, frase:frase, acao:acao, cor:cor, curso:curso, meses:mesesTab };
   }
 
   /* ── O plano cobre a demanda? ──
@@ -18110,11 +18366,11 @@ function printAtiva(){
       +itens.map(function(i){return '<li>'+i+'</li>';}).join('')+'</ul></div>'; }
 
     var linhas=u.meses.map(function(m){
-      var cor=m.status==='Cumpriu'?'#2f855a':(m.status==='Cumpriu c/ HE'?'#b7791f':(m.status==='Não cumpriu'?'#c53030':'#718096'));
+      var cor=m.status==='Cumpriu'?'#2f855a':(m.status==='Cumpriu c/ HE'||m.status==='Em andamento'?'#b7791f':(m.status==='Não cumpriu'?'#c53030':'#718096'));
       return '<tr><td><b>'+m.mes+'/'+String(u.ano).slice(2)+'</b></td>'
         +'<td style="color:'+cor+';font-weight:700">'+m.status+'</td>'
         +'<td class="n">'+(m.plano>0?fi(m.plano):'—')+'</td>'
-        +'<td class="n">'+(m.real!==null?fi(m.real):'—')+'</td>'
+        +'<td class="n">'+(m.real!==null?fi(m.real):(m.parcial?fi(m.parcial.produtos)+' (até '+m.parcial.ate+')':'—'))+'</td>'
         +'<td class="n" style="color:'+(m.desvio===null?'#718096':(m.desvio>=0?'#2f855a':'#c53030'))+'">'
           +(m.desvio===null?'—':(m.desvio>=0?'+':'')+fi(m.desvio))+'</td>'
         +'<td class="n">'+m.dias+'</td>'
@@ -22580,9 +22836,17 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.2';
+var APP_VERSAO = 'b96.3';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.3', data:'21/09/2026', itens:[
+    'Plano Mestre ganha o bloco MES EM CURSO: o mesmo relatorio 3 - REPORTE do ERP, emitido de 01/MM ate a data de hoje e salvo na pasta REPORTES PARCIAIS do Drive, vira uma linha na aba PARCIAL_MES e o painel diz, com dias ainda no calendario, se o plano do mes cabe no que resta. Ate entao o painel so sabia se o mes cumpriu depois de fechado.',
+    'Regras: dias uteis decorridos = segunda a sexta menos a aba FERIADOS (menu Plano Mestre > Criar aba FERIADOS; nasce com os feriados nacionais de 2026, recesso entra a mao); ritmo necessario restante = (plano - realizado) / dias uteis restantes; semaforo contra o ritmo DEMONSTRADO na jornada normal, o mesmo do veredito do ano: verde cabe na jornada, amarelo cabe com hora extra dentro do limite META_DEP_HE, vermelho nao cabe; corte com mais de 7 dias vira CORTE DESATUALIZADO. A curva de esperado ate a data e linear e a tela diz isso.',
+    'Sanidade: ritmo do mes 30% acima do melhor mes fechado gera aviso para conferir o periodo do corte, em vez de comemorar. O corte real de 01 a 18/09 deu 2.014 pc/dia contra 1.522 do melhor mes: e o primeiro numero a checar no ERP.',
+    'O parcial NAO entra em producaoReal: o mes continua aberto para a Reuniao, para o ritmo demonstrado e para a projecao do ano. Na tabela ele aparece como Em andamento, com o realizado ate a data. Sem corte lancado, nada muda na tela.',
+    'ReporteVolumes.gs: o leitor passa a ler as duas datas do periodo e recusa, na pasta mensal, um PDF que nao vai do dia 1 ao ultimo dia do mes — antes, um corte parcial salvo na pasta errada substituia o mes inteiro e fechava setembro com metade das pecas, sem erro nenhum na tela. A regra de produto x caixas do resumo mensal virou funcao (rvAgruparLinhas, rvVolumesDoMes) e o corte parcial usa a mesma. Code.gs: doGet manda parcial e feriados — REIMPLANTE O WEB APP.',
+    'testes/mes-em-curso.test.js (54 casos: dias uteis com feriado e fuso, o corte real de SET/26, as bordas do semaforo, corte velho, mes encerrado, calendario x plano) e testes/reporte-parcial.test.js (27 casos: periodo fechado x parcial nas duas formas de texto, regua do PDF, produto x caixas).'
+  ]},
   { v:'b96.2', data:'21/09/2026', itens:[
     'Limpeza interna, sem mudanca de tela: saem as tres geracoes mortas de cfCalcular (v1, v3 e v4). A conta de capacidade era definida cinco vezes no mesmo nome e so a da CORRECAO FINAL (embrulhada pelo patch v11) chegava a rodar; a declaracao original, bem comentada, era o lugar natural de procurar a formula, e editar ali nao mudava nada na tela. Fica um ponteiro para a implementacao viva.',
     'Saem tambem sete funcoes nunca chamadas (clEf, clEfStr, addTab, _pSet, pDrawBar, _getDias, ritmoAnoAnterior) e 17 regras de CSS de elementos que nao existem mais, entre elas o painel de validacao da importacao de Excel, removida em b95.5.',

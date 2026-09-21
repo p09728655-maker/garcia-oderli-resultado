@@ -1,0 +1,101 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Teste do leitor de PDF do ERP — apps-script/ReporteVolumes.gs
+
+   Rode com:  node testes/reporte-parcial.test.js
+   Sem dependência, sem build. Sai com código 1 se algo quebrar.
+
+   POR QUE ISTO EXISTE
+   O mesmo "3 - REPORTE" chega em duas versões: o mês fechado (01 a 30) e o
+   corte parcial (01 até hoje). Os dois têm o MESMO layout. Se o leitor não
+   distinguir, um corte parcial na pasta mensal substitui o mês inteiro,
+   vira produtosReportados e o painel fecha setembro com metade das peças —
+   sem erro nenhum na tela. A régua que separa os dois é a data final do
+   período; este teste a prende, junto com o agrupamento produto × volume
+   que o corte parcial reaproveita do resumo mensal.
+
+   O .gs é JavaScript: o arquivo é avaliado num escopo isolado, com os
+   objetos do Apps Script ausentes — só as funções puras são chamadas.
+══════════════════════════════════════════════════════════════════════════ */
+'use strict';
+const fs = require('fs');
+const path = require('path');
+
+function carregarRV() {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'ReporteVolumes.gs'), 'utf8');
+  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvNum, RV_RE_VOL };';
+  return new Function('Logger', src + '\n' + exp)({ log() {} });
+}
+const RV = carregarRV();
+
+let falhas = 0, total = 0;
+function afirma(nome, cond) {
+  total++;
+  if (!cond) falhas++;
+  console.log(`  ${cond ? 'ok  ' : 'FALHA'} ${nome}`);
+}
+function ok(nome, obtido, esperado, tol = 0.001) {
+  total++;
+  const bom = Math.abs(obtido - esperado) <= tol;
+  if (!bom) falhas++;
+  console.log(`  ${bom ? 'ok  ' : 'FALHA'} ${nome.padEnd(52)} ${(+obtido).toFixed(3).padStart(12)} (esperado ${(+esperado).toFixed(3)})`);
+}
+const sec = t => console.log('\n' + t);
+
+/* ══ Período ══ */
+sec('rvPeriodoDoTexto — mês, datas e a marca de PARCIAL');
+const linha1 = 'Período: 01/09/26 até 18/09/26\nDepósito: Transação: 3 - REPORTE';   /* conversão do Docs: uma linha */
+const quebrado = 'Período: até\n01/09/26 18/09/26\nDepósito:';                       /* PDF extraído em duas linhas */
+const fechado = 'Período: 01/09/26 até 30/09/26';
+const fev = 'Período: 01/02/26 até 28/02/26';
+const antigo = 'Período: 01/09/26\nDepósito:';                                         /* sem data final */
+let p = RV.rvPeriodoDoTexto(linha1);
+afirma('mês e ano da data inicial', p.mes === 'SET' && p.ano === 2026);
+afirma('ini/fim em AAAA-MM-DD', p.ini === '2026-09-01' && p.fim === '2026-09-18');
+afirma('01 a 18/09 → PARCIAL', p.parcial === true);
+afirma('mesma leitura com o texto quebrado em duas linhas', (() => { const q = RV.rvPeriodoDoTexto(quebrado); return q.mes === 'SET' && q.fim === '2026-09-18' && q.parcial; })());
+afirma('01 a 30/09 → mês fechado', RV.rvPeriodoDoTexto(fechado).parcial === false);
+afirma('01 a 28/02/26 → fechado (fevereiro tem 28)', RV.rvPeriodoDoTexto(fev).parcial === false);
+afirma('01 a 28/09 → parcial (setembro tem 30)', RV.rvPeriodoDoTexto('Período: 01/09/26 até 28/09/26').parcial === true);
+afirma('05 a 30/09 → parcial (não começa no dia 1)', RV.rvPeriodoDoTexto('Período: 05/09/26 até 30/09/26').parcial === true);
+afirma('01/09 a 02/10 → parcial (muda de mês)', RV.rvPeriodoDoTexto('Período: 01/09/26 até 02/10/26').parcial === true);
+afirma('ano com 4 dígitos', RV.rvPeriodoDoTexto('Período: 01/09/2026 até 30/09/2026').parcial === false);
+afirma('sem data final (layout antigo) → fechado, fim null', (() => { const a = RV.rvPeriodoDoTexto(antigo); return a.parcial === false && a.fim === null && a.mes === 'SET'; })());
+afirma('sem "Período" → null', RV.rvPeriodoDoTexto('Relatório sem cabeçalho') === null);
+ok('último dia de fev/2026', RV.rvUltimoDiaDoMes(2026, 2), 28, 0);
+ok('último dia de fev/2028 (bissexto)', RV.rvUltimoDiaDoMes(2028, 2), 29, 0);
+ok('último dia de dez', RV.rvUltimoDiaDoMes(2026, 12), 31, 0);
+
+/* ══ Linhas ══ */
+sec('rvLinhasDoTexto — régua do PDF (código, descrição, qtde, peso, custo)');
+const TEXTO = [
+  'Produto Descrição Quantidade Peso (KG) Vlr. Custo',
+  '100.009.001 TOUCADOR MAGIC NEW BRANCO 259,000 4.299,400 33.190,74',
+  '100.009.006 TOUCADOR MAGIC NEW OFF WHITE 94,000 1.560,400 12.700,52',
+  '100 TOUCADORES 353,000 5.859,800 45.891,26',                       /* subtotal do grupo: sem código completo */
+  '900.001.001 VOL 1/2 TOUCADOR MAGIC NEW BRANCO 259,000 2.100,000 1,00',
+  '900.001.002 VOL 2/2 TOUCADOR MAGIC NEW BRANCO 250,000 2.199,400 1,00',
+  '102.004.001 SAPATEIRA SPAZIO BRANCO 1,000 39,500 135,74',
+  '3 REPORTE 863,000 10.198,700 45.000,00',                            /* rodapé */
+].join('\n');
+const L = RV.rvLinhasDoTexto(TEXTO, { mes: 'SET', ano: 2026 });
+afirma('5 linhas com código (subtotal e rodapé ficam de fora)', L.length === 5);
+afirma('linha = [mes, ano, codigo, descricao, qtde, peso]', L[0][0] === 'SET' && L[0][1] === 2026 && L[0][2] === '100.009.001' && L[0][3] === 'TOUCADOR MAGIC NEW BRANCO');
+ok('quantidade em padrão BR (259,000 → 259)', L[0][4], 259, 0);
+ok('peso em padrão BR (4.299,400 → 4299,4)', L[0][5], 4299.4, 0.001);
+
+/* ══ Agrupamento — a régua compartilhada entre resumo mensal e corte parcial ══ */
+sec('rvAgruparLinhas + rvVolumesDoMes — produto × caixas');
+const agr = RV.rvAgruparLinhas(L);
+afirma('um mês agrupado: SET/2026', agr.ordem.length === 1 && agr.ordem[0] === 'SET/2026');
+const g = agr.meses['SET/2026'];
+ok('produtos = 259 + 94 + 1 (linhas VOL não somam)', g.prod, 354, 0);
+ok('peso só dos produtos = 4.299,4 + 1.560,4 + 39,5', g.peso, 5899.3, 0.001);
+afirma('grupo VOL do TOUCADOR BRANCO com 2 caixas', g.grupos['TOUCADOR MAGIC NEW BRANCO'] && g.grupos['TOUCADOR MAGIC NEW BRANCO'].n === 2);
+const pend = RV.rvVolumesDoMes(g, { 'TOUCADOR MAGIC NEW OFF WHITE': 3 });
+ok('volumes = 259×2 (VOL do mês) + 94×3 (cadastro) + 1×1 (sem nada)', g.vol, 801, 0);
+afirma('pendência = só a SAPATEIRA (sem VOL e sem cadastro)', pend.length === 1 && pend[0] === 'SAPATEIRA SPAZIO BRANCO');
+afirma('lista vazia → nenhum mês', RV.rvAgruparLinhas([]).ordem.length === 0);
+afirma('linha sem quantidade é ignorada', RV.rvAgruparLinhas([['SET', 2026, '1', 'X', 0, 0]]).ordem.length === 0);
+
+console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
+process.exit(falhas ? 1 : 0);
