@@ -107,11 +107,21 @@ function calcularVolumesMes() {
   var saida = ordem.map(function (chave) {
     var g = meses[chave];
     var pendentes = rvVolumesDoMes(g, cadastro);
-    return [g.mes, g.ano, g.vol, g.prod, g.prod > 0 ? g.vol / g.prod : '',
-            pendentes.length
-              ? pendentes.length + ' produto(s) sem SKU de volume (contados como 1 caixa): ' + pendentes.slice(0, 8).join('; ')
-                + (pendentes.length > 8 ? '…' : '')
-              : ''];
+    /* O contrário da pendência: caixa apontada cujo produto não aparece em
+       lugar nenhum. Some das peças E dos quilos, sem deixar rastro — e a
+       coluna de pendências é o único lugar onde alguém iria procurar. */
+    var orf = rvOrfaosVol(g);
+    var avisos = [];
+    if (pendentes.length) {
+      avisos.push(pendentes.length + ' produto(s) sem SKU de volume (contados como 1 caixa): '
+        + pendentes.slice(0, 8).join('; ') + (pendentes.length > 8 ? '…' : ''));
+    }
+    if (orf.pecas > 0) {
+      avisos.push('FORA DA CONTA: ' + orf.nomes.length + ' produto(s) só como VOL ('
+        + orf.pecas + ' peças, ' + Math.round(orf.peso) + ' kg) — ' + orf.nomes.slice(0, 5).join('; ')
+        + (orf.nomes.length > 5 ? '…' : ''));
+    }
+    return [g.mes, g.ano, g.vol, g.prod, g.prod > 0 ? g.vol / g.prod : '', avisos.join(' | ')];
   });
 
   var alt = Math.max(aba.getLastRow() - 1, 1);
@@ -142,9 +152,10 @@ function rvAgruparLinhas(linhas) {
       /* grupo por produto: quantas caixas ele tem (o "de" do x/de) e quanto
          foi reportado nessas linhas */
       var nome = m[3].trim().toUpperCase();
-      var grp = g.grupos[nome] || (g.grupos[nome] = { n: 1, q: 0 });
+      var grp = g.grupos[nome] || (g.grupos[nome] = { n: 1, q: 0, p: 0 });
       grp.n = Math.max(grp.n, parseInt(m[2], 10) || 1);
       grp.q += qtd;
+      grp.p += rvNum(l[5]);
     } else {
       g.prod += qtd;
       g.peso += rvNum(l[5]);
@@ -329,9 +340,10 @@ function rvProcessarReportes() {
          producaoReal do painel. Fica na pasta, com o motivo. */
       if (mesAno.parcial) throw new Error('é um corte PARCIAL (' + mesAno.ini + ' a ' + mesAno.fim
         + ') — vai na pasta "' + RV_PASTA_PARCIAL + '", não aqui');
+      var tipo = rvConferirTipo(texto);
       var linhas = rvLinhasDoTexto(texto, mesAno);
       if (!linhas.length) throw new Error('nenhuma linha de produto/volume reconhecida');
-      var confere = rvConferirTotal(linhas, texto);
+      var confere = rvConferirTotal(linhas, texto) + tipo;
       rvSubstituirMes(mesAno, linhas);
       rvMoverParaProcessados(pasta, pdf);
       feitos.push(pdf.getName() + ' → ' + mesAno.mes + '/' + mesAno.ano + ' (' + linhas.length + ' linhas' + confere + ')');
@@ -404,6 +416,72 @@ function rvPeriodoDoTexto(texto) {
   return out;
 }
 function rvUltimoDiaDoMes(ano, mes) { return new Date(Date.UTC(ano, mes, 0)).getUTCDate(); }
+
+/* ══ TIPO DO RELATÓRIO — a régua que faltava ══
+   O mesmo "3 - REPORTE" sai do ERP em dois filtros, e eles NÃO trazem a
+   mesma coisa:
+
+     Tipo: Todos                  → produto acabado E as linhas VOL (caixas)
+     Tipo: P - PRODUTOS ACABADOS  → só o produto acabado
+
+   O certo é "Todos", e a conta com os PDFs reais mostra por quê:
+
+     AGO/26 (Todos) → 32.364 produtos, 806.235 kg, 40.281 volumes.
+                      Os volumes saem das próprias linhas VOL e batem
+                      exatamente com o que está lançado na HISTORICO.
+     JUN/26 (P)     → 30.851 produtos e 776.854 kg certos, mas sem linha VOL
+                      o resumo cai para 1 caixa por produto e dá 30.851
+                      volumes contra 38.499 reais: erra 7.648 (−20%) e
+                      lista os 181 produtos como pendência de cadastro.
+
+   Ou seja: as peças e os quilos saem iguais nos dois, porque o leitor separa
+   produto de VOL pela descrição; os VOLUMES só existem no "Todos".
+
+   O furo do "Todos" é outro e é pequeno: um produto que apareça só como VOL
+   e cujo nome abreviado não case com nenhuma linha de produto sai da conta
+   inteira. Em AGO/26 foi 1 produto (100 peças, 675 kg, 0,3% do mês) e no
+   corte de 18/09, nenhum. Como é pequeno e silencioso, é justamente o tipo
+   de perda que ninguém acha depois — por isso rvOrfaosVol conta e avisa.
+
+   Relatório sem a linha "Tipo:" (layout antigo, com coluna UM) segue sem a
+   conferência: não dá para exigir o que o papel não diz. */
+var RV_TIPO_OK = 'TODOS';
+
+function rvTipoDoTexto(texto) {
+  /* o layout novo traz "Tipo: Todos"; o antigo, convertido, espalha
+     ponto-e-vírgula entre as células ("Tipo: ; P - PRODUTOS ; ;") */
+  var m = String(texto || '').match(/Tipo:\s*;?\s*([^\n;]+)/);
+  if (!m) return null;
+  return m[1].replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+function rvConferirTipo(texto) {
+  var tipo = rvTipoDoTexto(texto);
+  if (tipo === null) return ' (sem linha "Tipo:" no PDF para conferir)';
+  if (tipo === RV_TIPO_OK) return ' (Tipo: Todos)';
+  throw new Error('o PDF foi gerado com "Tipo: ' + tipo + '" — refaça o relatório com '
+    + '"Tipo: Todos". As peças e os quilos saem certos nos dois, mas sem as linhas VOL os VOLUMES '
+    + 'passam a ser estimados pelo cadastro: em JUN/26 isso dá 30.851 volumes contra 38.499 reais. '
+    + 'Nada foi gravado');
+}
+
+/* Produto que só existe como linha VOL: o resumo soma as caixas dele em
+   VOLUMES e perde as peças e o peso. O casamento por nome abreviado cobre
+   quase tudo, mas não é garantia — então o que escapa é contado e dito. */
+function rvOrfaosVol(g) {
+  var nomes = g.produtos.map(function (p) { return p.nome; });
+  var fora = { nomes: [], pecas: 0, peso: 0 };
+  Object.keys(g.grupos).forEach(function (nv) {
+    var casa = nomes.some(function (n) { return n.indexOf(nv) === 0 || rvAbrevia(nv, n); });
+    if (casa) return;
+    var grp = g.grupos[nv];
+    fora.nomes.push(nv);
+    fora.pecas += grp.q / (grp.n || 1);
+    fora.peso += grp.p || 0;
+  });
+  fora.pecas = Math.round(fora.pecas);
+  return fora;
+}
 
 /* Régua do PDF: código 000.000.000, descrição, três números (quantidade e
    peso com três decimais, custo com dois). Varre o TEXTO INTEIRO, não linha
@@ -539,17 +617,23 @@ function rvProcessarParciais() {
       if (!per.fim) throw new Error('não achei a data final do período');
       if (!per.parcial) throw new Error('é o mês FECHADO (' + per.ini + ' a ' + per.fim + ') — vai na pasta "' + RV_PASTA + '"');
       if (per.ini.slice(-2) !== '01') throw new Error('o corte tem de começar no dia 1 (veio ' + per.ini + ') — o painel soma do início do mês');
+      var tipo = rvConferirTipo(texto);
       var linhas = rvLinhasDoTexto(texto, per);
       if (!linhas.length) throw new Error('nenhuma linha de produto/volume reconhecida');
-      var confere = rvConferirTotal(linhas, texto);
+      var confere = rvConferirTotal(linhas, texto) + tipo;
       var agr = rvAgruparLinhas(linhas);
       var g = agr.meses[agr.ordem[0]];
       rvVolumesDoMes(g, cadastro);
+      /* PDF antigo, sem a linha "Tipo:", ainda pode trazer VOL órfão — o que
+         ele leva embora é dito no aviso, não descoberto três meses depois. */
+      var orf = rvOrfaosVol(g);
       rvGravarParcial(ss, [g.mes, g.ano, per.fim, g.prod, g.vol, Math.round(g.peso * 10) / 10,
                             new Date().toISOString(), pdf.getName()]);
       rvMoverParaProcessados(pasta, pdf);
       feitos.push(pdf.getName() + ' → ' + g.mes + '/' + g.ano + ' até ' + per.fim + ': ' + g.prod + ' produtos, '
-        + g.vol + ' volumes em ' + linhas.length + ' linhas' + confere);
+        + g.vol + ' volumes em ' + linhas.length + ' linhas' + confere
+        + (orf.pecas > 0 ? '. ATENÇÃO: ' + orf.nomes.length + ' produto(s) só como VOL ficaram FORA da conta ('
+            + orf.pecas + ' peças, ' + Math.round(orf.peso) + ' kg) — refaça com Tipo: P' : ''));
     } catch (e) {
       falhas.push(pdf.getName() + ': ' + (e && e.message || e));
     }

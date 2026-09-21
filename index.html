@@ -23151,9 +23151,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.16';
+var APP_VERSAO = 'b96.17';
 var APP_DATA   = '21/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.17', data:'21/09/2026', itens:[
+    'Leitor do PDF: o relatorio "3 - REPORTE" sai do ERP em dois filtros e eles nao trazem a mesma coisa. "Tipo: Todos" traz o produto acabado E as linhas VOL (caixas); "Tipo: P - PRODUTOS ACABADOS" traz so o produto. Como o leitor separa produto de VOL pela descricao, as pecas e os quilos saem iguais nos dois — mas os VOLUMES so existem no "Todos". Sem as linhas VOL o resumo cai para 1 caixa por produto: JUN/26 da 30.851 volumes contra 38.499 reais, erro de 20%, e os 181 produtos viram pendencia de cadastro.',
+    'O padrao passa a ser "Tipo: Todos" e o PDF fora dele e recusado, como ja acontece quando a soma nao bate com a linha "Geral". Conferido nos PDFs reais: AGO/26 em "Todos" devolve 40.281 volumes, exatamente o que esta lancado na HISTORICO; JUN/26 em "P" devolve 30.851. PDF antigo, sem a linha "Tipo:" no papel, segue sem a conferencia e diz que nao conferiu.',
+    'O furo do formato "Todos" passa a ser contado: produto que aparece SO como linha VOL e cujo nome abreviado nao casa com nenhuma linha de produto sai das pecas E dos quilos, sem rastro. O casamento por nome cobre quase tudo (PENT CAMARIM 1PT 2GAV DIAMANTE B casa com PENTEADEIRA CAMARIM 1PT 2GAV DIAMANTE BRANCO), mas nao e garantia: em AGO/26 escapou 1 produto, 100 pecas e 675 kg. Agora aparece na coluna PENDENCIAS do resumo e no aviso do corte parcial, com peca e quilo.',
+    '14 testes novos (63 no arquivo do leitor, 493 no total), incluindo o caso do nome abreviado que nao pode virar orfao falso.'
+  ]},
   { v:'b96.16', data:'21/09/2026', itens:[
     'Trava de base nos quilos. O peso do corte parcial so e gravado se a soma das linhas de produto bater com a linha "Geral" do proprio relatorio; ja o quilosProduzidos dos meses fechados e digitado a mao na HISTORICO. Lancar ali a linha "Geral" — que soma produto E volume — praticamente dobra o peso do mes, e a tela concluia "peca mais leve, mix" com toda a confianca. O erro nao da erro: da numero plausivel e conclusao invertida.',
     'Agora o apurarKg compara o kg por peca do corte com a media do ano e, fora da faixa de 0,60 a 1,67 (1,67x em qualquer direcao), ANULA a comparacao: kg/dia do ano, kg/peca do ano e as diferencas voltam vazios. Como todo consumidor ja testava esses campos antes de falar, o efeito e automatico — o painel cai para o numero do mes e marca "base do ano nao confere", a explicacao dos ritmos para de citar quilos, e a tela /plano nao mostra selo de peso nem a nota do rodape. Num telao, calar e melhor que afirmar errado.',
