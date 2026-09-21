@@ -57,7 +57,8 @@ const U = {
            he: { cx: 27899, heCx: 4534, heHoras: 20, hePct: 16.2515, diasApontados: 13,
                  nivel: 'acima', cor: '#F44336', limHE: 8,
                  realSemHE: 21923.69, ritmoSemHE: 1686.44, projSemHE: 35415.19 },
-           kg: { kgPecaMes: 17.483, kgPecaAno: 26.521, kgDiaMes: 35206, kgDiaAno: 39000, difDiaPct: -9.7 } },
+           kg: { kgPecaMes: 17.483, kgPecaAno: 26.521, kgDiaMes: 35206, kgDiaAno: 39000,
+                 difDiaPct: -9.7, difPecaPct: -34.08 } },
   meses: [
     { mes:'JAN', plano:22828, real:22437, normal:19300, status:'Não cumpriu', parcial:null },
     { mes:'FEV', plano:27893, real:32547, normal:27640, status:'Cumpriu c/ HE', parcial:null },
@@ -135,10 +136,40 @@ afirma('sem dado da Embalagem → sem selo e sem linha, a tela não quebra', (()
 })());
 afirma('a hora extra saiu do rodapé', !M.notas.some(n => /Hora extra no mês/.test(n.txt)));
 
+/* ══ Peso da peça — mesmo tratamento da hora extra ══
+   O plano é em peças. Bater o plano com peça 34% mais leve não é a mesma
+   fábrica, e isso não pode viver só no rodapé. */
+sec('Peso da peça — selo ao lado do veredito');
+afirma('o mês carrega o peso', !!M.mes.kg);
+ok('peça do mês',               M.mes.kg.peca, 17.483, 0.001);
+ok('média do ano',              M.mes.kg.ano, 26.521, 0.001);
+ok('diferença %',               M.mes.kg.difPct, -34.08, 0.01);
+afirma('mais leve e relevante (|34%| ≥ 5%)', M.mes.kg.leve === true && M.mes.kg.relevante === true);
+afirma('o html traz o selo "peça 34% mais leve"', /peça 34% mais leve/.test(PR.html(M)));
+afirma('dois selos no veredito: hora extra e peso',
+  (PR.html(M).match(/class="pr-selo"/g) || []).length === 2);
+afirma('peça mais PESADA inverte a palavra', (() => {
+  const x = PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso,
+    { kg: Object.assign({}, U.curso.kg, { kgPecaMes: 33.2, difPecaPct: 25.2 }) }) }), 'x');
+  return x.mes.kg.leve === false && /mais pesada/.test(PR.html(x));
+})());
+afirma('diferença pequena (< 5%) não vira selo — não é mudança de mix', (() => {
+  const x = PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso,
+    { kg: Object.assign({}, U.curso.kg, { kgPecaMes: 26.0, difPecaPct: -2.0 }) }) }), 'x');
+  /* conta os selos: sobra só o da hora extra. Olhar o texto solto pegava
+     também a nota do rodapé, que fala de peça mais leve por outro motivo. */
+  return x.mes.kg.relevante === false
+      && (PR.html(x).match(/class="pr-selo"/g) || []).length === 1;
+})());
+afirma('sem quilos no ano → sem selo de peso, a tela não quebra', (() => {
+  const x = PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { kg: null }) }), 'x');
+  return x.mes.kg === null && (PR.html(x).match(/class="pr-selo"/g) || []).length === 1;
+})());
+
 /* ══ Rodapé ══ */
 sec('Rodapé — a ressalva que a manchete em peças não conta');
-afirma('peso da peça contra a média do ano',
-  M.notas.some(n => /17,5 kg/.test(n.txt) && /26,5 kg/.test(n.txt)));
+afirma('peso da peça contra a média do ano, e por que isso importa',
+  M.notas.some(n => /17,5 kg/.test(n.txt) && /26,5 kg/.test(n.txt) && /o plano é em peças/.test(n.txt)));
 
 /* ══ Sem corte parcial ══ */
 sec('Sem corte parcial — cai no último mês fechado, a tela segue valendo');
