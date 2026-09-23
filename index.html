@@ -17899,6 +17899,7 @@ window.MesEmCurso = (function(){
     var planoAno=0, realAcum=0, planoAberto=0, diasAbertos=0, normalFech=0, diasFech=0, heP=0, linhas='';
     var diasPlanoAno=0, fatFech=0, venFech=0, planoFech=0, diasPlanFech=0, semPlano=[], mesesTab=[];
     var parciais=lerLocal('dash_parcial_v1'), feriados=lerLocal('dash_feriados_v1'), cursoRec=null, melhorDia=0;
+    var realSemHoras=0;   /* produção de mês fechado ainda sem horas: sem ela, a jornada normal do ano fica incompleta */
     var kgAno={ kg:0, pecas:0, dias:0, meses:0 };   /* quilos dos meses fechados, para a leitura em massa */
     recs.forEach(function(r){
       var plano=r.previsaoProducao||0, real=r.producaoReal||0, normal=r.prodSemExtras||0;
@@ -17920,6 +17921,7 @@ window.MesEmCurso = (function(){
          produção mas ainda não tem prodSemExtras nem dias, e entraria no
          cálculo como zero peças em N dias, puxando a média para baixo. */
       var horasFechadas=fechado&&normal>0&&dias>0;
+      if(fechado&&!horasFechadas) realSemHoras+=real;
       if(fechado){ realAcum+=real; }
       if(fechado&&dias>0) melhorDia=Math.max(melhorDia, real/dias);
       if(fechado&&dias>0&&(r.quilosProduzidos||0)>0){ kgAno.kg+=r.quilosProduzidos; kgAno.pecas+=real; kgAno.dias+=dias; kgAno.meses++; }
@@ -18016,6 +18018,15 @@ window.MesEmCurso = (function(){
       diasAbertos=Math.max(0,diasAbertos-diasCorridos);
       cursoNoAno={ mes:curso.mes, ate:curso.ate, realizado:feitoCurso, plano:cursoRec.plano,
                    esperado:+curso.esperadoAte||0, diasCorridos:diasCorridos };
+    }
+    /* Jornada normal do ano: exata nos fechados (prodSemExtras da HISTORICO)
+       e estimada no corte (realizado × (1 − fatia de HE da Embalagem)). Mês
+       fechado sem horas, ou corte sem HE apurada, deixa a soma incompleta —
+       aí fica null e a tela de divulgação mostra só o total com HE. */
+    var normalAno=null, normalAnoEst=false;
+    if(!(realSemHoras>0)){
+      if(!cursoNoAno) normalAno=normalFech;
+      else if(curso.he&&curso.he.realSemHE>0){ normalAno=normalFech+curso.he.realSemHE; normalAnoEst=true; }
     }
     var ritmoNecR=diasAbertos>0?planoAberto/diasAbertos:0;    /* só o que falta */
     var pctFolga=ritmoExig>0?((ritmoDem/ritmoExig)-1)*100:0;
@@ -18142,7 +18153,7 @@ window.MesEmCurso = (function(){
     /* Guarda o apurado para a impressão executiva montar o relatório sem
        recalcular nem depender do HTML escuro da tela. */
     _ult = { ponte:_ponte, cenario:_cenario, cenDez:_dez, cenAbs:_absMeta, cenHE:_he, ano:ano, planoAno:planoAno, realAcum:realAcum, planoAberto:planoAberto,
-             realFech:realFech, cursoNoAno:cursoNoAno,
+             realFech:realFech, cursoNoAno:cursoNoAno, normalFech:normalFech, normalAno:normalAno, normalAnoEst:normalAnoEst,
              diasAbertos:diasAbertos, diasPlanoAno:diasPlanoAno, ritmoPlano:ritmoPlano,
              ritmoExig:ritmoExig, diasPlanFech:diasPlanFech,
              ritmoDem:ritmoDem, ritmoNecR:ritmoNecR, pctFolga:pctFolga, heP:heP,
@@ -23202,9 +23213,16 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.22';
+var APP_VERSAO = 'b96.23';
 var APP_DATA   = '23/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.23', data:'23/09/2026', itens:[
+    'Tela /plano, nas duas colunas: o numero grande passa a ser a JORNADA NORMAL (o que a fabrica faz sem excecao), e o total com hora extra — o numero do ERP, que comercial e expedicao conhecem — fica logo abaixo: "com hora extra: 29.228 (84%) · +4.472 de hora extra".',
+    'A barra empilha os dois: solido ate a jornada normal, listrado laranja ate o total. Em 22/09 a jornada normal do mes para exatamente na marca da curva (71%) e a hora extra e toda folga; no ano a jornada normal (67%) fica ABAIXO da curva (72%) e so a hora extra leva a 75%.',
+    'Mes em curso: jornada normal estimada (≈) — realizado × (1 − fatia de HE da Embalagem, medida em caixas). Mes fechado: exata (prodSemExtras). Ano: fechados exatos + o corte estimado; se algum mes fechado ainda nao tem horas lancadas, ou o corte nao tem HE apurada, a coluna volta a mostrar so o total. O veredito nao muda: ja era calculado na jornada normal.',
+    'O rodape "Dependencia de hora extra no ano" passa a usar a mesma base da coluna do ano (inclui o corte).',
+    'A linha "So na jornada normal" da b96.21 sai: a barra empilhada mostra a mesma coisa. 18 testes (560 no total); conferido de ponta a ponta no navegador.'
+  ]},
   { v:'b96.22', data:'23/09/2026', itens:[
     'O corte do mes em curso passa a entrar no ANO, na origem (Planejamento Mestre), e nao so na coluna do mes. Em 23/09 a /plano mostrava 29.228 feitas em setembro de um lado e o ano tratando setembro como zero do outro: 243.325 realizadas, "faltam 125.979 em 76 dias, 24% acima". Com o corte: 272.553 realizadas (75%), faltam 96.742 em 61 dias, 1.586 pc/dia — 19% acima do demonstrado. O veredito continua ATRAS DO RITMO; o tamanho do problema e que muda.',
     'Regra: soma o corte ao realizado do ano; abate do que falta o que o corte fez ate o plano do proprio mes (a sobra do mes nao abate os meses seguintes, mesma regra dos meses fechados); tira dos dias restantes os dias uteis ja decorridos no mes. Corte sem veredito (sem dado ou suspeito) nao entra.',
@@ -24063,13 +24081,10 @@ window.PlanoRealizado = (function(){
            e uma linha na própria coluna. */
         he:c.he?{ pct:c.he.hePct, lim:c.he.limHE, nivel:c.he.nivel, cor:c.he.cor,
                   horas:c.he.heHoras, projSemHE:c.he.projSemHE,
-                  cobreSemHE:c.he.projSemHE>=c.plano,
-                  /* o realizado sem as peças da hora extra, contra a curva
-                     linear do plano até o corte: diz se a jornada normal
-                     sozinha acompanha o plano ou se a folga é toda de HE */
-                  realSemHE:c.he.realSemHE,
-                  esperado:(+c.esperadoAte>0)?+c.esperadoAte:null,
-                  aderSemHE:(+c.esperadoAte>0&&c.he.realSemHE>0)?c.he.realSemHE/c.esperadoAte*100:null } : null,
+                  cobreSemHE:c.he.projSemHE>=c.plano } : null,
+        /* Jornada normal na frente: realizado × (1 − fatia de HE da
+           Embalagem). Estimada — a fatia é medida em caixas. */
+        normal:(c.he&&c.he.realSemHE>0)?c.he.realSemHE:null, normalEst:true,
         /* O plano é em peças e o mix muda o peso da peça: bater o plano com
            peça 33% mais leve não é a mesma fábrica. Mesmo tratamento da hora
            extra — selo ao lado do veredito, não nota de rodapé. */
@@ -24088,7 +24103,7 @@ window.PlanoRealizado = (function(){
       if(!uf) return null;
       var okN=uf.normal!==null&&uf.normal>=uf.plano, okT=uf.real>=uf.plano;
       m.mes={ tipo:'fechado', nome:NOME_MES[uf.mes]||uf.mes, ate:null,
-        plano:uf.plano, real:uf.real, falta:Math.max(0,uf.plano-uf.real), dias:0,
+        plano:uf.plano, real:uf.real, normal:(uf.normal>0)?uf.normal:null, normalEst:false, falta:Math.max(0,uf.plano-uf.real), dias:0,
         pctPlano:uf.plano>0?uf.real/uf.plano*100:0, pctRef:100,
         refLbl:'do mês', refSub:'mês fechado', nec:0, cabe:okT,
         cor:okN?COR.ok:(okT?COR.he:COR.ruim),
@@ -24106,6 +24121,7 @@ window.PlanoRealizado = (function(){
     var refAno=(+u.planoFech||0)+(cn?(+cn.esperado||0):0);
     var realFech=(u.realFech!==undefined&&u.realFech!==null)?+u.realFech:u.realAcum;
     m.ano2={ plano:u.planoAno, real:u.realAcum, falta:pa, dias:da,
+      normal:(+u.normalAno>0)?+u.normalAno:null, normalEst:!!u.normalAnoEst,
       pctPlano:u.realAcum/u.planoAno*100,
       pctRef:refAno>0?refAno/u.planoAno*100:null,
       refLbl:'esperado pelo plano', refSub:cn?'fechados + '+cn.mes+' até '+cn.ate:'meses fechados',
@@ -24131,7 +24147,12 @@ window.PlanoRealizado = (function(){
     if(c&&!m.suspeito&&c.kg&&c.kg.kgPecaAno) m.notas.push({ txt:'Peça do mês: <b>'+fd(c.kg.kgPecaMes,1)
       +' kg</b> · média do ano <b>'+fd(c.kg.kgPecaAno,1)+' kg</b> — o plano é em peças, e peça mais leve '
       +'não é a mesma carga de fábrica', alerta:false });
-    else if(u.heP>0) m.notas.push({ txt:'Dependência de hora extra no ano: <b>'+fi(u.heP)+'</b> peças', alerta:true });
+    else {
+      /* mesma base da coluna do ano: com a jornada normal apurada, a HE do
+         ano é total − normal (inclui o corte); sem ela, a dos fechados */
+      var heAno=(m.ano2.normal!==null&&m.ano2.real>0)?m.ano2.real-m.ano2.normal:u.heP;
+      if(heAno>0) m.notas.push({ txt:'Dependência de hora extra no ano: <b>'+(m.ano2.normalEst?'≈ ':'')+fi(heAno)+'</b> peças', alerta:true });
+    }
     return m;
   }
 
@@ -24154,27 +24175,31 @@ window.PlanoRealizado = (function(){
                        :' — não cobre o plano.')+'</span>':'')
       +'</div>';
   }
-  function linhaSemHE(d){
-    var he=d.he; if(!he||!(he.realSemHE>0)) return '';
-    /* a cor segue o número mostrado: 99,6% aparece "100%" e não pode sair âmbar */
-    var a=he.aderSemHE, ar=a===null?null:Math.round(a);
-    var cor=ar===null?'var(--t1)':(ar>=100?COR.ok:(ar>=95?COR.he:COR.ruim));
-    return '<div class="pr-semhe">Só na jornada normal: <b>≈ '+fi(he.realSemHE)+'</b> peças'
-      +(a!==null?' — <b style="color:'+cor+'">'+fd(a,0)+'%</b> da curva do plano até '+esc(d.ate)
-        +' <span>('+fi(he.esperado)+')</span>':'')+'</div>';
-  }
   function coluna(lbl, d, dem, extra){
-    var barra=isFinite(d.pctPlano)&&d.pctPlano!==null?Math.max(0,Math.min(100,d.pctPlano)):0;
-    var marca=(d.pctRef!==null&&d.pctRef!==undefined)?Math.max(0,Math.min(100,d.pctRef)):null;
+    var cl=function(v){ return Math.max(0,Math.min(100,v)); };
+    var barra=isFinite(d.pctPlano)&&d.pctPlano!==null?cl(d.pctPlano):0;
+    var marca=(d.pctRef!==null&&d.pctRef!==undefined)?cl(d.pctRef):null;
+    /* Jornada normal na frente, hora extra por cima. O número grande é o
+       que a fábrica faz sem exceção; o total com HE (o número do ERP, que
+       comercial e expedição conhecem) fica logo abaixo, e a barra empilha
+       os dois — a parte listrada é a dependência de hora extra. Sem a
+       jornada normal apurada, volta ao total. */
+    var temN=d.normal!==null&&d.normal!==undefined&&d.normal>0&&d.real>0&&d.plano>0;
+    var pN=temN?d.normal/d.plano*100:null, fillN=temN?cl(pN):barra, fillHE=temN?Math.max(0,barra-fillN):0;
+    var aprox=(temN&&d.normalEst)?'<span class="pr-aprox">≈</span>':'';
     return '<section class="pr-col" style="--cor:'+d.cor+'">'
       +'<div class="pr-lbl">'+esc(lbl)+'</div>'
       +'<div class="pr-st"><span class="pr-dot"></span><span class="pr-v">'+esc(d.veredito)+'</span>'+selo(d)+'</div>'
-      +'<div class="pr-big"><span class="pr-n">'+(d.real===null?'—':fi(d.real))+'</span>'
-        +'<span class="pr-d">de '+fi(d.plano)+' peças</span></div>'
-      +linhaSemHE(d)
-      +'<div class="pr-bar"><div class="pr-track"><div class="pr-fill" style="width:'+barra.toFixed(1)+'%"></div>'
+      +'<div class="pr-big"><span class="pr-n">'+aprox+(temN?fi(d.normal):(d.real===null?'—':fi(d.real)))+'</span>'
+        +'<span class="pr-d">de '+fi(d.plano)+' peças'+(temN?'<span class="pr-dn">na jornada normal</span>':'')+'</span></div>'
+      +(temN?'<div class="pr-comhe">com hora extra: <b>'+fi(d.real)+'</b> ('+fd(d.pctPlano,0)+'%) · '
+        +'<span class="pr-comhe-q">+'+fi(d.real-d.normal)+'</span> de hora extra</div>':'')
+      +'<div class="pr-bar"><div class="pr-track">'
+        +'<div class="pr-fill'+(fillHE>0?' pr-fill-n':'')+'" style="width:'+fillN.toFixed(1)+'%"></div>'
+        +(fillHE>0?'<div class="pr-fill-he" style="width:'+fillHE.toFixed(1)+'%"></div>':'')
         +(marca!==null?'<div class="pr-tick" style="left:'+marca.toFixed(1)+'%"></div>':'')+'</div>'
-        +'<div class="pr-legs"><span style="color:var(--cor)"><b>'+(d.pctPlano===null?'—':fd(d.pctPlano,0)+'%')+'</b> do plano</span>'
+        +'<div class="pr-legs"><span style="color:var(--cor)"><b>'+(temN?fd(pN,0)+'%':(d.pctPlano===null?'—':fd(d.pctPlano,0)+'%'))+'</b> do plano'
+          +(temN?' na jornada normal':'')+'</span>'
         +(marca!==null?'<span class="pr-leg2">▲ <b>'+fd(d.pctRef,0)+'%</b> '+esc(d.refLbl2||d.refLbl)
           +' · '+esc(d.refSub)+'</span>':'<span class="pr-leg2">'+esc(d.refSub)+'</span>')
         +'</div></div>'
@@ -24317,17 +24342,22 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-he{margin-top:10px;padding:8px 14px;border-radius:6px;font-size:.92rem;line-height:1.5;'
       +'color:var(--t1);background:rgba(255,255,255,.03);border-left:3px solid var(--sc)}'
     +'#pr-solo .pr-he b{font-family:var(--mono)}'
-    +'#pr-solo .pr-semhe{margin-top:6px;font-size:1rem;color:var(--t2)}'
-    +'#pr-solo .pr-semhe b{font-family:var(--mono);color:var(--t1)}'
-    +'#pr-solo .pr-semhe span{color:var(--t3)}'
+    +'#pr-solo .pr-aprox{font-size:.45em;color:var(--t3);margin-right:.12em;vertical-align:.55em}'
+    +'#pr-solo .pr-dn{display:block;font-size:.85em;color:var(--t3)}'
+    +'#pr-solo .pr-comhe{margin-top:6px;font-size:1rem;color:var(--t2)}'
+    +'#pr-solo .pr-comhe b{font-family:var(--mono);color:var(--t1)}'
+    +'#pr-solo .pr-comhe-q{font-family:var(--mono);font-weight:700;color:#FF9800}'
+    +'#pr-solo .pr-fill-he{flex:none;height:100%;border-radius:0 9px 9px 0;'
+      +'background:repeating-linear-gradient(135deg,#FF9800 0 6px,rgba(255,152,0,.35) 6px 12px)}'
+    +'#pr-solo .pr-fill-n{border-radius:9px 0 0 9px}'
     +'#pr-solo .pr-he span{color:var(--t2)}'
     +'#pr-solo .pr-big{display:flex;align-items:baseline;gap:12px;margin-top:16px;flex-wrap:wrap}'
     +'#pr-solo .pr-n{font-family:var(--mono);font-size:clamp(2.4rem,7.2vh,4.6rem);font-weight:700;'
       +'line-height:1;letter-spacing:-.02em}'
     +'#pr-solo .pr-d{font-size:1.05rem;color:var(--t2)}'
     +'#pr-solo .pr-bar{margin-top:16px}'
-    +'#pr-solo .pr-track{position:relative;height:18px;background:var(--b);border-radius:9px}'
-    +'#pr-solo .pr-fill{height:100%;border-radius:9px;background:var(--cor)}'
+    +'#pr-solo .pr-track{position:relative;display:flex;height:18px;background:var(--b);border-radius:9px}'
+    +'#pr-solo .pr-fill{flex:none;height:100%;border-radius:9px;background:var(--cor)}'
     +'#pr-solo .pr-tick{position:absolute;top:-6px;bottom:-6px;width:3px;background:var(--t1);border-radius:2px}'
     +'#pr-solo .pr-legs{display:flex;justify-content:space-between;align-items:baseline;'
       +'margin-top:10px;font-size:.82rem;gap:12px}'
@@ -24382,9 +24412,10 @@ window.PlanoRealizado = (function(){
       +'#pr-solo .pr-per{font-size:1.6rem}#pr-solo .pr-dot{width:18px;height:18px}'
       +'#pr-solo .pr-mark img{height:44px}'
       +'#pr-solo .pr-track{height:24px;border-radius:12px}#pr-solo .pr-fill{border-radius:12px}'
+      +'#pr-solo .pr-fill-n{border-radius:12px 0 0 12px}#pr-solo .pr-fill-he{border-radius:0 12px 12px 0}'
       +'#pr-solo .pr-ver{font-size:1.4rem}#pr-solo .pr-proj{font-size:1.25rem}'
       +'#pr-solo .pr-selo{font-size:.92rem;padding:5px 14px}#pr-solo .pr-he{font-size:1.05rem}'
-      +'#pr-solo .pr-semhe{font-size:1.1rem}'
+      +'#pr-solo .pr-comhe{font-size:1.1rem}'
       +'#pr-solo .pr-strip{min-height:120px}#pr-solo .pr-strip-row{min-height:70px}'
       +'#pr-solo .pr-legs{font-size:1rem}#pr-solo .pr-legs b{font-size:2.1rem}'
       +'#pr-solo .pr-leg2{font-size:.95rem}#pr-solo .pr-leg2 b{font-size:1.2rem}'

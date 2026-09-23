@@ -243,22 +243,45 @@ afirma('faixa de aviso com a data e o fator', /Corte de 22\/09 em conferência/.
 afirma('SET sem % na fita', MS.fita[8].pct === null);
 afirma('o ano segue igual (meses fechados)', MS.ano2.veredito === M.ano2.veredito && MS.ano2.real === M.ano2.real);
 
-/* ══ Só jornada normal ══
-   Pergunta de 23/09: "29.228 com hora extra — e sem as peças da hora
-   extra?" A tela passa a responder ao lado do número grande. */
-sec('Só jornada normal — realizado sem HE contra a curva do plano');
-const semHE = (real, pct, esp) => PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso,
-  { ate: '22/09', realizado: real, esperadoAte: esp, he: Object.assign({}, U.curso.he, { hePct: pct, realSemHE: real * (1 - pct / 100) }) }) }), 'x');
-const J = semHE(29228, 15.3, 24864);
-ok('realizado sem HE = 29.228 × (1 − 15,3%)', J.mes.he.realSemHE, 24756.12, 0.01);
-ok('aderência sem HE à curva linear', J.mes.he.aderSemHE, 99.57, 0.01);
+/* ══ Jornada normal na frente ══
+   23/09: "acho que deve focar no número da jornada normal, e depois com
+   hora". O número grande passa a ser a jornada normal (≈, estimada pela
+   fatia de HE da Embalagem); o total com HE — o número do ERP — fica logo
+   abaixo; a barra empilha os dois (listrado = hora extra). */
+sec('Jornada normal na frente — mês');
+const comN = (real, pct) => PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso,
+  { ate: '22/09', realizado: real, he: Object.assign({}, U.curso.he, { hePct: pct, realSemHE: real * (1 - pct / 100) }) }) }), 'x');
+const J = comN(29228, 15.3);
+ok('jornada normal do mês = 29.228 × (1 − 15,3%)', J.mes.normal, 24756.12, 0.01);
+afirma('mês marcado como estimado', J.mes.normalEst === true);
 const HJ = PR.html(J);
-afirma('a tela mostra "Só na jornada normal: ≈ 24.756"', /Só na jornada normal: <b>≈ 24\.756<\/b>/.test(HJ));
-afirma('99,6% aparece como 100% e em verde (a cor segue o número mostrado)', /color:#4CAF50">100%<\/b> da curva do plano até 22\/09/.test(HJ));
-afirma('mostra o esperado pela curva (24.864)', /\(24\.864\)/.test(HJ));
-afirma('abaixo de 95% da curva → vermelho', /color:#F44336">90%/.test(PR.html(semHE(29228, 15.3, 27507))));
-afirma('sem esperadoAte → mostra só o número, sem %', (() => { const h = PR.html(semHE(29228, 15.3, 0)); return /≈ 24\.756/.test(h) && !/da curva/.test(h); })());
-afirma('sem hora extra apurada → linha não aparece', !/Só na jornada normal/.test(PR.html(PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { he: null }) }), 'x'))));
+afirma('número grande é a jornada normal, com ≈', /<span class="pr-n"><span class="pr-aprox">≈<\/span>24\.756<\/span>/.test(HJ));
+afirma('"na jornada normal" ao lado do plano', /de 34\.810 peças<span class="pr-dn">na jornada normal<\/span>/.test(HJ));
+afirma('total com hora extra logo abaixo, com % e o que a HE somou',
+  /com hora extra: <b>29\.228<\/b> \(84%\) · <span class="pr-comhe-q">\+4\.472<\/span> de hora extra/.test(HJ));
+afirma('barra: sólido até 71% (jornada normal) e listrado de 71% a 84%',
+  /class="pr-fill pr-fill-n" style="width:71\.1%"/.test(HJ) && /class="pr-fill-he" style="width:12\.8%"/.test(HJ));
+afirma('legenda da barra diz "na jornada normal"', /<b>71%<\/b> do plano na jornada normal/.test(HJ));
+afirma('veredito não muda (já é calculado na jornada normal)', J.mes.veredito === 'NO RITMO');
+afirma('sem HE apurada → volta ao total, sem ≈ e sem listrado', (() => {
+  const x = PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { he: null }) }), 'x'); const h = PR.html(x);
+  return x.mes.normal === null && !/pr-aprox/.test(h) && !/pr-fill-he/.test(h) && /<span class="pr-n">26\.178<\/span>/.test(h); })());
+afirma('corte suspeito continua sem número', /<span class="pr-n">—<\/span>/.test(PR.html(PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { estado: 'suspeito', ritmoAtualMes: 27956, fatorSuspeito: 18 }) }), 'x'))));
+afirma('mês fechado usa a jornada normal exata (sem ≈)', (() => {
+  const x = PR.modelo(Object.assign({}, U, { curso: null }), 'x'); const h = PR.html(x);
+  return x.mes.normal === 31000 && x.mes.normalEst === false && /<span class="pr-n">31\.000<\/span>/.test(h); })());
+
+sec('Jornada normal na frente — ano');
+const JA = PR.modelo(Object.assign({}, U, { realAcum: 272553, normalAno: 240817, normalAnoEst: true, planoAberto: 96742, diasAbertos: 61 }), 'x');
+const HA = PR.html(JA);
+ok('jornada normal do ano', JA.ano2.normal, 240817, 0);
+afirma('ano com ≈ quando inclui o corte', /<span class="pr-aprox">≈<\/span>240\.817/.test(HA));
+afirma('total do ano com HE logo abaixo', /com hora extra: <b>272\.553<\/b> \(75%\) · <span class="pr-comhe-q">\+31\.736<\/span>/.test(HA));
+afirma('rodapé usa a mesma base da coluna do ano (≈ 31.736, não os 27.269 dos fechados)',
+  PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { kg: null }), realAcum: 272553, normalAno: 240817, normalAnoEst: true }), 'x')
+    .notas.some(n => /Dependência de hora extra no ano: <b>≈ 31\.736<\/b>/.test(n.txt)));
+afirma('sem normalAno (mês fechado sem horas) → ano volta ao total', /<span class="pr-n">243\.325<\/span>/.test(PR.html(M)) && M.ano2.normal === null);
+afirma('ano sem corte → exato, sem ≈', !/≈<\/span>216\.056/.test(PR.html(PR.modelo(Object.assign({}, U, { normalAno: 216056, normalAnoEst: false }), 'x'))));
 
 /* ══ O corte do mês em curso entra no ano ══
    23/09: mês com 29.228 feitas e ano tratando setembro como zero — "faltam
