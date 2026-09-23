@@ -17904,8 +17904,10 @@ window.MesEmCurso = (function(){
       var plano=r.previsaoProducao||0, real=r.producaoReal||0, normal=r.prodSemExtras||0;
       var fechado=real>0;
       /* Mês aberto com corte parcial lançado: entra como "Em andamento". real
-         continua zero para todo o resto do painel — só a tabela e o bloco
-         acima dela enxergam o parcial. */
+         continua zero AQUI (o mês não é fechado: não entra em ritmo
+         demonstrado, HE, kg nem sobra); o corte entra nos totais do ANO
+         depois do laço, em cursoNoAno — ver "O corte do mês em curso entra
+         no ANO" mais abaixo. */
       var parc=(!fechado&&plano>0)?MesEmCurso.ultimoCorte(parciais,r.mes,ano):null;
       /* Mês simulado usa os dias do cenário: o plano dele nasceu de ritmo × esses
          dias, então dividir por outro denominador devolveria um ritmo necessário
@@ -17989,18 +17991,38 @@ window.MesEmCurso = (function(){
        ritmo demonstrado, então a diferença entre os dois é só de produtividade.
        O nominal do ano usa dias planejados porque inclui meses futuros. */
     var ritmoExig=diasPlanFech>0?planoFech/diasPlanFech:ritmoPlano;
-    var ritmoNecR=diasAbertos>0?planoAberto/diasAbertos:0;    /* só o que falta */
-    var pctFolga=ritmoExig>0?((ritmoDem/ritmoExig)-1)*100:0;
-    /* Rótulo dos meses fechados com horas ("JAN a AGO"), para a explicação
-       dos ritmos dizer de onde vem cada conta. */
-    var comHoras=mesesTab.filter(function(m){ return m.normal!==null&&m.normal>0; }).map(function(m){ return m.mes; });
-    var fechados=comHoras.length?(comHoras.length===1?comHoras[0]:comHoras[0]+' a '+comHoras[comHoras.length-1]):'os meses fechados';
     /* Mês em curso: comparado com o ritmo demonstrado do ano (jornada normal)
        e com o limite de hora extra da aba METAS. */
     var curso=cursoRec?MesEmCurso.apurar({ plano:cursoRec.plano, realizado:+cursoRec.parc.produtos, dataCorte:cursoRec.parc.dataCorte,
       diasPlanejados:cursoRec.diasP, ritmoDem:ritmoDem, limHE:(typeof META_DEP_HE!=='undefined')?META_DEP_HE:8,
       feriados:feriados, hoje:hojeIso(), melhorMesDia:melhorDia,
       pesoMes:+cursoRec.parc.peso, kgAno:kgAno, embDias:lerLocal('dash_emb_dia_v1') }):null;
+    /* O corte do mês em curso entra no ANO. Antes o ano tratava o mês aberto
+       como não iniciado: em 23/09 a /plano mostrava 29.228 feitas em setembro
+       na coluna do mês e zero de setembro na do ano — "faltam 125.979 em 76
+       dias, 24% acima", quando o certo era 96.751 em 61 dias. Mesma régua dos
+       meses fechados: cada mês responde pelo próprio plano, então o que o
+       corte passar do plano do mês não abate os meses seguintes (a sobra fica
+       no realizado, como a dos fechados). Corte sem veredito (sem dado ou
+       suspeito) não entra — número errado no ano é pior que número velho.
+       realFech guarda só os fechados: ritmo com HE, sobra sobre o plano e
+       kg continuam medidos em mês fechado. */
+    var realFech=realAcum, cursoNoAno=null;
+    if(curso&&curso.estado!=='sem'&&curso.estado!=='suspeito'){
+      var feitoCurso=Math.max(0,+cursoRec.parc.produtos||0);
+      var diasCorridos=Math.max(0,cursoRec.diasP-Math.max(0,+curso.diasRestantes||0));
+      realAcum+=feitoCurso;
+      planoAberto=Math.max(0,planoAberto-Math.min(feitoCurso,cursoRec.plano));
+      diasAbertos=Math.max(0,diasAbertos-diasCorridos);
+      cursoNoAno={ mes:curso.mes, ate:curso.ate, realizado:feitoCurso, plano:cursoRec.plano,
+                   esperado:+curso.esperadoAte||0, diasCorridos:diasCorridos };
+    }
+    var ritmoNecR=diasAbertos>0?planoAberto/diasAbertos:0;    /* só o que falta */
+    var pctFolga=ritmoExig>0?((ritmoDem/ritmoExig)-1)*100:0;
+    /* Rótulo dos meses fechados com horas ("JAN a AGO"), para a explicação
+       dos ritmos dizer de onde vem cada conta. */
+    var comHoras=mesesTab.filter(function(m){ return m.normal!==null&&m.normal>0; }).map(function(m){ return m.mes; });
+    var fechados=comHoras.length?(comHoras.length===1?comHoras[0]:comHoras[0]+' a '+comHoras[comHoras.length-1]):'os meses fechados';
     var explic=MesEmCurso.explicarRitmos({ planoAno:planoAno, diasPlanoAno:diasPlanoAno, planoFech:planoFech, diasPlanFech:diasPlanFech,
       normalFech:normalFech, diasFech:diasFech, heP:heP, planoAberto:planoAberto, diasAbertos:diasAbertos, fechados:fechados,
       curso:(curso&&curso.estado!=='suspeito')?curso:null });
@@ -18102,16 +18124,17 @@ window.MesEmCurso = (function(){
       blocoMesEmCurso(curso)
       +'<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(235px,1fr))">'
       +card('Plano do ano', fi(planoAno)+' pç', diasPlanoAno+' dias úteis planejados', '#00E5FF')
-      +card('Realizado até agora', fi(realAcum)+' pç', fd(pctPlano,1)+'% do plano', '#F5A623')
+      +card('Realizado até agora', fi(realAcum)+' pç', fd(pctPlano,1)+'% do plano'
+          +(cursoNoAno?' · '+cursoNoAno.mes+' até '+cursoNoAno.ate:''), '#F5A623')
       +card('Ritmo do plano', fi(ritmoPlano)+' pç/dia', 'Plano do ano ÷ dias úteis', '#00E5FF')
       +card('Ritmo exigido', fi(ritmoExig)+' pç/dia', 'Cobrado nos dias trabalhados', '#00E5FF')
       +card('Ritmo demonstrado', fi(ritmoDem)+' pç/dia', 'Entregue na jornada normal', cor)
-      +card('Falta produzir', fi(planoAberto)+' pç', diasAbertos+' dias úteis planejados', '#FF9800')
+      +card('Falta produzir', fi(planoAberto)+' pç', diasAbertos+' dias úteis '+(cursoNoAno?'restantes':'planejados'), '#FF9800')
       +card('Dependência de hora extra', fi(heP)+' pç', 'Saíram só por hora extra', heP>0?'#FF9800':'#4CAF50')
       +'</div>'
       +blocoComoLer(explic)
       +blocoDemanda(planoFech,fatFech,venFech)
-      +blocoProjecao(realAcum,diasFech,planoAno,planoAberto,diasAbertos,ritmoDem)
+      +blocoProjecao(realAcum,realFech,diasFech,planoAno,planoAberto,diasAbertos,ritmoDem)
       +blocoVolumes(todos,ano,planoAno,planoAberto)
       +graficoRitmo(mesesTab,ritmoPlano)
       +blocoPonte(todos,ano);
@@ -18119,6 +18142,7 @@ window.MesEmCurso = (function(){
     /* Guarda o apurado para a impressão executiva montar o relatório sem
        recalcular nem depender do HTML escuro da tela. */
     _ult = { ponte:_ponte, cenario:_cenario, cenDez:_dez, cenAbs:_absMeta, cenHE:_he, ano:ano, planoAno:planoAno, realAcum:realAcum, planoAberto:planoAberto,
+             realFech:realFech, cursoNoAno:cursoNoAno,
              diasAbertos:diasAbertos, diasPlanoAno:diasPlanoAno, ritmoPlano:ritmoPlano,
              ritmoExig:ritmoExig, diasPlanFech:diasPlanFech,
              ritmoDem:ritmoDem, ritmoNecR:ritmoNecR, pctFolga:pctFolga, heP:heP,
@@ -18182,9 +18206,11 @@ window.MesEmCurso = (function(){
   /* ── Projeção de fechamento do horizonte planejado ──
      O plano cobre só até agosto; projetar "o ano" seria enganoso enquanto
      SET–DEZ não tiverem plano. Então a conta fecha o horizonte que existe. */
-  function blocoProjecao(realAcum,diasFech,planoAno,planoAberto,diasAbertos,ritmoDem){
+  function blocoProjecao(realAcum,realFech,diasFech,planoAno,planoAberto,diasAbertos,ritmoDem){
     if(planoAberto<=0||diasAbertos<=0||diasFech<=0) return '';
-    var ritmoTotal=realAcum/diasFech;                 /* como a fábrica vem rodando, com HE */
+    /* ritmo dos meses fechados (peças ÷ dias do mesmo conjunto); o realizado
+       de partida já inclui o corte do mês em curso */
+    var ritmoTotal=realFech/diasFech;                 /* como a fábrica vem rodando, com HE */
     var projTotal =realAcum+ritmoTotal*diasAbertos;
     var projNormal=realAcum+ritmoDem*diasAbertos;     /* se cortar a hora extra */
     var dif=projTotal-planoAno, pct=planoAno>0?(dif/planoAno)*100:0;
@@ -23176,9 +23202,16 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.21';
+var APP_VERSAO = 'b96.22';
 var APP_DATA   = '23/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.22', data:'23/09/2026', itens:[
+    'O corte do mes em curso passa a entrar no ANO, na origem (Planejamento Mestre), e nao so na coluna do mes. Em 23/09 a /plano mostrava 29.228 feitas em setembro de um lado e o ano tratando setembro como zero do outro: 243.325 realizadas, "faltam 125.979 em 76 dias, 24% acima". Com o corte: 272.553 realizadas (75%), faltam 96.742 em 61 dias, 1.586 pc/dia — 19% acima do demonstrado. O veredito continua ATRAS DO RITMO; o tamanho do problema e que muda.',
+    'Regra: soma o corte ao realizado do ano; abate do que falta o que o corte fez ate o plano do proprio mes (a sobra do mes nao abate os meses seguintes, mesma regra dos meses fechados); tira dos dias restantes os dias uteis ja decorridos no mes. Corte sem veredito (sem dado ou suspeito) nao entra.',
+    'Continuam medidos so em mes fechado: ritmo demonstrado, dependencia de hora extra, quilos e a sobra dos meses fechados (+7.008). A projecao de fechamento usa o ritmo dos fechados a partir do realizado ja com o corte.',
+    'Na /plano a marca da barra do ano passa a somar o que a curva do plano esperava do mes ate o corte (72% em 22/09, "fechados + SET ate 22/09"). Vale para todas as telas que leem o apurado: cards e projecao da aba Mestre, veredito, explicacao dos ritmos, volumes, Reuniao e impressao executiva.',
+    '10 testes novos (552 no total); conferido de ponta a ponta no navegador com o ano de 2026 e o corte de 22/09.'
+  ]},
   { v:'b96.21', data:'23/09/2026', itens:[
     'Tela /plano: logo abaixo do numero grande do mes entra a linha "So na jornada normal: ≈ 24.756 pecas — 100% da curva do plano ate 22/09 (24.864)". Responde a pergunta que o numero com hora extra (29.228) deixa aberta: a jornada normal sozinha acompanha o plano, ou a folga e toda de hora extra?',
     'Conta: realizado × (1 − fatia de hora extra da Embalagem), contra o esperado pela curva linear do plano ate o corte (plano × dias decorridos ÷ dias do plano). Cor: verde a partir de 100%, ambar de 95% a 99%, vermelho abaixo — pelo numero mostrado, entao 99,6% aparece "100%" em verde. Sem hora extra apurada a linha nao aparece; sem a curva, sai so o numero.',
@@ -24066,14 +24099,20 @@ window.PlanoRealizado = (function(){
     /* O ANO. A marca é a curva do plano (planoFech), não o tempo. */
     var pa=+u.planoAberto||0, da=+u.diasAbertos||0;
     var necA=da>0?pa/da:0, cabeA=pa<=0||(dem>0&&necA<=dem);
+    /* O realizado do ano já traz o corte do mês em curso (cursoNoAno); a
+       marca da barra soma, do mês em curso, o que a curva linear do plano
+       esperava até o corte — senão a barra andaria e a marca não. */
+    var cn=u.cursoNoAno||null;
+    var refAno=(+u.planoFech||0)+(cn?(+cn.esperado||0):0);
+    var realFech=(u.realFech!==undefined&&u.realFech!==null)?+u.realFech:u.realAcum;
     m.ano2={ plano:u.planoAno, real:u.realAcum, falta:pa, dias:da,
       pctPlano:u.realAcum/u.planoAno*100,
-      pctRef:u.planoFech>0?u.planoFech/u.planoAno*100:null,
-      refLbl:'esperado pelo plano', refSub:'meses fechados',
+      pctRef:refAno>0?refAno/u.planoAno*100:null,
+      refLbl:'esperado pelo plano', refSub:cn?'fechados + '+cn.mes+' até '+cn.ate:'meses fechados',
       nec:necA, cabe:cabeA, cor:cabeA?COR.ok:COR.ruim,
       veredito:cabeA?'NO RITMO':'ATRÁS DO RITMO',
       fecha:dem>0?u.realAcum+dem*da:null,
-      sobraFech:(u.planoFech>0)?u.realAcum-u.planoFech:null,
+      sobraFech:(u.planoFech>0)?realFech-u.planoFech:null,
       acimaPct:(dem>0&&necA>dem)?(necA/dem-1)*100:null };
 
     /* Fita do ano: um retângulo por mês, altura pelo % do plano. */

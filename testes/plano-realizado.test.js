@@ -260,6 +260,26 @@ afirma('abaixo de 95% da curva → vermelho', /color:#F44336">90%/.test(PR.html(
 afirma('sem esperadoAte → mostra só o número, sem %', (() => { const h = PR.html(semHE(29228, 15.3, 0)); return /≈ 24\.756/.test(h) && !/da curva/.test(h); })());
 afirma('sem hora extra apurada → linha não aparece', !/Só na jornada normal/.test(PR.html(PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { he: null }) }), 'x'))));
 
+/* ══ O corte do mês em curso entra no ano ══
+   23/09: mês com 29.228 feitas e ano tratando setembro como zero — "faltam
+   125.979 em 76 dias, 24% acima". O apurado passa a abater o corte na
+   origem (realAcum, planoAberto, diasAbertos) e manda realFech/cursoNoAno
+   para a tela não misturar as bases. Números do apurado real de 22/09. */
+sec('Ano com o corte de 22/09 — mesma base da coluna do mês');
+const UA = Object.assign({}, U, { realAcum: 272553, realFech: 243325, planoAberto: 96742, diasAbertos: 61,
+  cursoNoAno: { mes: 'SET', ate: '22/09', realizado: 29228, plano: 34810, esperado: 24864.29, diasCorridos: 15 } });
+const MA = PR.modelo(UA, '23/09 10:56');
+ok('realizado do ano inclui setembro até 22/09', MA.ano2.real, 272553, 0);
+ok('% do plano do ano = 272.553 ÷ 362.296', MA.ano2.pctPlano, 75.23, 0.01);
+ok('ritmo necessário = 96.742 ÷ 61', MA.ano2.nec, 1585.93, 0.01);
+ok('quanto acima do demonstrado (1.334)', MA.ano2.acimaPct, 18.89, 0.01);
+afirma('continua ATRÁS DO RITMO', MA.ano2.veredito === 'ATRÁS DO RITMO');
+ok('marca = (fechados 236.317 + esperado de SET 24.864) ÷ plano', MA.ano2.pctRef, 72.09, 0.01);
+afirma('a legenda da marca diz que inclui o corte', MA.ano2.refSub === 'fechados + SET até 22/09');
+ok('sobra dos fechados continua só dos fechados (243.325 − 236.317)', MA.ano2.sobraFech, 7008, 0);
+ok('fecha na jornada normal = 272.553 + 1.334 × 61', MA.ano2.fecha, 353927, 0);
+afirma('sem cursoNoAno (corte suspeito ou sem corte) a marca volta aos fechados', M.ano2.refSub === 'meses fechados' && Math.abs(M.ano2.pctRef - 65.23) < 0.01);
+
 /* ══ Bordas ══ */
 sec('Bordas');
 afirma('sem apurado → null (a tela mostra o vazio explicado)', PR.modelo(null) === null);
