@@ -344,6 +344,10 @@ function rvProcessarReportes() {
       var linhas = rvLinhasDoTexto(texto, mesAno);
       if (!linhas.length) throw new Error('nenhuma linha de produto/volume reconhecida');
       var confere = rvConferirTotal(linhas, texto) + tipo;
+      var sep = rvSepararComponentes(linhas);
+      if (!sep.linhas.length) throw new Error('só componente no PDF — nenhum produto acabado (1xx) nem caixa (501)');
+      linhas = sep.linhas;
+      confere += rvTextoComponentes(sep.comp);
       rvSubstituirMes(mesAno, linhas);
       rvMoverParaProcessados(pasta, pdf);
       feitos.push(pdf.getName() + ' → ' + mesAno.mes + '/' + mesAno.ano + ' (' + linhas.length + ' linhas' + confere + ')');
@@ -532,6 +536,44 @@ function rvConferirTotal(linhas, texto) {
   return ' (confere com o Geral ' + g.qtd + ')';
 }
 
+/* ══ COMPONENTE — o terceiro conteúdo do "Tipo: Todos" ══
+   Até 18/09 o "Todos" trazia duas famílias: produto acabado (grupos 1xx) e
+   caixa (501 VOLUME). O corte de 01 a 22/09 veio com uma terceira: peça de
+   MDP/MDF reportada na mesma transação — "SLEEP BASE 380X330X15 MDP",
+   "MEL TAMPO 445X428X18 MDF", grupos 385 a 811. O leitor separava só VOL de
+   não-VOL, então 419.339 "produtos" entraram na PARCIAL_MES (o certo era
+   29.228) e a tela de divulgação mostrou 1.205% do plano. O checksum não
+   pegou: a linha "Geral" soma as três famílias, e a leitura estava completa.
+
+   Regra: fica o que é produto acabado (código 1xx) ou caixa (código 501, ou
+   descrição "VOL x/y"). O resto é componente, sai da conta e é DITO no
+   resultado — quantas linhas, peças, quilos e grupos. Conferido em todos os
+   meses já gravados na REPORTE_VOLUMES: só aparecem 1xx e 501.
+   O checksum continua contra TODAS as linhas lidas (é ele que prova que a
+   leitura foi completa); o filtro vem depois. */
+var RV_RE_COD_PA  = /^1\d\d\./;
+var RV_RE_COD_VOL = /^501\./;
+
+function rvSepararComponentes(linhas) {
+  var fica = [], comp = { linhas: 0, pecas: 0, peso: 0, grupos: [] };
+  linhas.forEach(function (l) {
+    var cod = String(l[2] || '').trim(), desc = String(l[3] || '').trim();
+    if (RV_RE_COD_PA.test(cod) || RV_RE_COD_VOL.test(cod) || RV_RE_VOL.test(desc)) { fica.push(l); return; }
+    comp.linhas++;
+    comp.pecas += rvNum(l[4]);
+    comp.peso += rvNum(l[5]);
+    var gr = cod.slice(0, 3);
+    if (comp.grupos.indexOf(gr) < 0) comp.grupos.push(gr);
+  });
+  return { linhas: fica, comp: comp };
+}
+
+function rvTextoComponentes(c) {
+  if (!c || !c.linhas) return '';
+  return '. Fora da conta: ' + c.linhas + ' linha(s) de COMPONENTE (' + Math.round(c.pecas) + ' peças, '
+    + Math.round(c.peso) + ' kg; grupos ' + c.grupos.slice(0, 8).join(', ') + (c.grupos.length > 8 ? '…' : '') + ')';
+}
+
 /* Garante o cabeçalho PESO na coluna F de uma aba que nasceu com cinco
    colunas. Só escreve se F estiver vazia: se alguém já usou a coluna para
    outra coisa, o script não atropela — avisa quem chamou e o peso fica de
@@ -621,6 +663,10 @@ function rvProcessarParciais() {
       var linhas = rvLinhasDoTexto(texto, per);
       if (!linhas.length) throw new Error('nenhuma linha de produto/volume reconhecida');
       var confere = rvConferirTotal(linhas, texto) + tipo;
+      var sep = rvSepararComponentes(linhas);
+      if (!sep.linhas.length) throw new Error('só componente no PDF — nenhum produto acabado (1xx) nem caixa (501)');
+      linhas = sep.linhas;
+      confere += rvTextoComponentes(sep.comp);
       var agr = rvAgruparLinhas(linhas);
       var g = agr.meses[agr.ordem[0]];
       rvVolumesDoMes(g, cadastro);

@@ -28,7 +28,7 @@ const path = require('path');
 
 function carregarRV() {
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'ReporteVolumes.gs'), 'utf8');
-  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvTotalGeralDoTexto, rvConferirTotal, rvGravarParcial, rvNum, RV_RE_VOL, rvTipoDoTexto, rvConferirTipo, rvOrfaosVol, RV_TIPO_OK };';
+  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvTotalGeralDoTexto, rvConferirTotal, rvGravarParcial, rvNum, RV_RE_VOL, rvTipoDoTexto, rvConferirTipo, rvOrfaosVol, RV_TIPO_OK, rvSepararComponentes, rvTextoComponentes };';
   return new Function('Logger', src + '\n' + exp)({ log() {} });
 }
 const RV = carregarRV();
@@ -224,6 +224,41 @@ afirma('sem linha VOL nenhuma → nenhum órfão', (() => {
 })());
 afirma('o peso das linhas VOL é guardado — sem ele não dá para dizer quanto se perde',
   gOrf.grupos['CANT CAFE AURORA CINAMOMO'].p === 1500);
+
+/* ══ Componente — o corte de 01 a 22/09 ══
+   O "Tipo: Todos" passou a trazer peça de MDP/MDF (grupos 385 a 811) além de
+   produto acabado (1xx) e caixa (501). O leitor contou tudo como produto:
+   419.339 na PARCIAL_MES, 1.205% do plano no telão. Trecho real do PDF. */
+sec('Componente — só produto acabado (1xx) e caixa (501/VOL) entram na conta');
+const P22 = 'Período: 01/09/26 até 22/09/26 Transação: 3 - REPORTE Tipo: Todos '
+  + 'Produto Descrição Quantidade Peso (KG) Vlr. Custo '
+  + '103.005.118 MESA CABECEIRA SLEEP OFF WHITE/NATURE 4.540,000 34.050,000 127.095,93 '
+  + '114.003.001 PENTEADEIRA PRINCESA BRANCO 661,000 26.803,550 190.000,00 '
+  + '385.001.001 PRINCESA BASE DIR/ESQ 350X300X12 MDF N 1 1.330,000 933,660 3.100,00 '
+  + '778.001.001 SLEEP BASE 380X330X15 MDP 1 BCO 1.050,000 707,700 2.000,00 '
+  + '763.002.116 SUPREMO 2.3/1.8 PAINEL 2500X448X12 MDP 2 929,804 2.200,000 9.000,00 '
+  + '501.060.001 VOL 1/2 PENTEADEIRA CAMARIM MEL BRANCO 646,000 11.000,000 5.000,00 '
+  + 'Geral 9.156,804 75.694,910 336.195,93';
+const L22 = RV.rvLinhasDoTexto(P22, { mes: 'SET', ano: 2026 });
+afirma('lê as seis linhas e confere com o Geral (leitura completa)', L22.length === 6 && /confere/.test(RV.rvConferirTotal(L22, P22)));
+const S22 = RV.rvSepararComponentes(L22);
+afirma('ficam 3 linhas: dois produtos 1xx e uma caixa 501', S22.linhas.length === 3
+  && S22.linhas.map(l => l[2].slice(0, 3)).join(',') === '103,114,501');
+ok('componentes fora: 3 linhas',   S22.comp.linhas, 3, 0);
+ok('peças de componente fora',     S22.comp.pecas, 3309.804, 0.001);
+ok('quilos de componente fora',    S22.comp.peso, 3841.36, 0.001);
+afirma('grupos listados na ordem em que apareceram', S22.comp.grupos.join(',') === '385,778,763');
+const G22 = RV.rvAgruparLinhas(S22.linhas).meses['SET/2026'];
+ok('produtos do corte = só 1xx (4.540 + 661)', G22.prod, 5201, 0);
+afirma('a caixa 501 continua sendo VOL, não produto', !!G22.grupos['PENTEADEIRA CAMARIM MEL BRANCO']);
+afirma('o resultado diz o que ficou fora, com peça, quilo e grupos',
+  /3 linha\(s\) de COMPONENTE \(3310 peças, 3841 kg; grupos 385, 778, 763\)/.test(RV.rvTextoComponentes(S22.comp)));
+afirma('sem componente → nada a dizer', RV.rvTextoComponentes(RV.rvSepararComponentes(S22.linhas).comp) === '');
+afirma('VOL com código fora do 501 ainda é caixa (pela descrição)',
+  RV.rvSepararComponentes([['SET', 2026, '999.000.001', 'VOL 1/1 RACK FLIP 1.6', 10, 5]]).linhas.length === 1);
+afirma('código 1xx de qualquer grupo (112, 121) é produto',
+  RV.rvSepararComponentes([['SET', 2026, '112.001.001', 'X', 1, 1], ['SET', 2026, '121.002.116', 'Y', 1, 1]]).linhas.length === 2);
+afirma('código 010.xxx não é confundido com 1xx', RV.rvSepararComponentes([['SET', 2026, '010.001.001', 'X', 1, 1]]).linhas.length === 0);
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

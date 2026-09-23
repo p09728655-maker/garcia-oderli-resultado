@@ -17193,6 +17193,11 @@ function printAtiva(){
 window.MesEmCurso = (function(){
   var ORDEM_M=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   var DIAS_CORTE_VELHO=7;
+  /* Ritmo do corte acima disto × o melhor mês fechado não é produção, é
+     leitura errada: o mês não ganha veredito nenhum. O aviso de 1,3× segue
+     só como aviso — o corte real de 18/09 (mix leve, com HE) deu 1,32×. O de
+     22/09 com componente dentro deu 18×. */
+  var FATOR_CORTE_SUSPEITO=2;
 
   /* Datas só em UTC e só como 'AAAA-MM-DD': o fuso do navegador não pode
      mover um corte de sexta para quinta. */
@@ -17312,7 +17317,8 @@ window.MesEmCurso = (function(){
   }
 
   var COR={ verde:['#4CAF50','76,175,80'], amarelo:['#FF9800','255,152,0'], vermelho:['#F44336','244,67,54'],
-            velho:['#888888','136,136,136'], sem:['#888888','136,136,136'], encerrado:['#00E5FF','0,229,255'] };
+            velho:['#888888','136,136,136'], sem:['#888888','136,136,136'], encerrado:['#00E5FF','0,229,255'],
+            suspeito:['#888888','136,136,136'] };
 
   /* p = { plano, realizado, dataCorte:'AAAA-MM-DD', diasPlanejados, ritmoDem,
            limHE (% — META_DEP_HE), feriados:['AAAA-MM-DD'…], hoje:'AAAA-MM-DD',
@@ -17378,6 +17384,13 @@ window.MesEmCurso = (function(){
     if(diasDec<=0) return saida('sem', Object.assign(nums, { titulo:'SEM DIA ÚTIL NO CORTE',
       frase:'O corte de '+base.ate+' não tem dia útil decorrido — confira a data.', acao:'' }));
 
+    if(+p.melhorMesDia>0&&ritmoAtual>FATOR_CORTE_SUSPEITO*p.melhorMesDia){
+      nums.fatorSuspeito=ritmoAtual/p.melhorMesDia;
+      return saida('suspeito', Object.assign(nums, { titulo:'CORTE SUSPEITO — SEM VEREDITO',
+        frase:'O corte de <b>'+base.ate+'</b> dá <b>'+fi(ritmoAtual)+' pç/dia</b>, '+fd(nums.fatorSuspeito,1)+'× o melhor mês fechado ('+fi(p.melhorMesDia)+'). '
+          +'Isso não é produção, é leitura errada do reporte (componente contado como peça, período errado ou PDF trocado). Os números do corte não são usados.',
+        acao:'Conferir o PDF do corte na pasta PROCESSADOS; corrigir e reprocessar (Volumes > Processar só os cortes parciais).' }));
+    }
     if(idade>DIAS_CORTE_VELHO) return saida('velho', Object.assign(nums, { titulo:'CORTE DESATUALIZADO',
       frase:'O último corte é de <b>'+base.ate+'</b>, há '+idade+' dias. Até lá: <b>'+fi(real)+'</b> de <b>'+fi(plano)+'</b> peças ('+fd(pctFeito,0)+'% do plano com '+fd(pctMes,0)+'% do mês).',
       acao:'Emitir o "3 - REPORTE" de 01/'+pad(m+1)+' até hoje e salvar na pasta REPORTES PARCIAIS. Sem corte recente não há veredito.' }));
@@ -17534,7 +17547,7 @@ window.MesEmCurso = (function(){
   }
 
   return { apurar:apurar, apurarKg:apurarKg, apurarHE:apurarHE, explicarRitmos:explicarRitmos, diasUteis:diasUteis, diasUteisDoMes:diasUteisDoMes, ultimoCorte:ultimoCorte,
-           deIso:deIso, ddmm:ddmm, ORDEM_M:ORDEM_M, DIAS_CORTE_VELHO:DIAS_CORTE_VELHO,
+           deIso:deIso, ddmm:ddmm, ORDEM_M:ORDEM_M, DIAS_CORTE_VELHO:DIAS_CORTE_VELHO, FATOR_CORTE_SUSPEITO:FATOR_CORTE_SUSPEITO,
            KG_RAZAO_MIN:KG_RAZAO_MIN, KG_RAZAO_MAX:KG_RAZAO_MAX };
 })();
 
@@ -17776,10 +17789,11 @@ window.MesEmCurso = (function(){
       ? '<div style="margin-top:10px;padding:9px 13px;background:rgba(255,152,0,.08);border-left:2px solid rgba(255,152,0,.5);border-radius:6px;font-size:.74rem;color:var(--t2);line-height:1.5">'
         +c.avisos.map(function(a){ return '<div><b style="color:#FF9800">Atenção:</b> '+a+'</div>'; }).join('')+'</div>'
       : '';
-    if(c.estado==='sem'){
+    if(c.estado==='sem'||c.estado==='suspeito'){
       return cab+'<div style="background:var(--panel);border:1px solid var(--b);border-left:5px solid '+c.cor+';border-radius:var(--r);padding:16px 20px;margin-bottom:16px">'
         +'<div style="font-size:1.1rem;font-weight:800;color:'+c.cor+'">'+c.titulo+'</div>'
-        +'<div style="font-size:.85rem;color:var(--t1);margin-top:6px">'+c.frase+'</div>'+avisos+'</div>';
+        +'<div style="font-size:.85rem;color:var(--t1);margin-top:6px">'+c.frase+'</div>'
+        +(c.estado==='suspeito'&&c.acao?'<div style="font-size:.78rem;color:var(--t2);margin-top:6px"><b>O que fazer:</b> '+c.acao+'</div>':'')+avisos+'</div>';
     }
     var pF=Math.min(100,Math.max(0,c.pctFeito)), pM=Math.min(100,Math.max(0,c.pctMes));
     var barra='<div style="margin:10px 0 4px;position:relative;height:12px;background:var(--b);border-radius:6px;overflow:visible">'
@@ -17988,7 +18002,8 @@ window.MesEmCurso = (function(){
       feriados:feriados, hoje:hojeIso(), melhorMesDia:melhorDia,
       pesoMes:+cursoRec.parc.peso, kgAno:kgAno, embDias:lerLocal('dash_emb_dia_v1') }):null;
     var explic=MesEmCurso.explicarRitmos({ planoAno:planoAno, diasPlanoAno:diasPlanoAno, planoFech:planoFech, diasPlanFech:diasPlanFech,
-      normalFech:normalFech, diasFech:diasFech, heP:heP, planoAberto:planoAberto, diasAbertos:diasAbertos, fechados:fechados, curso:curso });
+      normalFech:normalFech, diasFech:diasFech, heP:heP, planoAberto:planoAberto, diasAbertos:diasAbertos, fechados:fechados,
+      curso:(curso&&curso.estado!=='suspeito')?curso:null });
 
     var cor,rgb,titulo,frase,acao;
     /* A leitura do que resta depende de contra o que se compara. "Mais leve
@@ -23161,9 +23176,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.18';
+var APP_VERSAO = 'b96.19';
 var APP_DATA   = '23/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.19', data:'23/09/2026', itens:[
+    'Leitor do PDF (ReporteVolumes.gs): o corte de 01 a 22/09 veio do ERP, em "Tipo: Todos", com uma terceira familia alem de produto acabado (grupos 1xx) e caixa (501 VOLUME): peca de MDP/MDF reportada na mesma transacao — SLEEP BASE 380X330X15 MDP, MEL TAMPO 445X428X18 MDF, grupos 385 a 811. O leitor separava so VOL de nao-VOL e contou 419.339 "produtos" (o certo e 29.228); a tela /plano mostrou PLANO CUMPRIDO com 1.205%. O checksum nao pegou porque a linha "Geral" soma as tres familias.',
+    'Regra nova: fica o que e produto acabado (codigo 1xx) ou caixa (codigo 501 ou descricao "VOL x/y"); o resto e componente, sai da conta e o resultado do processamento diz quantas linhas, pecas, quilos e grupos ficaram fora. Vale para o corte parcial e para o mes fechado. Todos os meses ja gravados so tem 1xx e 501.',
+    'Trava na tela: corte com ritmo acima de 2x o melhor mes fechado nao ganha veredito. Na aba Mestre vira "CORTE SUSPEITO — SEM VEREDITO" com o que fazer; na /plano o mes fica "CORTE EM CONFERENCIA", sem numero, sem %, sem projecao e sem peso, e o ano segue valendo (e feito dos meses fechados). O aviso de 1,3x continua so como aviso: o corte real de 18/09 (mix leve, com HE) deu 1,32x.',
+    '26 testes novos (534 no total), com o trecho real do PDF de 22/09.'
+  ]},
   { v:'b96.18', data:'23/09/2026', itens:[
     'Tela /plano avisa quando o corte parcial esta velho. Em 23/09 ela mostrava "dados ate 18/09" num canto, "atualizado 23/09 07:04" ao lado e "NO RITMO" em verde — parecia dado de hoje, e 21 e 22/09 estavam fora da conta porque nenhum "3 - REPORTE" novo foi salvo na pasta REPORTES PARCIAIS.',
     'Regra: conta os dias uteis do dia seguinte ao corte ate ONTEM (hoje ainda esta em producao; fim de semana e feriado da aba FERIADOS nao contam). Com 1 dia util sem reporte, uma faixa laranja acima das colunas diz de quando e o dado e o que fazer. Com 2 ou mais, o veredito do mes perde a cor (cinza) e passa a vir datado — "NO RITMO ATE 18/09" — porque o ritmo necessario e os dias restantes foram calculados na data do corte.',
@@ -23977,7 +23998,14 @@ window.PlanoRealizado = (function(){
     /* O MÊS. Com corte parcial é o mês em curso; sem ele, o último fechado —
        a tela continua valendo na segunda-feira em que ninguém emitiu o corte. */
     var c=u.curso;
-    if(c&&c.plano>0){
+    if(c&&c.plano>0&&c.estado==='suspeito'){
+      /* Leitura errada do reporte: nada do corte vai para o telão — nem o
+         número grande, nem o %, nem a projeção. Só o aviso e o plano. */
+      m.suspeito={ ate:c.ate, ritmo:c.ritmoAtualMes, fator:c.fatorSuspeito };
+      m.mes={ tipo:'suspeito', nome:NOME_MES[c.mes]||c.mes, ate:c.ate, plano:c.plano, real:null,
+        falta:null, dias:0, pctPlano:null, pctRef:null, refLbl:'do mês', refSub:'corte em conferência',
+        nec:0, cabe:false, cor:COR.velho, veredito:'CORTE EM CONFERÊNCIA', fecha:null, he:null, kg:null };
+    } else if(c&&c.plano>0){
       var falta=Math.max(0,c.faltaProduzir), dias=c.diasRestantes;
       var nec=dias>0?falta/dias:0, cabe=falta<=0||(dem>0&&nec<=dem);
       m.mes={ tipo:'curso', nome:NOME_MES[c.mes]||c.mes, ate:c.ate,
@@ -24038,14 +24066,14 @@ window.PlanoRealizado = (function(){
       var x=porMes[mes];
       if(!x||!(x.plano>0)) return { mes:mes, pct:null, cor:COR.vazio, st:'sem plano' };
       var emCurso=x.status==='Em andamento';
-      var real=(x.real!==null&&x.real>0)?x.real:(x.parcial?x.parcial.produtos:null);
+      var real=(x.real!==null&&x.real>0)?x.real:((x.parcial&&!m.suspeito)?x.parcial.produtos:null);
       return { mes:mes, pct:real!==null?real/x.plano*100:null, parcial:emCurso,
                cor:corStatus(x.status), st:x.status };
     });
 
     /* Rodapé: as ressalvas que a manchete em peças não conta. */
     m.notas=[];
-    if(c&&c.kg&&c.kg.kgPecaAno) m.notas.push({ txt:'Peça do mês: <b>'+fd(c.kg.kgPecaMes,1)
+    if(c&&!m.suspeito&&c.kg&&c.kg.kgPecaAno) m.notas.push({ txt:'Peça do mês: <b>'+fd(c.kg.kgPecaMes,1)
       +' kg</b> · média do ano <b>'+fd(c.kg.kgPecaAno,1)+' kg</b> — o plano é em peças, e peça mais leve '
       +'não é a mesma carga de fábrica', alerta:false });
     else if(u.heP>0) m.notas.push({ txt:'Dependência de hora extra no ano: <b>'+fi(u.heP)+'</b> peças', alerta:true });
@@ -24072,16 +24100,16 @@ window.PlanoRealizado = (function(){
       +'</div>';
   }
   function coluna(lbl, d, dem, extra){
-    var barra=Math.max(0,Math.min(100,d.pctPlano));
+    var barra=isFinite(d.pctPlano)&&d.pctPlano!==null?Math.max(0,Math.min(100,d.pctPlano)):0;
     var marca=(d.pctRef!==null&&d.pctRef!==undefined)?Math.max(0,Math.min(100,d.pctRef)):null;
     return '<section class="pr-col" style="--cor:'+d.cor+'">'
       +'<div class="pr-lbl">'+esc(lbl)+'</div>'
       +'<div class="pr-st"><span class="pr-dot"></span><span class="pr-v">'+esc(d.veredito)+'</span>'+selo(d)+'</div>'
-      +'<div class="pr-big"><span class="pr-n">'+fi(d.real)+'</span>'
+      +'<div class="pr-big"><span class="pr-n">'+(d.real===null?'—':fi(d.real))+'</span>'
         +'<span class="pr-d">de '+fi(d.plano)+' peças</span></div>'
       +'<div class="pr-bar"><div class="pr-track"><div class="pr-fill" style="width:'+barra.toFixed(1)+'%"></div>'
         +(marca!==null?'<div class="pr-tick" style="left:'+marca.toFixed(1)+'%"></div>':'')+'</div>'
-        +'<div class="pr-legs"><span style="color:var(--cor)"><b>'+fd(d.pctPlano,0)+'%</b> do plano</span>'
+        +'<div class="pr-legs"><span style="color:var(--cor)"><b>'+(d.pctPlano===null?'—':fd(d.pctPlano,0)+'%')+'</b> do plano</span>'
         +(marca!==null?'<span class="pr-leg2">▲ <b>'+fd(d.pctRef,0)+'%</b> '+esc(d.refLbl2||d.refLbl)
           +' · '+esc(d.refSub)+'</span>':'<span class="pr-leg2">'+esc(d.refSub)+'</span>')
         +'</div></div>'
@@ -24093,6 +24121,13 @@ window.PlanoRealizado = (function(){
             :'✗ '+(d.acimaPct?fd(d.acimaPct,0)+'% acima — ':'')+'não cabe na jornada normal')+'</div></div>'
         : '')
       +(extra||'')+linhaHE(d)+'</section>';
+  }
+  function avisoSuspeito(m){
+    var d=m.suspeito; if(!d) return '';
+    return '<div class="pr-def pr-def-forte">'
+      +'<b>⚠ Corte de '+esc(d.ate)+' em conferência</b> — o reporte dá '+fi(d.ritmo)+' peças por dia, '
+      +fd(d.fator,0)+'× o melhor mês fechado. Isso é leitura errada do PDF, não produção; os números do mês ficam fora da tela até o corte ser refeito.'
+      +'<span>O ano segue valendo: ele é feito dos meses fechados.</span></div>';
   }
   function avisoDefasado(m){
     var d=m.defasado; if(!d) return '';
@@ -24140,7 +24175,7 @@ window.PlanoRealizado = (function(){
         +'<div class="pr-hd-r"><div class="pr-per">'+esc(mes.nome)+' '+m.ano+'</div>'
         +'<div class="pr-at">'+(mes.ate?'<span'+(m.defasado?' class="pr-at-v"':'')+'>dados até '+esc(mes.ate)+'</span> · ':'')
         +'tela gerada '+esc(m.atualizado||'—')+'</div></div></div>'
-      +'<div class="pr-wrap">'+avisoDefasado(m)+'<div class="pr-main">'
+      +'<div class="pr-wrap">'+avisoSuspeito(m)+avisoDefasado(m)+'<div class="pr-main">'
         +coluna('O mês', mes, m.dem, pMes)
         +coluna('O ano', ano, m.dem, pAno)
       +'</div>'
