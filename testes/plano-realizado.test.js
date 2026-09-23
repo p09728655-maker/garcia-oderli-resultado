@@ -229,6 +229,20 @@ afirma('singular com 1 dia', /1 dia útil de produção/.test(PR.html(comSC(1)))
 afirma('o ano não muda de cor pelo corte (o veredito dele é de meses fechados)', comSC(2).ano2.cor === M.ano2.cor);
 afirma('cabeçalho diz "tela gerada", não "atualizado"', /tela gerada 21\/09/.test(PR.html(M)) && !/atualizado/.test(PR.html(M)));
 
+/* ══ Corte suspeito ══
+   O print de 23/09 07:24: "PLANO CUMPRIDO", 419.339 de 34.810, 1.205%. */
+sec('Corte suspeito — nada do corte vai para o telão');
+const MS = PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { ate: '22/09', realizado: 419339,
+  estado: 'suspeito', ritmoAtualMes: 27956, fatorSuspeito: 18.4 }) }), '23/09 07:24');
+const HS = PR.html(MS);
+afirma('veredito "CORTE EM CONFERÊNCIA", cinza', MS.mes.veredito === 'CORTE EM CONFERÊNCIA' && MS.mes.cor === '#888888');
+afirma('não mostra 419.339 nem 1.205%', !/419\.339/.test(HS) && !/1\.205/.test(HS));
+afirma('não mostra "PLANO CUMPRIDO"', !/PLANO CUMPRIDO/.test(HS));
+afirma('sem bloco de ritmo necessário nem projeção do mês', MS.mes.dias === 0 && MS.mes.fecha === null);
+afirma('faixa de aviso com a data e o fator', /Corte de 22\/09 em conferência/.test(HS) && /18× o melhor mês/.test(HS));
+afirma('SET sem % na fita', MS.fita[8].pct === null);
+afirma('o ano segue igual (meses fechados)', MS.ano2.veredito === M.ano2.veredito && MS.ano2.real === M.ano2.real);
+
 /* ══ Bordas ══ */
 sec('Bordas');
 afirma('sem apurado → null (a tela mostra o vazio explicado)', PR.modelo(null) === null);

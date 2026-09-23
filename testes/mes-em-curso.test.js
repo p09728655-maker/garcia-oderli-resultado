@@ -145,6 +145,17 @@ afirma('feriado não conta: corte 04/09 lido em 09/09 → 1 (08/09; 07/09 é fer
 afirma('corte velho também informa (18/09 lido em 30/09 → 7)', com({ hoje: '2026-09-30' }).diasSemCorte === 7);
 afirma('sem "hoje" → null (não inventa)', com({ hoje: null }).diasSemCorte === null);
 
+/* ══ Corte suspeito ══
+   22/09: o leitor contou componente como peça — 419.339 em 15 dias. */
+sec('Corte suspeito — ritmo impossível não ganha veredito');
+const s22 = com({ realizado: 419339, dataCorte: '2026-09-22', hoje: '2026-09-23' });
+afirma('419.339 em 15 dias (27.956/dia, 18× o melhor mês) → suspeito', s22.estado === 'suspeito');
+afirma('suspeito não diz "cumprido"', !/CUMPRIDO/.test(s22.titulo) && /SUSPEITO/.test(s22.titulo));
+ok('fator contra o melhor mês', s22.fatorSuspeito, 419339 / 15 / 1522, 0.01);
+afirma('o corte real de 18/09 (1,32×) NÃO é suspeito — continua só com o aviso', c.estado === 'verde' && c.avisos.some(a => /Confira o período/.test(a)));
+afirma('sem melhor mês fechado não há régua → não bloqueia', com({ realizado: 419339, melhorMesDia: 0 }).estado !== 'suspeito');
+afirma('suspeito tem cor e rgb', /^#/.test(s22.cor) && /^\d+,\d+,\d+$/.test(s22.rgb));
+
 /* ══ Calendário × plano ══ */
 sec('Calendário × dias do plano — divergência avisa, nunca corrige em silêncio');
 afirma('sem FERIADOS: avisa e conta 14 dias', (() => { const x = com({ feriados: [] }); return x.diasDecorridos === 14 && x.avisos.some(a => /Sem aba FERIADOS/.test(a)); })());
