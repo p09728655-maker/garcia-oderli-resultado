@@ -17350,6 +17350,16 @@ window.MesEmCurso = (function(){
     var ader=esperado>0?real/esperado*100:null;
     var pctFeito=real/plano*100, pctMes=diasPlan>0?diasDec/diasPlan*100:0;
     var hoje=deIso(p.hoje), idade=hoje?Math.round((hoje-corte)/86400000):0;
+    /* Dias úteis que já terminaram e o corte não cobre: do dia seguinte ao
+       corte até ONTEM (hoje ainda está em produção). Corte de ontem = 0.
+       É a régua da tela de divulgação para avisar que o veredito é velho —
+       a idade em dias corridos não serve, porque fim de semana não conta. */
+    var semCorte=null;
+    if(hoje){
+      var ontem=new Date(hoje.getTime()-86400000);
+      semCorte=ontem>corte?diasUteis(new Date(corte.getTime()+86400000).toISOString().slice(0,10),
+                                     ontem.toISOString().slice(0,10), feriados):0;
+    }
     var ritmoDem=+p.ritmoDem||0, limHE=(+p.limHE>=0)?+p.limHE:8;
     var ref=ritmoDem, refNome='demonstrado na jornada normal';
     if(!(ref>0)){ ref=ritmoAtual; refNome='do próprio mês (com hora extra)';
@@ -17362,7 +17372,7 @@ window.MesEmCurso = (function(){
                diasDecorridos:diasDec, diasRestantes:diasRest, diasPlanejados:diasPlan, diasCalendario:diasCal,
                faltaProduzir:falta, ritmoNecRestante:ritmoNec, ritmoAtualMes:ritmoAtual, projecaoMes:proj,
                esperadoAte:esperado, aderenciaAte:ader, pctFeito:pctFeito, pctMes:pctMes,
-               ritmoRef:ref, ritmoRefNome:refNome, limHE:limHE, idadeCorte:idade, mes:ORDEM_M[m], ano:y };
+               ritmoRef:ref, ritmoRefNome:refNome, limHE:limHE, idadeCorte:idade, diasSemCorte:semCorte, mes:ORDEM_M[m], ano:y };
 
     if(nums.he&&nums.he.avisos.length) nums.he.avisos.forEach(function(a){ avisos.push(a); });
     if(diasDec<=0) return saida('sem', Object.assign(nums, { titulo:'SEM DIA ÚTIL NO CORTE',
@@ -23151,9 +23161,16 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.17';
-var APP_DATA   = '21/09/2026';
+var APP_VERSAO = 'b96.18';
+var APP_DATA   = '23/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.18', data:'23/09/2026', itens:[
+    'Tela /plano avisa quando o corte parcial esta velho. Em 23/09 ela mostrava "dados ate 18/09" num canto, "atualizado 23/09 07:04" ao lado e "NO RITMO" em verde — parecia dado de hoje, e 21 e 22/09 estavam fora da conta porque nenhum "3 - REPORTE" novo foi salvo na pasta REPORTES PARCIAIS.',
+    'Regra: conta os dias uteis do dia seguinte ao corte ate ONTEM (hoje ainda esta em producao; fim de semana e feriado da aba FERIADOS nao contam). Com 1 dia util sem reporte, uma faixa laranja acima das colunas diz de quando e o dado e o que fazer. Com 2 ou mais, o veredito do mes perde a cor (cinza) e passa a vir datado — "NO RITMO ATE 18/09" — porque o ritmo necessario e os dias restantes foram calculados na data do corte.',
+    'O veredito do ano nao muda de cor pelo corte: ele pesa sobretudo meses fechados. A faixa avisa que os numeros dele tambem param na data do corte.',
+    '"atualizado" no cabecalho vira "tela gerada": o horario e de quando a tela foi montada, nao do dado. A data do dado ("dados ate") fica em laranja quando esta defasada.',
+    '15 testes novos (508 no total).'
+  ]},
   { v:'b96.17', data:'21/09/2026', itens:[
     'Leitor do PDF: o relatorio "3 - REPORTE" sai do ERP em dois filtros e eles nao trazem a mesma coisa. "Tipo: Todos" traz o produto acabado E as linhas VOL (caixas); "Tipo: P - PRODUTOS ACABADOS" traz so o produto. Como o leitor separa produto de VOL pela descricao, as pecas e os quilos saem iguais nos dois — mas os VOLUMES so existem no "Todos". Sem as linhas VOL o resumo cai para 1 caixa por produto: JUN/26 da 30.851 volumes contra 38.499 reais, erro de 20%, e os 181 produtos viram pendencia de cadastro.',
     'O padrao passa a ser "Tipo: Todos" e o PDF fora dele e recusado, como ja acontece quando a soma nao bate com a linha "Geral". Conferido nos PDFs reais: AGO/26 em "Todos" devolve 40.281 volumes, exatamente o que esta lancado na HISTORICO; JUN/26 em "P" devolve 30.851. PDF antigo, sem a linha "Tipo:" no papel, segue sem a conferencia e diz que nao conferiu.',
@@ -23933,7 +23950,11 @@ window.PlanoRealizado = (function(){
   var ORDEM_M=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   var NOME_MES={JAN:'Janeiro',FEV:'Fevereiro',MAR:'Março',ABR:'Abril',MAI:'Maio',JUN:'Junho',
                 JUL:'Julho',AGO:'Agosto',SET:'Setembro',OUT:'Outubro',NOV:'Novembro',DEZ:'Dezembro'};
-  var COR={ ok:'#4CAF50', ruim:'#F44336', he:'#FF9800', vazio:'#2A2A2A' };
+  var COR={ ok:'#4CAF50', ruim:'#F44336', he:'#FF9800', vazio:'#2A2A2A', velho:'#888888' };
+  /* Corte parcial sem reporte novo: com 1 dia útil descoberto a tela avisa;
+     com 2 ou mais o veredito do mês perde a cor — um "NO RITMO" verde de
+     corte velho no telão é afirmação que ninguém sabe se ainda vale. */
+  var SEM_CORTE_AVISO=1, SEM_CORTE_CINZA=2;
   function fi(n){ return isFinite(n)?Math.round(n).toLocaleString('pt-BR'):'—'; }
   function fd(n,d){ return isFinite(n)?n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'; }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
@@ -23978,6 +23999,12 @@ window.PlanoRealizado = (function(){
         kg:(c.kg&&c.kg.kgPecaAno)?{ peca:c.kg.kgPecaMes, ano:c.kg.kgPecaAno,
               difPct:c.kg.difPecaPct, leve:c.kg.difPecaPct<0,
               relevante:Math.abs(c.kg.difPecaPct)>=5 } : null };
+      var sc=(c.diasSemCorte===null||c.diasSemCorte===undefined)?null:+c.diasSemCorte;
+      if(sc!==null&&sc>=SEM_CORTE_AVISO){
+        var cinza=sc>=SEM_CORTE_CINZA;
+        m.defasado={ dias:sc, ate:c.ate, cinza:cinza };
+        if(cinza){ m.mes.cor=COR.velho; m.mes.veredito+=' ATÉ '+c.ate; }
+      }
     } else {
       var fech=(u.meses||[]).filter(function(x){ return x.plano>0&&x.real!==null&&x.real>0; });
       var uf=fech.length?fech[fech.length-1]:null;
@@ -24067,14 +24094,24 @@ window.PlanoRealizado = (function(){
         : '')
       +(extra||'')+linhaHE(d)+'</section>';
   }
+  function avisoDefasado(m){
+    var d=m.defasado; if(!d) return '';
+    return '<div class="pr-def'+(d.cinza?' pr-def-forte':'')+'">'
+      +'<b>⚠ Dados de '+esc(d.ate)+'</b> — '+fi(d.dias)+' dia'+(d.dias>1?'s':'')+' út'+(d.dias>1?'eis':'il')
+      +' de produção sem reporte. Os números do mês e do ano param em '+esc(d.ate)
+      +(d.cinza?' e o veredito do mês não vale para hoje':'')+'.'
+      +'<span>Emitir o "3 - REPORTE" de 01 até ontem, com Tipo: Todos, e salvar na pasta REPORTES PARCIAIS.</span></div>';
+  }
   function html(m){
     if(!m) return '<div class="pr-vazio"><div class="pr-vazio-t">Sem plano para mostrar</div>'
       +'<div class="pr-vazio-s">Lance a previsão na aba PLANO MESTRE da planilha. '
       +'Esta tela usa o mesmo apurado do Planejamento Mestre.</div></div>';
     var mes=m.mes, ano=m.ano2;
+    /* projeção de corte velho conta dias restantes que já passaram: sai cinza */
+    var velhoMes=!!(m.defasado&&m.defasado.cinza);
     var pMes=(mes.fecha!==null&&mes.dias>0)
       ? '<div class="pr-proj">Mantido o ritmo da jornada normal, o mês fecha em <b style="color:'
-        +(mes.fecha>=mes.plano?COR.ok:COR.ruim)+'">'+fi(mes.fecha)+'</b> peças — <b>'
+        +(velhoMes?COR.velho:(mes.fecha>=mes.plano?COR.ok:COR.ruim))+'">'+fi(mes.fecha)+'</b> peças — <b>'
         +(mes.fecha>=mes.plano?'+':'')+fi(mes.fecha-mes.plano)+'</b> '
         +(mes.fecha>=mes.plano?'acima':'abaixo')+' do plano.<span>Sem contar hora extra.</span></div>' : '';
     var pAno=(ano.fecha!==null&&ano.dias>0)
@@ -24101,9 +24138,9 @@ window.PlanoRealizado = (function(){
         +'<div><div class="pr-hd-t">Produção · Plano × Realizado</div>'
         +'<div class="pr-hd-s">Patrimar Móveis · Jaci/SP</div></div>'
         +'<div class="pr-hd-r"><div class="pr-per">'+esc(mes.nome)+' '+m.ano+'</div>'
-        +'<div class="pr-at">'+(mes.ate?'dados até '+esc(mes.ate)+' · ':'')
-        +'atualizado '+esc(m.atualizado||'—')+'</div></div></div>'
-      +'<div class="pr-wrap"><div class="pr-main">'
+        +'<div class="pr-at">'+(mes.ate?'<span'+(m.defasado?' class="pr-at-v"':'')+'>dados até '+esc(mes.ate)+'</span> · ':'')
+        +'tela gerada '+esc(m.atualizado||'—')+'</div></div></div>'
+      +'<div class="pr-wrap">'+avisoDefasado(m)+'<div class="pr-main">'
         +coluna('O mês', mes, m.dem, pMes)
         +coluna('O ano', ano, m.dem, pAno)
       +'</div>'
@@ -24155,6 +24192,12 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-hd-r{margin-left:auto;text-align:right}'
     +'#pr-solo .pr-per{font-size:1.15rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan)}'
     +'#pr-solo .pr-at{font-size:.72rem;color:var(--t3);font-family:var(--mono);margin-top:3px}'
+    +'#pr-solo .pr-at-v{color:#FF9800;font-weight:700}'
+    +'#pr-solo .pr-def{padding:8px 16px;border-radius:8px;font-size:.92rem;line-height:1.45;color:var(--t1);'
+      +'background:rgba(255,152,0,.10);border:1px solid rgba(255,152,0,.45);border-left:5px solid #FF9800;flex-shrink:0}'
+    +'#pr-solo .pr-def b{color:#FF9800}'
+    +'#pr-solo .pr-def span{margin-left:8px;font-size:.82rem;color:var(--t2)}'
+    +'#pr-solo .pr-def-forte{background:rgba(255,152,0,.16)}'
     +'#pr-solo .pr-wrap{flex:1;display:flex;flex-direction:column;gap:16px;padding:16px 32px;'
       +'min-height:0;overflow:auto}'
     +'#pr-solo .pr-main{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;min-height:0}'

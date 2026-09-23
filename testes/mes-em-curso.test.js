@@ -132,6 +132,19 @@ afirma('saída sempre tem cor e rgb', ['verde','amarelo','vermelho','velho','sem
   return x.estado === e && /^#/.test(x.cor) && /^\d+,\d+,\d+$/.test(x.rgb);
 }));
 
+/* ══ Dias úteis sem corte ══
+   A régua da tela /plano para dizer que o veredito é velho. Conta do dia
+   seguinte ao corte até ONTEM — hoje ainda está em produção. */
+sec('Dias úteis sem corte — do dia seguinte ao corte até ontem');
+afirma('corte de 18/09 (sex) lido em 21/09 (seg) → 0', com({ hoje: '2026-09-21' }).diasSemCorte === 0);
+afirma('lido em 22/09 → 1 (21/09)', com({ hoje: '2026-09-22' }).diasSemCorte === 1);
+afirma('lido em 23/09 → 2 (21 e 22/09) — o caso do print', com({ hoje: '2026-09-23' }).diasSemCorte === 2);
+afirma('lido no mesmo dia do corte → 0', com({ hoje: '2026-09-18' }).diasSemCorte === 0);
+afirma('feriado não conta: corte 04/09 lido em 09/09 → 1 (08/09; 07/09 é feriado)',
+  com({ dataCorte: '2026-09-04', hoje: '2026-09-09' }).diasSemCorte === 1);
+afirma('corte velho também informa (18/09 lido em 30/09 → 7)', com({ hoje: '2026-09-30' }).diasSemCorte === 7);
+afirma('sem "hoje" → null (não inventa)', com({ hoje: null }).diasSemCorte === null);
+
 /* ══ Calendário × plano ══ */
 sec('Calendário × dias do plano — divergência avisa, nunca corrige em silêncio');
 afirma('sem FERIADOS: avisa e conta 14 dias', (() => { const x = com({ feriados: [] }); return x.diasDecorridos === 14 && x.avisos.some(a => /Sem aba FERIADOS/.test(a)); })());

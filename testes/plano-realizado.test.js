@@ -215,6 +215,20 @@ afirma('o ano continua igual', semCurso.ano2.veredito === 'ATRÁS DO RITMO');
 afirma('sem corte, o rodapé cai na dependência de HE do ano',
   semCurso.notas.some(n => /Dependência de hora extra no ano/.test(n.txt)));
 
+/* ══ Corte defasado ══
+   O print de 23/09: "dados até 18/09" num canto, "atualizado 23/09 07:04" ao
+   lado e "NO RITMO" em verde — parecia dado de hoje. */
+sec('Corte defasado — a tela diz que o dado é velho');
+const comSC = n => PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { diasSemCorte: n }) }), '23/09 07:04');
+afirma('0 dia útil sem corte → sem aviso, verde', !comSC(0).defasado && comSC(0).mes.cor === '#4CAF50');
+afirma('sem a informação → sem aviso (não inventa)', !M.defasado && !/pr-def/.test(PR.html(M)));
+afirma('1 dia útil → avisa, mas mantém o verde', (() => { const x = comSC(1); return x.defasado && !x.defasado.cinza && x.mes.cor === '#4CAF50' && x.mes.veredito === 'NO RITMO'; })());
+afirma('2 dias úteis → veredito cinza e datado', (() => { const x = comSC(2); return x.defasado.cinza && x.mes.cor === '#888888' && x.mes.veredito === 'NO RITMO ATÉ 18/09'; })());
+afirma('html traz o aviso com a data e a contagem', (() => { const h = PR.html(comSC(2)); return /pr-def/.test(h) && /Dados de 18\/09/.test(h) && /2 dias úteis/.test(h) && /REPORTES PARCIAIS/.test(h); })());
+afirma('singular com 1 dia', /1 dia útil de produção/.test(PR.html(comSC(1))));
+afirma('o ano não muda de cor pelo corte (o veredito dele é de meses fechados)', comSC(2).ano2.cor === M.ano2.cor);
+afirma('cabeçalho diz "tela gerada", não "atualizado"', /tela gerada 21\/09/.test(PR.html(M)) && !/atualizado/.test(PR.html(M)));
+
 /* ══ Bordas ══ */
 sec('Bordas');
 afirma('sem apurado → null (a tela mostra o vazio explicado)', PR.modelo(null) === null);
