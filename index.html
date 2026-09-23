@@ -23176,9 +23176,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.19';
+var APP_VERSAO = 'b96.20';
 var APP_DATA   = '23/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.20', data:'23/09/2026', itens:[
+    'Tela /plano: a linha de hora extra no pe da coluna do mes saia cortada em 1920x1080 — a fita "mes a mes" pintava por cima dela. A grade das duas colunas encolhia abaixo do proprio conteudo (min-height:0) e, com a Segoe UI do Windows, mais alta que a fonte de teste, faltavam uns 40 px.',
+    'Agora as colunas nunca encolhem: quem cede altura e a fita (minimo de 130 px). O espacamento vertical da coluna ficou mais justo (barra, bloco de ritmo, projecao e hora extra). Conferido em 1920 de largura com 1013, 953 e 900 px de altura: em nenhum caso a fita cobre a coluna; na menor, a pagina rola em vez de cortar.'
+  ]},
   { v:'b96.19', data:'23/09/2026', itens:[
     'Leitor do PDF (ReporteVolumes.gs): o corte de 01 a 22/09 veio do ERP, em "Tipo: Todos", com uma terceira familia alem de produto acabado (grupos 1xx) e caixa (501 VOLUME): peca de MDP/MDF reportada na mesma transacao — SLEEP BASE 380X330X15 MDP, MEL TAMPO 445X428X18 MDF, grupos 385 a 811. O leitor separava so VOL de nao-VOL e contou 419.339 "produtos" (o certo e 29.228); a tela /plano mostrou PLANO CUMPRIDO com 1.205%. O checksum nao pegou porque a linha "Geral" soma as tres familias.',
     'Regra nova: fica o que e produto acabado (codigo 1xx) ou caixa (codigo 501 ou descricao "VOL x/y"); o resto e componente, sai da conta e o resultado do processamento diz quantas linhas, pecas, quilos e grupos ficaram fora. Vale para o corte parcial e para o mes fechado. Todos os meses ja gravados so tem 1xx e 501.',
@@ -24235,7 +24239,10 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-def-forte{background:rgba(255,152,0,.16)}'
     +'#pr-solo .pr-wrap{flex:1;display:flex;flex-direction:column;gap:16px;padding:16px 32px;'
       +'min-height:0;overflow:auto}'
-    +'#pr-solo .pr-main{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;min-height:0}'
+    /* as colunas nunca encolhem abaixo do conteúdo: quem cede altura é a
+       fita. Com min-height:0 a grade encolhia e a fita pintava por cima da
+       linha de hora extra (Segoe UI no Windows é mais alta que o fallback). */
+    +'#pr-solo .pr-main{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;flex:0 0 auto}'
     +'#pr-solo .pr-col{background:var(--panel);border:1px solid var(--b);border-radius:8px;'
       +'border-left:5px solid var(--cor);padding:24px 24px 16px;display:flex;flex-direction:column;min-height:0}'
     +'#pr-solo .pr-lbl{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--t3)}'
@@ -24246,7 +24253,7 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-selo{margin-left:4px;padding:4px 10px;border-radius:20px;font-size:.72rem;'
       +'font-weight:700;letter-spacing:.04em;color:var(--sc);background:color-mix(in srgb,var(--sc) 14%,transparent);'
       +'border:1px solid color-mix(in srgb,var(--sc) 45%,transparent);white-space:nowrap}'
-    +'#pr-solo .pr-he{margin-top:12px;padding:10px 14px;border-radius:6px;font-size:.92rem;line-height:1.5;'
+    +'#pr-solo .pr-he{margin-top:10px;padding:8px 14px;border-radius:6px;font-size:.92rem;line-height:1.5;'
       +'color:var(--t1);background:rgba(255,255,255,.03);border-left:3px solid var(--sc)}'
     +'#pr-solo .pr-he b{font-family:var(--mono)}'
     +'#pr-solo .pr-he span{color:var(--t2)}'
@@ -24254,7 +24261,7 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-n{font-family:var(--mono);font-size:clamp(2.4rem,7.2vh,4.6rem);font-weight:700;'
       +'line-height:1;letter-spacing:-.02em}'
     +'#pr-solo .pr-d{font-size:1.05rem;color:var(--t2)}'
-    +'#pr-solo .pr-bar{margin-top:24px}'
+    +'#pr-solo .pr-bar{margin-top:16px}'
     +'#pr-solo .pr-track{position:relative;height:18px;background:var(--b);border-radius:9px}'
     +'#pr-solo .pr-fill{height:100%;border-radius:9px;background:var(--cor)}'
     +'#pr-solo .pr-tick{position:absolute;top:-6px;bottom:-6px;width:3px;background:var(--t1);border-radius:2px}'
@@ -24263,8 +24270,8 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-legs b{font-family:var(--mono);font-size:1.45rem;font-weight:700;letter-spacing:-.01em}'
     +'#pr-solo .pr-leg2{color:var(--t2);text-align:right;font-size:.78rem}'
     +'#pr-solo .pr-leg2 b{font-size:1rem;color:var(--t1)}'
-    +'#pr-solo .pr-calc{margin-top:24px;background:var(--card);border:1px solid var(--b);'
-      +'border-left:3px solid var(--cor);border-radius:8px;padding:16px 24px}'
+    +'#pr-solo .pr-calc{margin-top:16px;background:var(--card);border:1px solid var(--b);'
+      +'border-left:3px solid var(--cor);border-radius:8px;padding:12px 24px}'
     +'#pr-solo .pr-calc-l{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--t3)}'
     +'#pr-solo .pr-calc-r{display:flex;align-items:baseline;gap:16px;margin-top:8px;flex-wrap:wrap}'
     +'#pr-solo .pr-calc-n{font-family:var(--mono);font-size:clamp(1.8rem,4.8vh,3rem);font-weight:700;'
@@ -24273,7 +24280,7 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-calc-vs{font-size:1rem;color:var(--t2);margin-top:8px}'
     +'#pr-solo .pr-calc-vs b{color:var(--t1);font-family:var(--mono)}'
     +'#pr-solo .pr-ver{margin-top:10px;font-size:1.15rem;font-weight:700;color:var(--cor)}'
-    +'#pr-solo .pr-proj{margin-top:16px;padding-top:16px;border-top:1px solid var(--b);'
+    +'#pr-solo .pr-proj{margin-top:12px;padding-top:12px;border-top:1px solid var(--b);'
       +'font-size:1.05rem;color:var(--t1);line-height:1.5}'
     +'#pr-solo .pr-proj b{font-family:var(--mono)}'
     +'#pr-solo .pr-proj span{display:block;font-size:.8rem;color:var(--t3);margin-top:4px}'
@@ -24313,7 +24320,7 @@ window.PlanoRealizado = (function(){
       +'#pr-solo .pr-track{height:24px;border-radius:12px}#pr-solo .pr-fill{border-radius:12px}'
       +'#pr-solo .pr-ver{font-size:1.4rem}#pr-solo .pr-proj{font-size:1.25rem}'
       +'#pr-solo .pr-selo{font-size:.92rem;padding:5px 14px}#pr-solo .pr-he{font-size:1.05rem}'
-      +'#pr-solo .pr-strip{min-height:clamp(150px,17vh,190px)}#pr-solo .pr-strip-row{min-height:90px}'
+      +'#pr-solo .pr-strip{min-height:130px}#pr-solo .pr-strip-row{min-height:74px}'
       +'#pr-solo .pr-legs{font-size:1rem}#pr-solo .pr-legs b{font-size:2.1rem}'
       +'#pr-solo .pr-leg2{font-size:.95rem}#pr-solo .pr-leg2 b{font-size:1.2rem}'
       +'#pr-solo .pr-m-p{font-size:1.45rem}#pr-solo .pr-m-n{font-size:.86rem}}'
