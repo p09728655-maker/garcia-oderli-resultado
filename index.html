@@ -23176,9 +23176,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.20';
+var APP_VERSAO = 'b96.21';
 var APP_DATA   = '23/09/2026';
 var APP_HISTORICO = [
+  { v:'b96.21', data:'23/09/2026', itens:[
+    'Tela /plano: logo abaixo do numero grande do mes entra a linha "So na jornada normal: ≈ 24.756 pecas — 100% da curva do plano ate 22/09 (24.864)". Responde a pergunta que o numero com hora extra (29.228) deixa aberta: a jornada normal sozinha acompanha o plano, ou a folga e toda de hora extra?',
+    'Conta: realizado × (1 − fatia de hora extra da Embalagem), contra o esperado pela curva linear do plano ate o corte (plano × dias decorridos ÷ dias do plano). Cor: verde a partir de 100%, ambar de 95% a 99%, vermelho abaixo — pelo numero mostrado, entao 99,6% aparece "100%" em verde. Sem hora extra apurada a linha nao aparece; sem a curva, sai so o numero.',
+    'Premissa, a mesma da linha de hora extra: a fatia de HE medida em caixas na Embalagem vale como fatia em pecas.',
+    'A fita "mes a mes" cede mais 10 px (minimo 120) para a linha nova caber em 1920x1080 sem rolar. 8 testes novos (542 no total).'
+  ]},
   { v:'b96.20', data:'23/09/2026', itens:[
     'Tela /plano: a linha de hora extra no pe da coluna do mes saia cortada em 1920x1080 — a fita "mes a mes" pintava por cima dela. A grade das duas colunas encolhia abaixo do proprio conteudo (min-height:0) e, com a Segoe UI do Windows, mais alta que a fonte de teste, faltavam uns 40 px.',
     'Agora as colunas nunca encolhem: quem cede altura e a fita (minimo de 130 px). O espacamento vertical da coluna ficou mais justo (barra, bloco de ritmo, projecao e hora extra). Conferido em 1920 de largura com 1013, 953 e 900 px de altura: em nenhum caso a fita cobre a coluna; na menor, a pagina rola em vez de cortar.'
@@ -24024,7 +24030,13 @@ window.PlanoRealizado = (function(){
            e uma linha na própria coluna. */
         he:c.he?{ pct:c.he.hePct, lim:c.he.limHE, nivel:c.he.nivel, cor:c.he.cor,
                   horas:c.he.heHoras, projSemHE:c.he.projSemHE,
-                  cobreSemHE:c.he.projSemHE>=c.plano } : null,
+                  cobreSemHE:c.he.projSemHE>=c.plano,
+                  /* o realizado sem as peças da hora extra, contra a curva
+                     linear do plano até o corte: diz se a jornada normal
+                     sozinha acompanha o plano ou se a folga é toda de HE */
+                  realSemHE:c.he.realSemHE,
+                  esperado:(+c.esperadoAte>0)?+c.esperadoAte:null,
+                  aderSemHE:(+c.esperadoAte>0&&c.he.realSemHE>0)?c.he.realSemHE/c.esperadoAte*100:null } : null,
         /* O plano é em peças e o mix muda o peso da peça: bater o plano com
            peça 33% mais leve não é a mesma fábrica. Mesmo tratamento da hora
            extra — selo ao lado do veredito, não nota de rodapé. */
@@ -24103,6 +24115,15 @@ window.PlanoRealizado = (function(){
                        :' — não cobre o plano.')+'</span>':'')
       +'</div>';
   }
+  function linhaSemHE(d){
+    var he=d.he; if(!he||!(he.realSemHE>0)) return '';
+    /* a cor segue o número mostrado: 99,6% aparece "100%" e não pode sair âmbar */
+    var a=he.aderSemHE, ar=a===null?null:Math.round(a);
+    var cor=ar===null?'var(--t1)':(ar>=100?COR.ok:(ar>=95?COR.he:COR.ruim));
+    return '<div class="pr-semhe">Só na jornada normal: <b>≈ '+fi(he.realSemHE)+'</b> peças'
+      +(a!==null?' — <b style="color:'+cor+'">'+fd(a,0)+'%</b> da curva do plano até '+esc(d.ate)
+        +' <span>('+fi(he.esperado)+')</span>':'')+'</div>';
+  }
   function coluna(lbl, d, dem, extra){
     var barra=isFinite(d.pctPlano)&&d.pctPlano!==null?Math.max(0,Math.min(100,d.pctPlano)):0;
     var marca=(d.pctRef!==null&&d.pctRef!==undefined)?Math.max(0,Math.min(100,d.pctRef)):null;
@@ -24111,6 +24132,7 @@ window.PlanoRealizado = (function(){
       +'<div class="pr-st"><span class="pr-dot"></span><span class="pr-v">'+esc(d.veredito)+'</span>'+selo(d)+'</div>'
       +'<div class="pr-big"><span class="pr-n">'+(d.real===null?'—':fi(d.real))+'</span>'
         +'<span class="pr-d">de '+fi(d.plano)+' peças</span></div>'
+      +linhaSemHE(d)
       +'<div class="pr-bar"><div class="pr-track"><div class="pr-fill" style="width:'+barra.toFixed(1)+'%"></div>'
         +(marca!==null?'<div class="pr-tick" style="left:'+marca.toFixed(1)+'%"></div>':'')+'</div>'
         +'<div class="pr-legs"><span style="color:var(--cor)"><b>'+(d.pctPlano===null?'—':fd(d.pctPlano,0)+'%')+'</b> do plano</span>'
@@ -24256,6 +24278,9 @@ window.PlanoRealizado = (function(){
     +'#pr-solo .pr-he{margin-top:10px;padding:8px 14px;border-radius:6px;font-size:.92rem;line-height:1.5;'
       +'color:var(--t1);background:rgba(255,255,255,.03);border-left:3px solid var(--sc)}'
     +'#pr-solo .pr-he b{font-family:var(--mono)}'
+    +'#pr-solo .pr-semhe{margin-top:6px;font-size:1rem;color:var(--t2)}'
+    +'#pr-solo .pr-semhe b{font-family:var(--mono);color:var(--t1)}'
+    +'#pr-solo .pr-semhe span{color:var(--t3)}'
     +'#pr-solo .pr-he span{color:var(--t2)}'
     +'#pr-solo .pr-big{display:flex;align-items:baseline;gap:12px;margin-top:16px;flex-wrap:wrap}'
     +'#pr-solo .pr-n{font-family:var(--mono);font-size:clamp(2.4rem,7.2vh,4.6rem);font-weight:700;'
@@ -24320,7 +24345,8 @@ window.PlanoRealizado = (function(){
       +'#pr-solo .pr-track{height:24px;border-radius:12px}#pr-solo .pr-fill{border-radius:12px}'
       +'#pr-solo .pr-ver{font-size:1.4rem}#pr-solo .pr-proj{font-size:1.25rem}'
       +'#pr-solo .pr-selo{font-size:.92rem;padding:5px 14px}#pr-solo .pr-he{font-size:1.05rem}'
-      +'#pr-solo .pr-strip{min-height:130px}#pr-solo .pr-strip-row{min-height:74px}'
+      +'#pr-solo .pr-semhe{font-size:1.1rem}'
+      +'#pr-solo .pr-strip{min-height:120px}#pr-solo .pr-strip-row{min-height:70px}'
       +'#pr-solo .pr-legs{font-size:1rem}#pr-solo .pr-legs b{font-size:2.1rem}'
       +'#pr-solo .pr-leg2{font-size:.95rem}#pr-solo .pr-leg2 b{font-size:1.2rem}'
       +'#pr-solo .pr-m-p{font-size:1.45rem}#pr-solo .pr-m-n{font-size:.86rem}}'
