@@ -243,6 +243,23 @@ afirma('faixa de aviso com a data e o fator', /Corte de 22\/09 em conferência/.
 afirma('SET sem % na fita', MS.fita[8].pct === null);
 afirma('o ano segue igual (meses fechados)', MS.ano2.veredito === M.ano2.veredito && MS.ano2.real === M.ano2.real);
 
+/* ══ Só jornada normal ══
+   Pergunta de 23/09: "29.228 com hora extra — e sem as peças da hora
+   extra?" A tela passa a responder ao lado do número grande. */
+sec('Só jornada normal — realizado sem HE contra a curva do plano');
+const semHE = (real, pct, esp) => PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso,
+  { ate: '22/09', realizado: real, esperadoAte: esp, he: Object.assign({}, U.curso.he, { hePct: pct, realSemHE: real * (1 - pct / 100) }) }) }), 'x');
+const J = semHE(29228, 15.3, 24864);
+ok('realizado sem HE = 29.228 × (1 − 15,3%)', J.mes.he.realSemHE, 24756.12, 0.01);
+ok('aderência sem HE à curva linear', J.mes.he.aderSemHE, 99.57, 0.01);
+const HJ = PR.html(J);
+afirma('a tela mostra "Só na jornada normal: ≈ 24.756"', /Só na jornada normal: <b>≈ 24\.756<\/b>/.test(HJ));
+afirma('99,6% aparece como 100% e em verde (a cor segue o número mostrado)', /color:#4CAF50">100%<\/b> da curva do plano até 22\/09/.test(HJ));
+afirma('mostra o esperado pela curva (24.864)', /\(24\.864\)/.test(HJ));
+afirma('abaixo de 95% da curva → vermelho', /color:#F44336">90%/.test(PR.html(semHE(29228, 15.3, 27507))));
+afirma('sem esperadoAte → mostra só o número, sem %', (() => { const h = PR.html(semHE(29228, 15.3, 0)); return /≈ 24\.756/.test(h) && !/da curva/.test(h); })());
+afirma('sem hora extra apurada → linha não aparece', !/Só na jornada normal/.test(PR.html(PR.modelo(Object.assign({}, U, { curso: Object.assign({}, U.curso, { he: null }) }), 'x'))));
+
 /* ══ Bordas ══ */
 sec('Bordas');
 afirma('sem apurado → null (a tela mostra o vazio explicado)', PR.modelo(null) === null);
