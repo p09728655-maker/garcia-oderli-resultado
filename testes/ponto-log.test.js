@@ -115,5 +115,29 @@ d.HISTORICO[3].splice(2, 3, 140, 105.6, 2.64);   /* OUT com 2,64 h, não 2,63: n
 rodar(d, 'corrigirPontoGravadoComAusencias');
 afirma('OUT fica como está', mes(d, 'OUT') === '140 / 105.6 / 2.64');
 
+console.log('prAgregar: quem entra ou sai no mês não vira hora não trabalhada');
+(function () {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'PontoRH.gs'), 'utf8');
+  const PR = new Function('SpreadsheetApp', 'Logger', src + '\nreturn { prAgregar };')({}, { log() {} });
+  const dt = (d, m) => new Date(2026, m - 1, d);
+  /* SET/26: jornada cheia 184,8 h. Os três admitidos em 28/09 têm 26,4 h de
+     carga e trabalharam as 26,4 — o extrato real dava 1.997,97 h não
+     trabalhadas contra 1.522,77 sem eles. */
+  const pessoa = (codigo, carga, normais) => ({ codigo, nome: '', carga, normais, faltas: 0, atrasos: 0, e50: 0, e100: 0 });
+  const ext = { mes: 'SET', ano: 2026, fim: dt(30, 9), pessoas: [
+    pessoa('1', 184.8, 180), pessoa('2', 184.8, 184.8), pessoa('3', 167.2, 167.2),   /* 3: dois dias de férias */
+    pessoa('4', 26.4, 26.4),                                                         /* admitido em 28/09 */
+    pessoa('5', 70.4, 70.4),                                                         /* desligado em 10/09 */
+    pessoa('6', 184.8, 184.8) ] };                                                   /* admitido em 01/09: mês cheio */
+  const func = { mapa: {
+    1: { direto: true }, 2: { direto: true }, 3: { direto: true },
+    4: { direto: true, admissao: dt(28, 9) }, 5: { direto: true, demissao: dt(10, 9) },
+    6: { direto: true, admissao: dt(1, 9) } } };
+  const a = PR.prAgregar(ext, func);
+  afirma('jornada cheia continua a moda (184,8)', a.jornada === 184.8);
+  afirma('férias contam, admissão e desligamento não (4,8 + 17,6 = 22,4 h)', Math.abs(a.naoTrabalhadas - 22.4) < 1e-9);
+  afirma('admitido no dia 1º é mês cheio', a.n === 6);
+})();
+
 console.log(`\n${total - falhas}/${total} ok`);
 process.exit(falhas ? 1 : 0);

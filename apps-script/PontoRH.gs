@@ -28,8 +28,10 @@
  *   Normais = Carga − Faltas − Atrasos = horas trabalhadas na jornada normal.
  *   Faltas  = só as sem justificativa.
  * Jornada cheia do mês = a carga mais frequente entre os diretos (moda);
- * não depende de calendário de feriados. naoTrabalhadas = jornada cheia ×
- * diretos − Normais (inclui férias; o painel desconta as férias lançadas).
+ * não depende de calendário de feriados. naoTrabalhadas = soma, por direto,
+ * de jornada cheia − Normais; quem foi admitido ou desligado dentro do mês
+ * entra com a própria Carga no lugar da jornada cheia (inclui férias; o
+ * painel desconta as férias lançadas).
  *
  * CONTROLE DE FALTAS (o outro arquivo da mesma pasta)
  *   A planilha CONTROLE_FALTAS_aaaa.xlsx do RH tem a aba BASE, um registro
@@ -229,7 +231,18 @@ function prAgregar(ext, func) {
   dir.forEach(function (p) { if (p.carga > 0) { var k = Math.round(p.carga * 10) / 10; cont[k] = (cont[k] || 0) + 1; if (cont[k] > melhor) { melhor = cont[k]; jornada = k; } } });
   var a = { n: dir.length, carga: soma('carga'), normais: soma('normais'), faltasPonto: soma('faltas'),
             atrasosPonto: soma('atrasos'), e50: soma('e50'), e100: soma('e100'), jornada: jornada };
-  a.naoTrabalhadas = Math.max(0, a.jornada * a.n - a.normais);
+  /* Quem entrou ou saiu dentro do mês tem a própria carga como jornada: os
+     dias antes da admissão e depois do desligamento não são ausência. Com
+     jornada cheia para todos, os 3 admitidos em 28/09/26 viravam 475 h "não
+     trabalhadas" e a integridade acusava ponto × controle em SET (e em JAN,
+     com 3 admitidos em 21/01). Férias e afastamento seguem dentro: reduzem a
+     carga de quem estava na casa o mês inteiro. */
+  var inicio = ext.fim ? new Date(ext.fim.getFullYear(), ext.fim.getMonth(), 1) : null;
+  a.naoTrabalhadas = Math.max(0, dir.reduce(function (t, p) {
+    var f = func.mapa[p.codigo];
+    var parcial = (f.admissao && inicio && f.admissao > inicio) || (f.demissao && ext.fim && f.demissao < ext.fim);
+    return t + (parcial ? p.carga : jornada) - p.normais;
+  }, 0));
   a.pendentes = pend;
   a.admitidosDepois = depois;   /* cadastrados no ponto antes de começar: ficam para o mês da admissão */
   return a;
@@ -296,7 +309,7 @@ function prLerHistoricoMes(ss, mes, ano) {
     var m = String(linhas[r][col.mes] || '').trim().toUpperCase().slice(0, 3);
     if (m === mes && parseInt(linhas[r][col.ano], 10) === ano)
       return { colaboradores: num(linhas[r], 'colaboradores'), horasCarga: num(linhas[r], 'horasCarga'), horasNormais: num(linhas[r], 'horasNormais'),
-               extra50: num(linhas[r], 'extra50'), extra100: num(linhas[r], 'extra100') };
+               extra50: num(linhas[r], 'extra50'), extra100: num(linhas[r], 'extra100'), naoTrabalhadas: num(linhas[r], 'naoTrabalhadas') };
   }
   return null;
 }
@@ -818,11 +831,13 @@ function aceitarPontoNaHistorico() {
     prLancarHistorico(ss, p.mes, p.ano, a);
     /* mês que já estava igual não polui o aviso: só conta */
     if (antes && Math.abs(antes.horasNormais - a.normais) < 1 && Math.abs(antes.extra50 - a.e50) < 1
-        && Math.abs(antes.extra100 - a.e100) < 1 && antes.colaboradores === a.n) { iguais++; return; }
+        && Math.abs(antes.extra100 - a.e100) < 1 && antes.colaboradores === a.n
+        && Math.abs(antes.naoTrabalhadas - a.naoTrabalhadas) < 1) { iguais++; return; }
     feitos.push(p.mes + '/' + p.ano + ': h. normais ' + (antes ? Math.round(antes.horasNormais) : '—') + ' → ' + Math.round(a.normais)
       + ' | extra50 ' + (antes ? Math.round(antes.extra50) : '—') + ' → ' + Math.round(a.e50)
       + ' | extra100 ' + (antes ? Math.round(antes.extra100) : '—') + ' → ' + Math.round(a.e100)
-      + ' | colaboradores ' + (antes ? antes.colaboradores : '—') + ' → ' + a.n);
+      + ' | colaboradores ' + (antes ? antes.colaboradores : '—') + ' → ' + a.n
+      + ' | não trabalhadas ' + (antes ? Math.round(antes.naoTrabalhadas) : '—') + ' → ' + Math.round(a.naoTrabalhadas));
   });
   prAvisar((feitos.length ? 'HISTORICO regravada pelo ponto:\n' + feitos.join('\n') : 'Nenhum mês precisou mudar.')
     + (iguais ? '\n\n' + iguais + ' mês(es) já estavam iguais ao ponto.' : '')
