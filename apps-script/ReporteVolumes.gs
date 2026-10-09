@@ -286,6 +286,7 @@ function onOpen() {
     .addItem('Criar aba FUNCIONARIOS', 'criarAbaFuncionarios')
     .addItem('Instalar processamento diário', 'instalarProcessamentoPonto')
     .addItem('Apagar meses futuros criados por engano', 'apagarMesesFuturos')
+    .addItem('Corrigir meses gravados com o log de ausências', 'corrigirPontoGravadoComAusencias')
     .addToUi();
   /* Metas oficiais (Code.gs): aba METAS manda sobre o padrão do painel */
   /* Plano Mestre (CargaPlanoMestre.gs) */

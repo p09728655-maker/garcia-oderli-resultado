@@ -23213,9 +23213,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.23';
-var APP_DATA   = '23/09/2026';
+var APP_VERSAO = 'b96.24';
+var APP_DATA   = '09/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.24', data:'09/10/2026', itens:[
+    'aceitarPontoNaHistorico gravava ausencia como hora. Ate 17/09 o controle de faltas registrava na aba PONTO, com as colunas desalinhadas: diretos recebia ausFalta, carga ausAfastado, normais ausAtraso. Pegando a ultima linha do mes, o aceite do ano 2026 gravou em SET/26 colaboradores 141,53, horasCarga 70,4 e horasNormais 7,5 (absenteismo 7.448%), e o mesmo em OUT, NOV e DEZ/26, meses sem extrato. Como o painel conta todo mes com horasCarga acima de zero, os quatro entraram no acumulado do ano. As 7,5 h ainda fizeram o extrato de SET processado em 09/10 ser barrado como mes fechado. Agora o aceite so le linha de extrato de verdade.',
+    'Menu Ponto, Corrigir meses gravados com o log de ausencias: so mexe no mes cuja HISTORICO bate com uma linha de ausencia do log. SET/26 volta pelo extrato de 09/10 (90 diretos, 15.400 h carga, 15.109 h normais); OUT, NOV e DEZ/26 ficam zerados. Rodar duas vezes nao muda nada. Depois, Gravar calculos na planilha.'
+  ]},
   { v:'b96.23', data:'23/09/2026', itens:[
     'Tela /plano, nas duas colunas: o numero grande passa a ser a JORNADA NORMAL (o que a fabrica faz sem excecao), e o total com hora extra — o numero do ERP, que comercial e expedicao conhecem — fica logo abaixo: "com hora extra: 29.228 (84%) · +4.472 de hora extra".',
     'A barra empilha os dois: solido ate a jornada normal, listrado laranja ate o total. Em 22/09 a jornada normal do mes para exatamente na marca da curva (71%) e a hora extra e toda folga; no ano a jornada normal (67%) fica ABAIXO da curva (72%) e so a hora extra leva a 75%.',

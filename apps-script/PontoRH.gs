@@ -789,13 +789,12 @@ function aceitarPontoNaHistorico() {
   if (!log || log.getLastRow() < 2) return prErro('aba ' + PR_ABA_LOG + ' vazia: o extrato do mês precisa ter sido processado antes');
   var v = log.getDataRange().getValues(), cab = v[0].map(prNormaliza), col = {};
   cab.forEach(function (c, i) { if (col[c] === undefined) col[c] = i; });
-  var num = function (x) { var f = parseFloat(String(x).replace(',', '.')); return isFinite(f) ? f : 0; };
   /* "2026" vira a lista de meses que o log tem daquele ano, na ordem do
      calendário. Mês sem extrato processado simplesmente não entra. */
   anos.forEach(function (ano) {
     var achados = {};
     for (var r = 1; r < v.length; r++) {
-      if (parseInt(v[r][col.ano], 10) !== ano) continue;
+      if (parseInt(v[r][col.ano], 10) !== ano || !prLinhaExtrato(v[r], col)) continue;
       var mm = String(v[r][col.mes]).toUpperCase().slice(0, 3);
       if (PR_MESES.indexOf(mm) >= 0) achados[mm] = true;
     }
@@ -810,14 +809,11 @@ function aceitarPontoNaHistorico() {
   var feitos = [], falhas = [], iguais = 0;
   pedidos.forEach(function (p) {
     var ult = null;
-    for (var r = 1; r < v.length; r++) {   /* a última linha do mês vence */
-      if (String(v[r][col.mes]).toUpperCase().slice(0, 3) === p.mes && parseInt(v[r][col.ano], 10) === p.ano) ult = v[r];
+    for (var r = 1; r < v.length; r++) {   /* a última linha de extrato do mês vence */
+      if (String(v[r][col.mes]).toUpperCase().slice(0, 3) === p.mes && parseInt(v[r][col.ano], 10) === p.ano && prLinhaExtrato(v[r], col)) ult = v[r];
     }
-    if (!ult) { falhas.push(p.mes + '/' + p.ano + ': sem linha na aba ' + PR_ABA_LOG); return; }
-    var a = { n: num(ult[col.diretos]), carga: num(ult[col.carga]), normais: num(ult[col.normais]), faltasPonto: num(ult[col.faltasponto]),
-              atrasosPonto: num(ult[col.atrasosponto]), e50: num(ult[col.extra50]), e100: num(ult[col.extra100]),
-              jornada: num(ult[col.jornadacheia]), naoTrabalhadas: num(ult[col.naotrabalhadas]) };
-    if (!(a.normais > 0)) { falhas.push(p.mes + '/' + p.ano + ': linha do log sem horas normais'); return; }
+    if (!ult) { falhas.push(p.mes + '/' + p.ano + ': sem extrato processado na aba ' + PR_ABA_LOG); return; }
+    var a = prSomaDoLog(ult, col);
     var antes = prLerHistoricoMes(ss, p.mes, p.ano);
     prLancarHistorico(ss, p.mes, p.ano, a);
     /* mês que já estava igual não polui o aviso: só conta */
@@ -833,6 +829,84 @@ function aceitarPontoNaHistorico() {
     + (falhas.length ? '\n\nNão feito:\n' + falhas.join('\n') : '')
     + (erros.length ? '\n\nNão reconhecido: ' + erros.join(', ') : '')
     + '\n\nNo painel, use "Gravar cálculos na planilha" (Reunião › Integridade dos dados) para refazer absenteísmo, peças por hora e hora extra destes meses.');
+}
+
+/* Linha do log PONTO que veio de um extrato de verdade. Até b90.1 (17/09/26)
+   o controle de faltas também registrava NESTA aba: onze colunas sob o
+   cabeçalho de dezesseis, então "diretos" recebia ausFalta, "carga"
+   ausAfastado e "normais" ausAtraso. As linhas continuam lá, e
+   aceitarPontoNaHistorico, pegando a última linha do mês, gravou na
+   HISTORICO de SET/26 colaboradores 141,53, horasCarga 70,4 e horasNormais
+   7,5 — e o mesmo em OUT, NOV e DEZ/26, meses que nem tinham extrato.
+   Extrato de verdade: arquivo sem "(ausências)", sim/não na coluna
+   linhaCriada (na linha de ausência ele cai em atrasosPonto), diretos
+   inteiro e normais ≤ carga. */
+function prLinhaExtrato(l, col) {
+  if (/aus[eê]ncias/i.test(String(l[col.arquivo] || ''))) return false;
+  if (!/^(sim|n[aã]o)$/i.test(String(l[col.linhacriada] || '').trim())) return false;
+  var a = prSomaDoLog(l, col);
+  return a.n > 0 && a.n === Math.round(a.n) && a.normais > 0 && a.normais <= a.carga + 0.01;
+}
+
+/* Linha do log PONTO → a soma dos diretos no formato de prAgregar. */
+function prSomaDoLog(l, col) {
+  var num = function (x) { var f = parseFloat(String(x).replace(',', '.')); return isFinite(f) ? f : 0; };
+  return { n: num(l[col.diretos]), carga: num(l[col.carga]), normais: num(l[col.normais]), faltasPonto: num(l[col.faltasponto]),
+           atrasosPonto: num(l[col.atrasosponto]), e50: num(l[col.extra50]), e100: num(l[col.extra100]),
+           jornada: num(l[col.jornadacheia]), naoTrabalhadas: num(l[col.naotrabalhadas]) };
+}
+
+/* Desfaz o que aceitarPontoNaHistorico gravou a partir das linhas de
+   ausência do log (ver prLinhaExtrato). Só mexe no mês cuja HISTORICO bate
+   com uma dessas linhas — colaboradores, horasCarga e horasNormais iguais
+   aos de uma linha de ausência do mesmo mês —, então rodar de novo não muda
+   nada. Mês com extrato no log é regravado pelo extrato (SET/26: o extrato de
+   09/10 foi barrado como "mês fechado" pelas 7,5 h erradas). Mês sem extrato
+   tem as colunas do ponto zeradas, e também horasTotais e absenteismo: com
+   horasNormais zero o painel não refaz essas duas e elas ficariam com a
+   conta errada (OUT, NOV e DEZ/26). Menu 👥 Ponto → Corrigir meses gravados
+   com o log de ausências. Depois, no painel: "Gravar cálculos na planilha". */
+function corrigirPontoGravadoComAusencias() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), log = ss.getSheetByName(PR_ABA_LOG), aba = ss.getSheetByName(PR_ABA_HISTORICO);
+  if (!log || log.getLastRow() < 2 || !aba) return prErro('abas ' + PR_ABA_LOG + ' e ' + PR_ABA_HISTORICO + ' são necessárias');
+  var v = log.getDataRange().getValues(), lc = {};
+  v[0].map(prNormaliza).forEach(function (c, i) { if (lc[c] === undefined) lc[c] = i; });
+  var r2 = function (x) { return Math.round(x * 100) / 100; };
+  var aus = {}, ext = {};   /* MES/ano → assinaturas das linhas de ausência | última linha de extrato */
+  for (var r = 1; r < v.length; r++) {
+    var k = String(v[r][lc.mes]).toUpperCase().slice(0, 3) + '/' + parseInt(v[r][lc.ano], 10);
+    if (prLinhaExtrato(v[r], lc)) { ext[k] = v[r]; continue; }
+    var s = prSomaDoLog(v[r], lc);
+    (aus[k] = aus[k] || []).push([r2(s.n), r2(s.carga), r2(s.normais)]);
+  }
+  var linhas = aba.getDataRange().getValues(), iCab = -1, col = {};
+  for (var i = 0; i < Math.min(linhas.length, 20) && iCab < 0; i++) {
+    var norm = linhas[i].map(prNormaliza);
+    if (norm.indexOf('mes') >= 0 && norm.indexOf('ano') >= 0) { iCab = i; norm.forEach(function (n, c) { if (col[n] === undefined) col[n] = c; }); }
+  }
+  if (iCab < 0) return prErro('cabeçalho com "mes" e "ano" não encontrado na ' + PR_ABA_HISTORICO);
+  var val = function (l, nome) { var c = col[prNormaliza(nome)]; var f = c === undefined ? 0 : parseFloat(String(l[c]).replace(',', '.')); return isFinite(f) ? f : 0; };
+  var zerar = ['colaboradores', 'horasCarga', 'horasNormais', 'extra50', 'extra100', 'naoTrabalhadas', 'faltasPonto', 'atrasosPonto', 'horasTotais', 'absenteismo'];
+  var feitos = [];
+  for (var rr = iCab + 1; rr < linhas.length; rr++) {
+    var l = linhas[rr], mes = String(l[col.mes] || '').trim().toUpperCase().slice(0, 3), ano = parseInt(l[col.ano], 10), chave = mes + '/' + ano;
+    if (!aus[chave]) continue;
+    var h = [val(l, 'colaboradores'), val(l, 'horasCarga'), val(l, 'horasNormais')];
+    /* igual depois de arredondar a 2 casas, que é como prLancarHistorico grava */
+    var bate = aus[chave].some(function (sg) { return sg[0] === r2(h[0]) && sg[1] === r2(h[1]) && sg[2] === r2(h[2]); });
+    if (!bate || !(h[2] > 0)) continue;
+    var antes = chave + ': colaboradores ' + h[0] + ', h. carga ' + h[1] + ', h. normais ' + h[2];
+    if (ext[chave]) {
+      var a = prSomaDoLog(ext[chave], lc);
+      prLancarHistorico(ss, mes, ano, a);
+      feitos.push(antes + ' → pelo extrato: ' + a.n + ' diretos, ' + Math.round(a.carga) + ' h carga, ' + Math.round(a.normais) + ' h normais');
+    } else {
+      zerar.forEach(function (nome) { var c = col[prNormaliza(nome)]; if (c !== undefined) aba.getRange(rr + 1, c + 1).setValue(0); });
+      feitos.push(antes + ' → zerado (mês sem extrato processado)');
+    }
+  }
+  prAvisar((feitos.length ? 'HISTORICO corrigida:\n' + feitos.join('\n') : 'Nenhum mês da HISTORICO com horas vindas do log de ausências.')
+    + '\n\nNo painel, use "Gravar cálculos na planilha" (Reunião › Integridade dos dados) para refazer absenteísmo, eficiência e margem.');
 }
 
 /* Ensaio sem gravar: mostra no Registro o que seria lançado do primeiro
