@@ -301,6 +301,8 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('🎯 Metas')
     .addItem('Criar aba METAS (se não existir)', 'criarAbaMetas')
     .addItem('Produção pelo ERP desde 2025', 'producaoPeloErpDesde2025')
+    .addSeparator()
+    .addItem('Regravar aba DICIONARIO (regras das colunas)', 'criarAbaDicionario')
     .addToUi();
 }
 

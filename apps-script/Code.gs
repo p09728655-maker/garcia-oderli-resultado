@@ -90,7 +90,8 @@ var METAS_PADRAO = [
    O que cada coluna da HISTORICO é, de onde vem e o que o painel calcula.
    Existe porque três definições de "horas normais" e duas de "produção"
    conviveram até SET/26 sem ninguém escrever qual valia. Rode
-   (Executar › criarAbaDicionario) sempre que a regra mudar: regrava a aba. */
+   (menu 🎯 Metas › Regravar aba DICIONARIO, ou Executar › criarAbaDicionario)
+   sempre que a regra mudar: regrava a aba. */
 var DICIONARIO_LINHAS = [
   ['campo', 'tipo', 'origem', 'regra'],
   ['mes / ano', 'entrada', 'PPCP', 'Competência do fechamento.'],
