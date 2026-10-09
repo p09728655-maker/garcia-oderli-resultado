@@ -303,6 +303,27 @@ ok('sobra dos fechados continua só dos fechados (243.325 − 236.317)', MA.ano2
 ok('fecha na jornada normal = 272.553 + 1.334 × 61', MA.ano2.fecha, 353927, 0);
 afirma('sem cursoNoAno (corte suspeito ou sem corte) a marca volta aos fechados', M.ano2.refSub === 'meses fechados' && Math.abs(M.ano2.pctRef - 65.23) < 0.01);
 
+/* ══ A projeção diz de onde parte ══
+   09/10: com a jornada normal como número grande (≈ 24.756), "o mês fecha
+   em 37.232 — Sem contar hora extra" não fechava para quem lê: 37.232 parte
+   das 29.228 COM a hora extra já feita. E "-8.369 abaixo do plano" saía com
+   o sinal em dobro no telão. */
+sec('Projeção — base escrita e sinal único');
+const P22 = PR.modelo(Object.assign({}, UA, { normalAno: 240812, normalAnoEst: true,
+  curso: Object.assign({}, U.curso, { ate: '22/09', realizado: 29228, faltaProduzir: 5582, diasRestantes: 6,
+    he: Object.assign({}, U.curso.he, { hePct: 15.3, realSemHE: 29228 * (1 - 0.153) }) }) }), 'x');
+const HP = PR.html(P22);
+afirma('mês acima do plano: "+2.422 acima"', /<b>\+2\.422<\/b> acima do plano/.test(HP));
+afirma('ano abaixo do plano: "8.369 abaixo", sem o sinal', /<b>8\.369<\/b> abaixo do plano/.test(HP) && !/-8\.369/.test(HP));
+afirma('mês diz que parte das 29.228 com a hora extra', /Parte das 29\.228 já feitas, com a hora extra; daqui pra frente, só jornada normal\./.test(HP));
+afirma('ano diz que parte das 272.553 com a hora extra', /Parte das 272\.553 já feitas, com a hora extra; daqui pra frente, só jornada normal\./.test(HP));
+afirma('"Sem contar hora extra" não aparece mais', !/Sem contar hora extra/.test(HP));
+afirma('a sobra dos fechados continua na nota do ano', /Os meses fechados entregaram \+7\.008 peças/.test(HP));
+afirma('quadro de HE diz que tira também a já feita', /Sem nenhuma hora extra no mês — nem a já feita — fecharia em 35\.415 peças/.test(HP));
+afirma('mês abaixo do plano também sem sinal dobrado', (() => {
+  const h = PR.html(PR.modelo(Object.assign({}, U, { ritmoDem: 900 }), 'x'));   /* 26.178 + 900 × 8 = 33.378 */
+  return /<b>1\.432<\/b> abaixo do plano/.test(h) && !/-1\.432/.test(h); })());
+
 /* ══ Bordas ══ */
 sec('Bordas');
 afirma('sem apurado → null (a tela mostra o vazio explicado)', PR.modelo(null) === null);

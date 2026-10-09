@@ -23213,12 +23213,18 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.23';
-var APP_DATA   = '23/09/2026';
+var APP_VERSAO = 'b96.24';
+var APP_DATA   = '09/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.24', data:'09/10/2026', itens:[
+    'Tela /plano: a projecao agora diz de onde parte. "O mes fecha em 37.232" soma as 29.228 ja feitas (com a hora extra) e so jornada normal daqui pra frente — o texto antigo dizia "Sem contar hora extra", e com a jornada normal (≈ 24.756) como numero grande a conta nao fechava para quem le. Passa a dizer: "Parte das 29.228 ja feitas, com a hora extra; daqui pra frente, so jornada normal." O ano ganha a mesma frase.',
+    'Quadro de hora extra do mes: "Sem ela o mes fecharia em 35.415" vira "Sem nenhuma hora extra no mes — nem a ja feita — fecharia em 35.415". Eram duas projecoes "sem hora extra" com numeros diferentes na mesma coluna; agora cada uma diz o que tira.',
+    'Projecao abaixo do plano saia "-8.369 abaixo do plano" (sinal duplicado, desde a b96.11). Agora "8.369 abaixo"; acima continua "+2.422 acima".',
+    'Notas da b96.23: a jornada normal do ano em 22/09 e 66% do plano (240.812 de 362.296), nao 67%.'
+  ]},
   { v:'b96.23', data:'23/09/2026', itens:[
     'Tela /plano, nas duas colunas: o numero grande passa a ser a JORNADA NORMAL (o que a fabrica faz sem excecao), e o total com hora extra — o numero do ERP, que comercial e expedicao conhecem — fica logo abaixo: "com hora extra: 29.228 (84%) · +4.472 de hora extra".',
-    'A barra empilha os dois: solido ate a jornada normal, listrado laranja ate o total. Em 22/09 a jornada normal do mes para exatamente na marca da curva (71%) e a hora extra e toda folga; no ano a jornada normal (67%) fica ABAIXO da curva (72%) e so a hora extra leva a 75%.',
+    'A barra empilha os dois: solido ate a jornada normal, listrado laranja ate o total. Em 22/09 a jornada normal do mes para exatamente na marca da curva (71%) e a hora extra e toda folga; no ano a jornada normal (66%) fica ABAIXO da curva (72%) e so a hora extra leva a 75%.',
     'Mes em curso: jornada normal estimada (≈) — realizado × (1 − fatia de HE da Embalagem, medida em caixas). Mes fechado: exata (prodSemExtras). Ano: fechados exatos + o corte estimado; se algum mes fechado ainda nao tem horas lancadas, ou o corte nao tem HE apurada, a coluna volta a mostrar so o total. O veredito nao muda: ja era calculado na jornada normal.',
     'O rodape "Dependencia de hora extra no ano" passa a usar a mesma base da coluna do ano (inclui o corte).',
     'A linha "So na jornada normal" da b96.21 sai: a barra empilhada mostra a mesma coisa. 18 testes (560 no total); conferido de ponta a ponta no navegador.'
@@ -24170,7 +24176,7 @@ window.PlanoRealizado = (function(){
     return '<div class="pr-he" style="--sc:'+he.cor+'">'
       +'<b>'+fd(he.pct,1)+'%</b> do que saiu veio de <b>hora extra</b> ('+fi(he.horas)+' h) — '
       +(acima?'acima do limite de '+fd(he.lim,0)+'%':'dentro do limite de '+fd(he.lim,0)+'%')+'.'
-      +(he.projSemHE?' <span>Sem ela o mês fecharia em '+fi(he.projSemHE)+' peças'
+      +(he.projSemHE?' <span>Sem nenhuma hora extra no mês — nem a já feita — fecharia em '+fi(he.projSemHE)+' peças'
         +(he.cobreSemHE?' — ainda cobre o plano, então a hora extra não está indo para ele.'
                        :' — não cobre o plano.')+'</span>':'')
       +'</div>';
@@ -24234,18 +24240,25 @@ window.PlanoRealizado = (function(){
     var mes=m.mes, ano=m.ano2;
     /* projeção de corte velho conta dias restantes que já passaram: sai cinza */
     var velhoMes=!!(m.defasado&&m.defasado.cinza);
+    /* "+2.422 acima" / "8.369 abaixo": a palavra já dá o sentido, o sinal
+       só entra do lado de cima ("-8.369 abaixo" saía no telão). */
+    function dif(f,p){ return f>=p?'<b>+'+fi(f-p)+'</b> acima':'<b>'+fi(p-f)+'</b> abaixo'; }
+    /* A projeção parte do realizado COM a hora extra já feita (as peças
+       existem) e soma só jornada normal daqui pra frente. Com a jornada
+       normal como número grande, isso tem de estar escrito — senão
+       ≈ 24.756 + 1.334 × 6 não fecha com os 37.232 da tela. */
+    function base(real){ return 'Parte das '+fi(real)+' já feitas, com a hora extra; daqui pra frente, só jornada normal.'; }
     var pMes=(mes.fecha!==null&&mes.dias>0)
       ? '<div class="pr-proj">Mantido o ritmo da jornada normal, o mês fecha em <b style="color:'
-        +(velhoMes?COR.velho:(mes.fecha>=mes.plano?COR.ok:COR.ruim))+'">'+fi(mes.fecha)+'</b> peças — <b>'
-        +(mes.fecha>=mes.plano?'+':'')+fi(mes.fecha-mes.plano)+'</b> '
-        +(mes.fecha>=mes.plano?'acima':'abaixo')+' do plano.<span>Sem contar hora extra.</span></div>' : '';
+        +(velhoMes?COR.velho:(mes.fecha>=mes.plano?COR.ok:COR.ruim))+'">'+fi(mes.fecha)+'</b> peças — '
+        +dif(mes.fecha,mes.plano)+' do plano.<span>'+base(mes.real)+'</span></div>' : '';
     var pAno=(ano.fecha!==null&&ano.dias>0)
       ? '<div class="pr-proj">Mantido o ritmo da jornada normal, o ano fecha em <b style="color:'
-        +(ano.fecha>=ano.plano?COR.ok:COR.ruim)+'">'+fi(ano.fecha)+'</b> peças — <b>'
-        +(ano.fecha>=ano.plano?'+':'')+fi(ano.fecha-ano.plano)+'</b> '
-        +(ano.fecha>=ano.plano?'acima':'abaixo')+' do plano.'
-        +(ano.sobraFech!==null?'<span>Os meses fechados entregaram '+(ano.sobraFech>=0?'+':'')
-          +fi(ano.sobraFech)+' peças sobre o que o plano pedia. O que falta é mais pesado.</span>':'')
+        +(ano.fecha>=ano.plano?COR.ok:COR.ruim)+'">'+fi(ano.fecha)+'</b> peças — '
+        +dif(ano.fecha,ano.plano)+' do plano.'
+        +'<span>'+base(ano.real)
+        +(ano.sobraFech!==null?' Os meses fechados entregaram '+(ano.sobraFech>=0?'+':'')
+          +fi(ano.sobraFech)+' peças sobre o que o plano pedia. O que falta é mais pesado.':'')+'</span>'
         +'</div>' : '';
     var fita=m.fita.map(function(x){
       var alt=x.pct!==null?Math.max(6,Math.min(100,x.pct*0.7)):(x.cor===COR.vazio?8:45);
