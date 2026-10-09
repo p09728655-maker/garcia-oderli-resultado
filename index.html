@@ -22398,14 +22398,17 @@ window.CompAnos = (function () {
       var pts=o.line.v.map(function(v,i){ return [left+gw*i+gw/2, top+ih-(v/lmax)*ih]; });
       if(o.line.ref!==undefined){ var yr=top+ih-(o.line.ref/lmax)*ih; out+='<line x1="'+left+'" x2="'+(W-right)+'" y1="'+yr+'" y2="'+yr+'" stroke="'+LID_COR.limite+'" stroke-width="3" stroke-dasharray="10 6"/>'
         +'<text x="'+(W-right+6)+'" y="'+(yr+5)+'" class="lid-lbl" fill="'+LID_COR.limite+'">'+o.line.refLbl+'</text>'; }
-      out+='<polyline fill="none" stroke="'+o.line.cor+'" stroke-width="4" points="'+pts.map(function(p){ return p.join(','); }).join(' ')+'"/>';
-      pts.forEach(function(p,i){ out+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="7" fill="'+o.line.cor+'"/>'
+      /* Linha clara (#F5F5F5) é para o fundo escuro da TV; no papel branco some.
+         A classe deixa o PDF trocar só ela por grafite. */
+      var lc=o.line.cor===LID_COR.linha?' class="lid-ln-claro"':'';
+      out+='<polyline'+lc+' fill="none" stroke="'+o.line.cor+'" stroke-width="4" points="'+pts.map(function(p){ return p.join(','); }).join(' ')+'"/>';
+      pts.forEach(function(p,i){ out+='<circle'+(lc?' class="lid-pt-claro"':'')+' cx="'+p[0]+'" cy="'+p[1]+'" r="7" fill="'+o.line.cor+'"/>'
         +'<text x="'+p[0]+'" y="'+(p[1]-14)+'" text-anchor="middle" class="lid-lbl lid-lbl-b">'+(o.line.fmt?o.line.fmt(o.line.v[i]):fd(o.line.v[i],1))+'</text>'; });
     }
     for(var c=0;c<n;c++) out+='<text x="'+(left+gw*c+gw/2)+'" y="'+(Hh-18)+'" text-anchor="middle" class="lid-cat">'+o.cats[c]+'</text>';
     out+='</svg>';
     var leg=[].concat(bars.map(function(b){ return '<span><i style="background:'+b.cor+'"></i>'+b.nome+'</span>'; }),
-                      o.line?['<span><i style="background:'+o.line.cor+';height:4px"></i>'+o.line.nome+'</span>']:[]);
+                      o.line?['<span><i'+(o.line.cor===LID_COR.linha?' class="lid-ln-claro"':'')+' style="background:'+o.line.cor+';height:4px"></i>'+o.line.nome+'</span>']:[]);
     return out+(leg.length?'<div class="lid-leg">'+leg.join('')+'</div>':'');
   }
   function lidBarrasH(items){
@@ -22651,7 +22654,11 @@ window.CompAnos = (function () {
       if(!arr.length) return '';
       return '<div><div class="lid-mix-t" style="color:'+cor+'">'+titulo+'</div>'
         + arr.map(function(x){
-            return '<div class="lid-mix-l"><span>'+esc(x.nome)+'</span>'
+            /* A família pega as duas primeiras palavras ("CANTINHO DO CAFÉ" vira
+               "CANTINHO DO"); no slide a preposição solta parece nome cortado.
+               Só o rótulo muda: o agrupamento continua o do Comparativo. */
+            var nome = String(x.nome).replace(/\s+(DO|DA|DE|DOS|DAS|E)$/i, '');
+            return '<div class="lid-mix-l"><span>'+esc(nome)+'</span>'
               + '<b style="color:'+cor+'">'+sinal+t(Math.abs(x.difPeso))+' t</b></div>';
           }).join('') + '</div>';
     }
@@ -22780,6 +22787,8 @@ window.CompAnos = (function () {
       +'.lid-k{font-size:9pt;letter-spacing:.14em;text-transform:uppercase;color:#B8860B;font-weight:700}'
       +'.lid-linha{display:flex;gap:12px;align-items:flex-start;font-size:15pt;line-height:1.4;margin:6px 0}.lid-n{flex:none;width:30px;height:30px;border-radius:50%;background:#D9342B;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:12pt}'
       +'.lid-foot{margin-top:auto;display:flex;justify-content:space-between;font-size:7.5pt;color:#8a94a0;padding-top:6px;border-top:1px solid #edf2f7}'
+      +'.lid-lbl-b{paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}'
+      +'polyline.lid-ln-claro{stroke:#1F2933}circle.lid-pt-claro{fill:#1F2933}i.lid-ln-claro{background:#1F2933!important}'
       +'</style></head><body>'+_lidSlides.map(function(s){ return '<div class="pg">'+s+'</div>'; }).join('')+'</body></html>');
     w.document.close(); w.focus();
     setTimeout(function(){ try{ w.print(); }catch(e){} },400);
@@ -23219,9 +23228,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.25';
+var APP_VERSAO = 'b96.26';
 var APP_DATA   = '09/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.26', data:'09/10/2026', itens:[
+    'PDF da Apresentacao para lideres: a linha "Feito na hora extra (%)" do slide mes a mes era #F5F5F5 (feita para o fundo escuro da TV) e sumia no papel branco; no PDF ela sai grafite, com a legenda. Os rotulos de valor ganham contorno branco para nao se misturarem com barra e linha.',
+    'Slide do mix: familia que termina em preposicao ("CANTINHO DO", das duas primeiras palavras de CANTINHO DO CAFE) aparecia como nome cortado; o rotulo do slide tira a preposicao solta e mostra "CANTINHO". O agrupamento e os numeros nao mudam.'
+  ]},
   { v:'b96.25', data:'09/10/2026', itens:[
     'Reuniao, card de ritmo: com um mes escolhido o titulo passa a "Ritmo demonstrado so em SET" e cada linha diz de que periodo e. Em SET/26 o card mostrava 1.673 pc/dia (so setembro) embaixo da manchete -7,4% (ano: 1.373 vs 1.482), e parecia que um dos dois estava errado. Agora: "exigido em SET 1.658 pc/dia", "acumulado do ano 1.373 vs 1.482 (-7,4%, o da manchete)" e "ate o fim do ano: 91.169 pc em 55 dias uteis = 1.658 pc/dia". A conta nao muda.'
   ]},
