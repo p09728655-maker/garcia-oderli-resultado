@@ -21850,9 +21850,15 @@ window.CompAnos = (function () {
     var ritExg = anoTodo ? (pmAno?pm.ritmoExig:(A.dias>0&&A.plano>0?A.plano/A.dias:null)) : (diasMes>0&&planoMes>0?planoMes/diasMes:null);
     var folga  = (ritDem!==null&&ritExg>0) ? ((ritDem/ritExg)-1)*100 : null;
     var corRit = folga===null?'#00E5FF':(folga>=0?'#4CAF50':(folga>-5?'#FF9800':'#F44336'));
-    var subRit = (ritExg!==null?('exigido '+fi(ritExg)+' pç/dia'+(anoTodo&&!pmAno?' · '+fi(A.dias)+' dias trabalhados':'')):('sem plano no '+(anoTodo?'ano':'mês')))
-      +(!anoTodo&&pm&&pm.ano===ano?(' · no ano '+fi(pm.ritmoDem)+' vs '+fi(pm.ritmoExig)):'')
-      +(pm&&pm.ano===ano&&pm.planoAberto>0?('<br>falta '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'):'');
+    /* Mês: o card mostra o ritmo SÓ do mês e a manchete fala do ANO. Em
+       SET/26 o card dizia 1.673 e a manchete -7,4% (1.373 vs 1.482) sem
+       dizer que eram períodos diferentes, e o "exigido 1.658" do mês
+       (plano de SET ÷ 21 dias) coincidia com o necessário até dezembro
+       (91.169 ÷ 55). Cada linha agora diz de que período é. */
+    var subRit = (ritExg!==null?('exigido'+(anoTodo?'':' em '+mes)+' '+fi(ritExg)+' pç/dia'+(anoTodo&&!pmAno?' · '+fi(A.dias)+' dias trabalhados':'')):('sem plano no '+(anoTodo?'ano':'mês')))
+      +(!anoTodo&&pmAno?('<br>acumulado do ano '+fi(pm.ritmoDem)+' vs '+fi(pm.ritmoExig)+' ('+pct(pm.pctFolga)+', o da manchete)'):'')
+      +(pmAno&&pm.planoAberto>0?('<br>até o fim do ano: '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'
+        +(pm.ritmoNecR>0?(' = '+fi(pm.ritmoNecR)+' pç/dia'):'')):'');
 
     var perdPc   = (A._P.pecasPerdidas!==null && A._P.pecasPerdidas!==undefined) ? A._P.pecasPerdidas : null;
     var perdDias = (perdPc!==null && A._P.prodDia>0) ? perdPc/A._P.prodDia : null;
@@ -21861,7 +21867,7 @@ window.CompAnos = (function () {
                 aderSE!==null ? ('com hora extra '+fd(ader,1)+'%<br>previsto '+fi(planoRef)+' pç')
                               : 'sem previsão lançada no Plano Mestre',
                 aderSE===null?'#00E5FF':corMeta(aderSE,100), true, 'mestre')
-      +card('Ritmo demonstrado'+(anoTodo?' no ano':' em '+mes), ritDem!==null?(fi(ritDem)+' pç/dia'):'—',
+      +card('Ritmo demonstrado'+(anoTodo?' no ano':' só em '+mes), ritDem!==null?(fi(ritDem)+' pç/dia'):'—',
                 subRit, corRit, false, 'mestre')
       +card('Dependência de hora extra', fd(A.depHE,1)+'%',
              fi(A.deHE)+' pç de '+fi(A.he)+' h extras<br>'+fd(A.pctHE,1)+'% das horas totais'
@@ -23213,9 +23219,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.24';
+var APP_VERSAO = 'b96.25';
 var APP_DATA   = '09/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.25', data:'09/10/2026', itens:[
+    'Reuniao, card de ritmo: com um mes escolhido o titulo passa a "Ritmo demonstrado so em SET" e cada linha diz de que periodo e. Em SET/26 o card mostrava 1.673 pc/dia (so setembro) embaixo da manchete -7,4% (ano: 1.373 vs 1.482), e parecia que um dos dois estava errado. Agora: "exigido em SET 1.658 pc/dia", "acumulado do ano 1.373 vs 1.482 (-7,4%, o da manchete)" e "ate o fim do ano: 91.169 pc em 55 dias uteis = 1.658 pc/dia". A conta nao muda.'
+  ]},
   { v:'b96.24', data:'09/10/2026', itens:[
     'Tela /plano: a projecao agora diz de onde parte. "O mes fecha em 37.232" soma as 29.228 ja feitas (com a hora extra) e so jornada normal daqui pra frente — o texto antigo dizia "Sem contar hora extra", e com a jornada normal (≈ 24.756) como numero grande a conta nao fechava para quem le. Passa a dizer: "Parte das 29.228 ja feitas, com a hora extra; daqui pra frente, so jornada normal." O ano ganha a mesma frase.',
     'Quadro de hora extra do mes: "Sem ela o mes fecharia em 35.415" vira "Sem nenhuma hora extra no mes — nem a ja feita — fecharia em 35.415". Eram duas projecoes "sem hora extra" com numeros diferentes na mesma coluna; agora cada uma diz o que tira.',
