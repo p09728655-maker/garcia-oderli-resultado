@@ -790,11 +790,19 @@ function aceitarPontoNaHistorico() {
   var v = log.getDataRange().getValues(), cab = v[0].map(prNormaliza), col = {};
   cab.forEach(function (c, i) { if (col[c] === undefined) col[c] = i; });
   var num = function (x) { var f = parseFloat(String(x).replace(',', '.')); return isFinite(f) ? f : 0; };
+  /* Linha do CONTROLE_FALTAS não é extrato de ponto. Em 17/09/26 às 14:04 o
+     arquivo foi lido pelo leitor do extrato (antes de o b90 reconhecer a aba
+     BASE) e deixou na PONTO linhas de AGO, SET e DEZ/26 e JAN/27 com colunas
+     trocadas — DEZ/26 com 14,8 h "normais" e 98 "diretos". Sem este filtro,
+     "2026" lançaria isso em DEZ, e em janeiro a proteção de mês fechado
+     recusaria o extrato verdadeiro de dezembro. */
+  var doExtrato = function (l) { return !/controle/i.test(String(l[col.arquivo] || '')); };
   /* "2026" vira a lista de meses que o log tem daquele ano, na ordem do
      calendário. Mês sem extrato processado simplesmente não entra. */
   anos.forEach(function (ano) {
     var achados = {};
     for (var r = 1; r < v.length; r++) {
+      if (!doExtrato(v[r])) continue;
       if (parseInt(v[r][col.ano], 10) !== ano) continue;
       var mm = String(v[r][col.mes]).toUpperCase().slice(0, 3);
       if (PR_MESES.indexOf(mm) >= 0) achados[mm] = true;
@@ -811,6 +819,7 @@ function aceitarPontoNaHistorico() {
   pedidos.forEach(function (p) {
     var ult = null;
     for (var r = 1; r < v.length; r++) {   /* a última linha do mês vence */
+      if (!doExtrato(v[r])) continue;
       if (String(v[r][col.mes]).toUpperCase().slice(0, 3) === p.mes && parseInt(v[r][col.ano], 10) === p.ano) ult = v[r];
     }
     if (!ult) { falhas.push(p.mes + '/' + p.ano + ': sem linha na aba ' + PR_ABA_LOG); return; }
