@@ -23,8 +23,8 @@
  *
  * METAS — uma linha por meta (chave | valor | unidade | vigencia | origem |
  *   observacao). doGet devolve em `metas`; o painel sobrescreve as constantes
- *   META_EF, META_ABS, ABS_ATENCAO, META_DEP_HE, META_TICKET e DUTEIS com o
- *   que estiver aqui. O app NÃO escreve nesta aba: meta se muda na planilha,
+ *   META_ABS, ABS_ATENCAO, META_DEP_HE, META_TICKET, DUTEIS, PROD_ERP_DESDE e
+ *   CUSTO_HORA com o que estiver aqui (valor 0 ou vazio é ignorado). O app NÃO escreve nesta aba: meta se muda na planilha,
  *   com origem e vigência, não no navegador. Rode criarAbaMetas() uma vez.
  *
  * ACOES — plano de ação da Reunião do Mês (uma linha por ação/decisão).
@@ -83,7 +83,8 @@ var METAS_PADRAO = [
   ['META_DEP_HE', 8,   '%',   '2026-01', 'PPCP',      'Máximo do volume entregue que pode vir de hora extra'],
   ['META_TICKET', 250, 'R$',  '2026-01', 'Comercial', 'Ticket médio mínimo (R$ por peça faturada). 250 é a média histórica dos 18 meses (R$ 247,69), não uma meta decidida'],
   ['DUTEIS',      22,  'dias','2026-01', 'PPCP',      'Dias úteis de referência por mês (capacidade teórica e carteira em dias)'],
-  ['PROD_ERP_DESDE', 2025, 'ano', '2025-01', 'PPCP',   'A partir deste ano, producaoReal = produtosReportados (total do relatório REPORTE do ERP, produtos acabados). Antes disso vale o digitado.']
+  ['PROD_ERP_DESDE', 2025, 'ano', '2025-01', 'PPCP',   'A partir deste ano, producaoReal = produtosReportados (total do relatório REPORTE do ERP, produtos acabados). Antes disso vale o digitado.'],
+  ['CUSTO_HORA',  0,   'R$/h','2026-10', 'RH',        'Custo da hora normal dos diretos, com encargos. O painel põe a hora extra em reais: extra50 × 1,5 + extra100 × 2, vezes este valor (sem o reflexo no DSR). 0 = ainda não cadastrado: o card diz que falta o custo-hora']
 ];
 
 /* ══ DICIONARIO ══

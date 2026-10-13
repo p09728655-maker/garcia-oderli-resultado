@@ -355,5 +355,47 @@ afirma('dataset embutido: normalizar() reproduz eficiência da planilha em 18 de
 afirma('dataset embutido: normalizar() reproduz absenteísmo em 18 de 18 meses (±0,02)',
   REGS.every(r => Math.abs(U.normalizar(r).absenteismo - r.absenteismo) <= 0.02));
 
+sec('Absenteísmo por motivo — AGO × SET/26 da HISTORICO (absMotivos, absComparar)');
+/* Os dois meses como estão na HISTORICO em 13/10/26: controle de faltas do RH
+   e ponto. A tabela que foi para a reunião: afastamento 4,30 → 1,33, falta
+   4,72 → 3,46, atraso 1,43 → 0,93, atestado 1,97 → 1,78; total 12,42 → 7,50. */
+const AGO_H = U.normalizar({ ano:2026, mes:'AGO', horasCarga:14907.2, horasNormais:14514.82, extra50:1182, extra100:11.17, producaoReal:32364,
+  naoTrabalhadas:2671.58, faltasPonto:184.8, atrasosPonto:207.58, horasFerias:844.8,
+  ausFalta:684.67, ausAtestado:285.58, ausAfastado:624.8, ausAtraso:0 });
+const SET_H = U.normalizar({ ano:2026, mes:'SET', horasCarga:15479.2, horasNormais:15188.43, extra50:1093.4, extra100:36.22, producaoReal:37948,
+  naoTrabalhadas:1522.77, faltasPonto:149.6, atrasosPonto:141.17, horasFerias:466.4,
+  ausFalta:525.52, ausAtestado:270.15, ausAfastado:202.4, ausAtraso:3.02 });
+const MA = U.absMotivos([AGO_H]), MS = U.absMotivos([SET_H]);
+const pctDe = (M, k) => M.itens.find(x => x.k === k).pct;
+ok('AGO afastamento %',            pctDe(MA, 'afastado'), 4.30);
+ok('AGO falta sem justificativa %', pctDe(MA, 'falta'),    4.72);
+ok('AGO atraso % (do ponto)',       pctDe(MA, 'atraso'),   1.43);
+ok('AGO atestado %',                pctDe(MA, 'atestado'), 1.97);
+ok('AGO total = card',              MA.total, U.periodo([AGO_H]).absenteismo, 0.01);
+ok('SET total = card',              MS.total, U.periodo([SET_H]).absenteismo, 0.01);
+ok('SET total %',                   MS.total, 7.50);
+const CMP = U.absComparar(MS, MA, 'AGO/26', 6);
+ok('variação total (p.p.)',         CMP.delta, -4.92);
+ok('maior variação: afastamento',   CMP.maior.k === 'afastado' ? CMP.maior.dpp : NaN, -2.97);
+ok('falta + atraso (gestão de presença)', CMP.gestao, -1.76);
+afirma('frase: "Caiu 4,9 p.p. contra AGO/26."',          CMP.frase.indexOf('Caiu 4,9 p.p. contra AGO/26.') === 0);
+afirma('frase: "3,0 desses p.p. vieram de afastamento"',  CMP.frase.indexOf('3,0 desses p.p. vieram de afastamento.') > 0);
+afirma('frase: falta e atraso "caíram 1,8 p.p."',          CMP.frase.indexOf('caíram 1,8 p.p.') > 0);
+afirma('frase: "7,5%: acima da meta de 6%."',              /7,5%: acima da meta de 6%\.$/.test(CMP.frase));
+afirma('variação < 0,5 p.p. → "Estável", sem procurar causa',
+  U.absComparar(MS, U.absMotivos([Object.assign({}, SET_H, { ausFalta:560 })]), 'AGO/26', 6).frase.indexOf('Estável:') === 0);
+afirma('mês sem controle de faltas → sem quebra por motivo (null)',
+  U.absMotivos([U.normalizar({ ano:2025, mes:'SET', horasCarga:17420, horasNormais:16876, faltas:1654, atraso:312, producaoReal:39884 })]) === null);
+afirma('período com um mês sem controle → null (a soma não fecharia com o card)',
+  U.absMotivos([SET_H, U.normalizar({ ano:2026, mes:'JUL', horasCarga:16588, horasNormais:16192, faltas:1391, atraso:122, producaoReal:32123 })]) === null);
+
+sec('Custo da hora extra (custoHE)');
+const CH0 = U.custoHE([SET_H], 0);
+afirma('sem custo-hora → valor null, nunca R$ 0', CH0.valor === null);
+ok('horas equivalentes = 1.093,4 × 1,5 + 36,22 × 2', CH0.hEquiv, 1712.54);
+ok('com custo-hora R$ 30 → R$ 51.376,20', U.custoHE([SET_H], 30).valor, 51376.2);
+ok('ano: soma os meses (AGO + SET)', U.custoHE([AGO_H, SET_H], 30).hEquiv, 1182 * 1.5 + 11.17 * 2 + 1712.54);
+afirma('mês futuro zerado não entra', U.custoHE([{ ano:2026, mes:'DEZ', extra50:500, horasCarga:0, producaoReal:0 }], 30).hEquiv === 0);
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
