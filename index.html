@@ -23577,9 +23577,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.34';
+var APP_VERSAO = 'b96.35';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.35', data:'13/10/2026', itens:[
+    'Apresentacao para lideres maior: o slide ocupa quase a tela toda (1792 x 1008 numa TV 1920 x 1080) e a letra cresce junto. Graficos dos slides de duas colunas usam a altura livre. As tabelas nao cresciam com o slide porque o tema do painel fixava a letra em 12 px; agora acompanham (18 px na TV). Conferido em 1920 x 1080, 1366 x 768 e 2560 x 1080, fundo escuro e branco.'
+  ]},
   { v:'b96.34', data:'13/10/2026', itens:[
     'Apresentacao para lideres, slide novo depois do mes a mes: producao em quilos. Colunas em toneladas por dia e linha em pecas por dia, os dois na jornada normal, com tabela mes a mes. SET/26: 1.673 pecas por dia, o maior do ano; em quilos, 33,6 t por dia, o 6o de 9 meses, porque a peca pesou 20,1 kg, 20% mais leve que a media. Mes com kg/peca fora de 0,6 a 1,67 vez a media nao entra.',
     'Slide de pecas por hora: barras com o mesmo rendimento na peca media do ano, na mesma regua da linha. SET/26: 2,33 pecas por hora viram 1,85 na peca media, abaixo de fev, mai, jun, jul e ago. O slide de venda diz que o 1.673 de setembro foi com a peca 20% mais leve.',
