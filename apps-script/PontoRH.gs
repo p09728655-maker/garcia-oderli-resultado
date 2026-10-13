@@ -81,8 +81,19 @@ var PR_ABA_LOG      = 'PONTO';
 var PR_ABA_LOG_AUS  = 'AUSENCIAS';   /* log do controle de faltas */
 var PR_ABA_HISTORICO = 'HISTORICO';
 var PR_ABA_SETOR    = 'PONTO_SETOR';   /* mês × setor: horas, HE e ausências */
+/* Por pessoa, só dos diretos: a base para achar o atraso contado duas vezes.
+   O RH lança atraso e saída antecipada como FALTA, com horas, e o painel soma
+   as faltas do controle MAIS o atraso do ponto: em ABR/26, 201,7 h entraram
+   duas vezes (31 pessoas) e o absenteísmo saiu 14,06% em vez de 12,58%; em
+   SET/26, 80,6 h (7,50% em vez de 6,97%). As duas abas são regravadas pelo
+   script; não digitar. */
+var PR_ABA_PONTO_PESSOA = 'PONTO_PESSOA';       /* cod | mes | ano | carga | faltas | atrasos | normais | jornada */
+var PR_ABA_AUS_PESSOA   = 'AUSENCIAS_PESSOA';   /* cod | mes | ano | falta | atestado | afastado | atraso | ferias */
+var PR_CAB_PONTO_PESSOA = ['cod', 'mes', 'ano', 'carga', 'faltas', 'atrasos', 'normais', 'jornada'];
+var PR_CAB_AUS_PESSOA   = ['cod', 'mes', 'ano', 'falta', 'atestado', 'afastado', 'atraso', 'ferias'];
 var PR_SETOR_COLS   = ['mes', 'ano', 'setor', 'direto', 'pessoas', 'horasCarga', 'horasNormais', 'faltasPonto', 'atrasosPonto',
-  'extra50', 'extra100', 'totalExtras', 'hePctHoras', 'ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias', 'atualizadoEm'];
+  'extra50', 'extra100', 'totalExtras', 'hePctHoras', 'ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias', 'atualizadoEm',
+  'atrasoDuplicado'];
 var PR_SETOR_AUS    = ['ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias'];
 /* Mês que já tem horasNormais na HISTORICO é mês fechado: o extrato preenche a
    PONTO_SETOR e o aviso mostra a diferença entre o ponto e o que está digitado,
@@ -238,11 +249,12 @@ function prAgregar(ext, func) {
      com 3 admitidos em 21/01). Férias e afastamento seguem dentro: reduzem a
      carga de quem estava na casa o mês inteiro. */
   var inicio = ext.fim ? new Date(ext.fim.getFullYear(), ext.fim.getMonth(), 1) : null;
-  a.naoTrabalhadas = Math.max(0, dir.reduce(function (t, p) {
+  a.porPessoa = dir.map(function (p) {
     var f = func.mapa[p.codigo];
     var parcial = (f.admissao && inicio && f.admissao > inicio) || (f.demissao && ext.fim && f.demissao < ext.fim);
-    return t + (parcial ? p.carga : jornada) - p.normais;
-  }, 0));
+    return { cod: p.codigo, carga: p.carga, faltas: p.faltas, atrasos: p.atrasos, normais: p.normais, jornada: parcial ? p.carga : jornada };
+  });
+  a.naoTrabalhadas = Math.max(0, a.porPessoa.reduce(function (t, p) { return t + p.jornada - p.normais; }, 0));
   a.pendentes = pend;
   a.admitidosDepois = depois;   /* cadastrados no ponto antes de começar: ficam para o mês da admissão */
   return a;
@@ -433,7 +445,8 @@ function prGravarSetoresPonto(ss, ext, setores) {
    inteiro, como na HISTORICO). Uma escrita para a aba toda. */
 function prLimparAusenciasSetor(ss, ano) {
   var t = prAbrirSetores(ss), v = t.v, col = t.col;
-  var cols = PR_SETOR_AUS.map(function (n) { return col[prNormaliza(n)]; });
+  /* a duplicidade depende do controle: zera junto e é apurada de novo no fim */
+  var cols = PR_SETOR_AUS.concat(['atrasoDuplicado']).map(function (n) { return col[prNormaliza(n)]; });
   var mudou = false;
   for (var r = 1; r < v.length; r++) {
     if (parseInt(v[r][col.ano], 10) !== ano) continue;
@@ -496,6 +509,9 @@ function processarPontoDrive() {
         if (!r.a.e50 && !r.a.e100) feitos.push('   ATENÇÃO: extrato sem hora extra (colunas Ex50%/Ex100% ausentes ou zeradas). Exporte de novo com as colunas de extras.');
         if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
         if (r.a.admitidosDepois.length) feitos.push('   admitidos depois de ' + r.ext.mes + '/' + r.ext.ano + ', não contam neste mês: ' + r.a.admitidosDepois.join(', '));
+        feitos.push(r.duplicidade
+          ? '   atraso do ponto já lançado como falta no controle: ' + Math.round(r.duplicidade.horas * 10) / 10 + ' h (' + r.duplicidade.pessoas + ' pessoas), fora da conta'
+          : '   sem controle de faltas por pessoa neste mês: a duplicidade de atraso será apurada quando o controle for processado');
       }
       var sub = pasta.getFoldersByName(PR_PROCESSADOS);
       arq.moveTo(sub.hasNext() ? sub.next() : pasta.createFolder(PR_PROCESSADOS));
@@ -534,9 +550,12 @@ function prProcessarArquivo(ss, arq, func) {
       criou = prLancarHistorico(ss, ext.mes, ext.ano, a);
     }
     prLog(ss, arq.getName(), ext, a, criou);
+    prGravarPessoas(ss, PR_ABA_PONTO_PESSOA, PR_CAB_PONTO_PESSOA, function (l) { return String(l[1]) === ext.mes && parseInt(l[2], 10) === ext.ano; },
+      a.porPessoa.map(function (p) { return [p.cod, ext.mes, ext.ano, p.carga, p.faltas, p.atrasos, p.normais, p.jornada]; }));
     var setores = prAgregarSetores(ext, func);
     prGravarSetoresPonto(ss, ext, setores);
-    return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido };
+    var duplicidade = prApurarDuplicidade(ss, ext.mes, ext.ano);
+    return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido, duplicidade: duplicidade };
   } finally {
     if (tmpId) { try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (ignore) {} }
   }
@@ -563,6 +582,7 @@ function prProcessarControle(ss, arq, doc, base) {
     throw new Error('BASE sem as colunas DATA, COD, STATUS e HORAS FALTA');
   var meses = {}, anos = {}, foraDoIntervalo = 0, desconhecidos = {}, ignorados = 0;
   var porSetor = {};   /* chave mês/ano → setor → ausências (diretos e indiretos) */
+  var porPessoa = {};  /* chave mês/ano → cod → ausências, só diretos (AUSENCIAS_PESSOA) */
   var limite = new Date(); limite.setDate(limite.getDate() + 45);
   for (var i = 1; i < disp.length; i++) {
     var l = disp[i], d = prData(l[col.data]);
@@ -580,16 +600,18 @@ function prProcessarControle(ss, arq, doc, base) {
     anos[d.getFullYear()] = true;
     if (f.direto) {
       var mh = meses[chave] || (meses[chave] = { mes: PR_MESES[d.getMonth()], ano: d.getFullYear(), falta: 0, atestado: 0, afastado: 0, atraso: 0, ferias: 0, registros: 0 });
+      var pp = porPessoa[chave] || (porPessoa[chave] = { mes: PR_MESES[d.getMonth()], ano: d.getFullYear(), pessoas: {} });
+      var q = pp.pessoas[cod] || (pp.pessoas[cod] = { falta: 0, atestado: 0, afastado: 0, atraso: 0, ferias: 0 });
     }
     /* horas pelo texto formatado ("8:48"), que não depende de fuso; a data pelo valor */
     var stBruto = String(l[col.status] || '').trim(), st = prStatusAusencia(stBruto), hf = prHoras(texto[i][col.hf]), hfe = col.hfe !== undefined ? prHoras(texto[i][col.hfe]) : 0;
     if (!stBruto && !hf && !hfe) continue;   /* linha sem status e sem horas: não é registro */
     if (f.direto) mh.registros++;
-    if (st === 'ferias') { m.ferias += hfe || hf; if (f.direto) mh.ferias += hfe || hf; }
+    if (st === 'ferias') { m.ferias += hfe || hf; if (f.direto) { mh.ferias += hfe || hf; q.ferias += hfe || hf; } }
     else if (st === 'ignorar') { if (f.direto) ignorados++; }
     else {
       if (st === 'desconhecido') { if (f.direto) desconhecidos[stBruto] = (desconhecidos[stBruto] || 0) + hf; st = 'falta'; }   /* vira falta e aparece no aviso */
-      m[st] += hf; if (f.direto) mh[st] += hf;
+      m[st] += hf; if (f.direto) { mh[st] += hf; q[st] += hf; }
     }
   }
   /* o controle do ano é a fonte do ano inteiro: zera as ausências dos meses
@@ -614,7 +636,125 @@ function prProcessarControle(ss, arq, doc, base) {
       + ' · atraso ' + Math.round(m.atraso) + ' · férias ' + Math.round(m.ferias) + (criou ? ' (linha criada)' : ''));
     prLogAus(ss, arq.getName(), m, criou);
   });
+  /* por pessoa: o ano inteiro é regravado, como as ausências da HISTORICO; e
+     cada mês que já tem o ponto por pessoa apura de novo a duplicidade, para
+     um controle corrigido depois do extrato valer sem reprocessar o extrato */
+  Object.keys(anos).forEach(function (ano) {
+    var a = parseInt(ano, 10), linhas = [];
+    Object.keys(porPessoa).forEach(function (k) {
+      var pp = porPessoa[k]; if (pp.ano !== a) return;
+      Object.keys(pp.pessoas).sort().forEach(function (cod) {
+        var q = pp.pessoas[cod];
+        linhas.push([cod, pp.mes, pp.ano, q.falta, q.atestado, q.afastado, q.atraso, q.ferias]);
+      });
+    });
+    prGravarPessoas(ss, PR_ABA_AUS_PESSOA, PR_CAB_AUS_PESSOA, function (l) { return parseInt(l[2], 10) === a; }, linhas);
+  });
+  chaves.forEach(function (k) {
+    var d = prApurarDuplicidade(ss, meses[k].mes, meses[k].ano);
+    if (d) lancados.push(k + ': atraso do ponto já lançado como falta no controle ' + Math.round(d.horas * 10) / 10 + ' h (' + d.pessoas + ' pessoas), fora da conta');
+  });
   return { tipo: 'controle', meses: chaves.length, lancados: lancados, funcionarios: atualizou };
+}
+
+/* ══ 6b · ATRASO CONTADO DUAS VEZES (ponto × controle, pessoa a pessoa) ══
+   O painel soma as faltas do controle (falta + atestado + afastado) e o atraso
+   do ponto. O RH lança atraso e saída antecipada como FALTA, com horas; aí a
+   mesma hora entra duas vezes. Por pessoa:
+     ponto, fora o atraso = (jornada da pessoa − carga) + faltas do ponto
+     controle            = falta + atestado + afastado + férias
+     sobra = controle − ponto (fora o atraso)
+     dupla = entre 0 e o atraso do ponto: min(max(sobra, 0), atrasos)
+   Se o controle tem mais ausência do que o ponto mostra fora do atraso, essa
+   sobra é o atraso que o controle também lançou, até o atraso do ponto. O que
+   passar disso não é duplicidade: é ausência que o ponto não mostra (fica no
+   aviso de integridade). Conferido em ABR/26 (201,7 h, 31 pessoas) e SET/26
+   (80,6 h, 14 pessoas) contra o cruzamento feito à parte com os arquivos. */
+function prDuplicidade(ponto, aus) {
+  var horas = 0, pessoas = 0, porCod = {};
+  (ponto || []).forEach(function (p) {
+    var c = aus[p.cod]; if (!c) return;
+    var controle = (c.falta || 0) + (c.atestado || 0) + (c.afastado || 0) + (c.ferias || 0);
+    var sobra = controle - ((p.jornada - p.carga) + p.faltas);
+    var d = Math.min(Math.max(sobra, 0), p.atrasos || 0);
+    if (d > 0.005) { horas += d; pessoas++; porCod[p.cod] = d; }
+  });
+  return { horas: horas, pessoas: pessoas, porCod: porCod };
+}
+/* Lê as linhas de um mês numa aba por pessoa (cod | mes | ano | …). */
+function prLerPessoas(ss, nomeAba, mes, ano) {
+  var aba = ss.getSheetByName(nomeAba);
+  if (!aba || aba.getLastRow() < 2) return [];
+  return aba.getDataRange().getValues().slice(1).filter(function (l) { return String(l[1]).trim().toUpperCase() === mes && parseInt(l[2], 10) === ano; });
+}
+/* Regrava uma aba por pessoa: tira as linhas que `sai` aponta e põe as novas.
+   Uma escrita só (setValues), para não fazer uma chamada por célula. */
+function prGravarPessoas(ss, nomeAba, cab, sai, novas) {
+  var aba = ss.getSheetByName(nomeAba) || ss.insertSheet(nomeAba);
+  var v = aba.getLastRow() > 0 ? aba.getDataRange().getValues() : [];
+  var ficam = v.slice(1).filter(function (l) { return String(l[0]).trim() !== '' && !sai(l); });
+  var todas = [cab].concat(ficam, novas).map(function (l) { var o = l.slice(0, cab.length); while (o.length < cab.length) o.push(''); return o; });
+  aba.clearContents();
+  aba.getRange(1, 1, todas.length, cab.length).setValues(todas);
+}
+/* Apura o mês se as duas abas por pessoa têm o mês, e grava na HISTORICO:
+   atrasoDuplicado (h) e duplicidadeApurada = 1. O painel tira atrasoDuplicado
+   do atraso do ponto. Só atualiza linha que já existe; não cria mês. Grava
+   também por setor na PONTO_SETOR (setor = o atual da pessoa na
+   FUNCIONARIOS, como o resto da aba): sem isso a tabela de setores somaria o
+   atraso inteiro e a linha da fábrica não bateria com o card. */
+function prApurarDuplicidade(ss, mes, ano) {
+  var ponto = prLerPessoas(ss, PR_ABA_PONTO_PESSOA, mes, ano), aus = prLerPessoas(ss, PR_ABA_AUS_PESSOA, mes, ano);
+  if (!ponto.length || !aus.length) return null;
+  var num = function (x) { var f = parseFloat(String(x).replace(',', '.')); return isFinite(f) ? f : 0; };
+  var mapa = {};
+  aus.forEach(function (l) { mapa[String(l[0]).trim()] = { falta: num(l[3]), atestado: num(l[4]), afastado: num(l[5]), ferias: num(l[7]) }; });
+  var d = prDuplicidade(ponto.map(function (l) { return { cod: String(l[0]).trim(), carga: num(l[3]), faltas: num(l[4]), atrasos: num(l[5]), jornada: num(l[7]) }; }), mapa);
+  prGravarDuplicidadeSetor(ss, mes, ano, d.porCod);
+  var aba = ss.getSheetByName(PR_ABA_HISTORICO); if (!aba) return d;
+  var linhas = aba.getDataRange().getValues(), iCab = -1, col = {};
+  for (var i = 0; i < Math.min(linhas.length, 20) && iCab < 0; i++) {
+    var norm = linhas[i].map(prNormaliza);
+    if (norm.indexOf('mes') >= 0 && norm.indexOf('ano') >= 0) { iCab = i; norm.forEach(function (n, c) { if (col[n] === undefined) col[n] = c; }); }
+  }
+  if (iCab < 0) return d;
+  var largura = linhas[iCab].length;
+  ['atrasoDuplicado', 'duplicidadeApurada'].forEach(function (nome) {
+    var n = prNormaliza(nome);
+    if (col[n] === undefined) {
+      while (largura > 0 && !String(linhas[iCab][largura - 1] || '').trim()) largura--;
+      aba.getRange(iCab + 1, largura + 1).setValue(nome);
+      linhas[iCab][largura] = nome;
+      col[n] = largura; largura++;
+    }
+  });
+  for (var r = iCab + 1; r < linhas.length; r++) {
+    var m = String(linhas[r][col.mes] || '').trim().toUpperCase().slice(0, 3);
+    if (m === mes && parseInt(linhas[r][col.ano], 10) === ano) {
+      aba.getRange(r + 1, col[prNormaliza('atrasoDuplicado')] + 1).setValue(Math.round(d.horas * 100) / 100);
+      aba.getRange(r + 1, col[prNormaliza('duplicidadeApurada')] + 1).setValue(1);
+      break;
+    }
+  }
+  return d;
+}
+/* atrasoDuplicado por setor nas linhas do mês que já existem; setor sem
+   duplicidade fica 0 (uma apuração anterior pode ter deixado valor). */
+function prGravarDuplicidadeSetor(ss, mes, ano, porCod) {
+  var func = prLerFuncionarios(ss), por = {};
+  Object.keys(porCod || {}).forEach(function (cod) {
+    var f = func && func.mapa[cod];
+    var k = prNormaliza(String((f && f.setor) || '').trim() || '(sem setor)');
+    por[k] = (por[k] || 0) + porCod[cod];
+  });
+  var t = prAbrirSetores(ss), v = t.v, col = t.col, c = col[prNormaliza('atrasoDuplicado')], mudou = false;
+  for (var r = 1; r < v.length; r++) {
+    var m = String(v[r][col.mes] || '').trim().toUpperCase().slice(0, 3);
+    if (m !== mes || parseInt(v[r][col.ano], 10) !== ano) continue;
+    while (v[r].length < t.largura) v[r].push('');
+    v[r][c] = Math.round((por[prNormaliza(v[r][col.setor])] || 0) * 100) / 100; mudou = true;
+  }
+  if (mudou) prEscreverSetoresOrdenado(t.aba, v, col, t.largura);
 }
 
 /* Regrava a FUNCIONARIOS a partir da aba DP do controle (Cód | Nome | Setor |

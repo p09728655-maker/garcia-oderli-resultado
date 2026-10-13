@@ -400,6 +400,79 @@ afirma('ABR/26: aviso "ponto" continua (a divergência é real)', itPonto([ABR_H
 afirma('ABR/26: aviso genérico, sem apontar causa (a soma bater com as férias foi coincidência)',
   /diferença acima de 10%/.test((itPonto([ABR_H])[0] || {}).msg) && !/igual às férias/.test((itPonto([ABR_H])[0] || {}).msg));
 
+sec('Atraso contado duas vezes (regra A: atrasoDuplicado do PontoRH.gs)');
+/* O RH lança atraso como FALTA no controle; o PontoRH.gs apura pessoa a pessoa
+   quanto do atraso do ponto já está nas faltas (ABR/26 201,7 h; SET/26 80,6 h,
+   cruzamento dos extratos com o controle). O painel tira essa parte do atraso. */
+const AP = { aplicarDuplicidade:true };
+const ABR_A = U.normalizar(Object.assign({}, ABR_H, { atrasoDuplicado:201.7, duplicidadeApurada:1 }), AP);
+const SET_A = U.normalizar(Object.assign({}, SET_H, { atrasoDuplicado:80.6, duplicidadeApurada:1 }), AP);
+ok('ABR/26: atraso = 229,2 − 201,7', ABR_A.atraso, 27.5, 0.05);
+ok('ABR/26: absenteísmo 14,06% → 12,58%', ABR_A.absenteismo, 12.58);
+ok('ABR/26: antes da apuração continua 14,06%', ABR_H.absenteismo, 14.06);
+ok('SET/26: atraso = 141,17 − 80,6', SET_A.atraso, 60.6, 0.05);
+ok('SET/26: absenteísmo 7,50% → 6,97%', SET_A.absenteismo, 6.97);
+ok('SET/26: motivo atraso cai junto (absMotivos usa o atraso da regra)', pctDe(U.absMotivos([SET_A]), 'atraso'), 60.57 / 15188.43 * 100);
+ok('SET/26: total por motivo = card', U.absMotivos([SET_A]).total, U.periodo([SET_A]).absenteismo, 0.01);
+ok('duplicidade maior que o atraso → atraso 0, nunca negativo', U.normalizar(Object.assign({}, SET_H, { atrasoDuplicado:999 }), AP).atraso, 0, 0);
+afirma('sem controle (só ponto): atrasoDuplicado não se aplica (não há o que duplicar)',
+  U.normalizar(Object.assign({}, PONTO, { atrasoDuplicado:100 }), AP).atraso === PONTO.atraso);
+afirma('sem aplicarDuplicidade (padrão): o mês apurado fica na conta antiga',
+  U.normalizar(Object.assign({}, SET_H, { atrasoDuplicado:80.6, duplicidadeApurada:1 })).absenteismo === SET_H.absenteismo);
+/* Uma base só: a correção vale para todos os meses com ponto e controle, ou
+   para nenhum. Hoje JAN a SET/26 têm os dois; só ABR e SET têm extrato por
+   pessoa na pasta. */
+const DC = U.duplicidadeCompleta([ABR_A, AGO_H, SET_A]);
+afirma('ABR e SET apurados, AGO não → incompleta, falta AGO/26', !DC.completa && DC.faltam.join() === 'AGO/26' && DC.apurados === 2);
+afirma('todos apurados → completa', U.duplicidadeCompleta([ABR_A, SET_A]).completa);
+afirma('nenhum apurado → incompleta (nada a aplicar)', !U.duplicidadeCompleta([ABR_H, SET_H]).completa);
+afirma('mês sem ponto ou sem controle não segura a correção',
+  U.duplicidadeCompleta([SET_A, PONTO, U.normalizar({ ano:2025, mes:'SET', horasCarga:17420, horasNormais:16876, faltas:1654, atraso:312, producaoReal:39884 })]).completa);
+afirma('campos em texto (vindos da planilha) contam igual',
+  !U.duplicidadeCompleta([{ mes:'AGO', ano:2026, naoTrabalhadas:'2671,58'.replace(',', '.'), ausFalta:'684.67', atrasosPonto:'207.58' }, SET_A]).completa);
+const itDup = rs => U.integridade(rs).itens.filter(i => i.tipo === 'duplicidade');
+afirma('ABR/26 sem apuração → nota (info) "atraso pode estar contado duas vezes"',
+  itDup([ABR_H]).length === 1 && itDup([ABR_H])[0].nivel === 'info');
+afirma('ABR/26 apurado → sem a nota', itDup([ABR_A]).length === 0);
+afirma('nota não pinta a barra (não conta como atenção)', U.integridade([ABR_H]).atencoes === U.integridade([ABR_H]).itens.filter(i => i.nivel === 'atencao').length && itDup([ABR_H])[0].nivel !== 'atencao');
+afirma('ABR/26 apurado e base completa: ponto × controle cai de 17,4% para 9,6% e o aviso "ponto" sai', itPonto([ABR_A]).length === 0);
+afirma('ABR/26 apurado mas base incompleta (AGO sem apuração): confere na conta antiga, como a tela', itPonto([ABR_A, AGO_H]).length === 1);
+afirma('quem chama decide a base (aplicarDuplicidade:false) mesmo com o mês apurado',
+  U.integridade([ABR_A], { aplicarDuplicidade:false }).itens.filter(i => i.tipo === 'ponto').length === 1);
+afirma('integridade confere ponto × controle pela regra, não pelo atraso gravado na planilha',
+  itPonto([Object.assign({}, ABR_H, { faltas:1687.08, atraso:229.2, atrasoDuplicado:201.7, duplicidadeApurada:1 })]).length === 0);
+afirma('mês sem ponto: sem nota de duplicidade',
+  itDup([U.normalizar({ ano:2026, mes:'JUL', horasNormais:14000, horasCarga:14400, ausFalta:500, ausAtraso:12.3, horasFerias:100, producaoReal:30000 })]).length === 0);
+
+sec('Atraso por setor (SetorHE) com a mesma regra');
+const SH = (() => {
+  const ini = HTML.indexOf('window.SetorHE = (function(){'), fim = HTML.indexOf('\n})();', ini) + 5;
+  if (ini < 0 || fim < 5) throw new Error('SetorHE não encontrado no index.html');
+  const dadosSet = [
+    { mes:'SET', ano:2026, setor:'1-USINAGEM', direto:'S', pessoas:12, horasNormais:2000, ausFalta:100, atrasosPonto:20, atrasoDuplicado:7.4 },
+    { mes:'SET', ano:2026, setor:'2-EMBALAGEM', direto:'S', pessoas:18, horasNormais:3000, ausFalta:150, ausAtestado:30, atrasosPonto:15, atrasoDuplicado:'8' },
+    { mes:'SET', ano:2026, setor:'3-ACABAMENTO', direto:'S', pessoas:5, horasNormais:800, ausFalta:20, ausAtraso:5 },
+    { mes:'SET', ano:2026, setor:'17-FURAÇÃO', direto:'S', pessoas:5, horasNormais:800, ausFalta:20, atrasosPonto:4, atrasoDuplicado:9 }];
+  const w = { localStorage: { getItem: () => JSON.stringify(dadosSet) }, aplicar: true };
+  w.duplicidadeAplicada = () => w.aplicar;
+  new Function('window', 'localStorage', HTML.slice(ini, fim)).call(w, w, w.localStorage);
+  w.SetorHE.w = w;
+  return w.SetorHE;
+})();
+const SM = SH.doMes('SET', 2026), sOf = k => SM.find(x => x.setor === k);
+ok('USINAGEM: 100 de falta + (20 − 7,4) de atraso', sOf('1-USINAGEM').aus, 112.6);
+ok('EMBALAGEM: duplicidade em texto ("8") também sai', sOf('2-EMBALAGEM').aus, 187);
+ok('ACABAMENTO sem ponto: atraso do controle', sOf('3-ACABAMENTO').aus, 25);
+ok('FURAÇÃO: duplicidade maior que o atraso → 0, nunca negativo', sOf('17-FURAÇÃO').aus, 20);
+/* fábrica = soma dos dois primeiros setores: o card e a tabela batem */
+const FAB = U.normalizar({ ano:2026, mes:'SET', horasNormais:5000, horasCarga:5200, naoTrabalhadas:400, atrasosPonto:35, atrasoDuplicado:15.4,
+  ausFalta:250, ausAtestado:30, horasFerias:50, producaoReal:12000 }, AP);
+ok('soma dos setores ÷ horas = absenteísmo do card', (sOf('1-USINAGEM').aus + sOf('2-EMBALAGEM').aus) / 5000 * 100, FAB.absenteismo, 0.01);
+ok('doPeriodo usa a mesma regra', SH.doPeriodo(2026, ['SET']).find(x => x.setor === '1-USINAGEM').aus, 112.6);
+SH.w.aplicar = false;
+ok('base incompleta: setor fica na conta antiga, como o card', SH.doMes('SET', 2026).find(x => x.setor === '1-USINAGEM').aus, 120);
+ok('base incompleta: doPeriodo também', SH.doPeriodo(2026, ['SET']).find(x => x.setor === '1-USINAGEM').aus, 120);
+
 sec('Custo da hora extra (custoHE)');
 const CH0 = U.custoHE([SET_H], 0);
 afirma('sem custo-hora → valor null, nunca R$ 0', CH0.valor === null);

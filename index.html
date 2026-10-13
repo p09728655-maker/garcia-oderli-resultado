@@ -4980,12 +4980,23 @@ function _tryRestoreFromIDB(onDone){
    e tudo que entra também. As colunas calculadas nunca vêm da planilha —
    vêm da regra. loadBruto() existe só para a conferência de integridade
    dizer quando a planilha está desatualizada em relação à regra. */
-function normalizarRegistro(r){
+function normalizarRegistro(r, aplicarDup){
   if(!(window.DashUtils&&DashUtils.normalizar)) return r;
-  return DashUtils.normalizar(r,{ metaEf:90, erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025 });
+  if(typeof aplicarDup!=='boolean') aplicarDup=duplicidadeAplicada();
+  return DashUtils.normalizar(r,{ metaEf:90, erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025, aplicarDuplicidade:aplicarDup });
+}
+/* Atraso contado duas vezes: tira de todos os meses ou de nenhum
+   (DashUtils.duplicidadeCompleta). A decisão é sobre a lista inteira, não
+   mês a mês. */
+function _normalizarLista(d){
+  var ap=!!(window.DashUtils&&DashUtils.duplicidadeCompleta&&DashUtils.duplicidadeCompleta(d).completa);
+  return (d||[]).map(function(r){ return normalizarRegistro(r,ap); });
+}
+function duplicidadeAplicada(){
+  return !!(window.DashUtils&&DashUtils.duplicidadeCompleta&&DashUtils.duplicidadeCompleta(loadBruto()).completa);
 }
 function loadBruto(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
-function load(){ return loadBruto().map(normalizarRegistro); }
+function load(){ return _normalizarLista(loadBruto()); }
 
 /* ── HORA EXTRA POR SETOR ─────────────────────────────────────────────────
    Lê a aba PONTO_SETOR (PontoRH.gs) guardada em localStorage: uma linha por
@@ -5007,6 +5018,14 @@ window.SetorHE = (function(){
   var SK_SET = 'dash_ponto_setor_v1';
   function n(v){ if(typeof v==='number') return isFinite(v)?v:0; var x=parseFloat(String(v===null||v===undefined?'':v).replace(',','.')); return isFinite(x)?x:0; }
   function carregar(){ try{ var a=JSON.parse(localStorage.getItem(SK_SET)); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  /* Atraso do setor pela regra de DashUtils.normalizar: o do ponto, menos a
+     parte que o RH já lançou como falta no controle (atrasoDuplicado, por
+     setor, do PontoRH.gs), só quando a correção vale para todos os meses
+     (duplicidadeAplicada, a mesma decisão do card); sem ponto, o do
+     controle. Sem tirar, a linha da fábrica na tabela dava 7,5% em SET/26
+     contra 7,0% no card. */
+  function aplicarDup(){ try{ return typeof window.duplicidadeAplicada==='function'&&!!window.duplicidadeAplicada(); }catch(e){ return false; } }
+  function atrDe(r, ap){ return n(r.atrasosPonto)>0?Math.max(0,n(r.atrasosPonto)-(ap?n(r.atrasoDuplicado):0)):n(r.ausAtraso); }
   /* Um mês ou o ano inteiro, pela mesma conta. No ano as horas somam e as
      pessoas viram média mensal: somar 93 pessoas de oito meses daria 744.
      meses = lista de códigos, ou null para todos os meses do ano que tiverem
@@ -5014,13 +5033,13 @@ window.SetorHE = (function(){
   function doPeriodo(ano, meses){
     ano=parseInt(ano,10);
     var alvo=meses?meses.map(function(m){ return String(m||'').trim().toUpperCase().slice(0,3); }):null;
-    var por={}, nomes=[];
+    var por={}, nomes=[], ap=aplicarDup();
     carregar().forEach(function(r){
       if(parseInt(r.ano,10)!==ano) return;
       var m=String(r.mes||'').trim().toUpperCase().slice(0,3);
       if(alvo && alvo.indexOf(m)<0) return;
       var he=n(r.totalExtras)||(n(r.extra50)+n(r.extra100)), hn=n(r.horasNormais);
-      var atr=n(r.atrasosPonto)>0?n(r.atrasosPonto):n(r.ausAtraso);
+      var atr=atrDe(r,ap);
       var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+atr;
       var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
       var k=String(r.setor||'').trim()||'(sem setor)';
@@ -5042,6 +5061,7 @@ window.SetorHE = (function(){
   }
   function doMes(mes, ano){
     mes=String(mes||'').trim().toUpperCase().slice(0,3); ano=parseInt(ano,10);
+    var ap=aplicarDup();
     return carregar().filter(function(r){ return String(r.mes||'').trim().toUpperCase().slice(0,3)===mes && parseInt(r.ano,10)===ano; })
       .map(function(r){
         var he=n(r.totalExtras)||(n(r.extra50)+n(r.extra100)), hn=n(r.horasNormais);
@@ -5050,7 +5070,7 @@ window.SetorHE = (function(){
            (o relógio), senão ausAtraso (o que o líder anota). Sem isso a
            coluna dava 11,1% para AGO/26 contra os 12,4% do card de
            absenteísmo, e o painel se contradizia na mesma tela. */
-        var atr=n(r.atrasosPonto)>0?n(r.atrasosPonto):n(r.ausAtraso);
+        var atr=atrDe(r,ap);
         var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+atr;
         var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
         return { setor:String(r.setor||'').trim()||'(sem setor)', direto:/^s/i.test(String(r.direto||'')), pessoas:n(r.pessoas),
@@ -5097,7 +5117,7 @@ window.SetorHE = (function(){
    HISTORICO: JAN–JUN voltaram aos valores anteriores ao ponto e JUL e AGO
    ficaram zerados. */
 function salvarLocal(d){
-  d=(d||[]).map(normalizarRegistro);
+  d=_normalizarLista(d||[]);
   try{ localStorage.setItem(SK,JSON.stringify(d)); }catch(e){}
   _idbSave(d);
   if(window.DashBus) window.DashBus.emit('dados:salvos', d);
@@ -5105,7 +5125,7 @@ function salvarLocal(d){
 }
 
 function save(d){
-  d=(d||[]).map(normalizarRegistro);
+  d=_normalizarLista(d||[]);
   localStorage.setItem(SK,JSON.stringify(d));
   _idbSave(d); /* backup persistente no IndexedDB */
   /* Notifica todos os módulos registrados que os dados mudaram */
@@ -5187,7 +5207,8 @@ var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFal
   'producaoReal','prodSemExtras','meta','eficiencia','eficienciaAdj','margem',
   'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao','horasFerias',
   'produtosReportados','volumesProduzidos','quilosProduzidos','planoNaHistorico',
-  'naoTrabalhadas','faltasPonto','atrasosPonto','ausFalta','ausAtestado','ausAfastado','ausAtraso'];
+  'naoTrabalhadas','faltasPonto','atrasosPonto','ausFalta','ausAtestado','ausAfastado','ausAtraso',
+  'atrasoDuplicado','duplicidadeApurada'];
 
 /* ── TRADUÇÃO DE CABEÇALHO ──
    Quase toda coluna da planilha já usa o nome do campo (producaoReal,
@@ -5778,6 +5799,9 @@ window.DashUtils = (function() {
     var tolErp = opts.tolErp >= 0 ? opts.tolErp : 1;    /* % de diferença tolerada contra o ERP */
     var erpDesde = opts.erpDesde > 0 ? opts.erpDesde : 2025;
     var itens = [], meses = 0, comItem = {};
+    /* a mesma base da tela: quem chama passa a decisão tomada sobre todos os
+       anos; sem ela, decide sobre os meses recebidos */
+    var aplicarDup = typeof opts.aplicarDuplicidade === 'boolean' ? opts.aplicarDuplicidade : duplicidadeCompleta(regs).completa;
     function add(r, nivel, tipo, msg, encontrado, esperado) {
       itens.push({ mes:r.mes, ano:r.ano, nivel:nivel, tipo:tipo, msg:msg,
                    encontrado:encontrado, esperado:esperado });
@@ -5819,7 +5843,11 @@ window.DashUtils = (function() {
         add(r, 'atencao', 'ferias', 'Ponto lançado sem horas de férias: as faltas ficam superestimadas até lançar as férias do mês', r.naoTrabalhadas, null);
       var temAus = r.ausFalta > 0 || r.ausAtestado > 0 || r.ausAfastado > 0 || r.ausAtraso > 0;
       if (r.naoTrabalhadas > 0 && temAus) {
-        var fecha = (r.faltas || 0) + (r.atraso || 0) + (r.horasFerias || 0);
+        /* pela regra do painel, não pelo que está gravado na planilha: é
+           conferência entre fontes, e o atraso gravado pode ser de antes da
+           duplicidade apurada */
+        var rz = normalizar(r, { erpDesde:erpDesde, aplicarDuplicidade:aplicarDup });
+        var fecha = (rz.faltas || 0) + (rz.atraso || 0) + (r.horasFerias || 0);
         /* b96.30 dizia "a diferença é igual às férias" quando batia com as
            férias do mês. Em ABR/26 bateu por coincidência: pessoa a pessoa, as
            férias estavam no ponto; a diferença eram 5 pessoas fora do extrato,
@@ -5827,6 +5855,12 @@ window.DashUtils = (function() {
            igual não é causa: o aviso volta a dizer só o que se sabe. */
         if (pctDif(r.naoTrabalhadas, fecha) > 10)
           add(r, 'atencao', 'ponto', 'Ponto e controle de faltas não fecham: não trabalhadas no ponto ≠ faltas + atrasos + férias do controle (diferença acima de 10%)', r.naoTrabalhadas, fecha);
+        /* nota: sem o ponto por pessoa deste mês não há como saber quanto do
+           atraso o controle já lançou como falta, e a correção não vale para
+           mês nenhum (uma base só). Some quando o extrato do mês for
+           processado com o PontoRH.gs que grava PONTO_PESSOA. */
+        if (r.atrasosPonto > 0 && !(r.duplicidadeApurada > 0))
+          add(r, 'info', 'duplicidade', 'Atraso sem apuração por pessoa: enquanto houver mês assim, o painel não tira de nenhum mês o atraso que o RH também lançou como falta. Processar de novo o extrato do ponto deste mês', r.atrasosPonto, null);
       }
       if (r.qtdeFaturado > 0 && P === r.qtdeFaturado)
         add(r, 'atencao', 'copia', 'Produção real igual ao faturado: conferir com o reporte do ERP', P, r.produtosReportados > 0 ? r.produtosReportados : null);
@@ -5872,7 +5906,17 @@ window.DashUtils = (function() {
                           o atraso no relógio; o controle só registra o que o
                           líder anota (AGO/26: 207,6 h no ponto, 12,3 h no
                           controle). Sem ponto: ausAtraso do controle. Sem os
-                          dois, o digitado
+                          dois, o digitado. Com controle E ponto, menos
+                          atrasoDuplicado: o RH lança atraso e saída antecipada
+                          como FALTA, e a mesma hora entrava no controle e no
+                          ponto. O PontoRH.gs apura pessoa a pessoa (ABR/26
+                          201,7 h: 14,06% → 12,58%; SET/26 80,6 h: 7,50% →
+                          6,97%). Só com cfg.aplicarDuplicidade, que quem
+                          chama decide sobre a base inteira
+                          (duplicidadeCompleta): ou todos os meses com ponto e
+                          controle saem apurados, ou nenhum. Um mês corrigido
+                          ao lado de outro sem correção mostraria queda de
+                          atraso que é só mudança de conta
        totalFaltaAtraso = faltas + atraso
        totalExtras      = extra50 + extra100
        horasTotais      = horasNormais + totalExtras
@@ -5887,6 +5931,22 @@ window.DashUtils = (function() {
        custoCap         = totalFaltaAtraso × (producaoReal ÷ horasNormais) × ticketMedio
      Entrada ausente → a derivada correspondente fica como estava. Não muda
      o objeto recebido: devolve uma cópia. */
+  /* Uma base só para o atraso contado duas vezes: a correção vale para todos
+     os meses ou para nenhum. completa = nenhum mês com ponto E controle sem
+     a apuração do PontoRH.gs (duplicidadeApurada), e pelo menos um apurado.
+     faltam = os meses que ainda seguram a correção (processar de novo o
+     extrato do ponto de cada um). */
+  function duplicidadeCompleta(regs) {
+    var faltam = [], apurados = 0;
+    (regs || []).forEach(function (r) {
+      if (!r) return;
+      var num = function (v) { var x = typeof v === 'number' ? v : parseFloat(v); return isFinite(x) ? x : 0; };
+      var temAus = num(r.ausFalta) > 0 || num(r.ausAtestado) > 0 || num(r.ausAfastado) > 0 || num(r.ausAtraso) > 0;
+      if (!(num(r.naoTrabalhadas) > 0 && temAus && num(r.atrasosPonto) > 0)) return;
+      if (num(r.duplicidadeApurada) > 0) apurados++; else faltam.push(r.mes + '/' + String(r.ano).slice(2));
+    });
+    return { completa: !faltam.length && apurados > 0, faltam: faltam, apurados: apurados };
+  }
   function normalizar(r, cfg) {
     if (!r) return r;
     cfg = cfg || {};
@@ -5898,7 +5958,7 @@ window.DashUtils = (function() {
     if (n(o.produtosReportados) > 0 && n(o.ano) >= desde) o.producaoReal = Math.round(o.produtosReportados);
     var temAus = n(o.ausFalta) > 0 || n(o.ausAtestado) > 0 || n(o.ausAfastado) > 0 || n(o.ausAtraso) > 0;
     if (temAus) {
-      o.atraso = r1(n(o.naoTrabalhadas) > 0 ? n(o.atrasosPonto) : n(o.ausAtraso));
+      o.atraso = r1(n(o.naoTrabalhadas) > 0 ? Math.max(0, n(o.atrasosPonto) - (cfg.aplicarDuplicidade ? n(o.atrasoDuplicado) : 0)) : n(o.ausAtraso));
       o.faltas = r1(n(o.ausFalta) + n(o.ausAtestado) + n(o.ausAfastado));
     } else if (n(o.naoTrabalhadas) > 0) {
       o.atraso = r1(n(o.atrasosPonto));
@@ -6013,7 +6073,7 @@ window.DashUtils = (function() {
   return { getDias:getDias, getFat:getFat, getProd:getProd,
            periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
-           integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar,
+           integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar, duplicidadeCompleta:duplicidadeCompleta,
            absMotivos:absMotivos, absComparar:absComparar, custoHE:custoHE,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
@@ -21681,7 +21741,8 @@ window.CompAnos = (function () {
         ? '<div style="color:var(--t3);margin:6px 0 4px;line-height:1.4">Conferido contra a própria linha, o reporte do ERP e o Plano Mestre. '
           +'As colunas calculadas saem da regra do painel; "planilha desatualizada" significa que a HISTORICO ainda guarda a conta antiga. '
           +'Erro é entrada impossível: corrige na HISTORICO. Não apresente com erro em aberto.'
-          +(I.notas?' Nota é registro, não pendência: a previsão da época fica guardada na HISTORICO enquanto o painel usa o Plano Mestre.':'')+'</div>'
+          +(I.itens.some(function(i){ return i.tipo==='plano'; })?' Nota de plano é registro, não pendência: a previsão da época fica guardada na HISTORICO enquanto o painel usa o Plano Mestre.':'')
+          +(I.itens.some(function(i){ return i.tipo==='duplicidade'; })?' Nota de atraso: o absenteísmo pode estar alto (em ABR/26 eram 1,5 p.p.). A correção só entra quando todos os meses estiverem apurados, para os meses ficarem na mesma base.':'')+'</div>'
           +'<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:.74rem">'
           +'<thead><tr style="color:var(--t3);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;text-align:left">'
           +'<th style="padding:3px 6px">Mês</th><th style="padding:3px 6px">Nível</th><th style="padding:3px 6px">O que não fecha</th>'
@@ -22224,7 +22285,7 @@ window.CompAnos = (function () {
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
     var bruto=(typeof loadBruto==='function')?loadBruto().filter(function(r){ return r.ano===ano; }):doAno;
-    corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025}), ano)
+    corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025,aplicarDuplicidade:duplicidadeAplicada()}), ano)
       +manchete
       +faixa('1','O plano cabe sem hora extra?', r1Curta, c1, b2,
              (r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
@@ -23577,9 +23638,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.35';
+var APP_VERSAO = 'b96.36';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.36', data:'13/10/2026', itens:[
+    'Absenteismo sem atraso contado duas vezes: o RH lanca atraso e saida antecipada como FALTA no controle, e o painel somava as faltas do controle mais o atraso do ponto. O PontoRH.gs passa a apurar pessoa a pessoa quanto do atraso do ponto ja esta nas faltas (atrasoDuplicado, na HISTORICO e por setor na PONTO_SETOR) e o painel tira essa parte do atraso. ABR/26: 201,7 h, 14,06% vira 12,58%. SET/26: 80,6 h, 7,50% vira 6,97%.',
+    'Tabela de setores (Reuniao e apresentacao) com a mesma regra: sem isso a linha da fabrica daria 7,5% em SET/26 contra 7,0% no card.',
+    'Uma base so: a correcao vale para todos os meses ou para nenhum. Enquanto houver mes com ponto e controle sem a apuracao (hoje MAR e MAI a AGO/26 precisam do extrato reexportado), nenhum mes muda. Corrigir so ABR e SET mostraria o atraso de SET caindo de 1,43% para 0,40% contra AGO, quando a maior parte e mudanca de conta.',
+    'Integridade: ponto x controle conferido pela regra da tela, nao pelo atraso gravado na planilha. Mes com ponto e controle sem a apuracao ganha uma nota (nao pinta a barra): processar de novo o extrato do ponto do mes.'
+  ]},
   { v:'b96.35', data:'13/10/2026', itens:[
     'Apresentacao para lideres maior: o slide ocupa quase a tela toda (1792 x 1008 numa TV 1920 x 1080) e a letra cresce junto. Graficos dos slides de duas colunas usam a altura livre. As tabelas nao cresciam com o slide porque o tema do painel fixava a letra em 12 px; agora acompanham (18 px na TV). Conferido em 1920 x 1080, 1366 x 768 e 2560 x 1080, fundo escuro e branco.'
   ]},
