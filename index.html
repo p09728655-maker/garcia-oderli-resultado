@@ -5012,6 +5012,9 @@ function load(){ return _normalizarLista(loadBruto()); }
        úteis por pessoa, já sem férias e afastamento), antes de falta e
        atraso; no ano, a soma dos meses;
      • HE do setor = extra50 + extra100 ÷ horas normais do setor;
+     • HE em pessoas = HE ÷ jornada cheia do mês: quantas pessoas em
+       jornada normal a hora extra equivale; no ano, HE do ano ÷ soma das
+       jornadas = média por mês;
      • "alta" = acima da razão da fábrica (diretos) no mesmo mês, não de um
        limite fixo — o limite de 8% do painel é sobre PEÇAS, e por setor só
        há horas;
@@ -5035,6 +5038,20 @@ window.SetorHE = (function(){
      contra 7,0% no card. */
   function aplicarDup(){ try{ return typeof window.duplicidadeAplicada==='function'&&!!window.duplicidadeAplicada(); }catch(e){ return false; } }
   function atrDe(r, ap){ return n(r.atrasosPonto)>0?Math.max(0,n(r.atrasosPonto)-(ap?n(r.atrasoDuplicado):0)):n(r.ausAtraso); }
+  /* Jornada cheia do mês = a carga por pessoa mais frequente entre os setores
+     (a regra do PontoRH.gs, que usa a moda por pessoa); empate fica com a
+     maior. Conferido em JAN–SET/26: igual a 8,8 h × dias trabalhados da
+     HISTORICO em todos (SET/26 = 184,8 h). Quem tirou férias ou entrou no
+     meio do mês baixa a média do setor, não a moda. */
+  function jornadaCheia(linhas){
+    var cont={}, melhor=0, j=0;
+    linhas.forEach(function(r){
+      var p=n(r.pessoas), c=n(r.horasCarga); if(!(p>0&&c>0)) return;
+      var k=Math.round(c/p*10)/10; cont[k]=(cont[k]||0)+1;
+      if(cont[k]>melhor||(cont[k]===melhor&&k>j)){ melhor=cont[k]; j=k; }
+    });
+    return j;
+  }
   /* Um mês ou o ano inteiro, pela mesma conta. No ano as horas somam e as
      pessoas viram média mensal: somar 93 pessoas de oito meses daria 744.
      meses = lista de códigos, ou null para todos os meses do ano que tiverem
@@ -5042,11 +5059,12 @@ window.SetorHE = (function(){
   function doPeriodo(ano, meses){
     ano=parseInt(ano,10);
     var alvo=meses?meses.map(function(m){ return String(m||'').trim().toUpperCase().slice(0,3); }):null;
-    var por={}, nomes=[], ap=aplicarDup();
+    var por={}, nomes=[], ap=aplicarDup(), doMesDe={};
     carregar().forEach(function(r){
       if(parseInt(r.ano,10)!==ano) return;
       var m=String(r.mes||'').trim().toUpperCase().slice(0,3);
       if(alvo && alvo.indexOf(m)<0) return;
+      (doMesDe[m]=doMesDe[m]||[]).push(r);
       var he=n(r.totalExtras)||(n(r.extra50)+n(r.extra100)), hn=n(r.horasNormais);
       var atr=atrDe(r,ap);
       var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+atr;
@@ -5060,9 +5078,11 @@ window.SetorHE = (function(){
       a.e50+=n(r.extra50); a.e100+=n(r.extra100); a.aus+=aus;
       if(hn>0||he>0||n(r.pessoas)>0) a.meses++;
     });
+    var jor=Object.keys(doMesDe).reduce(function(t,m){ return t+jornadaCheia(doMesDe[m]); },0);
     return nomes.map(function(k){
       var a=por[k];
       a.pessoas=a.meses>0?a.pessoas/a.meses:0;
+      a.jor=jor; a.heP=jor>0?a.he/jor:null;
       a.hePct=a.hn>0?a.he/a.hn*100:0;
       a.absPct=(a.temAus&&a.hn>0)?a.aus/a.hn*100:null;
       return a;
@@ -5071,8 +5091,9 @@ window.SetorHE = (function(){
   function doMes(mes, ano){
     mes=String(mes||'').trim().toUpperCase().slice(0,3); ano=parseInt(ano,10);
     var ap=aplicarDup();
-    return carregar().filter(function(r){ return String(r.mes||'').trim().toUpperCase().slice(0,3)===mes && parseInt(r.ano,10)===ano; })
-      .map(function(r){
+    var lin=carregar().filter(function(r){ return String(r.mes||'').trim().toUpperCase().slice(0,3)===mes && parseInt(r.ano,10)===ano; });
+    var jor=jornadaCheia(lin);
+    return lin.map(function(r){
         var he=n(r.totalExtras)||(n(r.extra50)+n(r.extra100)), hn=n(r.horasNormais);
         /* Mesma regra do painel (DashUtils.normalizar): faltas = ausFalta +
            ausAtestado + ausAfastado, e atraso = atrasosPonto quando há ponto
@@ -5083,7 +5104,7 @@ window.SetorHE = (function(){
         var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+atr;
         var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
         return { setor:String(r.setor||'').trim()||'(sem setor)', direto:/^s/i.test(String(r.direto||'')), pessoas:n(r.pessoas),
-                 hc:n(r.horasCarga), hn:hn, he:he, e50:n(r.extra50), e100:n(r.extra100), hePct:hn>0?he/hn*100:0,
+                 hc:n(r.horasCarga), hn:hn, he:he, jor:jor, heP:jor>0?he/jor:null, e50:n(r.extra50), e100:n(r.extra100), hePct:hn>0?he/hn*100:0,
                  aus:aus, absPct:(temAus&&hn>0)?aus/hn*100:null };
       });
   }
@@ -5103,6 +5124,7 @@ window.SetorHE = (function(){
     var heDir=sum(dir,'he'), hnDir=sum(dir,'hn'), hcDir=sum(dir,'hc'), heInd=sum(ind,'he'), hnInd=sum(ind,'hn');
     var ausDir=sum(dir,'aus'), temAusDir=dir.some(function(x){ return x.absPct!==null; });
     var ref=hnDir>0?heDir/hnDir*100:0;   /* razão da fábrica (diretos) */
+    var jor=lin[0].jor||0;
     dir.forEach(function(x){
       x.parte=heDir>0?x.he/heDir*100:0;
       /* Setor com menos de SETOR_MIN_PESSOAS não ganha leitura nem destaque:
@@ -5115,14 +5137,18 @@ window.SetorHE = (function(){
     });
     dir.sort(function(a,b){ return b.he-a.he; });
     var top=dir.slice(0,3).filter(function(x){ return x.he>0; });
-    return { mes:mes, ano:ano, rotulo:rotulo, varios:(rotulo===String(ano)||/–/.test(rotulo)), setores:dir, indiretos:ind, heDir:heDir, hnDir:hnDir, hcDir:hcDir, heInd:heInd, hnInd:hnInd,
+    return { mes:mes, ano:ano, rotulo:rotulo, varios:(rotulo===String(ano)||/–/.test(rotulo)), setores:dir, indiretos:ind, heDir:heDir, hnDir:hnDir, hcDir:hcDir, heInd:heInd, hcInd:sum(ind,'hc'),
+             jornada:jor, hePesDir:jor>0?heDir/jor:null, hePesInd:jor>0?heInd/jor:null, hnInd:hnInd,
              refPct:ref, absDir:(temAusDir&&hnDir>0)?ausDir/hnDir*100:null, absCrit:absCrit,
              top:top, topParte:top.reduce(function(t,x){ return t+x.parte; },0),
              cobrindo:dir.filter(function(x){ return x.leitura==='cobrindo falta'; }),
              capacidade:dir.filter(function(x){ return x.leitura==='capacidade'; }) };
   }
   function lista(arr){ var v=arr.map(function(x){ return nome(x.setor); }); return v.join(', ').replace(/, ([^,]*)$/,' e $1'); }
-  return { SK:SK_SET, carregar:carregar, doMes:doMes, doPeriodo:doPeriodo, resumo:resumo, nome:nome, lista:lista };
+  /* texto do título das colunas novas, igual nas três telas */
+  function tituloDisp(){ return 'Carga do ponto: horas da escala do mês (jornada × dias úteis por pessoa), já sem férias e afastamento. É o que o setor tinha para trabalhar em jornada normal, antes de falta e atraso'; }
+  function tituloPes(RS){ return 'HE ÷ jornada cheia do mês'+(RS&&RS.jornada>0?(RS.varios?' (soma das jornadas do período: '+Math.round(RS.jornada).toLocaleString('pt-BR')+' h; dá a média por mês)':' ('+RS.jornada.toLocaleString('pt-BR',{maximumFractionDigits:1})+' h)'):'')+': quantas pessoas em jornada normal a hora extra equivale. Conta só horas: quem entra também falta e aprende o posto'; }
+  return { SK:SK_SET, carregar:carregar, doMes:doMes, tituloDisp:tituloDisp, tituloPes:tituloPes, doPeriodo:doPeriodo, resumo:resumo, nome:nome, lista:lista };
 })();
 /* Grava só no navegador, sem tocar na planilha. Existe porque save() sincroniza,
    e há dois caminhos que precisam popular a tela sem escrever na fonte: a carga
@@ -5361,21 +5387,23 @@ function renderSetoresHE(d){
   var cor=function(x){ return (x.leitura==='cobrindo falta'?'var(--red)':(x.leitura?'var(--amber)':'var(--t3)'))+'!important'; };
   var nC=' style="text-align:right;font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap"';
   var linhas=RS.setores.map(function(x){
-    return '<tr><td>'+x.setor+'</td><td'+nC+'>'+fi2(x.pessoas)+'</td><td'+nC+'>'+fi2(x.he)+'</td><td style="text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:'+(x.heAlta?'800':'600')+'">'+fd2(x.hePct,1)+'%</td><td'+nC+'>'+fd2(x.parte,0)+'%</td>'
+    return '<tr><td>'+x.setor+'</td><td'+nC+'>'+fi2(x.pessoas)+'</td><td'+nC+'>'+(x.hc>0?fi2(x.hc):'—')+'</td><td'+nC+'>'+fi2(x.he)+'</td><td'+nC+'>'+(x.heP===null?'—':fd2(x.heP,1))+'</td><td style="text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:'+(x.heAlta?'800':'600')+'">'+fd2(x.hePct,1)+'%</td><td'+nC+'>'+fd2(x.parte,0)+'%</td>'
       +'<td'+nC+'>'+(x.absPct===null?'—':fd2(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor(x)+';font-weight:'+(x.leitura?'700':'400')+'">'+(x.leitura||'—')+'</td></tr>';
   }).join('');
-  if(RS.indiretos.length) linhas+='<tr><td class="lid-tx" style="color:var(--t3)!important">Indiretos ('+RS.indiretos.length+' setores, fora da dependência de HE)</td><td'+nC+'>'+fi2(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nC+'>'+fi2(RS.heInd)+'</td><td'+nC+'>'+(RS.hnInd>0?fd2(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td'+nC+'>—</td><td'+nC+'>—</td><td class="lid-tx" style="color:var(--t3)!important">—</td></tr>';
-  linhas+='<tr class="lid-tot"><td>Fábrica (diretos)</td><td'+nC+'>'+fi2(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nC+'>'+fi2(RS.heDir)+'</td><td'+nC+'>'+fd2(RS.refPct,1)+'%</td><td'+nC+'>100%</td><td'+nC+'>'+(RS.absDir===null?'—':fd2(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr>';
+  if(RS.indiretos.length) linhas+='<tr><td class="lid-tx" style="color:var(--t3)!important">Indiretos ('+RS.indiretos.length+' setores, fora da dependência de HE)</td><td'+nC+'>'+fi2(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nC+'>'+(RS.hcInd>0?fi2(RS.hcInd):'—')+'</td><td'+nC+'>'+fi2(RS.heInd)+'</td><td'+nC+'>'+(RS.hePesInd===null?'—':fd2(RS.hePesInd,1))+'</td><td'+nC+'>'+(RS.hnInd>0?fd2(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td'+nC+'>—</td><td'+nC+'>—</td><td class="lid-tx" style="color:var(--t3)!important">—</td></tr>';
+  linhas+='<tr class="lid-tot"><td>Fábrica (diretos)</td><td'+nC+'>'+fi2(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nC+'>'+(RS.hcDir>0?fi2(RS.hcDir):'—')+'</td><td'+nC+'>'+fi2(RS.heDir)+'</td><td'+nC+'>'+(RS.hePesDir===null?'—':fd2(RS.hePesDir,1))+'</td><td'+nC+'>'+fd2(RS.refPct,1)+'%</td><td'+nC+'>100%</td><td'+nC+'>'+(RS.absDir===null?'—':fd2(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr>';
   box.innerHTML='<div class="cHdr"><span class="cTtl">▸ '+RS.rotulo+' · '+fd2(RS.topParte,0)+'% da hora extra em '+SetorHE.lista(RS.top)+'</span></div>'
     +'<style>#ef-setores .lid-tab td,#ef-setores .lid-tab th{padding:4px 10px}</style>'
     +'<table class="lid-tab" style="font-size:.72rem;table-layout:fixed;width:100%"><thead><tr>'
       +'<th style="text-align:left">Setor</th>'
-      +'<th style="text-align:right;white-space:nowrap;width:9%">Pessoas</th>'
-      +'<th style="text-align:right;white-space:nowrap;width:9%">HE (h)</th>'
-      +'<th style="text-align:right;white-space:nowrap;width:13%" title="extra50 + extra100 ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th>'
-      +'<th style="text-align:right;white-space:nowrap;width:9%" title="Parte do setor nas horas extras dos diretos">% da HE</th>'
-      +'<th style="text-align:right;white-space:nowrap;width:9%" title="falta + atestado + afastado + atraso ÷ horas normais do setor (controle do RH)">Falta</th>'
-      +'<th style="text-align:left;white-space:nowrap;width:16%" title="Cobrindo falta: HE alta e falta acima de '+RS.absCrit+'%. Capacidade: HE alta com falta dentro do limite">Leitura</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:8%">Pessoas</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:10%" title="'+SetorHE.tituloDisp()+'">H. disponível</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:8%">HE (h)</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:10%" title="'+SetorHE.tituloPes(RS)+'">HE em pessoas</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:11%" title="extra50 + extra100 ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:8%" title="Parte do setor nas horas extras dos diretos">% da HE</th>'
+      +'<th style="text-align:right;white-space:nowrap;width:8%" title="falta + atestado + afastado + atraso ÷ horas normais do setor (controle do RH)">Falta</th>'
+      +'<th style="text-align:left;white-space:nowrap;width:14%" title="Cobrindo falta: HE alta e falta acima de '+RS.absCrit+'%. Capacidade: HE alta com falta dentro do limite">Leitura</th>'
     +'</tr></thead><tbody>'+linhas+'</tbody></table>'
     +'<div style="font-size:.62rem;color:var(--t3);margin-top:8px">Fonte: aba PONTO_SETOR (extrato do ponto + controle de faltas do RH). '+(RS.varios?'Horas somadas no período; pessoas é a média mensal. ':'')+'Hora por setor, não peça por setor: a produção é da fábrica inteira. Setor = o atual da pessoa na FUNCIONARIOS. HE "alta" = acima da razão da fábrica no mês ('+fd2(RS.refPct,1)+'%); o limite de 8% do painel é sobre peças e não se aplica por setor.</div>';
 }
@@ -21643,6 +21671,12 @@ window.CompAnos = (function () {
     +'.reu-set-tab td{padding:5px 10px!important;font-size:.82rem!important;font-weight:400;border-top:1px solid rgba(255,255,255,.05)}'
     +'.reu-set-tab td.n{text-align:right;font-family:var(--sans);font-variant-numeric:tabular-nums;white-space:nowrap}'
     +'.reu-set-tab td.forte{font-weight:600}'
+    /* hora extra por setor: nove colunas na metade da tela. Cabeçalho quebra
+       em duas linhas e o respiro diminui; sem isso a tabela passava 84 px da
+       caixa em 1920 e rolava de lado */
+    +'.reu-set-he th{white-space:normal!important;vertical-align:bottom;line-height:1.25}'
+    +'.reu-set-he th,.reu-set-he td{padding:5px 7px!important}'
+    +'.tv-mode #page-reuniao .reu-set-he th,.tv-mode #page-reuniao .reu-set-he td{padding:6px 6px!important}'
     +'.reu-set-tab .reu-set-tot td{border-top:1px solid var(--b);font-weight:600}'
     +'.reu-set-resto:hover td{background:rgba(245,166,35,.07)}'
     +'.reu-set-tab td.reu-abs-cai{color:#4CAF50!important}.reu-set-tab td.reu-abs-sobe{color:#F44336!important}'
@@ -21676,6 +21710,7 @@ window.CompAnos = (function () {
         +'<td'+nCel+'>'+fi(x.pessoas)+'</td>'
         +'<td'+nCel+'>'+(x.hc>0?fi(x.hc):'—')+'</td>'
         +'<td'+nCel+'>'+fi(x.he)+'</td>'
+        +'<td'+nCel+'>'+(x.heP===null?'—':fd(x.heP,1))+'</td>'
         +'<td class="n'+(x.heAlta?' forte':'')+'">'+fd(x.hePct,1)+'%</td>'
         +'<td'+nCel+'>'+fd(x.parte,0)+'%</td>'
         +'<td'+nCel+'>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td>'
@@ -21683,16 +21718,19 @@ window.CompAnos = (function () {
     };
     var frase=fd(parteTres,0)+'% da hora extra está em '+SetorHE.lista(tres)+'.'
       +(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' a falta também passa de '+RS.absCrit+'%: hora extra cobrindo presença.':'')
-      +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro do limite: é capacidade.':'');
+      +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro do limite: é capacidade.':'')
+      +(RS.hePesDir>0?(RS.varios?' Em média, a hora extra dos diretos equivale a '+fd(RS.hePesDir,1)+' pessoas a mais por mês em jornada normal.'
+                                :' A hora extra dos diretos equivale a '+fd(RS.hePesDir,1)+' pessoas em jornada normal ('+fd(RS.jornada,1)+' h no mês).'):'');
     return '<div class="reu-setores" style="margin:10px 2px 0">'+REU_DET_CSS
       +'<div class="reu-set-h">▸ Onde está a hora extra · '+RS.rotulo+'</div>'
       +'<div class="reu-set-p">'+frase+'</div>'
-      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="min-width:600px">'
+      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab reu-set-he" style="min-width:640px">'
       +'<thead><tr>'
         +'<th style="text-align:left;width:auto">Setor</th>'
         +'<th style="text-align:right;width:8%;white-space:nowrap">Pessoas</th>'
-        +'<th style="text-align:right;width:11%;white-space:nowrap" title="Carga do ponto: horas da escala do mês (8,8 h × dias úteis por pessoa), já sem férias e afastamento. É o que o setor tinha para trabalhar em jornada normal, antes de falta e atraso">H. disponível</th>'
-        +'<th style="text-align:right;width:9%;white-space:nowrap" title="extra50 + extra100 do ponto">HE (h)</th>'
+        +'<th style="text-align:right;width:11%;white-space:nowrap" title="'+SetorHE.tituloDisp()+'">H. disponível</th>'
+        +'<th style="text-align:right;width:8%;white-space:nowrap" title="extra50 + extra100 do ponto">HE (h)</th>'
+        +'<th style="text-align:right;width:10%;white-space:nowrap" title="'+SetorHE.tituloPes(RS)+'">HE em pessoas</th>'
         +'<th style="text-align:right;width:12%;white-space:nowrap" title="HE ÷ horas normais do setor. Em destaque: acima da fábrica">HE ÷ normais</th>'
         +'<th style="text-align:right;width:8%;white-space:nowrap" title="Parte do setor nas horas extras dos diretos">% da HE</th>'
         +'<th style="text-align:right;width:9%;white-space:nowrap" title="falta, atestado, afastado e atraso ÷ horas normais do setor">Falta</th>'
@@ -21701,9 +21739,9 @@ window.CompAnos = (function () {
       +top.map(linha).join('')
       +(resto.length?('<tr class="reu-set-resto" onclick="reuSetoresMais(this)" title="Abrir os outros setores" style="cursor:pointer">'
           +'<td class="reu-set-nome" style="color:var(--t3)!important"><span id="reu-set-lbl">▸ Outros '+resto.length+' setores diretos</span></td>'
-          +'<td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.hc; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>'
+          +'<td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.hc; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>'+(RS.jornada>0?fd(hRest/RS.jornada,1):'—')+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>'
           +resto.map(function(x){ return linha(x).replace('<tr>','<tr class="reu-set-extra" style="display:none">'); }).join('')):'')
-      +'<tr class="reu-set-tot"><td class="reu-set-nome">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+(RS.hcDir>0?fi(RS.hcDir):'—')+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
+      +'<tr class="reu-set-tot"><td class="reu-set-nome">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+(RS.hcDir>0?fi(RS.hcDir):'—')+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+(RS.hePesDir===null?'—':fd(RS.hePesDir,1))+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
       +'</tbody></table></div></div>';
   }
 
@@ -22969,14 +23007,14 @@ window.CompAnos = (function () {
         +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro: é capacidade.':'');
       var linhaSet=function(x){
         var cor=x.leitura==='cobrindo falta'?'#F44336':(x.leitura==='capacidade'?'#FF9800':(x.leitura?'#FF9800':'#888'));
-        return '<tr><td>'+x.setor+'</td><td>'+fi(x.pessoas)+'</td><td>'+fi(x.he)+'</td><td'+(x.heAlta?' style="font-weight:800"':'')+'>'+fd(x.hePct,1)+'%</td><td>'+fd(x.parte,0)+'%</td>'
-          +'<td>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor+'">'+(x.leitura||'—')+'</td></tr>';
+        return '<tr><td>'+x.setor+'</td><td>'+fi(x.pessoas)+'</td><td>'+(x.hc>0?fi(x.hc):'—')+'</td><td>'+fi(x.he)+'</td><td>'+(x.heP===null?'—':fd(x.heP,1))+'</td><td'+(x.heAlta?' style="font-weight:800"':'')+'>'+fd(x.hePct,1)+'%</td><td>'+fd(x.parte,0)+'%</td>'
+          +'<td>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor+'!important">'+(x.leitura||'—')+'</td></tr>';
       };
-      var tabSet='<table class="lid-tab"><thead><tr><th>Setor</th><th>Pessoas</th><th>HE (h)</th><th>HE ÷ normais</th><th>% da HE</th><th>Falta</th><th class="lid-tx">Leitura</th></tr></thead><tbody>'
+      var tabSet='<table class="lid-tab"><thead><tr><th>Setor</th><th>Pessoas</th><th>H. disponível</th><th>HE (h)</th><th>HE em pessoas</th><th>HE ÷ normais</th><th>% da HE</th><th>Falta</th><th class="lid-tx">Leitura</th></tr></thead><tbody>'
         +RS.setores.map(linhaSet).join('')
-        +(RS.indiretos.length?'<tr><td class="lid-tx" style="color:#888">Indiretos ('+RS.indiretos.length+' setores, fora do '+fd(ref.hePct,1)+'%)</td><td>'+fi(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi(RS.heInd)+'</td><td>'+(RS.hnInd>0?fd(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>':'')
-        +'<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi(RS.heDir)+'</td><td>'+fd(RS.refPct,1)+'%</td><td>100%</td><td>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr></tbody></table>';
-      S.push('<h1 class="lid-h">'+h4b+'</h1><div class="lid-sub">Horas extras do ponto por setor · HE ÷ horas normais do setor, "alta" = acima da fábrica ('+fd(RS.refPct,1)+'%) · falta = falta, atestado, afastado e atraso ÷ horas normais · limite '+RS.absCrit+'%</div>'
+        +(RS.indiretos.length?'<tr><td class="lid-tx" style="color:#888">Indiretos ('+RS.indiretos.length+' setores, fora do '+fd(ref.hePct,1)+'%)</td><td>'+fi(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+(RS.hcInd>0?fi(RS.hcInd):'—')+'</td><td>'+fi(RS.heInd)+'</td><td>'+(RS.hePesInd===null?'—':fd(RS.hePesInd,1))+'</td><td>'+(RS.hnInd>0?fd(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>':'')
+        +'<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+(RS.hcDir>0?fi(RS.hcDir):'—')+'</td><td>'+fi(RS.heDir)+'</td><td>'+(RS.hePesDir===null?'—':fd(RS.hePesDir,1))+'</td><td>'+fd(RS.refPct,1)+'%</td><td>100%</td><td>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr></tbody></table>';
+      S.push('<h1 class="lid-h">'+h4b+'</h1><div class="lid-sub">Horas extras do ponto por setor · H. disponível = carga da escala, sem férias e afastamento · HE em pessoas = HE ÷ jornada do mês ('+fd(RS.jornada,1)+' h) · HE ÷ horas normais do setor, "alta" = acima da fábrica ('+fd(RS.refPct,1)+'%) · falta = falta, atestado, afastado e atraso ÷ horas normais · limite '+RS.absCrit+'%</div>'
         +tabSet
         +'<div class="lid-p lid-small">Cobrindo falta = hora extra alta num setor com falta acima do limite: a HE repõe presença. Capacidade = hora extra alta com falta dentro do limite: o setor não dá conta na jornada normal. '
         +'É hora por setor, não peça por setor; a produção é da fábrica inteira. O setor é o atual da pessoa na lista do RH.</div>'+rod);
@@ -23824,9 +23862,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.44';
+var APP_VERSAO = 'b96.45';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.45', data:'13/10/2026', itens:[
+    'Hora extra por setor ganha a coluna HE em pessoas: HE do setor dividida pela jornada cheia do mes (a carga por pessoa mais frequente, igual a 8,8 h x dias trabalhados em JAN a SET/26; SET = 184,8 h). Diz quantas pessoas em jornada normal a hora extra equivale (EMBALAGEM SET/26: 424 h = 2,3 pessoas; diretos 1.130 h = 6,1). Em Ano todo, HE do ano dividida pela soma das jornadas: media por mes. Conta so horas, nao a falta nem a curva de aprendizado de quem entra.',
+    'H. disponivel e HE em pessoas agora nas tres telas: Reuniao, aba Eficiencia e Horas e slide de hora extra por setor dos Lideres. Na Reuniao a frase fecha com o total em pessoas e o cabecalho da tabela quebra em duas linhas para caber na metade da tela em 1920.',
+    'Slide dos Lideres: a coluna Leitura volta a ter cor (vermelho cobrindo falta, ambar capacidade); o tema escuro vencia o estilo da celula, o mesmo defeito ja corrigido na Reuniao e na aba Eficiencia.'
+  ]},
   { v:'b96.44', data:'13/10/2026', itens:[
     'Reuniao do Mes, Onde esta a hora extra: nova coluna H. disponivel por setor, a carga do ponto (horas da escala do mes, 8,8 h x dias uteis por pessoa, ja sem ferias e afastamento), antes de falta e atraso. Na linha Outros, a soma dos setores agrupados; em Fabrica diretos, a soma dos diretos, que bate com o horasCarga da HISTORICO em todos os meses de 2026 (SET/26 = 15.479 h). Em Ano todo, a soma dos meses.'
   ]},
