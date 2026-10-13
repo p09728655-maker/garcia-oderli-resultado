@@ -4273,10 +4273,15 @@ body.lid-on{overflow:hidden}
 .lid-tab td{padding:.25em .4em;border-top:1px solid #222}
 .lid-tab td:nth-child(n+2){font-family:var(--mono);text-align:right}
 .lid-tab td.lid-tx{text-align:left;font-family:inherit}
+/* cabeçalho no mesmo alinhamento da coluna: o número fica à direita, então o
+   título dele também; antes "Plano" e "Feito" ficavam à esquerda, longe do
+   valor. Coluna de texto marca th.lid-tx. Igual no PDF (lidPdf). */
+.lid-tab th:nth-child(n+2){text-align:right}
+.lid-tab th.lid-tx{text-align:left}
 .lid-tot td{font-weight:800}
 .lid-dest td{color:#F5A623;font-weight:700}
 .lid-svg{width:100%;height:auto;display:block}
-.lid-lbl{font-size:22px;fill:#F5F5F5}.lid-lbl-b{font-weight:700}.lid-cat{font-size:24px;fill:#aaa}
+.lid-lbl{font-size:22px;fill:#F5F5F5}.lid-lbl-b{font-weight:700}.lid-lbl-base{fill:#111;font-weight:700}.lid-cat{font-size:24px;fill:#aaa}
 .lid-lbl-g{font-size:30px}.lid-cat-g{font-size:32px;fill:#ddd}
 .lid-leg{display:flex;gap:1.2em;font-size:.75em;color:#aaa;margin-top:.2em}
 .lid-leg i{display:inline-block;width:14px;height:9px;margin-right:5px;border-radius:2px;vertical-align:middle}
@@ -4291,6 +4296,31 @@ body.lid-on{overflow:hidden}
 #lid-ov .lid-bar button{width:40px;height:40px;border-radius:8px;border:1px solid rgba(245,166,35,.5);background:rgba(245,166,35,.12);color:#F5A623;font-size:1.2rem;cursor:pointer}
 #lid-ov .lid-bar button:disabled{opacity:.3;cursor:default}
 #lid-ov .lid-bar button.lid-x{width:auto;padding:0 14px;font-size:.78rem;font-family:inherit;border-color:#3A3A3A;background:transparent;color:#aaa}
+/* Fundo branco (botão na barra): as mesmas cores do PDF em papel (reuLideresPDF),
+   para sala clara ou projetor fraco. Só troca cor; layout e números iguais. */
+#lid-ov.claro{background:#E9ECEF}
+#lid-ov.claro .lid-stage{background:#fff;border-color:#D3D8DE;color:#1a1a2e}
+#lid-ov.claro .lid-sub,#lid-ov.claro .lid-clbl,#lid-ov.claro .lid-leg,#lid-ov.claro .lid-capa-r{color:#52606D}
+#lid-ov.claro .lid-card,#lid-ov.claro .lid-resumo,#lid-ov.claro .lid-box{background:#fff;border-color:#D3D8DE}
+#lid-ov.claro .lid-csub,#lid-ov.claro .lid-capa-s{color:#3E4C59}
+#lid-ov.claro .lid-k2{color:#1F2933}
+#lid-ov.claro .lid-k{color:#B8860B}
+/* o tema do painel declara td{color:var(--t1)!important} (texto claro): sem
+   !important aqui a tabela some no fundo branco */
+#lid-ov.claro .lid-tab th{color:#52606D!important;border-bottom-color:#D3D8DE}
+#lid-ov.claro .lid-tab td{color:#1F2933!important;border-top-color:#edf2f7}
+#lid-ov.claro .lid-dest td{color:#D9342B!important}
+#lid-ov.claro .lid-mix-l{border-bottom-color:#D3D8DE}
+#lid-ov.claro .lid-foot{color:#8a94a0;border-top-color:#edf2f7}
+#lid-ov.claro .lid-lbl{fill:#1F2933}
+#lid-ov.claro .lid-lbl-b{paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}
+#lid-ov.claro .lid-cat{fill:#52606D}
+#lid-ov.claro .lid-cat-g{fill:#1F2933}
+#lid-ov.claro polyline.lid-ln-claro{stroke:#1F2933}
+#lid-ov.claro circle.lid-pt-claro{fill:#1F2933}
+#lid-ov.claro i.lid-ln-claro{background:#1F2933!important}
+#lid-ov.claro .lid-bar{color:#3E4C59}
+#lid-ov.claro .lid-bar button.lid-x{border-color:#C6CBD3;color:#3E4C59}
 @media print { #lid-ov { display:none !important; } }
 </style>
 <div class="page on" id="page-reuniao">
@@ -22593,15 +22623,22 @@ window.CompAnos = (function () {
     var bars=o.bars||[], vmax=0;
     bars.forEach(function(b){ b.v.forEach(function(v){ if(v>vmax) vmax=v; }); });
     vmax=vmax*1.15||1;
-    var lmax=0; if(o.line){ o.line.v.forEach(function(v){ if(v>lmax) lmax=v; }); lmax=Math.max((o.line.max||0),lmax*1.3)||1; }
+    var lmax=0, lraw=0; if(o.line){ o.line.v.forEach(function(v){ if(v>lraw) lraw=v; }); lmax=Math.max((o.line.max||0),lraw*1.3)||1; }
+    /* barras e linha na mesma régua quando medem a mesma coisa (peças por hora
+       reais × na peça média do ano); sem isso cada série tem a sua escala */
+    if(o.mesmaEscala){ vmax=lmax=Math.max(vmax/1.15,lraw)*1.3||1; }
     var out='<svg viewBox="0 0 '+W+' '+Hh+'" class="lid-svg" role="img" aria-label="'+(o.aria||'')+'">';
     for(var g=0; g<=4; g++){ var y=top+ih-ih*g/4; out+='<line x1="'+left+'" x2="'+(W-right)+'" y1="'+y+'" y2="'+y+'" stroke="rgba(128,128,128,.25)" stroke-width="1"/>'; }
-    var bw=bars.length?Math.min(gw*0.32, 60):0;
+    /* uma série só com rótulo na base: barra mais larga, para o número caber dentro */
+    var larga=o.barLabelsBase&&bars.length===1;
+    var bw=bars.length?Math.min(gw*(larga?0.58:0.32), larga?84:60):0;
     bars.forEach(function(b,bi){
       for(var i=0;i<n;i++){
         var v=b.v[i]||0, h=v/vmax*ih, x=left+gw*i+gw/2-(bars.length*bw)/2+bi*bw;
         out+='<rect x="'+x+'" y="'+(top+ih-h)+'" width="'+(bw-3)+'" height="'+h+'" fill="'+b.cor+'" rx="2"/>';
-        if(o.barLabels) out+='<text x="'+(x+(bw-3)/2)+'" y="'+(top+ih-h-6)+'" text-anchor="middle" class="lid-lbl">'+(o.fmtBar?o.fmtBar(v):fi(v))+'</text>';
+        /* barLabelsBase: rótulo dentro da barra, junto da base — com uma linha
+           passando por cima, o rótulo acima da barra batia no da linha */
+        if(o.barLabels) out+='<text x="'+(x+(bw-3)/2)+'" y="'+(o.barLabelsBase&&h>40?(top+ih-12):(top+ih-h-6))+'" text-anchor="middle" class="lid-lbl'+(o.barLabelsBase&&h>40?' lid-lbl-base':'')+'">'+(o.fmtBar?o.fmtBar(v):fi(v))+'</text>';
       }
     });
     if(o.line){
@@ -22698,6 +22735,34 @@ window.CompAnos = (function () {
       +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Plano',cor:LID_COR.plano,v:ms.map(function(m){ return m.plano; })},{nome:'Produzido',cor:LID_COR.feito,v:ms.map(function(m){ return m.P; })}],
           line:{nome:'Hora extra ÷ jornada normal (%)',cor:LID_COR.linha,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20},h:520})+'</div>'
       +'<div>'+tab+'<div class="lid-p lid-small">'+t3+'</div></div></div>'+rod);
+    /* 3b · produção em quilos mês a mês — o par do slide 3. "1.673 peças por
+       dia, o maior do ano" sem o peso vira conquista inteira; em SET/26 a peça
+       pesou 20,1 kg contra 25,2 na média e, em toneladas por dia, setembro foi
+       o 6º de 9 meses. Base: jornada normal, a mesma do 1.673. Mês com kg/peça
+       fora de 0,6–1,67× a média do ano não entra (peso digitado com a linha
+       "Geral" do relatório quase dobra o mês — mesma régua do b96.16). Só
+       entra quando o mês de referência tem peso. */
+    var kgOk=M.kgPcAno>0?ms.filter(function(m){ return m.kg>0&&m.kgPc>=0.6*M.kgPcAno&&m.kgPc<=1.67*M.kgPcAno; }):[];
+    if(ref.kg>0&&kgOk.indexOf(ref)>=0&&kgOk.length>1){
+      var tDia=function(m){ return m.kgPc*m.pcDiaN/1000; };   /* toneladas por dia na jornada normal */
+      var pos=function(k){ var o=kgOk.slice().sort(function(a,b){ return k(b)-k(a); }); return o.indexOf(ref)+1; };
+      var posPc=pos(function(m){ return m.pcDiaN; }), posT=pos(tDia), nK=kgOk.length;
+      var ordinal=function(p){ return p===1?'o maior do ano':(p===nK?'o menor do ano':'o '+p+'º de '+nK+' meses'); };
+      var h3b=mesNome+' fez '+fi(ref.pcDiaN)+' peças por dia na jornada normal, '+ordinal(posPc)+'. Em quilos, '
+        +fd(tDia(ref),1)+' toneladas por dia, '+(posT===posPc?'também ':'')+ordinal(posT)
+        +(M.varKgPc!==null&&Math.abs(M.varKgPc)>=5?': a peça pesou '+fd(ref.kgPc,1)+' kg, '+fd(Math.abs(M.varKgPc),0)+'% mais '+(M.varKgPc<0?'leve':'pesada')+' que a média do ano.':'.');
+      var tKg=function(m){ return kgOk.indexOf(m)>=0; };
+      var tabKg='<table class="lid-tab"><thead><tr><th>Mês</th><th>Peças</th><th>Toneladas</th><th>kg/peça</th><th>Peças/dia</th><th>t/dia</th></tr></thead><tbody>'
+        +ms.map(function(m){ var ok=tKg(m); return '<tr'+(m===ref?' class="lid-dest"':'')+'><td>'+MES_MIN[m.mes]+'</td><td>'+fi(m.P)+'</td><td>'+(ok?fd(m.kg/1000,1):'—')+'</td>'
+          +'<td>'+(ok?fd(m.kgPc,1):'—')+'</td><td>'+fi(m.pcDiaN)+'</td><td>'+(ok?fd(tDia(m),1):'—')+'</td></tr>'; }).join('')
+        +(function(){ var kg=kgOk.reduce(function(a,m){ return a+m.kg; },0);
+            return '<tr class="lid-tot"><td>Ano</td><td>'+fi(M.tot.P)+'</td><td>'+fd(kg/1000,1)+'</td><td>'+fd(M.kgPcAno,1)+'</td><td>'+fi(M.tot.pcDiaN)+'</td><td>'+fd(M.kgPcAno*M.tot.pcDiaN/1000,1)+'</td></tr>'; })()
+        +'</tbody></table>';
+      S.push('<h1 class="lid-h">'+h3b+'</h1><div class="lid-sub">Colunas: toneladas por dia · Linha: peças por dia · os dois na jornada normal, sem hora extra · peso do REPORTE do ERP</div>'
+        +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Toneladas por dia',cor:LID_COR.plano,v:ms.map(function(m){ return tKg(m)?tDia(m):0; })}],barLabels:true,barLabelsBase:true,fmtBar:function(v){ return v>0?fd(v,1):''; },
+            line:{nome:'Peças por dia',cor:LID_COR.linha,v:ms.map(function(m){ return m.pcDiaN; }),fmt:function(v){ return fi(v); },max:Math.max.apply(null,ms.map(function(m){ return m.pcDiaN; }))*1.25},h:520})+'</div>'
+        +'<div>'+tabKg+'<div class="lid-p lid-small">Peças por dia contam quantas saíram; toneladas por dia, quanto material a fábrica transformou. Quando as peças sobem e as toneladas não, foi a peça que ficou mais leve, não a linha que rendeu mais. Peso corrige tamanho, não complexidade.</div></div></div>'+rod);
+    }
     /* 4 · hora extra */
     var m0=ms[0], minHE=ms.reduce(function(a,m){ return m.hePct<a.hePct?m:a; },ms[0]);
     var m0N=NOME_MES[m0.mes].toLowerCase();
@@ -22722,7 +22787,7 @@ window.CompAnos = (function () {
         return '<tr><td>'+x.setor+'</td><td>'+fi(x.pessoas)+'</td><td>'+fi(x.he)+'</td><td'+(x.heAlta?' style="font-weight:800"':'')+'>'+fd(x.hePct,1)+'%</td><td>'+fd(x.parte,0)+'%</td>'
           +'<td>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td><td class="lid-tx" style="color:'+cor+'">'+(x.leitura||'—')+'</td></tr>';
       };
-      var tabSet='<table class="lid-tab"><thead><tr><th>Setor</th><th>Pessoas</th><th>HE (h)</th><th>HE ÷ normais</th><th>% da HE</th><th>Falta</th><th>Leitura</th></tr></thead><tbody>'
+      var tabSet='<table class="lid-tab"><thead><tr><th>Setor</th><th>Pessoas</th><th>HE (h)</th><th>HE ÷ normais</th><th>% da HE</th><th>Falta</th><th class="lid-tx">Leitura</th></tr></thead><tbody>'
         +RS.setores.map(linhaSet).join('')
         +(RS.indiretos.length?'<tr><td class="lid-tx" style="color:#888">Indiretos ('+RS.indiretos.length+' setores, fora do '+fd(ref.hePct,1)+'%)</td><td>'+fi(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi(RS.heInd)+'</td><td>'+(RS.hnInd>0?fd(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td>—</td><td class="lid-tx">—</td></tr>':'')
         +'<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+fi(RS.heDir)+'</td><td>'+fd(RS.refPct,1)+'%</td><td>100%</td><td>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr></tbody></table>';
@@ -22753,13 +22818,26 @@ window.CompAnos = (function () {
           :(melhorAbs?' Nenhum mês de '+anoS+' chegou a '+M.absCrit+'% ainda; o melhor foi '+NOME_MES[melhorAbs.mes].toLowerCase()+' ('+fd(melhorAbs.abs,1)+'%).':''))+'</div></div></div>'+rod);
     /* 6 · peças por hora */
     var prox=M.abertos[0]||null, hNec=prox&&ref.pcH>0?prox.plano/ref.pcH:null;
+    /* Peças por hora na peça média do ano: o mesmo rendimento em quilos, contado
+       como se toda peça pesasse a média do ano. Em SET/26 as 2,33 peças por
+       hora viram 1,86, abaixo de mai (2,06), jul (2,09) e ago (2,04): o peso
+       explica a maior parte da subida desde janeiro (1,61 → 2,33 em peças,
+       1,70 → 1,86 na peça média). Só com o mês dentro da régua de peso (kgOk). */
+    var temMed=kgOk.length>1&&kgOk.indexOf(ref)>=0;
+    var pcHmed=function(m){ return (kgOk.indexOf(m)>=0)?m.pcH*m.kgPc/M.kgPcAno:0; };
+    var acimaMed=temMed?kgOk.filter(function(m){ return m!==ref&&pcHmed(m)>pcHmed(ref); }):[];
     var h6='Cada hora trabalhada '+(ref.pcH>m0.pcH?'está rendendo mais':'rende')+': de '+fd(m0.pcH,2)+' peça por hora em '+m0N+' para '+fd(ref.pcH,2)+' em '+ref2+'.'+(melhorPcH?(melhorKgH?' Foi a equipe que fez isso.'
-          :(mixLeve?' Parte disso é mix: a peça de '+ref2+' pesou '+fd(ref.kgPc,1)+' kg, contra '+fd(M.kgPcAno,1)+' kg na média do ano.'
+          :(mixLeve?(temMed?' Parte disso é mix: na peça média do ano ('+fd(M.kgPcAno,1)+' kg), '+ref2+' teria feito '+fd(pcHmed(ref),2)+' por hora.'
+                           :' Parte disso é mix: a peça de '+ref2+' pesou '+fd(ref.kgPc,1)+' kg, contra '+fd(M.kgPcAno,1)+' kg na média do ano.')
                    :' Em quilos por hora, '+ref2+' não foi o melhor mês.')):'');
-    S.push('<h1 class="lid-h">'+h6+'</h1><div class="lid-sub">Peças produzidas por hora trabalhada (normal e extra)</div>'
-      +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,line:{nome:anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.pcH; }),fmt:function(v){ return fd(v,2); },max:Math.max.apply(null,ms.map(function(m){ return m.pcH; }))*1.1},h:560})+'</div>'
+    S.push('<h1 class="lid-h">'+h6+'</h1><div class="lid-sub">Peças produzidas por hora trabalhada (normal e extra)'+(temMed?' · barras: o mesmo rendimento com a peça média do ano ('+fd(M.kgPcAno,1)+' kg)':'')+'</div>'
+      +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,
+          bars:temMed?[{nome:'Na peça média do ano ('+fd(M.kgPcAno,1)+' kg)',cor:LID_COR.cinza,v:ms.map(pcHmed)}]:undefined,barLabels:temMed,barLabelsBase:true,fmtBar:function(v){ return v>0?fd(v,2):''; },mesmaEscala:temMed,
+          line:{nome:'Peças por hora '+anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.pcH; }),fmt:function(v){ return fd(v,2); },max:Math.max.apply(null,ms.map(function(m){ return m.pcH; }))*1.1},h:560})+'</div>'
       +'<div class="lid-box"><div class="lid-k2">O que isso significa para '+(M.periodo||'o próximo mês')+'</div>'
       +'<p>Em '+ref2+', '+fi(ref.HT)+' horas renderam '+fi(ref.P)+' peças.</p>'
+      +(temMed&&Math.abs(M.varKgPc||0)>=5?'<p>A peça de '+ref2+' pesou '+fd(ref.kgPc,1)+' kg, contra '+fd(M.kgPcAno,1)+' kg na média do ano. Na peça média, seriam '+fd(pcHmed(ref),2)+' peças por hora'
+          +(acimaMed.length?', abaixo de '+lidLista(acimaMed)+'.':', ainda o melhor do ano.')+'</p>':'')
       +(prox&&hNec?'<p>Para as '+fi(prox.plano)+' de '+NOME_MES[prox.mes].toLowerCase()+', nesse rendimento, precisamos de '+fi(hNec)+' horas: '+(hNec>ref.HT?fi(hNec-ref.HT)+' a mais':fi(ref.HT-hNec)+' a menos')+'.</p>'
           +(hNec>ref.HT?'<p>Essas horas vêm de menos falta ou de mais hora extra.</p>'
             :'<p>'+(hNec<=ref.H?'Daria para fazer só com as '+fi(ref.H)+' horas da jornada normal de '+ref2:'Daria para fazer com menos hora extra que em '+ref2)
@@ -22808,11 +22886,11 @@ window.CompAnos = (function () {
     S.push('<h1 class="lid-h">'+h7+'</h1><div class="lid-sub">'+MES_MIN[ms[0].mes]+' a '+MES_MIN[ref.mes]+' de '+anoS+' · peças</div>'
       +'<div class="lid-2col"><div>'+lidBarrasH([{nome:'Vendido',v:M.tot.ven,cor:LID_COR.plano},{nome:'Produzido',v:M.tot.P,cor:LID_COR.feito},{nome:'Faturado',v:M.tot.fat,cor:LID_COR.cinza}])+'</div>'
       +'<div><div class="lid-k2">Ritmo por dia (peças) · apurado em '+MES_MIN[ms[0].mes]+'–'+MES_MIN[ref.mes]+'</div>'
-      +'<table class="lid-tab"><thead><tr><th>Cenário</th><th>por dia</th><th>O que é</th></tr></thead><tbody>'
+      +'<table class="lid-tab"><thead><tr><th>Cenário</th><th>por dia</th><th class="lid-tx">O que é</th></tr></thead><tbody>'
       +'<tr><td>A · Sem hora extra</td><td>'+fi(M.cen.A)+'</td><td class="lid-tx">o que sai na jornada normal</td></tr>'
       +'<tr><td>B · Como está hoje</td><td>'+fi(M.cen.B)+'</td><td class="lid-tx">com a hora extra de hoje</td></tr>'
       +'<tr class="lid-dest"><td>C · Ritmo da venda</td><td>'+fi(M.cen.C)+'</td><td class="lid-tx">para os pedidos não acumularem</td></tr>'
-      +'<tr><td>'+mesNome+' · sem hora extra</td><td>'+fi(ref.pcDiaN)+'</td><td class="lid-tx">'+(ref.pcDiaN>=M.cen.A?'melhor':'abaixo')+' que a média do ano (A)</td></tr>'
+      +'<tr><td>'+mesNome+' · sem hora extra</td><td>'+fi(ref.pcDiaN)+'</td><td class="lid-tx">'+(ref.pcDiaN>=M.cen.A?'melhor':'abaixo')+' que a média do ano (A)'+(mixLeve?', com a peça '+fd(-M.varKgPc,0)+'% mais leve':'')+'</td></tr>'
       +'<tr><td>'+mesNome+' · com hora extra</td><td>'+fi(ref.pcDia)+'</td><td class="lid-tx">'+(ref.pcDia>=M.cen.B?'melhor':'abaixo')+' que a média do ano (B)</td></tr></tbody></table>'
       +'<div class="lid-p lid-small">A venda varia muito de um mês para outro. Por isso olhamos o ano inteiro.'+(M.ritmoExig!==null?' O plano de '+M.periodo+' pede '+fi(M.ritmoExig)+' peças por dia.':'')+'</div></div></div>'+rod);
     /* 8 · plano dos meses abertos e de onde tirar */
@@ -22983,12 +23061,27 @@ window.CompAnos = (function () {
       ov.innerHTML='<div class="lid-stage"></div>'
         +'<div class="lid-bar"><button id="lid-prev" onclick="reuLideresIr(-1)" title="Anterior (←)">&#8592;</button>'
         +'<span id="lid-n"></span><button id="lid-next" onclick="reuLideresIr(1)" title="Próximo (→)">&#8594;</button>'
+        +'<button class="lid-x" id="lid-tema" onclick="reuLideresTema()" title="Alterna entre fundo escuro e fundo branco">&#9680; Fundo branco</button>'
         +'<button class="lid-x" onclick="reuLideresPDF()" title="Abre a versão em papel, uma tela por página">&#9113; Baixar PDF</button>'
         +'<button class="lid-x" onclick="reuLideresFechar()" title="Sair (ESC)">&#10005; sair</button></div>';
       document.body.appendChild(ov);
     }
     ov.classList.add('on'); document.body.classList.add('lid-on');
+    _lidTema(null);
     _lidPintar();
+  };
+  /* Fundo branco ou escuro: escolha de quem apresenta, lembrada só neste
+     navegador. Sem localStorage (janela anônima), abre escuro. */
+  function _lidTema(claro){
+    var ov=document.getElementById('lid-ov'); if(!ov) return;
+    if(claro===null){ try{ claro=localStorage.getItem('dash_lid_tema')==='claro'; }catch(e){ claro=false; } }
+    ov.classList.toggle('claro', !!claro);
+    var b=document.getElementById('lid-tema'); if(b) b.innerHTML=claro?'&#9680; Fundo escuro':'&#9680; Fundo branco';
+    try{ localStorage.setItem('dash_lid_tema', claro?'claro':'escuro'); }catch(e){}
+  }
+  window.reuLideresTema=function(){
+    var ov=document.getElementById('lid-ov'); if(!ov) return;
+    _lidTema(!ov.classList.contains('claro'));
   };
   window.reuLideresIr=function(d,abs){
     if(!_lidSlides) return;
@@ -23021,8 +23114,8 @@ window.CompAnos = (function () {
       +'.lid-2col{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-top:4px}.lid-2col-w{grid-template-columns:1.5fr 1fr}'
       +'.lid-box{border:1px solid #D3D8DE;border-radius:6px;padding:10px 12px;font-size:10pt;line-height:1.45}.lid-box p{margin:0 0 7px}.lid-k2{font-weight:800;font-size:9.5pt;margin-bottom:6px;color:#1F2933}'
       +'.lid-tab{width:100%;border-collapse:collapse;font-size:9pt}.lid-tab th{text-align:left;font-size:7.5pt;color:#52606D;text-transform:uppercase;padding:3px 5px;border-bottom:1px solid #D3D8DE}.lid-tab td{padding:3px 5px;border-top:1px solid #edf2f7}'
-      +'.lid-tab td:nth-child(n+2){font-family:Consolas,monospace;text-align:right}.lid-tab td.lid-tx{text-align:left;font-family:inherit}.lid-tot td{font-weight:800}.lid-dest td{color:#D9342B;font-weight:700}'
-      +'.lid-svg{width:100%;height:auto}.lid-lbl{font-size:22px;fill:#1F2933}.lid-lbl-b{font-weight:700}.lid-cat{font-size:24px;fill:#52606D}.lid-lbl-g{font-size:30px}.lid-cat-g{font-size:32px;fill:#1F2933}'
+      +'.lid-tab td:nth-child(n+2){font-family:Consolas,monospace;text-align:right}.lid-tab td.lid-tx{text-align:left;font-family:inherit}.lid-tab th:nth-child(n+2){text-align:right}.lid-tab th.lid-tx{text-align:left}.lid-tot td{font-weight:800}.lid-dest td{color:#D9342B;font-weight:700}'
+      +'.lid-svg{width:100%;height:auto}.lid-lbl{font-size:22px;fill:#1F2933}.lid-lbl-base{fill:#111;font-weight:700}.lid-lbl-b{font-weight:700}.lid-cat{font-size:24px;fill:#52606D}.lid-lbl-g{font-size:30px}.lid-cat-g{font-size:32px;fill:#1F2933}'
       +'.lid-leg{display:flex;gap:16px;font-size:8.5pt;color:#52606D;margin-top:2px}.lid-leg i{display:inline-block;width:14px;height:9px;margin-right:5px;border-radius:2px;vertical-align:middle}'
       +'.lid-capa{display:flex;flex-direction:column;justify-content:center;flex:1;gap:10px}.lid-capa h1{font-size:34pt}.lid-capa-s{font-size:18pt;color:#3E4C59}.lid-capa-r{font-size:9.5pt;color:#52606D;margin-top:14px}'
       +'.lid-k{font-size:9pt;letter-spacing:.14em;text-transform:uppercase;color:#B8860B;font-weight:700}'
@@ -23469,9 +23562,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.33';
+var APP_VERSAO = 'b96.34';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.34', data:'13/10/2026', itens:[
+    'Apresentacao para lideres, slide novo depois do mes a mes: producao em quilos. Colunas em toneladas por dia e linha em pecas por dia, os dois na jornada normal, com tabela mes a mes. SET/26: 1.673 pecas por dia, o maior do ano; em quilos, 33,6 t por dia, o 6o de 9 meses, porque a peca pesou 20,1 kg, 20% mais leve que a media. Mes com kg/peca fora de 0,6 a 1,67 vez a media nao entra.',
+    'Slide de pecas por hora: barras com o mesmo rendimento na peca media do ano, na mesma regua da linha. SET/26: 2,33 pecas por hora viram 1,85 na peca media, abaixo de fev, mai, jun, jul e ago. O slide de venda diz que o 1.673 de setembro foi com a peca 20% mais leve.',
+    'Tabelas da apresentacao com o titulo da coluna numerica a direita, em cima do numero (tela e PDF). Botao "Fundo branco" na barra: mesmas cores do PDF em papel, lembrado no navegador.'
+  ]},
   { v:'b96.33', data:'13/10/2026', itens:[
     'Integridade, ponto x controle: sai a mensagem "a diferenca e igual as ferias do controle" (b96.30). Em ABR/26 o total bateu com as ferias por coincidencia: cruzando pessoa a pessoa, as ferias estavam no ponto, e a diferenca vinha de 5 pessoas no controle fora do extrato (225,6 h), atraso do ponto lancado tambem como falta no controle (201,7 h) e ausencia que o ponto nao mostra (151,3 h). O aviso volta ao texto generico.'
   ]},
