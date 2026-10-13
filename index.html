@@ -4237,10 +4237,14 @@ body.tv-mode #reu-trilha .rt-btn { width:54px; height:54px; font-size:1.6rem; }
 @media print { #reu-trilha { display:none !important; } }
 /* Apresentação para líderes: overlay em tela cheia, 16:9, fonte escalada
    pela largura para caber na TV e no notebook sem quebrar. */
-#lid-ov{position:fixed;inset:0;z-index:9500;background:#0d0d0d;display:none;flex-direction:column;align-items:center;justify-content:center;padding:2vh 2vw}
+#lid-ov{position:fixed;inset:0;z-index:9500;background:#0d0d0d;display:none;flex-direction:column;align-items:center;justify-content:center;padding:6px 1vw}
 #lid-ov.on{display:flex}
 body.lid-on{overflow:hidden}
-#lid-ov .lid-stage{width:min(96vw,calc(86vh*16/9));aspect-ratio:16/9;background:#161616;border:1px solid #2A2A2A;border-radius:10px;padding:2.2% 2.8%;display:flex;flex-direction:column;font-size:clamp(10px,1.1vw,22px);color:#F5F5F5;overflow:hidden}
+/* O slide ocupa a tela toda menos a barra de botões (~72 px), em 16:9. A letra
+   é uma fração fixa da largura do slide (era 1,1vw da janela, com o slide em 86%
+   da altura): o slide cresce e tudo cresce junto, e em tela muito larga a letra
+   não passa do slide. */
+#lid-ov .lid-stage{width:min(98vw,calc((100vh - 72px)*16/9));aspect-ratio:16/9;background:#161616;border:1px solid #2A2A2A;border-radius:10px;padding:2.2% 2.8%;display:flex;flex-direction:column;font-size:clamp(10px,calc(min(98vw,(100vh - 72px)*16/9)*0.0128),34px);color:#F5F5F5;overflow:hidden}
 .lid-h{font-size:1.65em;font-weight:800;line-height:1.25;margin:0 0 .3em}
 .lid-sub{color:#888;font-size:.8em;margin-bottom:.7em}
 .lid-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:.8em}
@@ -4263,7 +4267,13 @@ body.lid-on{overflow:hidden}
   padding:.4em 0;border-bottom:1px solid #2A2A2A;font-size:.95em}
 .lid-mix-l b{font-family:var(--mono);white-space:nowrap}
 .lid-resumo{background:#1F1F1F;border:1px solid #2A2A2A;border-radius:8px;padding:.7em 1em}
-.lid-2col{display:grid;grid-template-columns:1.3fr 1fr;gap:1.2em;flex:1;min-height:0;align-items:start}
+.lid-2col{display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:minmax(0,1fr);gap:1.2em;flex:1;min-height:0;align-items:start}
+/* Gráfico ocupa a altura que sobra no slide: a coluna do gráfico estica e o SVG
+   se ajusta (meet) ao menor entre largura e altura — mais alto onde cabe, menor
+   em tela de outra proporção, nunca cortado. */
+.lid-2col>div:has(>.lid-graf){align-self:stretch;min-height:0}
+.lid-graf{display:flex;flex-direction:column;height:100%;min-height:0}
+.lid-graf .lid-svg{flex:1 1 auto;min-height:0;height:100%}
 .lid-2col-w{grid-template-columns:1.5fr 1fr}
 .lid-box{background:#1F1F1F;border:1px solid #2A2A2A;border-radius:8px;padding:.8em 1em;font-size:.9em;line-height:1.45}
 .lid-box p{margin:0 0 .6em}
@@ -4278,6 +4288,11 @@ body.lid-on{overflow:hidden}
    valor. Coluna de texto marca th.lid-tx. Igual no PDF (lidPdf). */
 .lid-tab th:nth-child(n+2){text-align:right}
 .lid-tab th.lid-tx{text-align:left}
+/* o tema do painel fixa table/td/th em rem com !important (12px): sem isto a
+   tabela não acompanha o tamanho do slide e fica pequena na TV */
+#lid-ov .lid-tab{font-size:.8em!important}
+#lid-ov .lid-tab td{font-size:1em!important;padding:.28em .45em!important}
+#lid-ov .lid-tab th{font-size:.7em!important;padding:.3em .45em!important}
 .lid-tot td{font-weight:800}
 .lid-dest td{color:#F5A623;font-weight:700}
 .lid-svg{width:100%;height:auto;display:block}
@@ -4292,7 +4307,7 @@ body.lid-on{overflow:hidden}
 .lid-linha{display:flex;gap:.8em;align-items:flex-start;font-size:1.35em;line-height:1.4;margin:.4em 0}
 .lid-n{flex:none;width:1.6em;height:1.6em;border-radius:50%;background:#D9342B;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:.85em}
 .lid-foot{margin-top:auto;display:flex;justify-content:space-between;font-size:.65em;color:#666;padding-top:.5em;border-top:1px solid #2A2A2A}
-#lid-ov .lid-bar{display:flex;gap:10px;align-items:center;margin-top:12px;color:#aaa;font-family:var(--mono);font-size:.8rem}
+#lid-ov .lid-bar{display:flex;gap:10px;align-items:center;margin-top:8px;color:#aaa;font-family:var(--mono);font-size:.8rem}
 #lid-ov .lid-bar button{width:40px;height:40px;border-radius:8px;border:1px solid rgba(245,166,35,.5);background:rgba(245,166,35,.12);color:#F5A623;font-size:1.2rem;cursor:pointer}
 #lid-ov .lid-bar button:disabled{opacity:.3;cursor:default}
 #lid-ov .lid-bar button.lid-x{width:auto;padding:0 14px;font-size:.78rem;font-family:inherit;border-color:#3A3A3A;background:transparent;color:#aaa}
@@ -22656,7 +22671,7 @@ window.CompAnos = (function () {
     out+='</svg>';
     var leg=[].concat(bars.map(function(b){ return '<span><i style="background:'+b.cor+'"></i>'+b.nome+'</span>'; }),
                       o.line?['<span><i'+(o.line.cor===LID_COR.linha?' class="lid-ln-claro"':'')+' style="background:'+o.line.cor+';height:4px"></i>'+o.line.nome+'</span>']:[]);
-    return out+(leg.length?'<div class="lid-leg">'+leg.join('')+'</div>':'');
+    return '<div class="lid-graf">'+out+(leg.length?'<div class="lid-leg">'+leg.join('')+'</div>':'')+'</div>';
   }
   function lidBarrasH(items){
     var vmax=Math.max.apply(null,items.map(function(i){ return i.v; }))*1.18||1, W=1000, rh=120, Hh=items.length*rh+10;
@@ -22733,7 +22748,7 @@ window.CompAnos = (function () {
       +'<tr class="lid-tot"><td>Ano</td><td>'+fi(M.tot.plano)+'</td><td>'+fi(M.tot.P)+'</td><td>'+(M.tot.plano>0?fd(M.tot.P/M.tot.plano*100,0)+'%':'—')+'</td><td>'+fi(M.tot.heH)+'</td><td>'+fd(M.tot.hePct,1)+'%</td></tr></tbody></table>';
     S.push('<h1 class="lid-h">'+h3+'</h1><div class="lid-sub">Colunas: plano e produzido (peças) · Linha: horas extras sobre as horas da jornada normal · limite '+M.limHE+'%</div>'
       +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Plano',cor:LID_COR.plano,v:ms.map(function(m){ return m.plano; })},{nome:'Produzido',cor:LID_COR.feito,v:ms.map(function(m){ return m.P; })}],
-          line:{nome:'Hora extra ÷ jornada normal (%)',cor:LID_COR.linha,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20},h:520})+'</div>'
+          line:{nome:'Hora extra ÷ jornada normal (%)',cor:LID_COR.linha,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20},h:700})+'</div>'
       +'<div>'+tab+'<div class="lid-p lid-small">'+t3+'</div></div></div>'+rod);
     /* 3b · produção em quilos mês a mês — o par do slide 3. "1.673 peças por
        dia, o maior do ano" sem o peso vira conquista inteira; em SET/26 a peça
@@ -22760,7 +22775,7 @@ window.CompAnos = (function () {
         +'</tbody></table>';
       S.push('<h1 class="lid-h">'+h3b+'</h1><div class="lid-sub">Colunas: toneladas por dia · Linha: peças por dia · os dois na jornada normal, sem hora extra · peso do REPORTE do ERP</div>'
         +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Toneladas por dia',cor:LID_COR.plano,v:ms.map(function(m){ return tKg(m)?tDia(m):0; })}],barLabels:true,barLabelsBase:true,fmtBar:function(v){ return v>0?fd(v,1):''; },
-            line:{nome:'Peças por dia',cor:LID_COR.linha,v:ms.map(function(m){ return m.pcDiaN; }),fmt:function(v){ return fi(v); },max:Math.max.apply(null,ms.map(function(m){ return m.pcDiaN; }))*1.25},h:520})+'</div>'
+            line:{nome:'Peças por dia',cor:LID_COR.linha,v:ms.map(function(m){ return m.pcDiaN; }),fmt:function(v){ return fi(v); },max:Math.max.apply(null,ms.map(function(m){ return m.pcDiaN; }))*1.25},h:700})+'</div>'
         +'<div>'+tabKg+'<div class="lid-p lid-small">Peças por dia contam quantas saíram; toneladas por dia, quanto material a fábrica transformou. Quando as peças sobem e as toneladas não, foi a peça que ficou mais leve, não a linha que rendeu mais. Peso corrige tamanho, não complexidade.</div></div></div>'+rod);
     }
     /* 4 · hora extra */
@@ -22770,7 +22785,7 @@ window.CompAnos = (function () {
                               :'A hora extra foi de '+fd(m0.hePct,0)+'% da jornada normal em '+m0N+' para '+fd(ref.hePct,1)+'% em '+ref2)
       +', '+fxHE.texto+'.';
     S.push('<h1 class="lid-h">'+h4+'</h1><div class="lid-sub">Horas extras ÷ horas trabalhadas na jornada normal · limite '+M.limHE+'%</div>'
-      +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,line:{nome:anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20,ref:M.limHE,refLbl:'limite '+M.limHE+'%'},h:560})+'</div>'
+      +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,line:{nome:anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20,ref:M.limHE,refLbl:'limite '+M.limHE+'%'},h:740})+'</div>'
       +'<div class="lid-box"><div class="lid-k2">Na prática</div>'
       +'<p>Em '+ref2+', '+fi(ref.heH)+' horas extras sobre '+fi(ref.H)+' horas da jornada normal: '+fd(ref.hePct,1)+'%.</p>'
       +'<p>No ano: '+fi(M.tot.heH)+' horas extras; o índice do ano é '+fd(M.tot.hePct,1)+'%.</p>'
@@ -22808,7 +22823,7 @@ window.CompAnos = (function () {
     var melhorAbs=ms.filter(function(m){ return m.abs>0; }).sort(function(a,b){ return a.abs-b.abs; })[0];
     var h5='Falta é onde a liderança mais pode ajudar: '+fd(ref.abs,1)+'% em '+ref2+', o mesmo que '+fi(M.foraHoje)+' pessoas fora todo dia. Cada 1% a menos são '+fi(M.ganhoPP)+' peças no mês.';
     S.push('<h1 class="lid-h">'+h5+'</h1><div class="lid-sub">Horas de falta e atraso sobre as horas trabalhadas na jornada normal (critério do RH) · '+anoS+' · limite '+M.absCrit+'%</div>'
-      +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:[{nome:'Faltas '+anoS,cor:LID_COR.falta,v:ms.map(function(m){ return m.abs; })}],barLabels:true,fmtBar:function(v){ return fd(v,1)+'%'; },h:560})+'</div>'
+      +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:[{nome:'Faltas '+anoS,cor:LID_COR.falta,v:ms.map(function(m){ return m.abs; })}],barLabels:true,fmtBar:function(v){ return fd(v,1)+'%'; },h:740})+'</div>'
       +'<div><div class="lid-grid2">'+lidCard('Horas perdidas',fi(ref.F)+' h','com falta, em '+ref2,'#F44336')+lidCard('Horas extras feitas',fi(ref.heH)+' h',temSet&&heCap>0?'no mês, para repor falta e para dar capacidade':'no mês','#FF9800')+'</div>'
       +'<div class="lid-p lid-small"><b>'+(temSet&&heCobr>0?'Das '+fi(ref.heH)+' h de hora extra, '+fi(heCobr)+' h ficaram em setores com falta acima do limite ('+SetorHE.lista(RS.cobrindo).toLowerCase()+'): ali a hora extra repõe presença'
           :'Hora extra não é só reposição de falta: parte pode ser falta de capacidade')+', e cada hora extra custa pelo menos 50% a mais.</b> Reduzir falta é o jeito mais barato de produzir mais: cada 1% a menos são '+fi(ref.H/100)+' horas por mês, quase '+fi(M.ganhoPP)+' peças no ritmo de '+ref2+'.</div>'
@@ -22833,7 +22848,7 @@ window.CompAnos = (function () {
     S.push('<h1 class="lid-h">'+h6+'</h1><div class="lid-sub">Peças produzidas por hora trabalhada (normal e extra)'+(temMed?' · barras: o mesmo rendimento com a peça média do ano ('+fd(M.kgPcAno,1)+' kg)':'')+'</div>'
       +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,
           bars:temMed?[{nome:'Na peça média do ano ('+fd(M.kgPcAno,1)+' kg)',cor:LID_COR.cinza,v:ms.map(pcHmed)}]:undefined,barLabels:temMed,barLabelsBase:true,fmtBar:function(v){ return v>0?fd(v,2):''; },mesmaEscala:temMed,
-          line:{nome:'Peças por hora '+anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.pcH; }),fmt:function(v){ return fd(v,2); },max:Math.max.apply(null,ms.map(function(m){ return m.pcH; }))*1.1},h:560})+'</div>'
+          line:{nome:'Peças por hora '+anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.pcH; }),fmt:function(v){ return fd(v,2); },max:Math.max.apply(null,ms.map(function(m){ return m.pcH; }))*1.1},h:740})+'</div>'
       +'<div class="lid-box"><div class="lid-k2">O que isso significa para '+(M.periodo||'o próximo mês')+'</div>'
       +'<p>Em '+ref2+', '+fi(ref.HT)+' horas renderam '+fi(ref.P)+' peças.</p>'
       +(temMed&&Math.abs(M.varKgPc||0)>=5?'<p>A peça de '+ref2+' pesou '+fd(ref.kgPc,1)+' kg, contra '+fd(M.kgPcAno,1)+' kg na média do ano. Na peça média, seriam '+fd(pcHmed(ref),2)+' peças por hora'
@@ -22860,7 +22875,7 @@ window.CompAnos = (function () {
       var barsKg=[]; if(temAnt) barsKg.push({nome:anoAnt,cor:LID_COR.cinza,v:kgHAnt});
       barsKg.push({nome:anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.kgH; })});
       S.push('<h1 class="lid-h">'+h6b+'</h1><div class="lid-sub">Quilos produzidos por hora trabalhada (normal e extra) · fonte: REPORTE do ERP</div>'
-        +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:barsKg,barLabels:true,fmtBar:function(v){ return v>0?fd(v,0):''; },h:560})+'</div>'
+        +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:barsKg,barLabels:true,fmtBar:function(v){ return v>0?fd(v,0):''; },h:740})+'</div>'
         +'<div><div class="lid-grid2">'
           +lidCard('kg por peça em '+ref2,fd(ref.kgPc,1)+' kg',baseCmp?(baseN+': '+fd(baseCmp.kgPc,1)+' kg'):'sem base de comparação',LID_COR.feito)
           +lidCard('Peças por hora em '+ref2,fd(ref.pcH,2),baseCmp?(baseN+': '+fd(baseCmp.pcH,2)):'',LID_COR.cinza)+'</div>'
@@ -23562,9 +23577,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.34';
+var APP_VERSAO = 'b96.35';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.35', data:'13/10/2026', itens:[
+    'Apresentacao para lideres maior: o slide ocupa quase a tela toda (1792 x 1008 numa TV 1920 x 1080) e a letra cresce junto. Graficos dos slides de duas colunas usam a altura livre. As tabelas nao cresciam com o slide porque o tema do painel fixava a letra em 12 px; agora acompanham (18 px na TV). Conferido em 1920 x 1080, 1366 x 768 e 2560 x 1080, fundo escuro e branco.'
+  ]},
   { v:'b96.34', data:'13/10/2026', itens:[
     'Apresentacao para lideres, slide novo depois do mes a mes: producao em quilos. Colunas em toneladas por dia e linha em pecas por dia, os dois na jornada normal, com tabela mes a mes. SET/26: 1.673 pecas por dia, o maior do ano; em quilos, 33,6 t por dia, o 6o de 9 meses, porque a peca pesou 20,1 kg, 20% mais leve que a media. Mes com kg/peca fora de 0,6 a 1,67 vez a media nao entra.',
     'Slide de pecas por hora: barras com o mesmo rendimento na peca media do ano, na mesma regua da linha. SET/26: 2,33 pecas por hora viram 1,85 na peca media, abaixo de fev, mai, jun, jul e ago. O slide de venda diz que o 1.673 de setembro foi com a peca 20% mais leve.',
