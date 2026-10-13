@@ -19058,7 +19058,7 @@ window.MesEmCurso = (function(){
           return DUPLA[p[0]]&&p[1]?p[0]+' '+p[1]:p[0];
         }
         itensPV.forEach(function(r){
-          if(RE_IT_VOL.test(r[3])) return;          /* linha VOL x/y é caixa, não produto */
+          if(RE_IT_VOL.test(r[3])||/^501/.test(String(r[2]||'').replace(/\D/g,''))) return;   /* caixa (VOL x/y ou código 501), não produto */
           if(!aggPV[r[2]]) aggPV[r[2]]={cod:r[2],desc:r[3],q:0,meses:{}};
           aggPV[r[2]].q+=r[4]; aggPV[r[2]].meses[r[0]]=1; totItensPV+=r[4];
           mesesProd[r[0]]=1;
@@ -19290,6 +19290,11 @@ window.MesEmCurso = (function(){
   var ORDEM_M=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   var RE_VOL=/^VOL\.?\s*\d+\s*\/\s*\d+\s+/i;
   var RE_VOL_N=/^VOL\.?\s*(\d+)\s*\/\s*(\d+)\s+/i;   /* captura o "de" (nº de caixas) */
+  /* Caixa = descrição "VOL x/y" OU código 501 (grupo VOLUME do ERP). Produto
+     de caixa única vem com o código 501 e a MESMA descrição do produto, sem
+     "VOL": olhando só a descrição, ele contava duas vezes (RACK e PAINEL
+     MARSELHA, entre outros: +2.054 peças em JAN/26, +2.815 em FEV/26). */
+  function ehCx(r){ return RE_VOL.test(String(r[3]||'')) || /^501/.test(String(r[2]||'').replace(/\D/g,'')); }
   var DUPLA={MESA:1,MESAS:1,CONJUNTO:1,CANTINHO:1,PAINEL:1,HOME:1,GUARDA:1,PORTA:1,MODULO:1};
   /* "KIT 2 MESA CABECEIRA …" é embalagem, não família: são duas mesas de
      cabeceira numa caixa só. Sem tirar o prefixo, KIT vira família própria e
@@ -19418,7 +19423,7 @@ window.MesEmCurso = (function(){
     /* agregados do período (itens): produtos por código, famílias */
     var agg={}, totProdI=0, totVolLin=0;
     periodo.forEach(function(r){
-      if(RE_VOL.test(r[3])){ totVolLin+=r[4]; return; }
+      if(ehCx(r)){ totVolLin+=r[4]; return; }
       if(!agg[r[2]]) agg[r[2]]={cod:r[2],desc:r[3],q:0};
       agg[r[2]].q+=r[4]; totProdI+=r[4];
     });
@@ -19448,7 +19453,7 @@ window.MesEmCurso = (function(){
     /* evolução mensal (sempre o ano inteiro, mesmo com mês filtrado) */
     var porMes={};
     doAno.forEach(function(r){
-      if(RE_VOL.test(r[3])) return;
+      if(ehCx(r)) return;
       if(!porMes[r[0]]) porMes[r[0]]={prod:0,vol:0};
       porMes[r[0]].prod+=r[4];
     });
@@ -19520,8 +19525,8 @@ window.MesEmCurso = (function(){
     var itsAnt=itens().filter(function(r){ return r[1]===anoAnt; });
     if(!itsAnt.length||!itsAno.length) return '';
     var mesesA={},mesesB={};
-    itsAnt.forEach(function(r){ if(!RE_VOL.test(r[3])) mesesA[r[0]]=1; });
-    itsAno.forEach(function(r){ if(!RE_VOL.test(r[3])) mesesB[r[0]]=1; });
+    itsAnt.forEach(function(r){ if(!ehCx(r)) mesesA[r[0]]=1; });
+    itsAno.forEach(function(r){ if(!ehCx(r)) mesesB[r[0]]=1; });
     var comuns=ORDEM_M.filter(function(m){
       return mesesA[m]&&mesesB[m]&&(!_mes||m===_mes);
     });
@@ -19530,7 +19535,7 @@ window.MesEmCurso = (function(){
     function apura(its,anoRef){
       var prod=0, fam={};
       its.forEach(function(r){
-        if(RE_VOL.test(r[3])||comuns.indexOf(r[0])<0) return;
+        if(ehCx(r)||comuns.indexOf(r[0])<0) return;
         prod+=r[4];
         var f=familiaDe(r[3]);
         fam[f]=(fam[f]||0)+r[4];
@@ -19644,14 +19649,14 @@ window.MesEmCurso = (function(){
         var rs=porMesLista[m], grupos={};
         rs.forEach(function(r){
           var mm=r[3].match(RE_VOL_N);
-          if(!mm) return;
+          if(!mm){ if(!ehCx(r)) return; mm=[0,'1','1']; }   /* caixa 501 sem "VOL": caixa única */
           var nome=r[3].replace(RE_VOL,'').trim().toUpperCase();
           var g=grupos[nome]||(grupos[nome]={n:1,q:0,cod:r[2],desc:r[3]});
           g.n=Math.max(g.n,parseInt(mm[2],10)||1); g.q+=r[4];
         });
         var usados={};
         rs.forEach(function(r){
-          if(RE_VOL.test(r[3])) return;
+          if(ehCx(r)) return;
           var nome=r[3].trim().toUpperCase(), achou=null;
           Object.keys(grupos).some(function(nv){
             if(nome.indexOf(nv)===0||abrevia(nv,nome)){ achou=nv; return true; }
@@ -19667,7 +19672,7 @@ window.MesEmCurso = (function(){
       });
     } else {
       doPer.forEach(function(r){
-        var ehVol=RE_VOL.test(r[3]);
+        var ehVol=ehCx(r);
         if(_tipo==='P'&&ehVol) return;
         add(r[2],r[3],r[4],false);
       });
@@ -19737,7 +19742,7 @@ window.MesEmCurso = (function(){
     /* mesmos agregados da tela */
     var agg={}, totProdI=0;
     periodo.forEach(function(r){
-      if(RE_VOL.test(r[3])) return;
+      if(ehCx(r)) return;
       if(!agg[r[2]]) agg[r[2]]={cod:r[2],desc:r[3],q:0};
       agg[r[2]].q+=r[4]; totProdI+=r[4];
     });
@@ -19765,7 +19770,7 @@ window.MesEmCurso = (function(){
     if(!_mes){
       var linhas='';
       ORDEM_M.forEach(function(m){
-        var doMes=its.filter(function(r){ return r[0]===m&&!RE_VOL.test(r[3]); });
+        var doMes=its.filter(function(r){ return r[0]===m&&!ehCx(r); });
         if(!doMes.length) return;
         var p=doMes.reduce(function(s,r){ return s+r[4]; },0);
         var reg=regs.filter(function(r){ return r.mes===m; })[0]||{};
@@ -19792,16 +19797,16 @@ window.MesEmCurso = (function(){
     var secComp='';
     (function(){
       var anoAnt=ano-1;
-      var itsAnt=itens().filter(function(r){ return r[1]===anoAnt&&!RE_VOL.test(r[3]); });
+      var itsAnt=itens().filter(function(r){ return r[1]===anoAnt&&!ehCx(r); });
       if(!itsAnt.length) return;
       var mA={},mB={};
       itsAnt.forEach(function(r){ mA[r[0]]=1; });
-      periodo.forEach(function(r){ if(!RE_VOL.test(r[3])) mB[r[0]]=1; });
+      periodo.forEach(function(r){ if(!ehCx(r)) mB[r[0]]=1; });
       var comuns=ORDEM_M.filter(function(m){ return mA[m]&&mB[m]; });
       if(!comuns.length) return;
       function ap(src,anoRef){
         var prod=0;
-        src.forEach(function(r){ if(!RE_VOL.test(r[3])&&comuns.indexOf(r[0])>=0) prod+=r[4]; });
+        src.forEach(function(r){ if(!ehCx(r)&&comuns.indexOf(r[0])>=0) prod+=r[4]; });
         var vol=0,kg=0;
         todos.forEach(function(r){
           if(r.ano!==anoRef||comuns.indexOf(r.mes)<0) return;
@@ -19964,7 +19969,7 @@ window.MesEmCurso = (function(){
     var todos=(typeof load==='function')?load():[];
     var agg={}, prod=0;
     its.forEach(function(r){
-      if(RE_VOL.test(r[3])) return;
+      if(ehCx(r)) return;
       if(!agg[r[2]]) agg[r[2]]={cod:r[2],desc:r[3],q:0};
       agg[r[2]].q+=r[4]; prod+=r[4];
     });
@@ -20076,6 +20081,10 @@ window.CompAnos = (function () {
   }
 
   function ehVolume(desc) { return RE_VOL.test(String(desc || '')); }
+  /* Caixa pela descrição OU pelo código 501 (grupo VOLUME do ERP): a caixa
+     de produto de volume único vem com a descrição do produto, sem "VOL", e
+     contava como mais uma peça — PAINEL MARSELHA dobrado no slide de mix. */
+  function ehCaixa(r) { return ehVolume(r[3]) || /^501/.test(String(r[2] || '').replace(/\D/g, '')); }
 
   var RE_COD = /^(\d{3})\.(\d{3})\.\d{3}$/;
   function temGrupos(cad) { return !!(cad && cad.grupos && Object.keys(cad.grupos).length); }
@@ -20120,7 +20129,7 @@ window.CompAnos = (function () {
   function mesesCom(itens, ano) {
     var m = {};
     itens.forEach(function (r) {
-      if (r[1] !== ano || ehVolume(r[3])) return;
+      if (r[1] !== ano || ehCaixa(r)) return;
       if (r[4] > 0) m[r[0]] = 1;
     });
     return m;
@@ -20189,7 +20198,7 @@ window.CompAnos = (function () {
       } else fonte.nenhuma += r[4];
     }
     itens.forEach(function (r) {
-      if (ehVolume(r[3]) || !(r[4] > 0)) return;
+      if (ehCaixa(r) || !(r[4] > 0)) return;
       if (r[1] === anoA && okA[r[0]]) acumula(r, 'A');
       else if (r[1] === anoB && okB[r[0]]) acumula(r, 'B');
     });
@@ -20438,7 +20447,7 @@ window.CompAnos = (function () {
   return {
     apurar: apurar, filtrar: filtrar, familiaDe: familiaDe, contribuicao: contribuicao,
     linhaDe: linhaDe, modeloDe: modeloDe,
-    variacao: variacao, situacaoDe: situacaoDe, ehVolume: ehVolume,
+    variacao: variacao, situacaoDe: situacaoDe, ehVolume: ehVolume, ehCaixa: ehCaixa,
     ROTULO_SITUACAO: ROTULO_SITUACAO, ORDEM_M: ORDEM_M
   };
 })();
@@ -23810,9 +23819,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.42';
+var APP_VERSAO = 'b96.43';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.43', data:'13/10/2026', itens:[
+    'Caixa de produto de volume unico contava como mais uma peca. No reporte do ERP, a caixa 501 de quem sai numa caixa so (RACK e PAINEL MARSELHA, entre outros) vem com a MESMA descricao do produto, sem VOL x/y; o painel e o ReporteVolumes.gs separavam caixa so pela descricao. Conferido linha a linha: em 11 meses (MAI a DEZ/25, JAN, FEV e MAI/26) toda linha 501 sem VOL tem produto 1xx de mesma descricao e quantidade. Agora caixa = descricao VOL x/y OU codigo 501.',
+    'No painel (ja vale): comparativo de anos, slide de mix dos lideres (PAINEL MARSELHA aparecia em dobro), Producao por Produto e relatorio impresso. Na HISTORICO (depois de rodar o ReporteVolumes.gs novo): pecas JAN/26 24.491 para 22.437, FEV/26 30.966 para 28.151, MAI/26 35.735 para 33.330; 2026 ate SET 281.273 para 273.999; 2025 perde 16.022 em MAI a DEZ. Volumes caem nos mesmos meses.'
+  ]},
   { v:'b96.42', data:'13/10/2026', itens:[
     'Pente fino (revisao do que mudou hoje): o campo O que foi realizado era apagado quando a Reuniao se redesenhava com o formulario aberto (carga da planilha, clique na lateral); agora e guardado como os outros campos.',
     'Acao concluida antes de existir a data de conclusao nao ganha a data de hoje ao ser editada. O carimbo de envio (enviadoEm/enviadoPara) nao vai mais no POST da acao: quem grava e o Apps Script, e uma copia velha apagava o mais novo.',

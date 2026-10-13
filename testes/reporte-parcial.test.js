@@ -260,5 +260,24 @@ afirma('código 1xx de qualquer grupo (112, 121) é produto',
   RV.rvSepararComponentes([['SET', 2026, '112.001.001', 'X', 1, 1], ['SET', 2026, '121.002.116', 'Y', 1, 1]]).linhas.length === 2);
 afirma('código 010.xxx não é confundido com 1xx', RV.rvSepararComponentes([['SET', 2026, '010.001.001', 'X', 1, 1]]).linhas.length === 0);
 
+sec('Caixa 501 sem "VOL" (produto de volume único) não conta como produto');
+{
+  /* reporte real de JAN/26: produto 105021079 e caixa 501102001, mesma
+     descrição e quantidade; na aba o código é número. */
+  const agr = RV.rvAgruparLinhas([
+    ['JAN', 2026, 105021079, 'RACK MARSELHA 1.36 OFF WHITE/CEDRO', 275],
+    ['JAN', 2026, 501102001, 'RACK MARSELHA 1.36 OFF WHITE/CEDRO', 275],
+    ['JAN', 2026, '106.033.001', 'PAINEL MARSELHA 1.36 OFF WHITE', 29],
+    ['JAN', 2026, '501.111.001', 'PAINEL MARSELHA 1.36 OFF WHITE', 29],
+    ['JAN', 2026, '100.009.001', 'TOUCADOR MAGIC NEW BRANCO', 130],
+    ['JAN', 2026, '501.009.001', 'VOL 1/2 TOUCADOR MAGIC NEW BRANCO', 130],
+    ['JAN', 2026, '501.009.002', 'VOL 2/2 TOUCADOR MAGIC NEW BRANCO', 130]]);
+  const g = agr.meses['JAN/2026'];
+  ok('peças: 275 + 29 + 130 (antes 738)', g.prod, 434);
+  RV.rvVolumesDoMes(g, {});
+  ok('volumes: 275 + 29 + 130 × 2', g.vol, 564);
+  afirma('nenhuma caixa órfã', RV.rvOrfaosVol(g).nomes.length === 0);
+}
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
