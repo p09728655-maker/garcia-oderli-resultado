@@ -397,5 +397,23 @@ afirma('quantidade zero ou negativa é ignorada',
   CA.apurar(ITENS.concat([['JAN', 2026, '777', 'FANTASMA', 0, 0]]), REGS,
     { anoA: 2025, anoB: 2026, base: 'comuns' }).produtos.every(p => p.cod !== '777'));
 
+sec('Caixa de produto de volume único (código 501 sem "VOL" na descrição)');
+{
+  /* JAN/26 no reporte real: o mesmo RACK MARSELHA 1.36 OFF WHITE/CEDRO aparece
+     como produto (105021079) e como caixa (501102001), mesma quantidade. */
+  const its = [
+    ['JAN', 2025, '105021079', 'RACK MARSELHA 1.36 OFF WHITE/CEDRO', 168],
+    ['JAN', 2025, '501102001', 'RACK MARSELHA 1.36 OFF WHITE/CEDRO', 168],
+    ['JAN', 2026, '105021079', 'RACK MARSELHA 1.36 OFF WHITE/CEDRO', 275],
+    ['JAN', 2026, '501102001', 'RACK MARSELHA 1.36 OFF WHITE/CEDRO', 275],
+    ['JAN', 2026, '501.041.001', 'VOL 1/2 BERCO ARCO-IRIS', 10]];
+  const r = CA.apurar(its, [], { anoA: 2025, anoB: 2026, base: 'comuns' });
+  ok('2026: 275 peças, não 550', r.geral.B.qtd, 275, 0);
+  ok('2025: 168 peças, não 336', r.geral.A.qtd, 168, 0);
+  afirma('a caixa 501 não vira produto na lista', r.produtos.every(p => !/^501/.test(p.cod.replace(/\D/g, ''))));
+  afirma('ehCaixa: código 501 com ou sem pontos, e VOL x/y', CA.ehCaixa(['JAN', 2026, '501102001', 'X', 1]) && CA.ehCaixa(['JAN', 2026, '501.102.001', 'X', 1]) && CA.ehCaixa(['JAN', 2026, '1', 'VOL 1/2 X', 1]));
+  afirma('ehCaixa: produto 1xx não é caixa', !CA.ehCaixa(['JAN', 2026, '105021079', 'RACK MARSELHA', 1]));
+}
+
 console.log(`\n${total - falhas}/${total} passaram`);
 process.exit(falhas ? 1 : 0);

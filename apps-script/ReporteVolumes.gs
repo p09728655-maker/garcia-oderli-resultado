@@ -60,6 +60,9 @@ var RV_MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV
 
 /* "VOL 1/2 NOME", "VOL. 01/03 NOME"… → captura número, total e nome. */
 var RV_RE_VOL = /^VOL\.?\s*0?(\d+)\s*\/\s*0?(\d+)\s+(.+)$/i;
+/* Código do grupo VOLUME (501), com ou sem pontos: na aba o código é número
+   (501102001), no PDF vem "501.102.001". */
+function rvEhCodCaixa(cod) { return /^501\d{6}$/.test(String(cod === null || cod === undefined ? '' : cod).replace(/\.0+$/, '').replace(/\D/g, '')); }
 
 /* ══ 1 · ABA DE ENTRADA ══ */
 function criarAbaReporteVolumes() {
@@ -148,6 +151,14 @@ function rvAgruparLinhas(linhas) {
       ordem.push(chave);
     }
     var g = meses[chave], m = desc.match(RV_RE_VOL);
+    /* Caixa de produto de volume único: código 501 (grupo VOLUME do ERP) com
+       a MESMA descrição do produto, sem "VOL x/y". Olhando só a descrição ela
+       virava mais um produto e contava duas vezes — peças e volumes. Conferido
+       na REPORTE_VOLUMES em 13/10/26: 11 meses (MAI a DEZ/25, JAN, FEV e
+       MAI/26), toda linha 501 sem "VOL" tem produto 1xx de mesma descrição e
+       mesma quantidade no mês (RACK e PAINEL MARSELHA, entre outros); JAN/26
+       dava 24.491 peças, o certo é 22.437. Vira caixa única (1/1). */
+    if (!m && rvEhCodCaixa(l[2])) m = [desc, '1', '1', desc];
     if (m) {
       /* grupo por produto: quantas caixas ele tem (o "de" do x/de) e quanto
          foi reportado nessas linhas */
