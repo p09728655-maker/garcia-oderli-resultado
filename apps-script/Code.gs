@@ -104,6 +104,7 @@ var DICIONARIO_LINHAS = [
   ['(aba PONTO_SETOR)', 'automático', 'ponto + controle', 'Uma linha por mês/ano/setor, diretos e indiretos: pessoas, horasCarga, horasNormais, faltasPonto, atrasosPonto, extra50, extra100, totalExtras, hePctHoras (totalExtras ÷ horasNormais do setor), as ausências do controle e atrasoDuplicado do setor. Hora por setor, não peça por setor; setor = o atual da pessoa na FUNCIONARIOS. Não digitar: o script regrava.'],
   ['(abas PONTO_PESSOA / AUSENCIAS_PESSOA)', 'automático', 'ponto / controle de faltas', 'Uma linha por direto e mês. PONTO_PESSOA (do extrato): cod, carga, faltas, atrasos, normais, jornada. AUSENCIAS_PESSOA (do controle): cod, falta, atestado, afastado, atraso, férias. Servem só para achar o atraso contado duas vezes. Têm o código do funcionário: não compartilhar. Não digitar: o script regrava.'],
   ['atrasoDuplicado', 'automático', 'ponto × controle', 'PontoRH.gs, por pessoa: o RH lança atraso e saída antecipada como FALTA no controle, e a mesma hora estava também no atraso do ponto. sobra = (falta + atestado + afastado + férias do controle) − ((jornada − carga) + faltas do ponto); duplicado = sobra entre 0 e os atrasos do ponto. ABR/26: 201,7 h; SET/26: 80,6 h. Gravado na HISTORICO (total) e na PONTO_SETOR (por setor).'],
+  ['integridadeCiente', 'painel', 'Reunião › Integridade', 'Aviso de integridade conferido e explicado (botão Ciente): uma linha por aviso, "tipo | na planilha | esperado | data | motivo". O aviso vira nota e não pinta a barra; volta a ser atenção se os números mudarem mais de 1%. Não vale para erro. Texto: não digitar número aqui.'],
   ['duplicidadeApurada', 'automático', 'ponto × controle', '1 quando o mês tem o ponto e o controle por pessoa e a duplicidade foi apurada. Sem isso, com controle e ponto, a integridade dá uma nota: processar de novo o extrato do mês.'],
   ['(aba PARCIAL_MES)', 'automático', 'ERP', 'Uma linha por corte parcial do mês em curso: o "3 - REPORTE" de 01/MM até a data do corte, salvo na pasta REPORTES PARCIAIS do Drive. produtos = produtos acabados até a data (com hora extra). Alimenta o bloco "Mês em curso" do Plano Mestre; NÃO entra em producaoReal — o mês segue aberto até o reporte fechado.'],
   ['(aba FERIADOS)', 'entrada', 'PPCP', 'Uma linha por feriado ou dia de recesso (data, descricao). Dias úteis decorridos do mês em curso = segunda a sexta menos estas datas. Sem a aba, feriado conta como dia útil e o painel avisa.'],
@@ -192,6 +193,12 @@ var SECRET = 'TROQUE_ESTA_SENHA_2026';
    (apuração pessoa a pessoa): um navegador com cópia de antes da apuração
    gravaria 0 por cima. */
 var COLUNAS_PROTEGIDAS = ['previsaoproducao', 'previsao', 'previsaovolumes', 'atrasoduplicado', 'duplicidadeapurada'];
+
+/* Colunas de TEXTO da HISTORICO (o resto é número). integridadeCiente: aviso
+   de integridade conferido no painel, com motivo ("ponto | 1749 | 2119 |
+   2026-10-13 | motivo"). A leitura não converte em número, e a gravação cria
+   a coluna no fim do cabeçalho na primeira vez que o painel mandar o campo. */
+var HISTORICO_TEXTO = ['integridadeCiente'];
 
 function doGet() {
   var saida;
@@ -315,6 +322,15 @@ function gravarHistorico(ss, recebidos) {
   if (col.mes === undefined || col.ano === undefined) {
     throw new Error('Colunas "mes" e "ano" não encontradas em ' + ABA_HISTORICO + '.');
   }
+  HISTORICO_TEXTO.forEach(function (nome) {
+    var n = normaliza(nome);
+    if (col[n] !== undefined) return;
+    if (!recebidos.some(function (r) { return r && r[nome] !== undefined && r[nome] !== null && r[nome] !== ''; })) return;
+    var fim = cab.length;
+    while (fim > 0 && !txt(cab[fim - 1])) fim--;
+    aba.getRange(iCab + 1, fim + 1).setValue(nome);
+    cab[fim] = nome; col[n] = fim;
+  });
 
   /* mês+ano → número da linha na planilha */
   var mapa = {};
@@ -445,6 +461,7 @@ function lerHistorico(ss) {
     /* converte tudo que não é texto para número normalizado */
     Object.keys(rec).forEach(function (k) {
       if (normaliza(k) === 'mes') { rec[k] = mes; return; }
+      if (HISTORICO_TEXTO.some(function (t) { return normaliza(t) === normaliza(k); })) { rec[k] = txt(rec[k]); return; }
       rec[k] = num(rec[k]);
     });
     rec.mes = mes;

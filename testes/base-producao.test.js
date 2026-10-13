@@ -489,6 +489,27 @@ sec('Leitura por setor: setor de uma ou duas pessoas não ganha leitura');
   afirma('2-EMBALAGEM (25 pessoas) cobrindo falta', sx('2-EMBALAGEM').leitura === 'cobrindo falta');
 }
 
+sec('Ciente na integridade (aviso conferido, com motivo)');
+{
+  const ABR_C = Object.assign({}, ABR_H, { integridadeCiente: '' });
+  const I0 = U.integridade([ABR_C]);
+  const p0 = I0.itens.find(i => i.tipo === 'ponto');
+  afirma('sem ciente: atenção, com botão de ciente', p0 && p0.nivel === 'atencao' && p0.podeCiente);
+  const txt = U.cienteTexto({ ponto: { enc: p0.encontrado, esp: p0.esperado, em: '2026-10-13', motivo: 'extrato sem os desligados de abril | RH não reexporta' } });
+  afirma('texto da célula: tipo | encontrado | esperado | data | motivo (sem barra no motivo)', /^ponto \| [\d.]+ \| [\d.]+ \| 2026-10-13 \| extrato sem os desligados de abril RH não reexporta$/.test(txt));
+  const lido = U.cienteLer(txt).ponto;
+  afirma('lê de volta o motivo e a data', lido.motivo === 'extrato sem os desligados de abril RH não reexporta' && lido.em === '2026-10-13');
+  const I1 = U.integridade([Object.assign({}, ABR_H, { integridadeCiente: txt })]);
+  const p1 = I1.itens.find(i => i.tipo === 'ponto');
+  afirma('com ciente nos mesmos números: vira nota (CIENTE) e não conta como atenção', p1.nivel === 'info' && p1.ciente && I1.atencoes === I0.atencoes - 1);
+  const I2 = U.integridade([Object.assign({}, ABR_H, { naoTrabalhadas: 1600, integridadeCiente: txt })]);
+  const p2 = I2.itens.find(i => i.tipo === 'ponto');
+  afirma('números mudaram (1.916 → 1.600 h): volta a ser atenção', p2 && p2.nivel === 'atencao' && !p2.ciente);
+  const I3 = U.integridade([Object.assign({}, ABR_H, { horasNormais: 0, integridadeCiente: 'entrada | — | — | 2026-10-13 | teste' })]);
+  afirma('erro não aceita ciente', I3.itens.some(i => i.nivel === 'erro') && !I3.itens.some(i => i.nivel === 'erro' && (i.ciente || i.podeCiente)));
+  afirma('outro tipo de aviso no mesmo mês não é afetado', U.cienteLer('ferias | 10 | — | 2026-10-13 | x').ponto === undefined);
+}
+
 sec('Custo da hora extra (custoHE)');
 const CH0 = U.custoHE([SET_H], 0);
 afirma('sem custo-hora → valor null, nunca R$ 0', CH0.valor === null);
