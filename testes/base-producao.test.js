@@ -389,6 +389,19 @@ afirma('mês sem controle de faltas → sem quebra por motivo (null)',
 afirma('período com um mês sem controle → null (a soma não fecharia com o card)',
   U.absMotivos([SET_H, U.normalizar({ ano:2026, mes:'JUL', horasCarga:16588, horasNormais:16192, faltas:1391, atraso:122, producaoReal:32123 })]) === null);
 
+sec('Integridade ponto × controle: diferença igual às férias (ABR/26)');
+/* ABR/26 na HISTORICO: ponto 1.916,4 h não trabalhadas; controle 1.687,1 +
+   atraso 229,2 = 1.916,3 sem férias, 2.321,1 com as 404,8 h de férias. */
+const ABR_H = U.normalizar({ ano:2026, mes:'ABR', horasCarga:14062.4, horasNormais:13633.2, extra50:1092.87, extra100:340.82, producaoReal:29195,
+  naoTrabalhadas:1916.4, faltasPonto:202.4, atrasosPonto:229.2, horasFerias:404.8,
+  ausFalta:966.33, ausAtestado:271.95, ausAfastado:448.8, ausAtraso:0 });
+const itPonto = rs => U.integridade(rs).itens.filter(i => i.tipo === 'ponto');
+afirma('ABR/26: aviso "ponto" continua (a divergência é real)', itPonto([ABR_H]).length === 1);
+afirma('ABR/26: o aviso diz que a diferença é igual às férias (404,8 h)',
+  /igual às férias do controle \(404,8 h\)/.test((itPonto([ABR_H])[0] || {}).msg));
+afirma('divergência que não é a férias → aviso genérico',
+  /diferença acima de 10%/.test((itPonto([U.normalizar(Object.assign({}, CTRL, { naoTrabalhadas:3600 }))])[0] || {}).msg));
+
 sec('Custo da hora extra (custoHE)');
 const CH0 = U.custoHE([SET_H], 0);
 afirma('sem custo-hora → valor null, nunca R$ 0', CH0.valor === null);

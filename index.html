@@ -5775,8 +5775,15 @@ window.DashUtils = (function() {
       var temAus = r.ausFalta > 0 || r.ausAtestado > 0 || r.ausAfastado > 0 || r.ausAtraso > 0;
       if (r.naoTrabalhadas > 0 && temAus) {
         var fecha = (r.faltas || 0) + (r.atraso || 0) + (r.horasFerias || 0);
+        /* Quando o que falta é exatamente a férias do controle, o aviso diz
+           isso e o que fazer: em ABR/26 o ponto deu 1.916,4 h, o controle sem
+           férias 1.916,3 h e as férias eram 404,8 h. O extrato daquele mês não
+           mostrou as férias como hora não trabalhada, ao contrário dos outros. */
+        var semFerias = r.horasFerias > 0 && Math.abs((fecha - r.naoTrabalhadas) - r.horasFerias) <= Math.max(5, r.horasFerias * 0.02);
         if (pctDif(r.naoTrabalhadas, fecha) > 10)
-          add(r, 'atencao', 'ponto', 'Ponto e controle de faltas não fecham: não trabalhadas no ponto ≠ faltas + atrasos + férias do controle (diferença acima de 10%)', r.naoTrabalhadas, fecha);
+          add(r, 'atencao', 'ponto', semFerias
+            ? 'Ponto e controle de faltas não fecham: a diferença é igual às férias do controle (' + fN(r.horasFerias, 1) + ' h). O extrato do ponto deste mês não mostra as férias como hora não trabalhada: reexportar o extrato do mês e reprocessar; se não mudar, conferir as férias no controle do RH'
+            : 'Ponto e controle de faltas não fecham: não trabalhadas no ponto ≠ faltas + atrasos + férias do controle (diferença acima de 10%)', r.naoTrabalhadas, fecha);
       }
       if (r.qtdeFaturado > 0 && P === r.qtdeFaturado)
         add(r, 'atencao', 'copia', 'Produção real igual ao faturado: conferir com o reporte do ERP', P, r.produtosReportados > 0 ? r.produtosReportados : null);
@@ -22132,6 +22139,15 @@ window.CompAnos = (function () {
     };
     if(_trilhaOn) _trilhaPintar();
 
+    /* Detalhe da faixa 1: o do indicador mais grave vem primeiro. Em SET/26 o
+       absenteísmo estava vermelho e a hora extra verde, e o bloco de
+       absenteísmo ficava abaixo da tabela de setores, fora da tela. Na mesma
+       cor, vale a ordem dos cards: hora extra, depois absenteísmo. */
+    var grav=function(c){ return c==='#F44336'?2:(c==='#FF9800'?1:0); };
+    var blHE=reuBlocoSetores(anoTodo?null:mes, ano);
+    var blAbs=reuBlocoAbs(anoTodo?fechados:[rMes], rAnt?[rAnt]:null, rotPer, rotAnt, META_ABS_);
+    var detalhesF1=grav(_falas.cAbs)>grav(_falas.cHe) ? blAbs+blHE : blHE+blAbs;
+
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
     var bruto=(typeof loadBruto==='function')?loadBruto().filter(function(r){ return r.ano===ano; }):doAno;
@@ -22139,8 +22155,7 @@ window.CompAnos = (function () {
       +manchete
       +faixa('1','O plano cabe sem hora extra?', r1Curta, c1, b2,
              (r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
-             +reuBlocoSetores(anoTodo?null:mes, ano)
-             +reuBlocoAbs(anoTodo?fechados:[rMes], rAnt?[rAnt]:null, rotPer, rotAnt, META_ABS_))
+             +detalhesF1)
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
       +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
              '<div class="reu-row3" style="display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:8px;align-items:start">'
@@ -23423,9 +23438,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.29';
+var APP_VERSAO = 'b96.30';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.30', data:'13/10/2026', itens:[
+    'Reuniao, faixa 1: o detalhe do indicador mais grave vem primeiro. Em SET/26 o absenteismo estava vermelho e a hora extra verde, e o bloco de absenteismo por motivo ficava abaixo da tabela de setores, fora da tela. Na mesma cor vale a ordem dos cards: hora extra, depois absenteismo.',
+    'Integridade, ponto x controle: quando a diferenca e igual as ferias do controle, o aviso diz isso e o que fazer. ABR/26: ponto 1.916,4 h; controle sem ferias 1.916,3 h; ferias 404,8 h. O extrato de abril nao mostra as ferias como hora nao trabalhada: reexportar o extrato do mes e reprocessar; se nao mudar, conferir as ferias no controle do RH. O aviso continua ate a fonte ser corrigida.'
+  ]},
   { v:'b96.29', data:'13/10/2026', itens:[
     'Reuniao, faixa 1: bloco "Absenteismo por motivo" contra o mes anterior. Afastamento e atestado (saude e licenca) ficam separados de falta sem justificativa e atraso (o que a gestao de presenca controla), e a frase diz de onde veio a variacao. SET/26 contra AGO/26: caiu 4,9 p.p., 3,0 deles de afastamento; falta e atraso cairam 1,8 p.p.; 7,5% ainda acima da meta de 6%. Mesma conta do card (falta + atraso / horas normais). So aparece quando o periodo tem o controle de faltas do RH; em Ano todo mostra a composicao do ano, sem comparacao. Sai no relatorio impresso.',
     'Card de hora extra da Reuniao ganha o custo em reais: (extra50 x 1,5 + extra100 x 2) x custo da hora normal dos diretos com encargos, sem o reflexo no DSR. O custo-hora e a chave CUSTO_HORA da aba METAS, que o RH informa. Enquanto estiver em 0 o card diz "falta o custo-hora", nunca R$ 0.'
