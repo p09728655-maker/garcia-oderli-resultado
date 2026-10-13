@@ -92,7 +92,8 @@ var PR_ABA_AUS_PESSOA   = 'AUSENCIAS_PESSOA';   /* cod | mes | ano | falta | ate
 var PR_CAB_PONTO_PESSOA = ['cod', 'mes', 'ano', 'carga', 'faltas', 'atrasos', 'normais', 'jornada'];
 var PR_CAB_AUS_PESSOA   = ['cod', 'mes', 'ano', 'falta', 'atestado', 'afastado', 'atraso', 'ferias'];
 var PR_SETOR_COLS   = ['mes', 'ano', 'setor', 'direto', 'pessoas', 'horasCarga', 'horasNormais', 'faltasPonto', 'atrasosPonto',
-  'extra50', 'extra100', 'totalExtras', 'hePctHoras', 'ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias', 'atualizadoEm'];
+  'extra50', 'extra100', 'totalExtras', 'hePctHoras', 'ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias', 'atualizadoEm',
+  'atrasoDuplicado'];
 var PR_SETOR_AUS    = ['ausFalta', 'ausAtestado', 'ausAfastado', 'ausAtraso', 'horasFerias'];
 /* Mês que já tem horasNormais na HISTORICO é mês fechado: o extrato preenche a
    PONTO_SETOR e o aviso mostra a diferença entre o ponto e o que está digitado,
@@ -444,7 +445,8 @@ function prGravarSetoresPonto(ss, ext, setores) {
    inteiro, como na HISTORICO). Uma escrita para a aba toda. */
 function prLimparAusenciasSetor(ss, ano) {
   var t = prAbrirSetores(ss), v = t.v, col = t.col;
-  var cols = PR_SETOR_AUS.map(function (n) { return col[prNormaliza(n)]; });
+  /* a duplicidade depende do controle: zera junto e é apurada de novo no fim */
+  var cols = PR_SETOR_AUS.concat(['atrasoDuplicado']).map(function (n) { return col[prNormaliza(n)]; });
   var mudou = false;
   for (var r = 1; r < v.length; r++) {
     if (parseInt(v[r][col.ano], 10) !== ano) continue;
@@ -550,9 +552,9 @@ function prProcessarArquivo(ss, arq, func) {
     prLog(ss, arq.getName(), ext, a, criou);
     prGravarPessoas(ss, PR_ABA_PONTO_PESSOA, PR_CAB_PONTO_PESSOA, function (l) { return String(l[1]) === ext.mes && parseInt(l[2], 10) === ext.ano; },
       a.porPessoa.map(function (p) { return [p.cod, ext.mes, ext.ano, p.carga, p.faltas, p.atrasos, p.normais, p.jornada]; }));
-    var duplicidade = prApurarDuplicidade(ss, ext.mes, ext.ano);
     var setores = prAgregarSetores(ext, func);
     prGravarSetoresPonto(ss, ext, setores);
+    var duplicidade = prApurarDuplicidade(ss, ext.mes, ext.ano);
     return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido, duplicidade: duplicidade };
   } finally {
     if (tmpId) { try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (ignore) {} }
@@ -669,15 +671,15 @@ function prProcessarControle(ss, arq, doc, base) {
    aviso de integridade). Conferido em ABR/26 (201,7 h, 31 pessoas) e SET/26
    (80,6 h, 14 pessoas) contra o cruzamento feito à parte com os arquivos. */
 function prDuplicidade(ponto, aus) {
-  var horas = 0, pessoas = 0;
+  var horas = 0, pessoas = 0, porCod = {};
   (ponto || []).forEach(function (p) {
     var c = aus[p.cod]; if (!c) return;
     var controle = (c.falta || 0) + (c.atestado || 0) + (c.afastado || 0) + (c.ferias || 0);
     var sobra = controle - ((p.jornada - p.carga) + p.faltas);
     var d = Math.min(Math.max(sobra, 0), p.atrasos || 0);
-    if (d > 0.005) { horas += d; pessoas++; }
+    if (d > 0.005) { horas += d; pessoas++; porCod[p.cod] = d; }
   });
-  return { horas: horas, pessoas: pessoas };
+  return { horas: horas, pessoas: pessoas, porCod: porCod };
 }
 /* Lê as linhas de um mês numa aba por pessoa (cod | mes | ano | …). */
 function prLerPessoas(ss, nomeAba, mes, ano) {
@@ -697,7 +699,10 @@ function prGravarPessoas(ss, nomeAba, cab, sai, novas) {
 }
 /* Apura o mês se as duas abas por pessoa têm o mês, e grava na HISTORICO:
    atrasoDuplicado (h) e duplicidadeApurada = 1. O painel tira atrasoDuplicado
-   do atraso do ponto. Só atualiza linha que já existe; não cria mês. */
+   do atraso do ponto. Só atualiza linha que já existe; não cria mês. Grava
+   também por setor na PONTO_SETOR (setor = o atual da pessoa na
+   FUNCIONARIOS, como o resto da aba): sem isso a tabela de setores somaria o
+   atraso inteiro e a linha da fábrica não bateria com o card. */
 function prApurarDuplicidade(ss, mes, ano) {
   var ponto = prLerPessoas(ss, PR_ABA_PONTO_PESSOA, mes, ano), aus = prLerPessoas(ss, PR_ABA_AUS_PESSOA, mes, ano);
   if (!ponto.length || !aus.length) return null;
@@ -705,6 +710,7 @@ function prApurarDuplicidade(ss, mes, ano) {
   var mapa = {};
   aus.forEach(function (l) { mapa[String(l[0]).trim()] = { falta: num(l[3]), atestado: num(l[4]), afastado: num(l[5]), ferias: num(l[7]) }; });
   var d = prDuplicidade(ponto.map(function (l) { return { cod: String(l[0]).trim(), carga: num(l[3]), faltas: num(l[4]), atrasos: num(l[5]), jornada: num(l[7]) }; }), mapa);
+  prGravarDuplicidadeSetor(ss, mes, ano, d.porCod);
   var aba = ss.getSheetByName(PR_ABA_HISTORICO); if (!aba) return d;
   var linhas = aba.getDataRange().getValues(), iCab = -1, col = {};
   for (var i = 0; i < Math.min(linhas.length, 20) && iCab < 0; i++) {
@@ -731,6 +737,24 @@ function prApurarDuplicidade(ss, mes, ano) {
     }
   }
   return d;
+}
+/* atrasoDuplicado por setor nas linhas do mês que já existem; setor sem
+   duplicidade fica 0 (uma apuração anterior pode ter deixado valor). */
+function prGravarDuplicidadeSetor(ss, mes, ano, porCod) {
+  var func = prLerFuncionarios(ss), por = {};
+  Object.keys(porCod || {}).forEach(function (cod) {
+    var f = func && func.mapa[cod];
+    var k = prNormaliza(String((f && f.setor) || '').trim() || '(sem setor)');
+    por[k] = (por[k] || 0) + porCod[cod];
+  });
+  var t = prAbrirSetores(ss), v = t.v, col = t.col, c = col[prNormaliza('atrasoDuplicado')], mudou = false;
+  for (var r = 1; r < v.length; r++) {
+    var m = String(v[r][col.mes] || '').trim().toUpperCase().slice(0, 3);
+    if (m !== mes || parseInt(v[r][col.ano], 10) !== ano) continue;
+    while (v[r].length < t.largura) v[r].push('');
+    v[r][c] = Math.round((por[prNormaliza(v[r][col.setor])] || 0) * 100) / 100; mudou = true;
+  }
+  if (mudou) prEscreverSetoresOrdenado(t.aba, v, col, t.largura);
 }
 
 /* Regrava a FUNCIONARIOS a partir da aba DP do controle (Cód | Nome | Setor |

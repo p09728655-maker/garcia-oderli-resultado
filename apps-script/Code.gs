@@ -101,13 +101,16 @@ var DICIONARIO_LINHAS = [
   ['horasNormais', 'automático', 'ponto', 'Normais do extrato = Carga − Faltas − Atrasos: horas trabalhadas na jornada normal. Base do absenteísmo e das peças por hora. Conferido em AGO/26.'],
   ['naoTrabalhadas', 'automático', 'ponto', 'PontoRH.gs: soma, por direto, de jornada cheia do mês (carga mais frequente entre os diretos) − Normais. Quem foi admitido ou desligado dentro do mês entra com a própria Carga no lugar da jornada cheia: os dias fora da casa não são ausência. Tudo que não foi trabalhado, férias e afastamento incluídos. Com o controle de faltas lançado é só conferência (integridade: ponto × controle).'],
   ['faltasPonto / atrasosPonto', 'automático', 'ponto', 'Colunas Faltas e Atras. do extrato, somadas para os diretos. O ponto só conta falta sem justificativa; atestado, afastamento e licença reduzem a Carga.'],
-  ['(aba PONTO_SETOR)', 'automático', 'ponto + controle', 'Uma linha por mês/ano/setor, diretos e indiretos: pessoas, horasCarga, horasNormais, faltasPonto, atrasosPonto, extra50, extra100, totalExtras, hePctHoras (totalExtras ÷ horasNormais do setor) e as ausências do controle. Hora por setor, não peça por setor; setor = o atual da pessoa na FUNCIONARIOS. Não digitar: o script regrava.'],
+  ['(aba PONTO_SETOR)', 'automático', 'ponto + controle', 'Uma linha por mês/ano/setor, diretos e indiretos: pessoas, horasCarga, horasNormais, faltasPonto, atrasosPonto, extra50, extra100, totalExtras, hePctHoras (totalExtras ÷ horasNormais do setor), as ausências do controle e atrasoDuplicado do setor. Hora por setor, não peça por setor; setor = o atual da pessoa na FUNCIONARIOS. Não digitar: o script regrava.'],
+  ['(abas PONTO_PESSOA / AUSENCIAS_PESSOA)', 'automático', 'ponto / controle de faltas', 'Uma linha por direto e mês. PONTO_PESSOA (do extrato): cod, carga, faltas, atrasos, normais, jornada. AUSENCIAS_PESSOA (do controle): cod, falta, atestado, afastado, atraso, férias. Servem só para achar o atraso contado duas vezes. Têm o código do funcionário: não compartilhar. Não digitar: o script regrava.'],
+  ['atrasoDuplicado', 'automático', 'ponto × controle', 'PontoRH.gs, por pessoa: o RH lança atraso e saída antecipada como FALTA no controle, e a mesma hora estava também no atraso do ponto. sobra = (falta + atestado + afastado + férias do controle) − ((jornada − carga) + faltas do ponto); duplicado = sobra entre 0 e os atrasos do ponto. ABR/26: 201,7 h; SET/26: 80,6 h. Gravado na HISTORICO (total) e na PONTO_SETOR (por setor).'],
+  ['duplicidadeApurada', 'automático', 'ponto × controle', '1 quando o mês tem o ponto e o controle por pessoa e a duplicidade foi apurada. Sem isso, com controle e ponto, a integridade dá uma nota: processar de novo o extrato do mês.'],
   ['(aba PARCIAL_MES)', 'automático', 'ERP', 'Uma linha por corte parcial do mês em curso: o "3 - REPORTE" de 01/MM até a data do corte, salvo na pasta REPORTES PARCIAIS do Drive. produtos = produtos acabados até a data (com hora extra). Alimenta o bloco "Mês em curso" do Plano Mestre; NÃO entra em producaoReal — o mês segue aberto até o reporte fechado.'],
   ['(aba FERIADOS)', 'entrada', 'PPCP', 'Uma linha por feriado ou dia de recesso (data, descricao). Dias úteis decorridos do mês em curso = segunda a sexta menos estas datas. Sem a aba, feriado conta como dia útil e o painel avisa.'],
   ['(Embalagem — resumo diário)', 'automático', 'RitmoPatrimar Embalagem', 'Lido ao vivo da planilha MODELO_HORA_A_HORA (EMB_SHEET_ID), aba com DATA, REALIZADO, META, HE e HE CX: caixas por dia, horas e caixas de hora extra. Alimenta a linha de hora extra do bloco "Mês em curso": % de HE até o corte contra META_DEP_HE, dias apontados de fato, ritmo e projeção sem HE. Nada é gravado lá.'],
   ['ausFalta / ausAtestado / ausAfastado / ausAtraso', 'automático', 'controle de faltas', 'PontoRH.gs: aba BASE do CONTROLE_FALTAS, horas por STATUS, só para os diretos (mesma base das horas do ponto). Até SET/26 as faltas vinham do departamento 2-PRODUÇÃO inteiro, 18 setores.'],
   ['horasFerias', 'automático', 'controle de faltas', 'HORAS FÉRIAS da BASE, só para os diretos. Sem controle processado: o digitado.'],
-  ['faltas / atraso', 'calculado', 'painel', 'Com o controle lançado: faltas = ausFalta + ausAtestado + ausAfastado; atraso = atrasosPonto (o ponto mede o relógio; o controle só registra o que o líder anota) ou, sem ponto, ausAtraso. Sem controle, com ponto: atraso = atrasosPonto; faltas = naoTrabalhadas − horasFerias − atraso. Sem nenhum dos dois: o digitado.'],
+  ['faltas / atraso', 'calculado', 'painel', 'Com o controle lançado: faltas = ausFalta + ausAtestado + ausAfastado; atraso = atrasosPonto − atrasoDuplicado (o ponto mede o relógio; o controle só registra o que o líder anota; tira a parte que o controle já lançou como falta) ou, sem ponto, ausAtraso. Sem controle, com ponto: atraso = atrasosPonto; faltas = naoTrabalhadas − horasFerias − atraso. Sem nenhum dos dois: o digitado.'],
   ['extra50 / extra100', 'entrada', 'RH', 'Horas extras com adicional de 50% e de 100%.'],
   ['diasTrabalhados', 'entrada', 'PPCP', 'Dias úteis efetivamente trabalhados.'],
   ['produtosReportados', 'automático', 'ERP', 'Total de produtos acabados do relatório Mensal por Transação (3 REPORTE), lançado pelo ReporteVolumes.gs a partir do PDF na pasta REPORTES DE VOLUMES.'],
@@ -185,8 +188,10 @@ var SECRET = 'TROQUE_ESTA_SENHA_2026';
 
 /* Colunas que o app NÃO pode sobrescrever ao gravar. A previsão vem do
    PLANO MESTRE; se o app pudesse escrevê-la, um dado local desatualizado
-   apagaria o plano. */
-var COLUNAS_PROTEGIDAS = ['previsaoproducao', 'previsao', 'previsaovolumes'];
+   apagaria o plano. atrasoDuplicado e duplicidadeApurada são do PontoRH.gs
+   (apuração pessoa a pessoa): um navegador com cópia de antes da apuração
+   gravaria 0 por cima. */
+var COLUNAS_PROTEGIDAS = ['previsaoproducao', 'previsao', 'previsaovolumes', 'atrasoduplicado', 'duplicidadeapurada'];
 
 function doGet() {
   var saida;
