@@ -21954,7 +21954,9 @@ window.CompAnos = (function () {
     var iMes=ORDEM_M.indexOf(mes), mesAnt=iMes>0?ORDEM_M[iMes-1]:'DEZ', anoAnt=iMes>0?ano:ano-1;
     var rAnt=anoTodo?null:(todos.filter(function(r){ return r.ano===anoAnt&&r.mes===mesAnt; })[0]||null);
     var rotPer=anoTodo?String(ano):(mes+'/'+String(ano).slice(2)), rotAnt=mesAnt+'/'+String(anoAnt).slice(2);
-    var CH=DashUtils.custoHE(anoTodo?fechados:[rMes], (typeof CUSTO_HORA!=='undefined')?CUSTO_HORA:0);
+    var CUSTO_HORA_=(typeof CUSTO_HORA!=='undefined')?CUSTO_HORA:0;
+    var CH=DashUtils.custoHE(anoTodo?fechados:[rMes], CUSTO_HORA_);
+    var CHano=DashUtils.custoHE(ateAqui, CUSTO_HORA_);
     var pm=(typeof window.pmApurado==='function')?window.pmApurado():null;
 
     /* ── 1 · manchete ── */
@@ -22025,11 +22027,18 @@ window.CompAnos = (function () {
                 subRit, corRit, false, 'mestre')
       +card('Dependência de hora extra', fd(A.depHE,1)+'%',
              fi(A.deHE)+' pç de '+fi(A.he)+' h extras<br>'+fd(A.pctHE,1)+'% das horas totais'
-             +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%'))
-             /* custo em reais (DashUtils.custoHE); sem custo-hora, diz o que falta em vez de R$ 0 */
-             +'<br>'+(CH.valor!==null?('custo R$ '+fi(CH.valor)+' · '+fi(CH.h50)+' h a 50% + '+fi(CH.h100)+' h a 100%')
-                                      :'custo em R$: falta o custo-hora (aba METAS)'),
+             +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%')),
              A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), false, 'eficiencia')
+      /* Custo da hora extra em card próprio (DashUtils.custoHE). Sem meta em
+         reais, não há veredito: cor da marca, como o card de produção. Sem
+         custo-hora na aba METAS o valor é "—" e a linha diz o que falta, nunca
+         R$ 0. */
+      +card('Custo da hora extra', CH.valor!==null?('R$ '+fi(CH.valor)):'—',
+             fi(CH.h50)+' h a 50% + '+fi(CH.h100)+' h a 100%<br>'
+             +(CH.valor!==null
+               ? ('R$ '+fd(CUSTO_HORA_,2)+'/h com encargos'+(anoTodo?'':(' · ano R$ '+fi(CHano.valor))))
+               : 'falta o custo-hora (aba METAS)'),
+             CH.valor!==null?'#F5A623':'#00E5FF', false, 'eficiencia')
       +card('Absenteísmo', fd(A.absMed,1)+'%',
              /* A tradução que a diretoria entende: horas perdidas ao ritmo da
                 jornada normal do próprio período = peças que não saíram, e
@@ -23438,9 +23447,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.30';
+var APP_VERSAO = 'b96.31';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.31', data:'13/10/2026', itens:[
+    'Reuniao, faixa 1: custo da hora extra em card proprio, ao lado da dependencia de hora extra. Valor em reais do periodo, horas a 50% e a 100%, custo-hora usado e o acumulado do ano. Sem meta em reais, o card fica na cor da marca, sem veredito. Sem CUSTO_HORA na aba METAS mostra "—" e "falta o custo-hora", nunca R$ 0. A linha de custo sai do card de dependencia de hora extra.'
+  ]},
   { v:'b96.30', data:'13/10/2026', itens:[
     'Reuniao, faixa 1: o detalhe do indicador mais grave vem primeiro. Em SET/26 o absenteismo estava vermelho e a hora extra verde, e o bloco de absenteismo por motivo ficava abaixo da tabela de setores, fora da tela. Na mesma cor vale a ordem dos cards: hora extra, depois absenteismo.',
     'Integridade, ponto x controle: quando a diferenca e igual as ferias do controle, o aviso diz isso e o que fazer. ABR/26: ponto 1.916,4 h; controle sem ferias 1.916,3 h; ferias 404,8 h. O extrato de abril nao mostra as ferias como hora nao trabalhada: reexportar o extrato do mes e reprocessar; se nao mudar, conferir as ferias no controle do RH. O aviso continua ate a fonte ser corrigida.'
