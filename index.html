@@ -5801,6 +5801,34 @@ window.DashUtils = (function() {
                  HISTORICO diferente do Plano Mestre.
      Só meses com producaoReal > 0. Campo ausente não acusa nada, para o
      dataset embutido e o .xlsx importado não acenderem falso vermelho. */
+  /* CIENTE — aviso de integridade conferido e explicado. Fica na coluna
+     integridadeCiente da HISTORICO, uma linha por tipo de aviso:
+       ponto | 1749 | 2119 | 2026-10-13 | motivo
+     Vale só para os números em que foi dado (tolerância de 1%): se o dado
+     mudar, o aviso volta a ser atenção. Não vale para erro. */
+  function cienteLer(txt) {
+    var m = {};
+    String(txt || '').split(/\r?\n/).forEach(function (l) {
+      var p = l.split('|'); if (p.length < 5) return;
+      var tipo = p[0].trim(); if (!tipo) return;
+      var nr = function (x) { x = String(x).trim(); return x === '' || x === '—' ? null : parseFloat(x.replace(',', '.')); };
+      m[tipo] = { enc: nr(p[1]), esp: nr(p[2]), em: p[3].trim(), motivo: p.slice(4).join('|').trim() };
+    });
+    return m;
+  }
+  function cienteTexto(m) {
+    var f = function (x) { return (x === null || x === undefined || !isFinite(x)) ? '—' : String(Math.round(x * 10) / 10); };
+    return Object.keys(m || {}).sort().map(function (t) {
+      var c = m[t]; return t + ' | ' + f(c.enc) + ' | ' + f(c.esp) + ' | ' + (c.em || '') + ' | ' + String(c.motivo || '').replace(/[|\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }).join('\n');
+  }
+  function cienteVale(c, enc, esp) {
+    var perto = function (a, b) {
+      if (a === null || a === undefined || b === null || b === undefined) return (a === null || a === undefined) && (b === null || b === undefined);
+      return Math.abs(a - b) <= Math.max(1, Math.abs(b) * 0.01);
+    };
+    return !!c && perto(c.enc, enc) && perto(c.esp, esp);
+  }
   function integridade(regs, opts) {
     opts = opts || {};
     var metaEf = opts.metaEf > 0 ? opts.metaEf : 90;   /* a planilha fixa 90% na coluna Margem */
@@ -5811,8 +5839,13 @@ window.DashUtils = (function() {
        anos; sem ela, decide sobre os meses recebidos */
     var aplicarDup = typeof opts.aplicarDuplicidade === 'boolean' ? opts.aplicarDuplicidade : duplicidadeCompleta(regs).completa;
     function add(r, nivel, tipo, msg, encontrado, esperado) {
-      itens.push({ mes:r.mes, ano:r.ano, nivel:nivel, tipo:tipo, msg:msg,
-                   encontrado:encontrado, esperado:esperado });
+      var item = { mes:r.mes, ano:r.ano, nivel:nivel, tipo:tipo, msg:msg, encontrado:encontrado, esperado:esperado };
+      if (nivel === 'atencao') {
+        var c = cienteLer(r.integridadeCiente)[tipo];
+        if (cienteVale(c, encontrado, esperado)) { item.nivel = 'info'; item.ciente = c; }
+        else item.podeCiente = true;
+      }
+      itens.push(item);
       comItem[r.mes + '/' + r.ano] = true;
     }
     function dif(a, b, tol) { return Math.abs((a || 0) - (b || 0)) > tol; }
@@ -6082,6 +6115,7 @@ window.DashUtils = (function() {
            periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
            integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar, duplicidadeCompleta:duplicidadeCompleta,
+           cienteLer:cienteLer, cienteTexto:cienteTexto,
            absMotivos:absMotivos, absComparar:absComparar, custoHE:custoHE,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
@@ -21716,22 +21750,32 @@ window.CompAnos = (function () {
   function blocoIntegridade(I, ano){
     if(!I || !I.meses) return '';
     var cor = I.nivel==='erro'?'#F44336':(I.nivel==='atencao'?'#FF9800':'#4CAF50');
-    var notasTxt = I.notas ? (' · '+I.notas+' nota'+(I.notas>1?'s':'')) : '';
+    /* aviso com ciente conta à parte: "sem divergência" seria mentira */
+    var nCiente = I.itens.filter(function(i){ return i.ciente; }).length, nNotas = I.notas - nCiente;
+    var notasTxt = (nCiente ? (' · '+nCiente+' ciente') : '') + (nNotas ? (' · '+nNotas+' nota'+(nNotas>1?'s':'')) : '');
     var titulo = I.nivel==='ok'
-      ? ('Integridade dos dados · '+I.meses+' meses de '+ano+' conferidos, sem divergência'+notasTxt)
+      ? ('Integridade dos dados · '+I.meses+' meses de '+ano+' conferidos'+(nCiente?'':', sem divergência')+notasTxt)
       : ('Integridade dos dados · '
          +(I.erros?(I.erros+' erro'+(I.erros>1?'s':'')):'')
          +(I.erros&&I.atencoes?' · ':'')
          +(I.atencoes?(I.atencoes+' ponto'+(I.atencoes>1?'s':'')+' de atenção'):'')
          +' em '+I.mesesComItem+' de '+I.meses+' meses de '+ano+notasTxt);
     function num(v){ return (v===null||v===undefined)?'—':(Math.abs(v)>=1000?fi(v):fd(v,2)); }
+    var arg=function(v){ return (v===null||v===undefined||!isFinite(v))?'null':String(Math.round(v*100)/100); };
     var linhas=I.itens.map(function(i){
       var c=i.nivel==='erro'?'#F44336':(i.nivel==='atencao'?'#FF9800':'var(--t3)');
+      var chave='\''+i.mes+'\','+i.ano+',\''+i.tipo+'\'';
+      var acao=i.podeCiente
+        ? '<button type="button" class="btn btn-g btn-sm" onclick="reuIntegCiente('+chave+','+arg(i.encontrado)+','+arg(i.esperado)+')" title="Conferido e explicado: registra o motivo na HISTORICO e o aviso vira nota. Volta a ser atenção se os números mudarem.">Ciente</button>'
+        : (i.ciente?'<button type="button" class="btn btn-g btn-sm" onclick="reuIntegCienteDesfazer('+chave+')" title="Tirar o ciente: o aviso volta a ser atenção">Desfazer</button>':'');
+      var dt=i.ciente&&i.ciente.em?String(i.ciente.em).replace(/^(\d{4})-(\d{2})-(\d{2}).*/,'$3/$2/$1'):'';
       return '<tr'+(i.nivel==='info'?' style="color:var(--t3)"':'')+'><td style="padding:3px 6px;white-space:nowrap">'+i.mes+'/'+String(i.ano).slice(2)+'</td>'
-        +'<td style="padding:3px 6px;font-weight:700;color:'+c+'">'+(i.nivel==='erro'?'ERRO':(i.nivel==='atencao'?'ATENÇÃO':'NOTA'))+'</td>'
-        +'<td style="padding:3px 6px">'+i.msg+'</td>'
+        +'<td style="padding:3px 6px;font-weight:700;color:'+c+'">'+(i.nivel==='erro'?'ERRO':(i.nivel==='atencao'?'ATENÇÃO':(i.ciente?'CIENTE':'NOTA')))+'</td>'
+        +'<td style="padding:3px 6px">'+i.msg
+          +(i.ciente?'<div style="color:var(--t2);margin-top:2px">Ciente'+(dt?' em '+dt:'')+': '+String(i.ciente.motivo||'').replace(/[&<>"']/g,function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]; })+'</div>':'')+'</td>'
         +'<td style="padding:3px 6px;text-align:right;font-family:var(--mono)">'+num(i.encontrado)+'</td>'
-        +'<td style="padding:3px 6px;text-align:right;font-family:var(--mono);color:var(--t3)">'+num(i.esperado)+'</td></tr>';
+        +'<td style="padding:3px 6px;text-align:right;font-family:var(--mono);color:var(--t3)">'+num(i.esperado)+'</td>'
+        +'<td class="reu-noprint" style="padding:3px 6px;text-align:right;white-space:nowrap">'+acao+'</td></tr>';
     }).join('');
     return '<details class="reu-noprint" style="background:var(--panel);border:1px solid var(--b);border-left:4px solid '+cor
       +';border-radius:var(--r);padding:7px 12px;margin-bottom:8px;font-size:.78rem;color:var(--t1)"'+(I.nivel==='erro'?' open':'')+'>'
@@ -21744,11 +21788,12 @@ window.CompAnos = (function () {
           +'As colunas calculadas saem da regra do painel; "planilha desatualizada" significa que a HISTORICO ainda guarda a conta antiga. '
           +'Erro é entrada impossível: corrige na HISTORICO. Não apresente com erro em aberto.'
           +(I.itens.some(function(i){ return i.tipo==='plano'; })?' Nota de plano é registro, não pendência: a previsão da época fica guardada na HISTORICO enquanto o painel usa o Plano Mestre.':'')
+          +(I.itens.some(function(i){ return i.ciente; })?' Ciente: aviso conferido, com o motivo registrado na HISTORICO; não pinta a barra e volta a ser atenção se os números mudarem.':'')
           +(I.itens.some(function(i){ return i.tipo==='duplicidade'; })?' Nota de atraso: o absenteísmo pode estar alto (em ABR/26 eram 1,5 p.p.). A correção só entra quando todos os meses estiverem apurados, para os meses ficarem na mesma base.':'')+'</div>'
           +'<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:.74rem">'
           +'<thead><tr style="color:var(--t3);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;text-align:left">'
           +'<th style="padding:3px 6px">Mês</th><th style="padding:3px 6px">Nível</th><th style="padding:3px 6px">O que não fecha</th>'
-          +'<th style="padding:3px 6px;text-align:right">Na planilha</th><th style="padding:3px 6px;text-align:right">Esperado</th></tr></thead>'
+          +'<th style="padding:3px 6px;text-align:right">Na planilha</th><th style="padding:3px 6px;text-align:right">Esperado</th><th class="reu-noprint"></th></tr></thead>'
           +'<tbody>'+linhas+'</tbody></table></div>'
         : '')
       +'</details>';
@@ -23149,6 +23194,40 @@ window.CompAnos = (function () {
     if(lin) lin.title=abrir?'Ocultar os outros setores':'Abrir os outros setores';
   };
 
+  /* Ciente na integridade. Relê a planilha antes, como "Gravar cálculos":
+     gravar a cópia local por cima poderia desfazer uma correção feita lá. */
+  function _cienteGravar(mes, ano, muda, msgOk){
+    var fim=function(){
+      var d=loadBruto(), achou=false;
+      d.forEach(function(r){
+        if(String(r.mes||'').toUpperCase().slice(0,3)!==mes||parseInt(r.ano,10)!==ano) return;
+        var m=DashUtils.cienteLer(r.integridadeCiente); muda(m);
+        r.integridadeCiente=DashUtils.cienteTexto(m); achou=true;
+      });
+      if(!achou){ if(typeof toast==='function') toast('Mês '+mes+'/'+ano+' não encontrado na HISTORICO.','err'); return; }
+      save(d);
+      if(typeof toast==='function') toast(msgOk,'ok');
+      try{ render(); }catch(e){}
+    };
+    if(typeof _recarregarDoSheets!=='function'){ fim(); return; }
+    _recarregarDoSheets().then(fim).catch(function(e){
+      if(typeof toast==='function') toast('Não gravei: a planilha não respondeu ('+(e&&e.message||e)+').','err');
+    });
+  }
+  window.reuIntegCiente=function(mes, ano, tipo, enc, esp){
+    var motivo=prompt('Ciente do aviso de '+mes+'/'+ano+'.\n\nPor que ele pode ficar como está? (fica registrado na HISTORICO)\nEx.: extrato sem os desligados de abril; RH não reexporta.');
+    if(motivo===null) return;
+    motivo=String(motivo).replace(/[|\r\n]+/g,' ').replace(/\s+/g,' ').trim();
+    if(!motivo){ if(typeof toast==='function') toast('Ciente precisa de motivo.','err'); return; }
+    var d=new Date(), hoje=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+    _cienteGravar(mes, ano, function(m){ m[tipo]={ enc:enc, esp:esp, em:hoje, motivo:motivo }; },
+      'Ciente registrado em '+mes+'/'+ano+'. O aviso volta se os números mudarem.');
+  };
+  window.reuIntegCienteDesfazer=function(mes, ano, tipo){
+    if(!confirm('Tirar o ciente de '+mes+'/'+ano+'? O aviso volta a ser atenção.')) return;
+    _cienteGravar(mes, ano, function(m){ delete m[tipo]; }, 'Ciente retirado de '+mes+'/'+ano+'.');
+  };
+
   window.reuGravarCalculos=function(){
     if(typeof save!=='function'||typeof load!=='function') return;
     var fim=function(){
@@ -23686,9 +23765,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.38';
+var APP_VERSAO = 'b96.39';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.39', data:'13/10/2026', itens:[
+    'Integridade: botao Ciente em cada ponto de atencao. Pede o motivo (obrigatorio), grava na coluna integridadeCiente da HISTORICO e o aviso vira nota CIENTE com o motivo e a data, sem pintar a barra. Vale so para os numeros do momento: se mudarem mais de 1%, volta a ser atencao. Erro nao aceita ciente. Desfazer tira o ciente. Rele a planilha antes de gravar, como Gravar calculos. ABR/26: extrato do ponto sem os 4 desligados em abril e codigo 2 sem ponto.',
+    'Code.gs: lerHistorico mantem integridadeCiente como texto (antes toda coluna virava numero) e gravarHistorico cria a coluna na primeira vez.'
+  ]},
   { v:'b96.38', data:'13/10/2026', itens:[
     'Plano de acao: o botao de concluir abre a acao ja como Concluida e pede O que foi realizado (obrigatorio para concluir). A data de conclusao entra sozinha; reaberta, perde a data. O realizado aparece embaixo da acao na tabela (com mostrar concluidas), no WhatsApp, no e-mail e na aba ACOES (colunas realizado e concluidoEm, criadas pelo Code.gs na primeira gravacao). Ate o Code.gs novo ser publicado, o texto fica no navegador e e reenviado.',
     'Onde esta a hora extra: a linha Outros N setores diretos voltou a abrir no clique. Desde b96.29 a tabela de absenteismo ao lado tem a mesma classe e o clique procurava as linhas nela. Sai a nota de rodape (horas do ponto, indiretos).',
