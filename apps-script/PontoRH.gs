@@ -316,12 +316,14 @@ function prLancarHistorico(ss, mes, ano, a, soBrutas) {
    334 h a mais por mês, e a integridade acusou JUN/26 sem divergência real.
    Extrato diferente: nada muda, o mês continua protegido. Devolve
    { antes, depois } quando mudou, senão null. */
-function prBrutasDoMesFechado(ss, mes, ano, a, atual) {
-  if (!atual) return null;
+function prMesmoExtrato(atual, a) {
+  if (!atual) return false;
   var perto = function (x, y) { return Math.abs((x || 0) - (y || 0)) < 1; };
-  var mesmo = Math.round(atual.colaboradores) === a.n && perto(atual.horasCarga, a.carga) && perto(atual.horasNormais, a.normais)
+  return Math.round(atual.colaboradores) === a.n && perto(atual.horasCarga, a.carga) && perto(atual.horasNormais, a.normais)
     && perto(atual.extra50, a.e50) && perto(atual.extra100, a.e100);
-  if (!mesmo || Math.abs((atual.naoTrabalhadas || 0) - a.naoTrabalhadas) < 0.05) return null;
+}
+function prBrutasDoMesFechado(ss, mes, ano, a, atual) {
+  if (!prMesmoExtrato(atual, a) || Math.abs((atual.naoTrabalhadas || 0) - a.naoTrabalhadas) < 0.05) return null;
   prLancarHistorico(ss, mes, ano, a, true);
   return { antes: atual.naoTrabalhadas || 0, depois: a.naoTrabalhadas };
 }
@@ -530,7 +532,9 @@ function processarPontoDrive() {
         if (!r.a.e50 && !r.a.e100) feitos.push('   ATENÇÃO: extrato sem hora extra (colunas Ex50%/Ex100% ausentes ou zeradas). Exporte de novo com as colunas de extras.');
         if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
         if (r.a.admitidosDepois.length) feitos.push('   admitidos depois de ' + r.ext.mes + '/' + r.ext.ano + ', não contam neste mês: ' + r.a.admitidosDepois.join(', '));
-        feitos.push(r.duplicidade
+        feitos.push(r.extratoDiferente
+          ? '   extrato DIFERENTE do que fechou o mês: por pessoa, por setor e duplicidade ficaram como estavam. Para aceitar este extrato: aceitarPontoNaHistorico com o mês e processar este arquivo de novo.'
+          : r.duplicidade
           ? '   atraso do ponto já lançado como falta no controle: ' + Math.round(r.duplicidade.horas * 10) / 10 + ' h (' + r.duplicidade.pessoas + ' pessoas), fora da conta'
           : '   sem controle de faltas por pessoa neste mês: a duplicidade de atraso será apurada quando o controle for processado');
       }
@@ -564,20 +568,29 @@ function prProcessarArquivo(ss, arq, func) {
     var ext = prExtrair(doc.getSheets()[0]);                     /* Extrato de Totais */
     var a = prAgregar(ext, func);
     if (!a.n) throw new Error('nenhum direto encontrado: confira a coluna direto (S/N) na ' + PR_ABA_FUNC);
-    var atual = prLerHistoricoMes(ss, ext.mes, ext.ano), protegido = null, criou = false, brutas = null;
+    var atual = prLerHistoricoMes(ss, ext.mes, ext.ano), protegido = null, criou = false, brutas = null, mesmo = true;
     if (PR_PROTEGER_FECHADOS && atual && atual.horasNormais > 0) {
       protegido = atual;   /* mês fechado: HISTORICO fica como está */
-      brutas = prBrutasDoMesFechado(ss, ext.mes, ext.ano, a, atual);
+      mesmo = prMesmoExtrato(atual, a);
+      brutas = mesmo ? prBrutasDoMesFechado(ss, ext.mes, ext.ano, a, atual) : null;
     } else {
       criou = prLancarHistorico(ss, ext.mes, ext.ano, a);
     }
     prLog(ss, arq.getName(), ext, a, criou);
-    prGravarPessoas(ss, PR_ABA_PONTO_PESSOA, PR_CAB_PONTO_PESSOA, function (l) { return String(l[1]) === ext.mes && parseInt(l[2], 10) === ext.ano; },
-      a.porPessoa.map(function (p) { return [p.cod, ext.mes, ext.ano, p.carga, p.faltas, p.atrasos, p.normais, p.jornada]; }));
-    var setores = prAgregarSetores(ext, func);
-    prGravarSetoresPonto(ss, ext, setores);
-    var duplicidade = prApurarDuplicidade(ss, ext.mes, ext.ano);
-    return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido, brutas: brutas, duplicidade: duplicidade };
+    var setores = prAgregarSetores(ext, func), duplicidade = null;
+    /* Mês fechado com OUTRO extrato (ex.: reexportado com os desligados): a
+       HISTORICO continua com o antigo, então por pessoa, por setor e a
+       duplicidade também ficam no antigo. Gravar o novo aqui tirava do
+       atraso antigo uma duplicidade apurada sobre outro extrato. Para aceitar
+       o novo: aceitarPontoNaHistorico do mês e processar o arquivo de novo
+       (aí é o mesmo extrato e tudo se alinha). */
+    if (mesmo) {
+      prGravarPessoas(ss, PR_ABA_PONTO_PESSOA, PR_CAB_PONTO_PESSOA, function (l) { return String(l[1]) === ext.mes && parseInt(l[2], 10) === ext.ano; },
+        a.porPessoa.map(function (p) { return [p.cod, ext.mes, ext.ano, p.carga, p.faltas, p.atrasos, p.normais, p.jornada]; }));
+      prGravarSetoresPonto(ss, ext, setores);
+      duplicidade = prApurarDuplicidade(ss, ext.mes, ext.ano);
+    }
+    return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido, brutas: brutas, duplicidade: duplicidade, extratoDiferente: !mesmo };
   } finally {
     if (tmpId) { try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (ignore) {} }
   }
@@ -696,8 +709,14 @@ function prDuplicidade(ponto, aus) {
   var horas = 0, pessoas = 0, porCod = {};
   (ponto || []).forEach(function (p) {
     var c = aus[p.cod]; if (!c) return;
-    var controle = (c.falta || 0) + (c.atestado || 0) + (c.afastado || 0) + (c.ferias || 0);
-    var sobra = controle - ((p.jornada - p.carga) + p.faltas);
+    /* Quem entrou ou saiu no meio do mês tem jornada = a própria carga: a
+       carga reduzida por atestado, afastamento ou férias não aparece, e o
+       controle dessas horas virava "atraso duplicado". Para essa pessoa, só
+       a falta do controle contra a falta do ponto. Carga acima da jornada
+       do mês (escala diferente) não é ausência justificada negativa: 0. */
+    var sobra = p.parcial
+      ? (c.falta || 0) - p.faltas
+      : (c.falta || 0) + (c.atestado || 0) + (c.afastado || 0) + (c.ferias || 0) - (Math.max(0, p.jornada - p.carga) + p.faltas);
     var d = Math.min(Math.max(sobra, 0), p.atrasos || 0);
     if (d > 0.005) { horas += d; pessoas++; porCod[p.cod] = d; }
   });
@@ -731,7 +750,11 @@ function prApurarDuplicidade(ss, mes, ano) {
   var num = function (x) { var f = parseFloat(String(x).replace(',', '.')); return isFinite(f) ? f : 0; };
   var mapa = {};
   aus.forEach(function (l) { mapa[String(l[0]).trim()] = { falta: num(l[3]), atestado: num(l[4]), afastado: num(l[5]), ferias: num(l[7]) }; });
-  var d = prDuplicidade(ponto.map(function (l) { return { cod: String(l[0]).trim(), carga: num(l[3]), faltas: num(l[4]), atrasos: num(l[5]), jornada: num(l[7]) }; }), mapa);
+  /* parcial = jornada diferente da jornada cheia do mês (a mais frequente):
+     prAgregar põe a própria carga como jornada de quem entrou ou saiu no mês */
+  var freq = {}, cheia = 0, maxf = 0;
+  ponto.forEach(function (l) { var j = Math.round(num(l[7]) * 100) / 100; freq[j] = (freq[j] || 0) + 1; if (freq[j] > maxf) { maxf = freq[j]; cheia = j; } });
+  var d = prDuplicidade(ponto.map(function (l) { var j = num(l[7]); return { cod: String(l[0]).trim(), carga: num(l[3]), faltas: num(l[4]), atrasos: num(l[5]), jornada: j, parcial: Math.abs(j - cheia) > 0.01 }; }), mapa);
   prGravarDuplicidadeSetor(ss, mes, ano, d.porCod);
   var aba = ss.getSheetByName(PR_ABA_HISTORICO); if (!aba) return d;
   var linhas = aba.getDataRange().getValues(), iCab = -1, col = {};

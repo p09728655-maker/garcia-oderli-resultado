@@ -441,6 +441,16 @@ afirma('quem chama decide a base (aplicarDuplicidade:false) mesmo com o mês apu
   U.integridade([ABR_A], { aplicarDuplicidade:false }).itens.filter(i => i.tipo === 'ponto').length === 1);
 afirma('integridade confere ponto × controle pela regra, não pelo atraso gravado na planilha',
   itPonto([Object.assign({}, ABR_H, { faltas:1687.08, atraso:229.2, atrasoDuplicado:201.7, duplicidadeApurada:1 })]).length === 0);
+{
+  const dc = U.duplicidadeCompleta([ABR_A, AGO_H, SET_A]);
+  const I = U.integridade([ABR_A, SET_A], { aplicarDuplicidade: false, duplicidade: dc });
+  const it = I.itens.find(i => i.tipo === 'duplicidade-base');
+  afirma('correção suspensa (AGO sem apuração, de fora da lista) → um ponto de atenção que nomeia AGO/26',
+    it && it.nivel === 'atencao' && /AGO\/26/.test(it.msg) && I.nivel === 'atencao');
+  afirma('esse aviso não conta como mês com problema', I.mesesComItem === I.itens.filter(i => i.nivel !== 'info' && i.ano !== '').map(i => i.mes).filter((v, k, a) => a.indexOf(v) === k).length);
+  afirma('base completa → sem esse aviso', !U.integridade([ABR_A, SET_A], { duplicidade: U.duplicidadeCompleta([ABR_A, SET_A]) }).itens.some(i => i.tipo === 'duplicidade-base'));
+  afirma('nada apurado ainda → sem esse aviso (só as notas por mês)', !U.integridade([ABR_H], { duplicidade: U.duplicidadeCompleta([ABR_H, SET_H]) }).itens.some(i => i.tipo === 'duplicidade-base'));
+}
 afirma('mês sem ponto: sem nota de duplicidade',
   itDup([U.normalizar({ ano:2026, mes:'JUL', horasNormais:14000, horasCarga:14400, ausFalta:500, ausAtraso:12.3, horasFerias:100, producaoReal:30000 })]).length === 0);
 

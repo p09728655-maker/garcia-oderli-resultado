@@ -5181,8 +5181,12 @@ function _syncSheetsDebounced(d){
   _syncTimer = setTimeout(function(){ _syncSheetsAgora(d); }, 2000);
 }
 
-function _syncSheetsAgora(d){
+/* integridadeCiente só sai no envio do próprio Ciente (comCiente): no envio
+   em massa, uma cópia aberta antes do ciente gravaria vazio por cima. Sem a
+   chave, gravarHistorico não toca na coluna. */
+function _syncSheetsAgora(d, comCiente){
   if (!SHEETS_WEBAPP_URL || !d || !d.length) return;
+  if (!comCiente) d = d.map(function(r){ if (!r || r.integridadeCiente === undefined) return r; var o = {}; for (var k in r) if (k !== 'integridadeCiente') o[k] = r[k]; return o; });
   var payload = JSON.stringify({ secret: SHEETS_SECRET, dados: d });
   fetch(SHEETS_WEBAPP_URL, {
     method: 'POST',
@@ -5915,11 +5919,21 @@ window.DashUtils = (function() {
       if (r.planoNaHistorico > 0 && r.previsaoProducao > 0 && dif(r.planoNaHistorico, r.previsaoProducao, 0.5))
         add(r, 'info', 'plano', 'Previsão na HISTORICO (da época) difere do Plano Mestre em uso', r.planoNaHistorico, r.previsaoProducao);
     });
+    /* Uma base só: com algum mês já apurado e outro não, a correção sai de
+       TODOS os meses e o absenteísmo volta à conta antiga (~1 p.p. a mais).
+       Isso pede atenção, não nota — e o mês que segura pode ser de outro ano
+       ou estar sem produção, fora das linhas acima. opts.duplicidade =
+       duplicidadeCompleta(todos os anos), passado por quem chama. */
+    var dc = opts.duplicidade;
+    if (dc && !dc.completa && dc.apurados > 0 && dc.faltam && dc.faltam.length)
+      itens.push({ mes:'—', ano:'', nivel:'atencao', tipo:'duplicidade-base',
+        msg:'Correção do atraso contado duas vezes suspensa em todos os meses (uma base só): falta apurar ' + dc.faltam.join(', ') + '. Processar o extrato do ponto desses meses (e o controle de faltas, se o mês não estiver nele).',
+        encontrado:dc.faltam.length, esperado:0 });
     var erros = itens.filter(function (i) { return i.nivel === 'erro'; }).length;
     var atencoes = itens.filter(function (i) { return i.nivel === 'atencao'; }).length;
     var notas = itens.length - erros - atencoes;
     var comProblema = {};
-    itens.forEach(function (i) { if (i.nivel !== 'info') comProblema[i.mes + '/' + i.ano] = true; });
+    itens.forEach(function (i) { if (i.nivel !== 'info' && i.ano !== '') comProblema[i.mes + '/' + i.ano] = true; });
     return { itens:itens, erros:erros, atencoes:atencoes, notas:notas, meses:meses,
              mesesComItem:Object.keys(comProblema).length,
              nivel: erros > 0 ? 'erro' : (atencoes ? 'atencao' : 'ok') };
@@ -21772,7 +21786,7 @@ window.CompAnos = (function () {
         ? '<button type="button" class="btn btn-g btn-sm" onclick="reuIntegCiente('+chave+','+arg(i.encontrado)+','+arg(i.esperado)+')" title="Conferido e explicado: registra o motivo na HISTORICO e o aviso vira nota. Volta a ser atenção se os números mudarem.">Ciente</button>'
         : (i.ciente?'<button type="button" class="btn btn-g btn-sm" onclick="reuIntegCienteDesfazer('+chave+')" title="Tirar o ciente: o aviso volta a ser atenção">Desfazer</button>':'');
       var dt=i.ciente&&i.ciente.em?String(i.ciente.em).replace(/^(\d{4})-(\d{2})-(\d{2}).*/,'$3/$2/$1'):'';
-      return '<tr'+(i.nivel==='info'?' style="color:var(--t3)"':'')+'><td style="padding:3px 6px;white-space:nowrap">'+i.mes+'/'+String(i.ano).slice(2)+'</td>'
+      return '<tr'+(i.nivel==='info'?' style="color:var(--t3)"':'')+'><td style="padding:3px 6px;white-space:nowrap">'+i.mes+(i.ano!==''?'/'+String(i.ano).slice(2):'')+'</td>'
         +'<td style="padding:3px 6px;font-weight:700;color:'+c+'">'+(i.nivel==='erro'?'ERRO':(i.nivel==='atencao'?'ATENÇÃO':(i.ciente?'CIENTE':'NOTA')))+'</td>'
         +'<td style="padding:3px 6px">'+i.msg
           +(i.ciente?'<div style="color:var(--t2);margin-top:2px">Ciente'+(dt?' em '+dt:'')+': '+String(i.ciente.motivo||'').replace(/[&<>"']/g,function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]; })+'</div>':'')+'</td>'
@@ -21919,10 +21933,13 @@ window.CompAnos = (function () {
     },
     _enviar: function(itens){
       if(typeof SHEETS_WEBAPP_URL==='undefined' || !SHEETS_WEBAPP_URL || !itens.length) return;
+      /* enviadoEm/enviadoPara quem grava é o Apps Script, no envio do e-mail:
+         uma cópia local mais velha mandada aqui apagaria o carimbo mais novo */
+      var sem=itens.map(function(a){ var o={}; for(var k in a){ if(k!=='enviadoEm'&&k!=='enviadoPara') o[k]=a[k]; } return o; });
       try{
         fetch(SHEETS_WEBAPP_URL, { method:'POST', mode:'no-cors',
           headers:{'Content-Type':'text/plain;charset=utf-8'},
-          body: JSON.stringify({ secret: SHEETS_SECRET, acoes: itens }) })
+          body: JSON.stringify({ secret: SHEETS_SECRET, acoes: sem }) })
         .catch(function(err){ console.warn('Sync ACOES falhou (fica salvo localmente):', err); });
       }catch(e){}
     }
@@ -22083,7 +22100,7 @@ window.CompAnos = (function () {
      (segundos depois de abrir), quando a sidebar é clicada e quando uma
      ação é salva. Sem isto, a pessoa clicava em "Nova ação", começava a
      digitar e o formulário sumia com o texto. */
-  var AC_CAMPOS=['ac-id','ac-tipo','ac-prioridade','ac-kpi','ac-responsavel','ac-prazo','ac-status','ac-desvio','ac-causa','ac-acao'];
+  var AC_CAMPOS=['ac-id','ac-tipo','ac-prioridade','ac-kpi','ac-responsavel','ac-prazo','ac-status','ac-desvio','ac-causa','ac-acao','ac-realizado'];
   function _acSnapshot(){
     var f=document.getElementById('reu-ac-form');
     if(!f || f.style.display==='none') return null;
@@ -22360,7 +22377,7 @@ window.CompAnos = (function () {
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
     var bruto=(typeof loadBruto==='function')?loadBruto().filter(function(r){ return r.ano===ano; }):doAno;
-    corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025,aplicarDuplicidade:duplicidadeAplicada()}), ano)
+    corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025,aplicarDuplicidade:duplicidadeAplicada(),duplicidade:DashUtils.duplicidadeCompleta(loadBruto())}), ano)
       +manchete
       +faixa('1','O plano cabe sem hora extra?', r1Curta, c1, b2,
              (r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
@@ -23232,7 +23249,7 @@ window.CompAnos = (function () {
       if(!achou){ if(typeof toast==='function') toast('Mês '+mes+'/'+ano+' não encontrado na HISTORICO.','err'); return; }
       save(d);
       /* envia já, sem os 2 s do debounce: F5 logo depois do clique cancelava o envio */
-      try{ if(typeof _syncTimer!=='undefined') clearTimeout(_syncTimer); _syncSheetsAgora(loadBruto()); }catch(e){}
+      try{ if(typeof _syncTimer!=='undefined') clearTimeout(_syncTimer); _syncSheetsAgora(loadBruto(), true); }catch(e){}
       if(typeof toast==='function') toast(msgOk+' Conferindo na planilha…','ok');
       try{ render(); }catch(e){}
       _cienteConferir(mes, ano, novo, 1);
@@ -23408,7 +23425,7 @@ window.CompAnos = (function () {
     var ant=a.id?Acoes.lista().filter(function(x){ return x.id===a.id; })[0]:null;
     if(ant){ a.criadoEm=ant.criadoEm; a.mesRef=ant.mesRef; a.enviadoEm=ant.enviadoEm; a.enviadoPara=ant.enviadoPara; }
     /* data em que virou Concluída; reaberta, perde a data */
-    a.concluidoEm=a.status==='Concluída'?((ant&&ant.status==='Concluída'&&ant.concluidoEm)?ant.concluidoEm:hojeISO()):'';
+    a.concluidoEm=a.status==='Concluída'?((ant&&ant.status==='Concluída')?(ant.concluidoEm||''):hojeISO()):'';
     if(!a.mesRef){ var l=document.getElementById('reu-per-lbl'); a.mesRef=l?l.textContent:''; }
     _acForm(false);          /* antes de salvar: salvar re-renderiza e preservaria o form aberto */
     Acoes.salvar(a);
@@ -23793,9 +23810,16 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.41';
+var APP_VERSAO = 'b96.42';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.42', data:'13/10/2026', itens:[
+    'Pente fino (revisao do que mudou hoje): o campo O que foi realizado era apagado quando a Reuniao se redesenhava com o formulario aberto (carga da planilha, clique na lateral); agora e guardado como os outros campos.',
+    'Acao concluida antes de existir a data de conclusao nao ganha a data de hoje ao ser editada. O carimbo de envio (enviadoEm/enviadoPara) nao vai mais no POST da acao: quem grava e o Apps Script, e uma copia velha apagava o mais novo.',
+    'Ciente so vai para a planilha no envio do proprio Ciente: um navegador aberto antes gravava vazio por cima no envio em massa.',
+    'Integridade: se algum mes ja apurado convive com outro sem apuracao (de qualquer ano), a correcao do atraso duplicado sai de todos os meses; agora isso e um ponto de atencao que nomeia os meses que faltam.',
+    'PontoRH.gs: mes fechado reprocessado com OUTRO extrato nao mexe mais em por pessoa, por setor nem na duplicidade (antes apurava sobre o extrato novo e descontava do atraso antigo). Quem entrou ou saiu no mes conta so falta do controle contra falta do ponto; carga acima da jornada nao vira ausencia negativa. Nos dados de hoje: JUN/26 8,84% para 8,85%, o resto igual.'
+  ]},
   { v:'b96.41', data:'13/10/2026', itens:[
     'Ciente na integridade: envia para a planilha na hora (antes esperava 2 s, e um F5 logo depois do clique cancelava o envio) e confere lendo a planilha de novo. Gravou: avisa Gravado na planilha. Nao gravou depois de 3 tentativas: avisa que o Web App ainda roda o Code.gs antigo e qual implantacao precisa de Nova versao. Em 13/10 o ciente ficava verde e sumia ao atualizar porque a versao nova foi para outra implantacao.'
   ]},
