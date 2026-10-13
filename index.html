@@ -23471,9 +23471,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.31';
+var APP_VERSAO = 'b96.32';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.32', data:'13/10/2026', itens:[
+    'Reuniao, faixa 1: as tabelas de absenteismo por motivo e de hora extra por setor ficam lado a lado quando cabem (cerca de 800 px cada em 1920); antes cada uma esticava ate 1.800 px e o numero ficava longe do nome. Em tela estreita e no relatorio, uma abaixo da outra.',
+    'Numeros das duas tabelas em fonte normal com algarismos alinhados: em Consolas o peso 600 virava negrito e a tabela pesava. Negrito so no total e no destaque. Linha de 27 px (era cerca de 45). Titulo, "Quem controla" e notas em cinza mais claro, legivel no telao. Modo TV com fonte maior nas tabelas.'
+  ]},
   { v:'b96.31', data:'13/10/2026', itens:[
     'Reuniao, faixa 1: custo da hora extra em card proprio, ao lado da dependencia de hora extra. Valor em reais do periodo, horas a 50% e a 100%, custo-hora usado e o acumulado do ano. Sem meta em reais, o card fica na cor da marca, sem veredito. Sem CUSTO_HORA na aba METAS mostra "—" e "falta o custo-hora", nunca R$ 0. A linha de custo sai do card de dependencia de hora extra.'
   ]},
