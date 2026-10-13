@@ -23199,18 +23199,43 @@ window.CompAnos = (function () {
 
   /* Ciente na integridade. Relê a planilha antes, como "Gravar cálculos":
      gravar a cópia local por cima poderia desfazer uma correção feita lá. */
+  /* Depois de gravar, lê a planilha de novo (sem tocar na cópia local) até
+     ver o ciente lá: o POST é no-cors e não devolve resposta. Sem isso a tela
+     ficava verde e o ciente sumia na próxima abertura quando o Web App ainda
+     rodava o Code.gs antigo (que descarta a coluna) — foi o que aconteceu em
+     13/10/26, com a versão nova implantada na implantação errada. */
+  function _cienteConferir(mes, ano, esperado, tent){
+    if(typeof SHEETS_WEBAPP_URL==='undefined'||!SHEETS_WEBAPP_URL) return;
+    var url=SHEETS_WEBAPP_URL+(SHEETS_WEBAPP_URL.indexOf('?')>=0?'&':'?')+'_ts='+Date.now();
+    setTimeout(function(){
+      fetch(url,{cache:'no-store'})
+        .then(function(r){ return r.text().then(function(t){ return _lerRespostaWebApp(t, r.status); }); })
+        .then(function(json){
+          var rec=((json&&json.dados)||[]).map(_traduzirCampos).filter(function(r){
+            return String(r.mes||'').toUpperCase().slice(0,3)===mes&&parseInt(r.ano,10)===ano; })[0];
+          var la=String((rec&&rec.integridadeCiente)||'').replace(/\s+/g,' ').trim();
+          if(la===String(esperado||'').replace(/\s+/g,' ').trim()){ if(typeof toast==='function') toast('Gravado na planilha (HISTORICO, '+mes+'/'+ano+').','ok'); return; }
+          if(tent<3){ _cienteConferir(mes, ano, esperado, tent+1); return; }
+          if(typeof toast==='function') toast('A planilha NÃO gravou o ciente de '+mes+'/'+ano+'. O Web App do painel ainda roda o Code.gs antigo: em Gerenciar implantações, a implantação AKfycbytH9MEe… precisa de Nova versão.','err');
+        })
+        .catch(function(){ if(tent<3) _cienteConferir(mes, ano, esperado, tent+1); });
+    }, 4000);
+  }
   function _cienteGravar(mes, ano, muda, msgOk){
     var fim=function(){
-      var d=loadBruto(), achou=false;
+      var d=loadBruto(), achou=false, novo='';
       d.forEach(function(r){
         if(String(r.mes||'').toUpperCase().slice(0,3)!==mes||parseInt(r.ano,10)!==ano) return;
         var m=DashUtils.cienteLer(r.integridadeCiente); muda(m);
-        r.integridadeCiente=DashUtils.cienteTexto(m); achou=true;
+        r.integridadeCiente=novo=DashUtils.cienteTexto(m); achou=true;
       });
       if(!achou){ if(typeof toast==='function') toast('Mês '+mes+'/'+ano+' não encontrado na HISTORICO.','err'); return; }
       save(d);
-      if(typeof toast==='function') toast(msgOk,'ok');
+      /* envia já, sem os 2 s do debounce: F5 logo depois do clique cancelava o envio */
+      try{ if(typeof _syncTimer!=='undefined') clearTimeout(_syncTimer); _syncSheetsAgora(loadBruto()); }catch(e){}
+      if(typeof toast==='function') toast(msgOk+' Conferindo na planilha…','ok');
       try{ render(); }catch(e){}
+      _cienteConferir(mes, ano, novo, 1);
     };
     if(typeof _recarregarDoSheets!=='function'){ fim(); return; }
     _recarregarDoSheets().then(fim).catch(function(e){
@@ -23768,9 +23793,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.40';
+var APP_VERSAO = 'b96.41';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.41', data:'13/10/2026', itens:[
+    'Ciente na integridade: envia para a planilha na hora (antes esperava 2 s, e um F5 logo depois do clique cancelava o envio) e confere lendo a planilha de novo. Gravou: avisa Gravado na planilha. Nao gravou depois de 3 tentativas: avisa que o Web App ainda roda o Code.gs antigo e qual implantacao precisa de Nova versao. Em 13/10 o ciente ficava verde e sumia ao atualizar porque a versao nova foi para outra implantacao.'
+  ]},
   { v:'b96.40', data:'13/10/2026', itens:[
     'Cabecalho da Reuniao: na TV (1920 com a lateral aberta) titulo, meses e botoes voltam a uma linha so; em b96.38 o botao Lideres descia sozinho. No notebook os botoes descem juntos para baixo do titulo e a pagina continua sem rolar de lado.'
   ]},
