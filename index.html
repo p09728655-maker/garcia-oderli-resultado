@@ -5775,15 +5775,13 @@ window.DashUtils = (function() {
       var temAus = r.ausFalta > 0 || r.ausAtestado > 0 || r.ausAfastado > 0 || r.ausAtraso > 0;
       if (r.naoTrabalhadas > 0 && temAus) {
         var fecha = (r.faltas || 0) + (r.atraso || 0) + (r.horasFerias || 0);
-        /* Quando o que falta é exatamente a férias do controle, o aviso diz
-           isso e o que fazer: em ABR/26 o ponto deu 1.916,4 h, o controle sem
-           férias 1.916,3 h e as férias eram 404,8 h. O extrato daquele mês não
-           mostrou as férias como hora não trabalhada, ao contrário dos outros. */
-        var semFerias = r.horasFerias > 0 && Math.abs((fecha - r.naoTrabalhadas) - r.horasFerias) <= Math.max(5, r.horasFerias * 0.02);
+        /* b96.30 dizia "a diferença é igual às férias" quando batia com as
+           férias do mês. Em ABR/26 bateu por coincidência: pessoa a pessoa, as
+           férias estavam no ponto; a diferença eram 5 pessoas fora do extrato,
+           atraso contado duas vezes e ausência que o ponto não mostra. Total
+           igual não é causa: o aviso volta a dizer só o que se sabe. */
         if (pctDif(r.naoTrabalhadas, fecha) > 10)
-          add(r, 'atencao', 'ponto', semFerias
-            ? 'Ponto e controle de faltas não fecham: a diferença é igual às férias do controle (' + fN(r.horasFerias, 1) + ' h). O extrato do ponto deste mês não mostra as férias como hora não trabalhada: reexportar o extrato do mês e reprocessar; se não mudar, conferir as férias no controle do RH'
-            : 'Ponto e controle de faltas não fecham: não trabalhadas no ponto ≠ faltas + atrasos + férias do controle (diferença acima de 10%)', r.naoTrabalhadas, fecha);
+          add(r, 'atencao', 'ponto', 'Ponto e controle de faltas não fecham: não trabalhadas no ponto ≠ faltas + atrasos + férias do controle (diferença acima de 10%)', r.naoTrabalhadas, fecha);
       }
       if (r.qtdeFaturado > 0 && P === r.qtdeFaturado)
         add(r, 'atencao', 'copia', 'Produção real igual ao faturado: conferir com o reporte do ERP', P, r.produtosReportados > 0 ? r.produtosReportados : null);
@@ -23471,9 +23469,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.32';
+var APP_VERSAO = 'b96.33';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.33', data:'13/10/2026', itens:[
+    'Integridade, ponto x controle: sai a mensagem "a diferenca e igual as ferias do controle" (b96.30). Em ABR/26 o total bateu com as ferias por coincidencia: cruzando pessoa a pessoa, as ferias estavam no ponto, e a diferenca vinha de 5 pessoas no controle fora do extrato (225,6 h), atraso do ponto lancado tambem como falta no controle (201,7 h) e ausencia que o ponto nao mostra (151,3 h). O aviso volta ao texto generico.'
+  ]},
   { v:'b96.32', data:'13/10/2026', itens:[
     'Reuniao, faixa 1: as tabelas de absenteismo por motivo e de hora extra por setor ficam lado a lado quando cabem (cerca de 800 px cada em 1920); antes cada uma esticava ate 1.800 px e o numero ficava longe do nome. Em tela estreita e no relatorio, uma abaixo da outra.',
     'Numeros das duas tabelas em fonte normal com algarismos alinhados: em Consolas o peso 600 virava negrito e a tabela pesava. Negrito so no total e no destaque. Linha de 27 px (era cerca de 45). Titulo, "Quem controla" e notas em cinza mais claro, legivel no telao. Modo TV com fonte maior nas tabelas.'
