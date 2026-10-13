@@ -4339,11 +4339,14 @@ body.lid-on{overflow:hidden}
 @media print { #lid-ov { display:none !important; } }
 </style>
 <div class="page on" id="page-reuniao">
-  <div class="pageHdr">
+  <!-- wrap no cabeçalho + título com base curta: na TV os botões ficam na
+       mesma linha do título; quando não cabem, descem juntos para a linha de
+       baixo, e só quebram entre si se nem sozinhos couberem (notebook) -->
+  <div class="pageHdr" style="flex-wrap:wrap">
     <div class="pageHdrIcon" style="background:#F5A623">
       <svg viewBox="0 0 24 24" fill="var(--bg)"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"></path></svg>
     </div>
-    <div>
+    <div style="flex:1 1 220px;min-width:200px">
       <div class="pageHdrTitle">Reunião do Mês</div>
       <div class="pageHdrSub">Nível 1 da pirâmide — diretoria, mensal · clique num indicador para descer ao detalhe · <b>Apresentar</b> segue a trilha da reunião</div>
     </div>
@@ -23765,9 +23768,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.39';
+var APP_VERSAO = 'b96.40';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.40', data:'13/10/2026', itens:[
+    'Cabecalho da Reuniao: na TV (1920 com a lateral aberta) titulo, meses e botoes voltam a uma linha so; em b96.38 o botao Lideres descia sozinho. No notebook os botoes descem juntos para baixo do titulo e a pagina continua sem rolar de lado.'
+  ]},
   { v:'b96.39', data:'13/10/2026', itens:[
     'Integridade: botao Ciente em cada ponto de atencao. Pede o motivo (obrigatorio), grava na coluna integridadeCiente da HISTORICO e o aviso vira nota CIENTE com o motivo e a data, sem pintar a barra. Vale so para os numeros do momento: se mudarem mais de 1%, volta a ser atencao. Erro nao aceita ciente. Desfazer tira o ciente. Rele a planilha antes de gravar, como Gravar calculos. ABR/26: extrato do ponto sem os 4 desligados em abril e codigo 2 sem ponto.',
     'Code.gs: lerHistorico mantem integridadeCiente como texto (antes toda coluna virava numero) e gravarHistorico cria a coluna na primeira vez.'
