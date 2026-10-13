@@ -519,6 +519,42 @@ sec('Horas disponíveis por setor = carga do ponto');
   ok('doMes devolve a carga', w.SetorHE.doMes('SET', 2026).find(x => x.setor === '14-ALMOXARIFADO').hc, 1240.8);
 }
 
+sec('Hora extra em pessoas = HE ÷ jornada cheia do mês');
+{
+  const ini = HTML.indexOf('window.SetorHE = (function(){'), fim = HTML.indexOf('\n})();', ini) + 5;
+  /* jornada cheia SET = 184,8 (moda: GERAL, CONTROLE e MONTAGEM); EMBALAGEM e
+     ACABAMENTO têm férias e ficam abaixo; AGO = 184,8 também */
+  const dados = [
+    { mes:'SET', ano:2026, setor:'2-EMBALAGEM', direto:'S', pessoas:25, horasCarga:3995.2, horasNormais:3901.4, totalExtras:424.47 },
+    { mes:'SET', ano:2026, setor:'3-ACABAMENTO', direto:'S', pessoas:7, horasCarga:1056, horasNormais:1052, totalExtras:80.03 },
+    { mes:'SET', ano:2026, setor:'21-GERAL', direto:'S', pessoas:3, horasCarga:554.4, horasNormais:553.43, totalExtras:42.73 },
+    { mes:'SET', ano:2026, setor:'35-CONTROLE DE PRODUÇÃO', direto:'S', pessoas:1, horasCarga:184.8, horasNormais:184.8, totalExtras:31.13 },
+    { mes:'SET', ano:2026, setor:'25-MONTAGEM', direto:'S', pessoas:1, horasCarga:184.8, horasNormais:184.8, totalExtras:2.05 },
+    { mes:'SET', ano:2026, setor:'14-ALMOXARIFADO', direto:'N', pessoas:9, horasCarga:1240.8, horasNormais:1204.72, totalExtras:41.37 },
+    { mes:'JUL', ano:2026, setor:'2-EMBALAGEM', direto:'S', pessoas:22, horasCarga:4452.8, horasNormais:4300, totalExtras:400 },
+    { mes:'JUL', ano:2026, setor:'21-GERAL', direto:'S', pessoas:3, horasCarga:607.2, horasNormais:600, totalExtras:20 }];
+  const w = { localStorage: { getItem: () => JSON.stringify(dados) }, duplicidadeAplicada: () => false };
+  new Function('window', 'localStorage', HTML.slice(ini, fim)).call(w, w, w.localStorage);
+  const R = w.SetorHE.resumo('SET', 2026), sx = k => R.setores.find(x => x.setor === k);
+  ok('jornada cheia de SET = moda da carga por pessoa', R.jornada, 184.8);
+  ok('EMBALAGEM: 424,47 h ÷ 184,8 = 2,3 pessoas', sx('2-EMBALAGEM').heP, 424.47 / 184.8, 0.001);
+  ok('fábrica · diretos em pessoas', R.hePesDir, (424.47 + 80.03 + 42.73 + 31.13 + 2.05) / 184.8, 0.001);
+  ok('indiretos em pessoas, à parte', R.hePesInd, 41.37 / 184.8, 0.001);
+  const RA = w.SetorHE.resumo(null, 2026);
+  ok('ano: soma das jornadas (JUL 202,4 + SET 184,8)', RA.jornada, 387.2, 0.001);
+  ok('ano: EMBALAGEM = HE do ano ÷ soma das jornadas (média por mês)', RA.setores.find(x => x.setor === '2-EMBALAGEM').heP, 824.47 / 387.2, 0.001);
+  ok('doMes também traz a HE em pessoas', w.SetorHE.doMes('SET', 2026).find(x => x.setor === '21-GERAL').heP, 42.73 / 184.8, 0.001);
+  /* empate na moda fica com a maior carga */
+  const w2 = { localStorage: { getItem: () => JSON.stringify([
+    { mes:'SET', ano:2026, setor:'A', direto:'S', pessoas:1, horasCarga:158.4, totalExtras:10 },
+    { mes:'SET', ano:2026, setor:'B', direto:'S', pessoas:1, horasCarga:184.8, totalExtras:10 }]) }, duplicidadeAplicada: () => false };
+  new Function('window', 'localStorage', HTML.slice(ini, fim)).call(w2, w2, w2.localStorage);
+  ok('empate na moda: a maior carga', w2.SetorHE.resumo('SET', 2026).jornada, 184.8);
+  const w3 = { localStorage: { getItem: () => JSON.stringify([{ mes:'SET', ano:2026, setor:'A', direto:'S', pessoas:3, horasNormais:500, totalExtras:30 }]) }, duplicidadeAplicada: () => false };
+  new Function('window', 'localStorage', HTML.slice(ini, fim)).call(w3, w3, w3.localStorage);
+  afirma('sem carga na aba: HE em pessoas fica vazia (a tela mostra —), sem dividir por zero', w3.SetorHE.resumo('SET', 2026).hePesDir === null && w3.SetorHE.resumo('SET', 2026).setores[0].heP === null);
+}
+
 sec('Ciente na integridade (aviso conferido, com motivo)');
 {
   const ABR_C = Object.assign({}, ABR_H, { integridadeCiente: '' });
