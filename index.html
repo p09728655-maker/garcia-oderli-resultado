@@ -4543,6 +4543,11 @@ var PROD_ERP_DESDE = 2025;   /* a partir deste ano producaoReal = total do repor
    Ticket não é indicador de capacidade: só "evita hora extra" se a receita
    alvo for fixa e o mix puder subir de valor. Ver tooltip do card. */
 var META_TICKET = 250;
+/* Custo da hora normal dos diretos, com encargos (R$/h), para pôr a hora
+   extra em reais: 1,5× na de 50% e 2× na de 100% (DashUtils.custoHE). Vem do
+   RH pela aba METAS. Fica 0 até ser cadastrado, e com 0 a tela diz que falta
+   o custo-hora em vez de mostrar R$ 0. */
+var CUSTO_HORA = 0;
 /* Jornada diária da fábrica: 8h48 = 528 min = 8,8 h. Uma constante só; os
    módulos abaixo apontavam cada um para o seu "528" (e HDÍA dizia 8,48 —
    8h48 em decimal é 8,80). Takt, capacidade/hora e demanda/hora derivam daqui. */
@@ -4558,7 +4563,7 @@ var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
    localStorage para a primeira pintura não sair com o padrão e depois trocar.
    Chaves aceitas: só as constantes abaixo, para uma célula errada não virar
    variável solta. */
-var METAS_CHAVES = ['META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS','PROD_ERP_DESDE'];   /* META_EF aposentada com a Independência de HE */
+var METAS_CHAVES = ['META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS','PROD_ERP_DESDE','CUSTO_HORA'];   /* META_EF aposentada com a Independência de HE */
 var METAS_ORIGEM = {};   /* chave → { valor, unidade, vigencia, origem, observacao } */
 function aplicarMetas(m, avisar){
   if(!m || typeof m!=='object') return 0;
@@ -4588,7 +4593,8 @@ var METAS_ROTULOS = {
   META_DEP_HE: ['Dependência de hora extra máxima', '% do volume', 'parcela da entrega que pode vir de HE'],
   META_TICKET: ['Ticket médio mínimo',         'R$',  'R$ por peça faturada'],
   DUTEIS:      ['Dias úteis de referência',    'dias','capacidade teórica e carteira em dias'],
-  PROD_ERP_DESDE: ['Produção pelo reporte do ERP desde', 'ano', 'a partir deste ano a Produção Real é o total do relatório REPORTE (produtos acabados); antes vale o digitado']
+  PROD_ERP_DESDE: ['Produção pelo reporte do ERP desde', 'ano', 'a partir deste ano a Produção Real é o total do relatório REPORTE (produtos acabados); antes vale o digitado'],
+  CUSTO_HORA:  ['Custo da hora normal dos diretos', 'R$/h', 'com encargos, do RH; a hora extra sai a 1,5× (50%) e 2× (100%). Sem valor, o card de hora extra não mostra custo']
 };
 function abrirMetas(){
   if(document.getElementById('metas-overlay')) return;
@@ -5879,10 +5885,86 @@ window.DashUtils = (function() {
     return                     { nivel:'acima',  texto:'acima do limite de ' + l + '%',     curto:'acima do limite' };
   }
 
+  /* ── ABSENTEÍSMO POR MOTIVO ──────────────────────────────────────────────
+     O card dá um número só, e um número que cai 5 pontos é lido como "a
+     presença melhorou". Em SET/26 caiu de 12,4% para 7,5%, e 3,0 desses
+     4,9 p.p. eram afastamento terminando: gente voltando de licença, que
+     nenhuma ação de presença produz. Esta conta abre o MESMO absenteísmo do
+     card (falta + atraso ÷ horas normais, regra de normalizar) nos motivos do
+     controle de faltas do RH, com o atraso do ponto, como no card.
+     gestao = o que a gestão de presença controla (falta sem justificativa e
+     atraso). Afastamento e atestado são saúde e licença.
+     Só abre quando TODOS os meses do período têm o controle lançado: num mês
+     sem controle a falta é naoTrabalhadas − férias, sem motivo, e a soma dos
+     motivos não fecharia com o card. Mesmo filtro de mês de periodo(). */
+  var MOTIVOS_ABS = [
+    { k:'afastado', rotulo:'Afastamento',             campo:'ausAfastado', gestao:false },
+    { k:'falta',    rotulo:'Falta sem justificativa', campo:'ausFalta',    gestao:true  },
+    { k:'atraso',   rotulo:'Atraso',                  campo:'atraso',      gestao:true  },
+    { k:'atestado', rotulo:'Atestado',                campo:'ausAtestado', gestao:false }
+  ];
+  function absMotivos(regs) {
+    var hn = 0, meses = 0, semControle = 0, h = {};
+    MOTIVOS_ABS.forEach(function (m) { h[m.k] = 0; });
+    (regs || []).forEach(function (r) {
+      if (!r || !((r.horasCarga > 0) || (r.producaoReal > 0))) return;
+      meses++;
+      hn += (r.horasNormais || 0);
+      if (!(r.ausFalta > 0 || r.ausAtestado > 0 || r.ausAfastado > 0 || r.ausAtraso > 0)) { semControle++; return; }
+      MOTIVOS_ABS.forEach(function (m) { h[m.k] += (r[m.campo] || 0); });
+    });
+    if (!meses || !(hn > 0) || semControle) return null;
+    var itens = MOTIVOS_ABS.map(function (m) {
+      return { k:m.k, rotulo:m.rotulo, gestao:m.gestao, h:h[m.k], pct:h[m.k] / hn * 100 };
+    });
+    return { hn:hn, itens:itens, total:itens.reduce(function (t, x) { return t + x.pct; }, 0) };
+  }
+  /* Atual contra anterior, motivo a motivo, e a frase que diz de onde veio a
+     variação. Abaixo de 0,5 p.p. no total é "estável": não se procura causa
+     para ruído. */
+  function absComparar(atual, ant, rotAnt, meta) {
+    if (!atual || !ant) return null;
+    var itens = atual.itens.map(function (x, i) {
+      return { k:x.k, rotulo:x.rotulo, gestao:x.gestao, pctAnt:ant.itens[i].pct, pct:x.pct, dpp:x.pct - ant.itens[i].pct };
+    });
+    var delta = atual.total - ant.total;
+    var gestao = itens.reduce(function (t, x) { return t + (x.gestao ? x.dpp : 0); }, 0);
+    var maior = itens.slice().sort(function (a, b) { return Math.abs(b.dpp) - Math.abs(a.dpp); })[0];
+    var frase;
+    if (Math.abs(delta) < 0.5) {
+      frase = 'Estável: ' + fN(atual.total, 1) + '% contra ' + fN(ant.total, 1) + '% em ' + rotAnt + '.';
+    } else {
+      frase = (delta < 0 ? 'Caiu ' : 'Subiu ') + fN(Math.abs(delta), 1) + ' p.p. contra ' + rotAnt + '.'
+        + ((maior.dpp < 0) === (delta < 0) ? (' ' + fN(Math.abs(maior.dpp), 1) + ' desses p.p. vieram de ' + maior.rotulo.toLowerCase() + '.') : '')
+        + ' Falta sem justificativa e atraso, a parte que a gestão de presença controla, '
+        + (Math.abs(gestao) < 0.05 ? 'ficaram estáveis.' : ((gestao < 0 ? 'caíram ' : 'subiram ') + fN(Math.abs(gestao), 1) + ' p.p.'));
+    }
+    if (meta > 0) frase += ' ' + fN(atual.total, 1) + '%: ' + (atual.total <= meta ? 'dentro' : 'acima') + ' da meta de ' + fN(meta, 0) + '%.';
+    return { itens:itens, delta:delta, gestao:gestao, maior:maior, frase:frase };
+  }
+
+  /* ── CUSTO DA HORA EXTRA ─────────────────────────────────────────────────
+     "Dependência de HE 8%" não é a unidade em que a diretoria decide entre
+     turno, contratação ou ação de presença; reais são. Custo = (extra50 × 1,5
+     + extra100 × 2) × custo da hora normal dos diretos com encargos
+     (CUSTO_HORA, aba METAS). O reflexo no DSR não entra. Sem custo-hora
+     cadastrado o valor é null, nunca R$ 0: zero na tela seria lido como
+     "a hora extra não custou nada". */
+  function custoHE(regs, custoHora) {
+    var h50 = 0, h100 = 0;
+    (regs || []).forEach(function (r) {
+      if (!r || !((r.horasCarga > 0) || (r.producaoReal > 0))) return;
+      h50 += (r.extra50 || 0); h100 += (r.extra100 || 0);
+    });
+    var hEquiv = h50 * 1.5 + h100 * 2;
+    return { h50:h50, h100:h100, hEquiv:hEquiv, valor:(custoHora > 0 ? hEquiv * custoHora : null) };
+  }
+
   return { getDias:getDias, getFat:getFat, getProd:getProd,
            periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
            integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar,
+           absMotivos:absMotivos, absComparar:absComparar, custoHE:custoHE,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
 
@@ -21429,6 +21511,65 @@ window.CompAnos = (function () {
       +'</div></div>';
   }
 
+  /* ABSENTEÍSMO POR MOTIVO NA REUNIÃO
+     O card diz quanto; este bloco diz de onde veio a variação contra o mês
+     anterior, separando afastamento e atestado (saúde e licença) de falta
+     sem justificativa e atraso (o que a gestão de presença controla). Em
+     SET/26 o card caiu 4,9 p.p. e 3,0 eram afastados voltando: sem o bloco,
+     a queda inteira seria apresentada como resultado de presença. Mesma
+     conta do card (DashUtils.absMotivos). Sem controle de faltas no período,
+     não aparece. Em "Ano todo" mostra a composição do ano, sem comparação. */
+  function reuBlocoAbs(regs, regsAnt, rot, rotAnt, meta){
+    var M=DashUtils.absMotivos(regs); if(!M) return '';
+    var Ma=regsAnt?DashUtils.absMotivos(regsAnt):null;
+    var C=Ma?DashUtils.absComparar(M,Ma,rotAnt,meta):null;
+    var nCel=' class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums"';
+    var pp=function(v){ return (v>=0.005?'+':(v<=-0.005?'−':''))+fd(Math.abs(v),2)+' p.p.'; };
+    var dCel=function(v){ return '<td class="n '+(v<=-0.005?'reu-abs-cai':(v>=0.005?'reu-abs-sobe':''))+'" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums">'+pp(v)+'</td>'; };
+    var linhas=M.itens.map(function(x,i){
+      var c=C?C.itens[i]:null;
+      return '<tr><td class="reu-set-nome">'+x.rotulo+'</td>'
+        +'<td class="reu-abs-nat">'+(x.gestao?'gestão de presença':'saúde e licença')+'</td>'
+        +(c?'<td'+nCel+'>'+fd(c.pctAnt,2)+'%</td>':'')
+        +'<td'+nCel+'>'+fd(x.pct,2)+'%</td>'
+        +(c?dCel(c.dpp):'')
+        +'<td'+nCel+'>'+fi(x.h)+'</td></tr>';
+    }).join('');
+    var gest=M.itens.reduce(function(t,x){ return t+(x.gestao?x.pct:0); },0);
+    var frase=C?C.frase
+      :('Falta sem justificativa e atraso, a parte que a gestão de presença controla, são '+fd(gest,1)+' dos '+fd(M.total,1)+'% de '+rot+'.'
+        +(meta>0?(' '+fd(M.total,1)+'%: '+(M.total<=meta?'dentro':'acima')+' da meta de '+fd(meta,0)+'%.'):''));
+    return '<div class="reu-setores reu-abs" style="margin:10px 2px 0">'
+      +'<div class="reu-set-h" style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:3px">'
+        +'▸ Absenteísmo por motivo · '+rot+(C?' contra '+rotAnt:'')+'</div>'
+      +'<div class="reu-set-p" style="font-size:.8rem;color:var(--t1);opacity:.85;line-height:1.35;margin-bottom:5px">'+frase+'</div>'
+      /* td{color}!important do tema escuro só perde para seletor mais
+         específico com !important; no relatório o número volta a ser tinta
+         (regra .bd .reu-abs-tab em reuImprimir, mais específica que esta) */
+      +'<style>.reu-abs-tab td.reu-abs-cai{color:#4CAF50!important}.reu-abs-tab td.reu-abs-sobe{color:#F44336!important}'
+        +'.reu-abs-tab td.reu-abs-nat{color:var(--t3)!important;font-size:.7rem!important;text-align:left!important}</style>'
+      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab reu-abs-tab" style="width:100%;border-collapse:collapse;font-size:.76rem;min-width:520px">'
+      +'<thead><tr>'
+        +'<th style="text-align:left;width:auto">Motivo</th>'
+        +'<th style="text-align:left;width:20%;white-space:nowrap">Quem controla</th>'
+        +(C?'<th style="text-align:right;width:11%;white-space:nowrap">'+rotAnt+'</th>':'')
+        +'<th style="text-align:right;width:11%;white-space:nowrap">'+rot+'</th>'
+        +(C?'<th style="text-align:right;width:13%;white-space:nowrap">Variação</th>':'')
+        +'<th style="text-align:right;width:11%;white-space:nowrap" title="horas do motivo no período">Horas</th>'
+      +'</tr></thead><tbody>'+linhas
+      +'<tr class="reu-set-tot"><td class="reu-set-nome" style="font-weight:700">Total</td><td class="reu-abs-nat"></td>'
+        +(C?'<td'+nCel+'>'+fd(Ma.total,2)+'%</td>':'')
+        +'<td'+nCel+'>'+fd(M.total,2)+'%</td>'
+        +(C?dCel(C.delta):'')
+        +'<td'+nCel+'>'+fi(M.itens.reduce(function(t,x){ return t+x.h; },0))+'</td></tr>'
+      +'</tbody></table></div>'
+      +'<div class="reu-set-nota" style="font-size:.66rem;color:var(--t3);margin-top:4px;line-height:1.3">'
+        +'% sobre as horas normais, a mesma conta do card. Falta, atestado e afastamento vêm do controle de faltas do RH; atraso, do ponto. '
+        +'Afastamento e atestado são saúde e licença: ação de presença não mexe neles.'
+        +(regsAnt&&!Ma?(' '+rotAnt+' sem controle de faltas: sem comparação.'):'')
+      +'</div></div>';
+  }
+
   function faixa(num,pergunta,resposta,corResp,cards,extra){
     return '<div class="reu-sec" style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:13px 0 7px;padding-left:2px">'
       +'<span class="reu-sec-n" style="font-family:var(--mono);font-size:.8rem;font-weight:800;color:#F5A623">'+num+'</span>'
@@ -21801,6 +21942,12 @@ window.CompAnos = (function () {
        tela mostraria o ano no rótulo e um mês nos cards. */
     var A = anoTodo ? agregado(fechados) : agregado([rMes]);
     var Y = agregado(ateAqui);
+    /* Mês anterior, só para o absenteísmo por motivo (JAN compara com DEZ do
+       ano anterior). Em "Ano todo" não há comparação. */
+    var iMes=ORDEM_M.indexOf(mes), mesAnt=iMes>0?ORDEM_M[iMes-1]:'DEZ', anoAnt=iMes>0?ano:ano-1;
+    var rAnt=anoTodo?null:(todos.filter(function(r){ return r.ano===anoAnt&&r.mes===mesAnt; })[0]||null);
+    var rotPer=anoTodo?String(ano):(mes+'/'+String(ano).slice(2)), rotAnt=mesAnt+'/'+String(anoAnt).slice(2);
+    var CH=DashUtils.custoHE(anoTodo?fechados:[rMes], (typeof CUSTO_HORA!=='undefined')?CUSTO_HORA:0);
     var pm=(typeof window.pmApurado==='function')?window.pmApurado():null;
 
     /* ── 1 · manchete ── */
@@ -21871,7 +22018,10 @@ window.CompAnos = (function () {
                 subRit, corRit, false, 'mestre')
       +card('Dependência de hora extra', fd(A.depHE,1)+'%',
              fi(A.deHE)+' pç de '+fi(A.he)+' h extras<br>'+fd(A.pctHE,1)+'% das horas totais'
-             +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%')),
+             +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%'))
+             /* custo em reais (DashUtils.custoHE); sem custo-hora, diz o que falta em vez de R$ 0 */
+             +'<br>'+(CH.valor!==null?('custo R$ '+fi(CH.valor)+' · '+fi(CH.h50)+' h a 50% + '+fi(CH.h100)+' h a 100%')
+                                      :'custo em R$: falta o custo-hora (aba METAS)'),
              A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), false, 'eficiencia')
       +card('Absenteísmo', fd(A.absMed,1)+'%',
              /* A tradução que a diretoria entende: horas perdidas ao ritmo da
@@ -21971,6 +22121,7 @@ window.CompAnos = (function () {
       cAbertura: (pm&&pm.ano===ano&&pm.cor)?pm.cor:c1,
       r1:r1, c1:c1,
       he: 'Dependência de HE '+fd(A.depHE,1)+'% (meta ≤ '+META_DEP_HE_+'%) · '+fi(A.deHE)+' pç saíram em '+fi(A.he)+' h extras'
+          +(CH.valor!==null?(' · custo R$ '+fi(CH.valor)):'')
           +(anoTodo?'':(' · no ano '+fd(Y.depHE,1)+'%')),
       cHe: A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'),
       abs: 'Absenteísmo '+fd(A.absMed,1)+'% (meta '+META_ABS_+'%)'
@@ -21988,7 +22139,8 @@ window.CompAnos = (function () {
       +manchete
       +faixa('1','O plano cabe sem hora extra?', r1Curta, c1, b2,
              (r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
-             +reuBlocoSetores(anoTodo?null:mes, ano))
+             +reuBlocoSetores(anoTodo?null:mes, ano)
+             +reuBlocoAbs(anoTodo?fechados:[rMes], rAnt?[rAnt]:null, rotPer, rotAnt, META_ABS_))
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
       +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
              '<div class="reu-row3" style="display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:8px;align-items:start">'
@@ -22035,6 +22187,8 @@ window.CompAnos = (function () {
       +'.reu-set-tot td{font-weight:700;border-top:1.2px solid #C6CBD3!important}'
       +'.reu-set-nota{font-size:6.8pt!important;color:#7B8794!important;margin-top:4px!important}'
       +'.reu-setores{break-inside:avoid;page-break-inside:avoid;margin-top:8px!important}'
+      +'.bd .reu-abs-tab td.reu-abs-cai,.bd .reu-abs-tab td.reu-abs-sobe{color:#1F2933!important}'
+      +'.bd .reu-abs-tab td.reu-abs-nat{color:#7B8794!important;font-size:6.8pt!important;text-align:left!important}'
       /* Card chapado e sem fio colorido: quem julga na folha e a manchete. */
       +'.reu-card{background:#fff!important;border:1px solid #D3D8DE!important;'
         +'border-radius:5px!important;padding:8px 10px!important}'
@@ -23269,9 +23423,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.28';
+var APP_VERSAO = 'b96.29';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.29', data:'13/10/2026', itens:[
+    'Reuniao, faixa 1: bloco "Absenteismo por motivo" contra o mes anterior. Afastamento e atestado (saude e licenca) ficam separados de falta sem justificativa e atraso (o que a gestao de presenca controla), e a frase diz de onde veio a variacao. SET/26 contra AGO/26: caiu 4,9 p.p., 3,0 deles de afastamento; falta e atraso cairam 1,8 p.p.; 7,5% ainda acima da meta de 6%. Mesma conta do card (falta + atraso / horas normais). So aparece quando o periodo tem o controle de faltas do RH; em Ano todo mostra a composicao do ano, sem comparacao. Sai no relatorio impresso.',
+    'Card de hora extra da Reuniao ganha o custo em reais: (extra50 x 1,5 + extra100 x 2) x custo da hora normal dos diretos com encargos, sem o reflexo no DSR. O custo-hora e a chave CUSTO_HORA da aba METAS, que o RH informa. Enquanto estiver em 0 o card diz "falta o custo-hora", nunca R$ 0.'
+  ]},
   { v:'b96.28', data:'13/10/2026', itens:[
     'aceitarPontoNaHistorico gravava ausencia como hora. Ate 17/09 o controle de faltas registrava na aba PONTO, com as colunas desalinhadas: diretos recebia ausFalta, carga ausAfastado, normais ausAtraso. Pegando a ultima linha do mes, o aceite do ano 2026 gravou em SET/26 colaboradores 141,53, horasCarga 70,4 e horasNormais 7,5 (absenteismo 7.448%), e o mesmo em OUT, NOV e DEZ/26, meses sem extrato. Como o painel conta todo mes com horasCarga acima de zero, os quatro entraram no acumulado do ano. As 7,5 h ainda fizeram o extrato de SET processado em 09/10 ser barrado como mes fechado. Agora o aceite so le linha de extrato de verdade.',
     'Menu Ponto, Corrigir meses gravados com o log de ausencias: so mexe no mes cuja HISTORICO bate com uma linha de ausencia do log. SET/26 volta pelo extrato de 09/10 (90 diretos, 15.400 h carga, 15.109 h normais); OUT, NOV e DEZ/26 ficam zerados. Rodar duas vezes nao muda nada. Depois, Gravar calculos na planilha.',
