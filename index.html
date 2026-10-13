@@ -5008,6 +5008,9 @@ function load(){ return _normalizarLista(loadBruto()); }
    mês/ano/setor com horas normais, extra50, extra100 e as ausências do
    controle de faltas. Responde a pergunta que o total não responde: a hora
    extra está cobrindo falta ou está no gargalo?
+     • horas disponíveis = carga do ponto (horas da escala: 8,8 h × dias
+       úteis por pessoa, já sem férias e afastamento), antes de falta e
+       atraso; no ano, a soma dos meses;
      • HE do setor = extra50 + extra100 ÷ horas normais do setor;
      • "alta" = acima da razão da fábrica (diretos) no mesmo mês, não de um
        limite fixo — o limite de 8% do painel é sobre PEÇAS, e por setor só
@@ -5050,10 +5053,10 @@ window.SetorHE = (function(){
       var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
       var k=String(r.setor||'').trim()||'(sem setor)';
       var a=por[k];
-      if(!a){ a=por[k]={ setor:k, direto:false, pessoas:0, meses:0, hn:0, he:0, e50:0, e100:0, aus:0, temAus:false }; nomes.push(k); }
+      if(!a){ a=por[k]={ setor:k, direto:false, pessoas:0, meses:0, hc:0, hn:0, he:0, e50:0, e100:0, aus:0, temAus:false }; nomes.push(k); }
       a.direto=a.direto||/^s/i.test(String(r.direto||''));
       a.temAus=a.temAus||temAus;
-      a.pessoas+=n(r.pessoas); a.hn+=hn; a.he+=he;
+      a.pessoas+=n(r.pessoas); a.hc+=n(r.horasCarga); a.hn+=hn; a.he+=he;
       a.e50+=n(r.extra50); a.e100+=n(r.extra100); a.aus+=aus;
       if(hn>0||he>0||n(r.pessoas)>0) a.meses++;
     });
@@ -5080,7 +5083,7 @@ window.SetorHE = (function(){
         var aus=n(r.ausFalta)+n(r.ausAtestado)+n(r.ausAfastado)+atr;
         var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
         return { setor:String(r.setor||'').trim()||'(sem setor)', direto:/^s/i.test(String(r.direto||'')), pessoas:n(r.pessoas),
-                 hn:hn, he:he, e50:n(r.extra50), e100:n(r.extra100), hePct:hn>0?he/hn*100:0,
+                 hc:n(r.horasCarga), hn:hn, he:he, e50:n(r.extra50), e100:n(r.extra100), hePct:hn>0?he/hn*100:0,
                  aus:aus, absPct:(temAus&&hn>0)?aus/hn*100:null };
       });
   }
@@ -5097,7 +5100,7 @@ window.SetorHE = (function(){
     var absCrit=(typeof ABS_ATENCAO!=='undefined')?ABS_ATENCAO:6;
     var dir=lin.filter(function(x){ return x.direto; }), ind=lin.filter(function(x){ return !x.direto; });
     var sum=function(a,k){ return a.reduce(function(t,x){ return t+x[k]; },0); };
-    var heDir=sum(dir,'he'), hnDir=sum(dir,'hn'), heInd=sum(ind,'he'), hnInd=sum(ind,'hn');
+    var heDir=sum(dir,'he'), hnDir=sum(dir,'hn'), hcDir=sum(dir,'hc'), heInd=sum(ind,'he'), hnInd=sum(ind,'hn');
     var ausDir=sum(dir,'aus'), temAusDir=dir.some(function(x){ return x.absPct!==null; });
     var ref=hnDir>0?heDir/hnDir*100:0;   /* razão da fábrica (diretos) */
     dir.forEach(function(x){
@@ -5112,7 +5115,7 @@ window.SetorHE = (function(){
     });
     dir.sort(function(a,b){ return b.he-a.he; });
     var top=dir.slice(0,3).filter(function(x){ return x.he>0; });
-    return { mes:mes, ano:ano, rotulo:rotulo, varios:(rotulo===String(ano)||/–/.test(rotulo)), setores:dir, indiretos:ind, heDir:heDir, hnDir:hnDir, heInd:heInd, hnInd:hnInd,
+    return { mes:mes, ano:ano, rotulo:rotulo, varios:(rotulo===String(ano)||/–/.test(rotulo)), setores:dir, indiretos:ind, heDir:heDir, hnDir:hnDir, hcDir:hcDir, heInd:heInd, hnInd:hnInd,
              refPct:ref, absDir:(temAusDir&&hnDir>0)?ausDir/hnDir*100:null, absCrit:absCrit,
              top:top, topParte:top.reduce(function(t,x){ return t+x.parte; },0),
              cobrindo:dir.filter(function(x){ return x.leitura==='cobrindo falta'; }),
@@ -21671,6 +21674,7 @@ window.CompAnos = (function () {
     var linha=function(x){
       return '<tr><td class="reu-set-nome">'+x.setor+'</td>'
         +'<td'+nCel+'>'+fi(x.pessoas)+'</td>'
+        +'<td'+nCel+'>'+(x.hc>0?fi(x.hc):'—')+'</td>'
         +'<td'+nCel+'>'+fi(x.he)+'</td>'
         +'<td class="n'+(x.heAlta?' forte':'')+'">'+fd(x.hePct,1)+'%</td>'
         +'<td'+nCel+'>'+fd(x.parte,0)+'%</td>'
@@ -21683,10 +21687,11 @@ window.CompAnos = (function () {
     return '<div class="reu-setores" style="margin:10px 2px 0">'+REU_DET_CSS
       +'<div class="reu-set-h">▸ Onde está a hora extra · '+RS.rotulo+'</div>'
       +'<div class="reu-set-p">'+frase+'</div>'
-      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="min-width:540px">'
+      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="min-width:600px">'
       +'<thead><tr>'
         +'<th style="text-align:left;width:auto">Setor</th>'
         +'<th style="text-align:right;width:8%;white-space:nowrap">Pessoas</th>'
+        +'<th style="text-align:right;width:11%;white-space:nowrap" title="Carga do ponto: horas da escala do mês (8,8 h × dias úteis por pessoa), já sem férias e afastamento. É o que o setor tinha para trabalhar em jornada normal, antes de falta e atraso">H. disponível</th>'
         +'<th style="text-align:right;width:9%;white-space:nowrap" title="extra50 + extra100 do ponto">HE (h)</th>'
         +'<th style="text-align:right;width:12%;white-space:nowrap" title="HE ÷ horas normais do setor. Em destaque: acima da fábrica">HE ÷ normais</th>'
         +'<th style="text-align:right;width:8%;white-space:nowrap" title="Parte do setor nas horas extras dos diretos">% da HE</th>'
@@ -21696,9 +21701,9 @@ window.CompAnos = (function () {
       +top.map(linha).join('')
       +(resto.length?('<tr class="reu-set-resto" onclick="reuSetoresMais(this)" title="Abrir os outros setores" style="cursor:pointer">'
           +'<td class="reu-set-nome" style="color:var(--t3)!important"><span id="reu-set-lbl">▸ Outros '+resto.length+' setores diretos</span></td>'
-          +'<td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>'
+          +'<td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.hc; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>'
           +resto.map(function(x){ return linha(x).replace('<tr>','<tr class="reu-set-extra" style="display:none">'); }).join('')):'')
-      +'<tr class="reu-set-tot"><td class="reu-set-nome">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
+      +'<tr class="reu-set-tot"><td class="reu-set-nome">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+(RS.hcDir>0?fi(RS.hcDir):'—')+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
       +'</tbody></table></div></div>';
   }
 
@@ -23819,9 +23824,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.43';
+var APP_VERSAO = 'b96.44';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.44', data:'13/10/2026', itens:[
+    'Reuniao do Mes, Onde esta a hora extra: nova coluna H. disponivel por setor, a carga do ponto (horas da escala do mes, 8,8 h x dias uteis por pessoa, ja sem ferias e afastamento), antes de falta e atraso. Na linha Outros, a soma dos setores agrupados; em Fabrica diretos, a soma dos diretos, que bate com o horasCarga da HISTORICO em todos os meses de 2026 (SET/26 = 15.479 h). Em Ano todo, a soma dos meses.'
+  ]},
   { v:'b96.43', data:'13/10/2026', itens:[
     'Caixa de produto de volume unico contava como mais uma peca. No reporte do ERP, a caixa 501 de quem sai numa caixa so (RACK e PAINEL MARSELHA, entre outros) vem com a MESMA descricao do produto, sem VOL x/y; o painel e o ReporteVolumes.gs separavam caixa so pela descricao. Conferido linha a linha: em 11 meses (MAI a DEZ/25, JAN, FEV e MAI/26) toda linha 501 sem VOL tem produto 1xx de mesma descricao e quantidade. Agora caixa = descricao VOL x/y OU codigo 501.',
     'No painel (ja vale): comparativo de anos, slide de mix dos lideres (PAINEL MARSELHA aparecia em dobro), Producao por Produto e relatorio impresso. Na HISTORICO (depois de rodar o ReporteVolumes.gs novo): pecas JAN/26 24.491 para 22.437, FEV/26 30.966 para 28.151, MAI/26 35.735 para 33.330; 2026 ate SET 281.273 para 273.999; 2025 perde 16.022 em MAI a DEZ. Volumes caem nos mesmos meses.'
