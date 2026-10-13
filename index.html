@@ -23638,9 +23638,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.36';
+var APP_VERSAO = 'b96.37';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.37', data:'13/10/2026', itens:[
+    'PontoRH.gs: mes fechado reprocessado com o MESMO extrato (mesmos diretos, carga, normais e extras) passa a atualizar as colunas brutas do script (naoTrabalhadas, faltasPonto, atrasosPonto) pela regra de hoje; horas, extras e colaboradores continuam protegidos. MAR a AGO/26 guardavam naoTrabalhadas da regra antiga (quem entrou ou saiu no meio do mes contava o mes inteiro), 79 a 334 h a mais, e a integridade acusou JUN/26 (2.331 x 2.055) sem divergencia real. Nao muda absenteismo: com o controle lancado, essa coluna so serve para a conferencia.'
+  ]},
   { v:'b96.36', data:'13/10/2026', itens:[
     'Absenteismo sem atraso contado duas vezes: o RH lanca atraso e saida antecipada como FALTA no controle, e o painel somava as faltas do controle mais o atraso do ponto. O PontoRH.gs passa a apurar pessoa a pessoa quanto do atraso do ponto ja esta nas faltas (atrasoDuplicado, na HISTORICO e por setor na PONTO_SETOR) e o painel tira essa parte do atraso. ABR/26: 201,7 h, 14,06% vira 12,58%. SET/26: 80,6 h, 7,50% vira 6,97%.',
     'Tabela de setores (Reuniao e apresentacao) com a mesma regra: sem isso a linha da fabrica daria 7,5% em SET/26 contra 7,0% no card.',

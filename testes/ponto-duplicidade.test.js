@@ -57,7 +57,7 @@ function carregar(dados) {
   const ss = { getSheetByName: n => abas[n] || null, insertSheet: n => (abas[n] = aba(dados[n] = [])) };
   const env = { SpreadsheetApp: { getActiveSpreadsheet: () => ss, getUi: () => ({ alert() {} }) }, Logger: { log() {} } };
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'PontoRH.gs'), 'utf8');
-  const PR = new Function(...Object.keys(env), src + '\nreturn { prDuplicidade, prApurarDuplicidade, prGravarPessoas, PR_ABA_PONTO_PESSOA, PR_CAB_PONTO_PESSOA, PR_ABA_AUS_PESSOA, PR_CAB_AUS_PESSOA, PR_SETOR_COLS };')(...Object.values(env));
+  const PR = new Function(...Object.keys(env), src + '\nreturn { prDuplicidade, prApurarDuplicidade, prGravarPessoas, prBrutasDoMesFechado, prLerHistoricoMes, PR_ABA_PONTO_PESSOA, PR_CAB_PONTO_PESSOA, PR_ABA_AUS_PESSOA, PR_CAB_AUS_PESSOA, PR_SETOR_COLS };')(...Object.values(env));
   return { PR, ss, dados };
 }
 
@@ -153,6 +153,42 @@ sec('prGravarPessoas: troca só as linhas do mês, numa escrita');
   const nova = carregar({});
   nova.PR.prGravarPessoas(nova.ss, 'AUSENCIAS_PESSOA', nova.PR.PR_CAB_AUS_PESSOA, () => false, [['101', 'SET', 2026, 8, 0, 0, 0, 0]]);
   afirma('aba que não existe é criada com cabeçalho', nova.dados.AUSENCIAS_PESSOA[0].join() === nova.PR.PR_CAB_AUS_PESSOA.join() && nova.dados.AUSENCIAS_PESSOA.length === 2);
+}
+
+sec('Mês fechado, mesmo extrato: só as colunas brutas do script mudam (prBrutasDoMesFechado)');
+{
+  /* JUN/26 em 13/10/26: o extrato reexportado é o mesmo de setembro (95
+     diretos, carga 14.792,8, normais 14.388,6, extras iguais), mas a
+     naoTrabalhadas da HISTORICO era da regra antiga: 2.331,35 contra
+     2.014,55 pela regra de hoje. */
+  const cab = ['mes', 'ano', 'colaboradores', 'horasCarga', 'horasNormais', 'extra50', 'extra100', 'absenteismo', 'naoTrabalhadas', 'faltasPonto', 'atrasosPonto'];
+  const base = () => ({ HISTORICO: [cab.slice(), ['JUN', 2026, 95, 14792.8, 14388.6, 950.5, 20.2, 8.1, 2331.35, 237.6, 166.55]] });
+  const a = { n: 95, carga: 14792.8, normais: 14388.65, e50: 950.5, e100: 20.2, naoTrabalhadas: 2014.55, faltasPonto: 237.6, atrasosPonto: 166.55 };
+  const val = (d, k) => d.HISTORICO[1][cab.indexOf(k)];
+  {
+    const { PR, ss, dados } = carregar(base());
+    const r = PR.prBrutasDoMesFechado(ss, 'JUN', 2026, a, PR.prLerHistoricoMes(ss, 'JUN', 2026));
+    afirma('mesmo extrato → devolve antes e depois', r && Math.round(r.antes) === 2331 && Math.round(r.depois) === 2015);
+    ok('naoTrabalhadas regravada pela regra de hoje', val(dados, 'naoTrabalhadas'), 2014.55);
+    afirma('colaboradores, carga, normais e extras não são tocados',
+      val(dados, 'colaboradores') === 95 && val(dados, 'horasCarga') === 14792.8 && val(dados, 'horasNormais') === 14388.6 && val(dados, 'extra50') === 950.5 && val(dados, 'extra100') === 20.2);
+    afirma('coluna calculada (absenteismo) não é tocada', val(dados, 'absenteismo') === 8.1);
+  }
+  {
+    const { PR, ss, dados } = carregar(base());
+    const r = PR.prBrutasDoMesFechado(ss, 'JUN', 2026, Object.assign({}, a, { e50: 1010 }), PR.prLerHistoricoMes(ss, 'JUN', 2026));
+    afirma('extrato diferente (extra 50% mudou) → mês protegido, nada muda', r === null && val(dados, 'naoTrabalhadas') === 2331.35);
+  }
+  {
+    const { PR, ss, dados } = carregar(base());
+    const r = PR.prBrutasDoMesFechado(ss, 'JUN', 2026, Object.assign({}, a, { n: 96 }), PR.prLerHistoricoMes(ss, 'JUN', 2026));
+    afirma('outra quantidade de diretos → nada muda', r === null && val(dados, 'naoTrabalhadas') === 2331.35);
+  }
+  {
+    const { PR, ss } = carregar(base());
+    const r = PR.prBrutasDoMesFechado(ss, 'JUN', 2026, Object.assign({}, a, { naoTrabalhadas: 2331.35 }), PR.prLerHistoricoMes(ss, 'JUN', 2026));
+    afirma('já igual → null (não reescreve nem polui a mensagem)', r === null);
+  }
 }
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
