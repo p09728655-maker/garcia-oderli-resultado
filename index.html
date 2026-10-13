@@ -9927,6 +9927,11 @@ function cfInicializar() {
     '.tv-mode #page-reuniao .reu-sec-n, .tv-mode #page-reuniao .reu-sec-q, .tv-mode #page-reuniao .reu-sec-r { font-size: 1.05rem !important; }',
     '.tv-mode #page-reuniao .reu-manchete { font-size: 1.8rem !important; }',
     '.tv-mode #page-reuniao .reu-frase { font-size: 1rem !important; }',
+    /* tabelas de detalhe da faixa 1 (REU_DET_CSS) no telão */
+    '.tv-mode #page-reuniao .reu-set-tab td { font-size: .98rem !important; padding: 6px 12px !important; }',
+    '.tv-mode #page-reuniao .reu-set-tab th { font-size: .72rem !important; }',
+    '.tv-mode #page-reuniao .reu-set-p { font-size: 1rem !important; }',
+    '.tv-mode #page-reuniao .reu-set-h { font-size: .8rem !important; }',
     '.tv-mode #page-reuniao .reu-grid { gap: 10px !important; }',
     '.tv-mode #reu-per-lbl { font-size: 1.2rem !important; padding: 8px 18px !important; }',
     /* na projeção, o subtítulo da página não conta história nenhuma */
@@ -21449,6 +21454,28 @@ window.CompAnos = (function () {
      headcount ou ação de presença muda conforme a resposta.
      O Relatório reaproveita o HTML da tela, então o bloco sai impresso junto.
      Sem a PONTO_SETOR do mês (extrato do ponto não processado), não aparece. */
+  /* Tabelas de detalhe da faixa 1 (hora extra por setor e absenteísmo por
+     motivo), um estilo só. Número em Segoe UI com algarismos tabulares e
+     peso normal: em Consolas o peso 600 virava negrito e a tabela inteira
+     pesava; tabular-nums mantém a coluna alinhada. Negrito só no total e no
+     destaque. Linha compacta: a regra global td{padding:10px 13px!important}
+     deixava cada linha com ~45 px. Cinza de apoio em --t2: o --t3 (3,7:1)
+     some no telão. */
+  var REU_DET_CSS='<style>'
+    +'.reu-set-h{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);margin-bottom:4px}'
+    +'.reu-set-p{font-size:.84rem;color:var(--t1);line-height:1.45;margin-bottom:8px}'
+    +'.reu-set-tab{width:100%;border-collapse:collapse}'
+    +'.reu-set-tab th{color:var(--t2)!important;font-size:.62rem!important;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px!important;border-bottom:1px solid var(--b);white-space:nowrap}'
+    +'.reu-set-tab td{padding:5px 10px!important;font-size:.82rem!important;font-weight:400;border-top:1px solid rgba(255,255,255,.05)}'
+    +'.reu-set-tab td.n{text-align:right;font-family:var(--sans);font-variant-numeric:tabular-nums;white-space:nowrap}'
+    +'.reu-set-tab td.forte{font-weight:600}'
+    +'.reu-set-tab .reu-set-tot td{border-top:1px solid var(--b);font-weight:600}'
+    +'.reu-set-resto:hover td{background:rgba(245,166,35,.07)}'
+    +'.reu-set-tab td.reu-abs-cai{color:#4CAF50!important}.reu-set-tab td.reu-abs-sobe{color:#F44336!important}'
+    +'.reu-set-tab td.reu-abs-nat{color:var(--t2)!important;font-size:.76rem!important}'
+    +'.reu-set-nota{font-size:.68rem;color:var(--t2);margin-top:5px;line-height:1.35}'
+    +'</style>';
+
   function reuBlocoSetores(mes,ano){
     if(!window.SetorHE||!SetorHE.resumo) return '';
     var RS=null; try{ RS=SetorHE.resumo(mes,ano); }catch(e){ return ''; }
@@ -21469,36 +21496,28 @@ window.CompAnos = (function () {
     /* o tema escuro declara td{color:var(--t1)!important}: sem !important no
        inline a coluna Leitura saía branca e a cor não dizia nada */
     var corLeitura=function(x){ return x.leitura==='cobrindo falta'?'#F44336':(x.leitura?'#FF9800':'var(--t3)'); };
-    /* Consolas com peso 400 a 12px sobre fundo escuro fica fino ao lado do
-       Segoe UI da mesma linha e o número parece embaçado. Peso 600 e
-       tabular-nums resolvem sem aumentar a tabela. */
-    var nCel=' class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums"';
+    var nCel=' class="n"';   /* estilo em REU_DET_CSS */
     var linha=function(x){
       return '<tr><td class="reu-set-nome">'+x.setor+'</td>'
         +'<td'+nCel+'>'+fi(x.pessoas)+'</td>'
         +'<td'+nCel+'>'+fi(x.he)+'</td>'
-        +'<td class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:'+(x.heAlta?'800':'600')+'">'+fd(x.hePct,1)+'%</td>'
+        +'<td class="n'+(x.heAlta?' forte':'')+'">'+fd(x.hePct,1)+'%</td>'
         +'<td'+nCel+'>'+fd(x.parte,0)+'%</td>'
         +'<td'+nCel+'>'+(x.absPct===null?'—':fd(x.absPct,1)+'%')+'</td>'
-        +'<td style="color:'+corLeitura(x)+'!important;font-weight:'+(x.leitura?'700':'400')+'">'+(x.leitura||'—')+'</td></tr>';
+        +'<td class="'+(x.leitura?'forte':'')+'" style="color:'+corLeitura(x)+'!important">'+(x.leitura||'—')+'</td></tr>';
     };
     var frase=fd(parteTres,0)+'% da hora extra está em '+SetorHE.lista(tres)+'.'
       +(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' a falta também passa de '+RS.absCrit+'%: hora extra cobrindo presença.':'')
       +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro do limite: é capacidade.':'');
-    return '<div class="reu-setores" style="margin:10px 2px 0">'
-      +'<div class="reu-set-h" style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:3px">'
-        +'▸ Onde está a hora extra · '+RS.rotulo+'</div>'
-      +'<div class="reu-set-p" style="font-size:.8rem;color:var(--t1);opacity:.85;line-height:1.35;margin-bottom:5px">'+frase+'</div>'
-      +'<style>.reu-set-tab th{color:var(--t2)!important;font-size:.63rem;letter-spacing:.07em;text-transform:uppercase;padding:3px 6px;border-bottom:1px solid var(--b)}'
-        +'.reu-set-tab td{padding:3px 6px;border-top:1px solid rgba(255,255,255,.05)}'
-        +'.reu-set-resto:hover td{background:rgba(245,166,35,.07)}'
-        +'.reu-set-tab .reu-set-tot td{border-top:1px solid var(--b)}</style>'
-      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="width:100%;border-collapse:collapse;font-size:.76rem;min-width:600px">'
+    return '<div class="reu-setores" style="margin:10px 2px 0">'+REU_DET_CSS
+      +'<div class="reu-set-h">▸ Onde está a hora extra · '+RS.rotulo+'</div>'
+      +'<div class="reu-set-p">'+frase+'</div>'
+      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="min-width:540px">'
       +'<thead><tr>'
         +'<th style="text-align:left;width:auto">Setor</th>'
         +'<th style="text-align:right;width:8%;white-space:nowrap">Pessoas</th>'
         +'<th style="text-align:right;width:9%;white-space:nowrap" title="extra50 + extra100 do ponto">HE (h)</th>'
-        +'<th style="text-align:right;width:12%;white-space:nowrap" title="HE ÷ horas normais do setor. Em negrito: acima da fábrica">HE ÷ normais</th>'
+        +'<th style="text-align:right;width:12%;white-space:nowrap" title="HE ÷ horas normais do setor. Em destaque: acima da fábrica">HE ÷ normais</th>'
         +'<th style="text-align:right;width:8%;white-space:nowrap" title="Parte do setor nas horas extras dos diretos">% da HE</th>'
         +'<th style="text-align:right;width:9%;white-space:nowrap" title="falta, atestado, afastado e atraso ÷ horas normais do setor">Falta</th>'
         +'<th style="text-align:left;width:16%;white-space:nowrap" title="Cobrindo falta: HE acima da fábrica e falta acima de '+RS.absCrit+'%. Capacidade: HE acima da fábrica com falta dentro">Leitura</th>'
@@ -21508,9 +21527,9 @@ window.CompAnos = (function () {
           +'<td class="reu-set-nome" style="color:var(--t3)!important"><span id="reu-set-lbl">▸ Outros '+resto.length+' setores diretos</span></td>'
           +'<td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>'
           +resto.map(function(x){ return linha(x).replace('<tr>','<tr class="reu-set-extra" style="display:none">'); }).join('')):'')
-      +'<tr class="reu-set-tot"><td class="reu-set-nome" style="font-weight:700">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
+      +'<tr class="reu-set-tot"><td class="reu-set-nome">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
       +'</tbody></table></div>'
-      +'<div class="reu-set-nota" style="font-size:.66rem;color:var(--t3);margin-top:4px;line-height:1.3">'
+      +'<div class="reu-set-nota">'
         +'Horas do ponto, não peças: a produção é da fábrica inteira. '
         +(RS.varios?'Horas somadas no período; pessoas é a média mensal. ':'')
         +'Indiretos, fora da dependência de HE: '
@@ -21530,9 +21549,9 @@ window.CompAnos = (function () {
     var M=DashUtils.absMotivos(regs); if(!M) return '';
     var Ma=regsAnt?DashUtils.absMotivos(regsAnt):null;
     var C=Ma?DashUtils.absComparar(M,Ma,rotAnt,meta):null;
-    var nCel=' class="n" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums"';
+    var nCel=' class="n"';   /* estilo em REU_DET_CSS */
     var pp=function(v){ return (v>=0.005?'+':(v<=-0.005?'−':''))+fd(Math.abs(v),2)+' p.p.'; };
-    var dCel=function(v){ return '<td class="n '+(v<=-0.005?'reu-abs-cai':(v>=0.005?'reu-abs-sobe':''))+'" style="text-align:right;font-family:var(--mono);white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums">'+pp(v)+'</td>'; };
+    var dCel=function(v){ return '<td class="n '+(v<=-0.005?'reu-abs-cai':(v>=0.005?'reu-abs-sobe':''))+'">'+pp(v)+'</td>'; };
     var linhas=M.itens.map(function(x,i){
       var c=C?C.itens[i]:null;
       return '<tr><td class="reu-set-nome">'+x.rotulo+'</td>'
@@ -21546,16 +21565,13 @@ window.CompAnos = (function () {
     var frase=C?C.frase
       :('Falta sem justificativa e atraso, a parte que a gestão de presença controla, são '+fd(gest,1)+' dos '+fd(M.total,1)+'% de '+rot+'.'
         +(meta>0?(' '+fd(M.total,1)+'%: '+(M.total<=meta?'dentro':'acima')+' da meta de '+fd(meta,0)+'%.'):''));
-    return '<div class="reu-setores reu-abs" style="margin:10px 2px 0">'
-      +'<div class="reu-set-h" style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:3px">'
-        +'▸ Absenteísmo por motivo · '+rot+(C?' contra '+rotAnt:'')+'</div>'
-      +'<div class="reu-set-p" style="font-size:.8rem;color:var(--t1);opacity:.85;line-height:1.35;margin-bottom:5px">'+frase+'</div>'
-      /* td{color}!important do tema escuro só perde para seletor mais
-         específico com !important; no relatório o número volta a ser tinta
-         (regra .bd .reu-abs-tab em reuImprimir, mais específica que esta) */
-      +'<style>.reu-abs-tab td.reu-abs-cai{color:#4CAF50!important}.reu-abs-tab td.reu-abs-sobe{color:#F44336!important}'
-        +'.reu-abs-tab td.reu-abs-nat{color:var(--t3)!important;font-size:.7rem!important;text-align:left!important}</style>'
-      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab reu-abs-tab" style="width:100%;border-collapse:collapse;font-size:.76rem;min-width:520px">'
+    /* Cores da variação em REU_DET_CSS (td{color}!important do tema escuro só
+       perde para seletor mais específico com !important); no relatório o
+       número volta a ser tinta (regra .bd .reu-abs-tab em reuImprimir). */
+    return '<div class="reu-setores reu-abs" style="margin:10px 2px 0">'+REU_DET_CSS
+      +'<div class="reu-set-h">▸ Absenteísmo por motivo · '+rot+(C?' contra '+rotAnt:'')+'</div>'
+      +'<div class="reu-set-p">'+frase+'</div>'
+      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab reu-abs-tab" style="min-width:460px">'
       +'<thead><tr>'
         +'<th style="text-align:left;width:auto">Motivo</th>'
         +'<th style="text-align:left;width:20%;white-space:nowrap">Quem controla</th>'
@@ -21564,13 +21580,13 @@ window.CompAnos = (function () {
         +(C?'<th style="text-align:right;width:13%;white-space:nowrap">Variação</th>':'')
         +'<th style="text-align:right;width:11%;white-space:nowrap" title="horas do motivo no período">Horas</th>'
       +'</tr></thead><tbody>'+linhas
-      +'<tr class="reu-set-tot"><td class="reu-set-nome" style="font-weight:700">Total</td><td class="reu-abs-nat"></td>'
+      +'<tr class="reu-set-tot"><td class="reu-set-nome">Total</td><td class="reu-abs-nat"></td>'
         +(C?'<td'+nCel+'>'+fd(Ma.total,2)+'%</td>':'')
         +'<td'+nCel+'>'+fd(M.total,2)+'%</td>'
         +(C?dCel(C.delta):'')
         +'<td'+nCel+'>'+fi(M.itens.reduce(function(t,x){ return t+x.h; },0))+'</td></tr>'
       +'</tbody></table></div>'
-      +'<div class="reu-set-nota" style="font-size:.66rem;color:var(--t3);margin-top:4px;line-height:1.3">'
+      +'<div class="reu-set-nota">'
         +'% sobre as horas normais, a mesma conta do card. Falta, atestado e afastamento vêm do controle de faltas do RH; atraso, do ponto. '
         +'Afastamento e atestado são saúde e licença: ação de presença não mexe neles.'
         +(regsAnt&&!Ma?(' '+rotAnt+' sem controle de faltas: sem comparação.'):'')
@@ -22156,6 +22172,11 @@ window.CompAnos = (function () {
     var blHE=reuBlocoSetores(anoTodo?null:mes, ano);
     var blAbs=reuBlocoAbs(anoTodo?fechados:[rMes], rAnt?[rAnt]:null, rotPer, rotAnt, META_ABS_);
     var detalhesF1=grav(_falas.cAbs)>grav(_falas.cHe) ? blAbs+blHE : blHE+blAbs;
+    /* Lado a lado quando cabem (cada tabela em ~800 px em 1920): a tabela
+       esticada em 1.800 px deixava o número longe do nome e empurrava o
+       segundo bloco para fora da tela. Em tela estreita e no relatório, um
+       abaixo do outro. */
+    if(detalhesF1) detalhesF1='<div class="reu-det" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,600px),1fr));gap:2px 26px;align-items:start">'+detalhesF1+'</div>';
 
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
@@ -22211,6 +22232,9 @@ window.CompAnos = (function () {
       +'.reu-set-tot td{font-weight:700;border-top:1.2px solid #C6CBD3!important}'
       +'.reu-set-nota{font-size:6.8pt!important;color:#7B8794!important;margin-top:4px!important}'
       +'.reu-setores{break-inside:avoid;page-break-inside:avoid;margin-top:8px!important}'
+      +'.reu-det{display:block!important}'
+      +'.bd .reu-set-tab th{font-size:6.5pt!important;padding:3px 5px!important}'
+      +'.bd .reu-set-tab td{font-size:7.5pt!important;padding:3px 5px!important}'
       +'.bd .reu-abs-tab td.reu-abs-cai,.bd .reu-abs-tab td.reu-abs-sobe{color:#1F2933!important}'
       +'.bd .reu-abs-tab td.reu-abs-nat{color:#7B8794!important;font-size:6.8pt!important;text-align:left!important}'
       /* Card chapado e sem fio colorido: quem julga na folha e a manchete. */
@@ -23447,9 +23471,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.31';
+var APP_VERSAO = 'b96.32';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.32', data:'13/10/2026', itens:[
+    'Reuniao, faixa 1: as tabelas de absenteismo por motivo e de hora extra por setor ficam lado a lado quando cabem (cerca de 800 px cada em 1920); antes cada uma esticava ate 1.800 px e o numero ficava longe do nome. Em tela estreita e no relatorio, uma abaixo da outra.',
+    'Numeros das duas tabelas em fonte normal com algarismos alinhados: em Consolas o peso 600 virava negrito e a tabela pesava. Negrito so no total e no destaque. Linha de 27 px (era cerca de 45). Titulo, "Quem controla" e notas em cinza mais claro, legivel no telao. Modo TV com fonte maior nas tabelas.'
+  ]},
   { v:'b96.31', data:'13/10/2026', itens:[
     'Reuniao, faixa 1: custo da hora extra em card proprio, ao lado da dependencia de hora extra. Valor em reais do periodo, horas a 50% e a 100%, custo-hora usado e o acumulado do ano. Sem meta em reais, o card fica na cor da marca, sem veredito. Sem CUSTO_HORA na aba METAS mostra "—" e "falta o custo-hora", nunca R$ 0. A linha de custo sai do card de dependencia de hora extra.'
   ]},
