@@ -57,7 +57,7 @@ function carregar(dados) {
   const ss = { getSheetByName: n => abas[n] || null, insertSheet: n => (abas[n] = aba(dados[n] = [])) };
   const env = { SpreadsheetApp: { getActiveSpreadsheet: () => ss, getUi: () => ({ alert() {} }) }, Logger: { log() {} } };
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'PontoRH.gs'), 'utf8');
-  const PR = new Function(...Object.keys(env), src + '\nreturn { prDuplicidade, prApurarDuplicidade, prGravarPessoas, prBrutasDoMesFechado, prLerHistoricoMes, PR_ABA_PONTO_PESSOA, PR_CAB_PONTO_PESSOA, PR_ABA_AUS_PESSOA, PR_CAB_AUS_PESSOA, PR_SETOR_COLS };')(...Object.values(env));
+  const PR = new Function(...Object.keys(env), src + '\nreturn { prDuplicidade, prApurarDuplicidade, prGravarPessoas, prBrutasDoMesFechado, prLerHistoricoMes, prMesmoExtrato, PR_ABA_PONTO_PESSOA, PR_CAB_PONTO_PESSOA, PR_ABA_AUS_PESSOA, PR_CAB_AUS_PESSOA, PR_SETOR_COLS };')(...Object.values(env));
   return { PR, ss, dados };
 }
 
@@ -153,6 +153,41 @@ sec('prGravarPessoas: troca só as linhas do mês, numa escrita');
   const nova = carregar({});
   nova.PR.prGravarPessoas(nova.ss, 'AUSENCIAS_PESSOA', nova.PR.PR_CAB_AUS_PESSOA, () => false, [['101', 'SET', 2026, 8, 0, 0, 0, 0]]);
   afirma('aba que não existe é criada com cabeçalho', nova.dados.AUSENCIAS_PESSOA[0].join() === nova.PR.PR_CAB_AUS_PESSOA.join() && nova.dados.AUSENCIAS_PESSOA.length === 2);
+}
+
+sec('Entrou ou saiu no mês, e carga acima da jornada (revisão de 13/10)');
+{
+  /* jornada cheia do mês = 176 (a mais frequente). 201 saiu em 20/09: jornada =
+     própria carga 110, com 17,6 h de atestado que já reduziram a carga, e 3 h
+     de atraso → nada duplicado. 202 tem escala de 184,8 (carga acima da
+     jornada), mesma falta de 8,8 h no ponto e no controle, 5 h de atraso →
+     nada duplicado. 203 normal, controle 8 de falta, ponto sem falta, 10 de
+     atraso → 8. */
+  const { PR, ss, dados } = carregar({
+    PONTO_PESSOA: [['cod','mes','ano','carga','faltas','atrasos','normais','jornada'],
+      ['201','SET',2026,110,0,3,107,110], ['202','SET',2026,184.8,8.8,5,171,176], ['203','SET',2026,176,0,10,166,176], ['204','SET',2026,176,0,0,176,176]],
+    AUSENCIAS_PESSOA: [['cod','mes','ano','falta','atestado','afastado','atraso','ferias'],
+      ['201','SET',2026,0,17.6,0,0,0], ['202','SET',2026,8.8,0,0,0,0], ['203','SET',2026,8,0,0,0,0]],
+    FUNCIONARIOS: [['codigo','nome','setor','direto'], ['201','A','1-USINAGEM','S'], ['202','B','1-USINAGEM','S'], ['203','C','2-EMBALAGEM','S'], ['204','D','2-EMBALAGEM','S']],
+    HISTORICO: [['mes','ano','horasNormais','atrasosPonto'], ['SET', 2026, 620, 18]],
+    PONTO_SETOR: [['mes','ano','setor','atrasosPonto'], ['SET',2026,'1-USINAGEM',8], ['SET',2026,'2-EMBALAGEM',10]]
+  });
+  const d = PR.prApurarDuplicidade(ss, 'SET', 2026);
+  ok('só o 203 conta (8 h): desligado com atestado e escala maior não', d.horas, 8);
+  ok('pessoas', d.pessoas, 1, 0);
+  afirma('201 (saiu no mês) fora', !d.porCod['201']);
+  afirma('202 (carga acima da jornada) fora', !d.porCod['202']);
+  const S = dados.PONTO_SETOR, c = S[0].indexOf('atrasoDuplicado');
+  ok('setor da usinagem sem duplicidade', S.find(l => l[2] === '1-USINAGEM')[c], 0);
+}
+
+sec('Mês fechado com OUTRO extrato: prMesmoExtrato decide se mexe');
+{
+  const { PR } = carregar({});
+  const atual = { colaboradores: 93, horasCarga: 14062.4, horasNormais: 13633.2, extra50: 1092.87, extra100: 340.82, naoTrabalhadas: 1749.2 };
+  afirma('mesmo extrato → true', PR.prMesmoExtrato(atual, { n: 93, carga: 14062.4, normais: 13633.2, e50: 1092.87, e100: 340.82 }));
+  afirma('reexportado com 4 desligados (97 pessoas) → false', !PR.prMesmoExtrato(atual, { n: 97, carga: 14350, normais: 13830, e50: 1092.87, e100: 340.82 }));
+  afirma('sem linha na HISTORICO → false', !PR.prMesmoExtrato(null, { n: 93 }));
 }
 
 sec('Mês fechado, mesmo extrato: só as colunas brutas do script mudam (prBrutasDoMesFechado)');
