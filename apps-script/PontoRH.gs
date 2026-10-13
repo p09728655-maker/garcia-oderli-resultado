@@ -261,7 +261,7 @@ function prAgregar(ext, func) {
 }
 
 /* ══ 4 · HISTORICO ══ */
-function prLancarHistorico(ss, mes, ano, a) {
+function prLancarHistorico(ss, mes, ano, a, soBrutas) {
   var aba = ss.getSheetByName(PR_ABA_HISTORICO);
   if (!aba) throw new Error('aba ' + PR_ABA_HISTORICO + ' não encontrada');
   var linhas = aba.getDataRange().getValues();
@@ -295,15 +295,35 @@ function prLancarHistorico(ss, mes, ano, a) {
     criou = true;
   }
   var grava = function (nome, v) { var c = col[prNormaliza(nome)]; if (c !== undefined) aba.getRange(linha, c + 1).setValue(Math.round(v * 100) / 100); };
-  grava('colaboradores', a.n);
-  grava('horasCarga', a.carga);
-  grava('horasNormais', a.normais);
-  grava('extra50', a.e50);
-  grava('extra100', a.e100);
+  if (!soBrutas) {
+    grava('colaboradores', a.n);
+    grava('horasCarga', a.carga);
+    grava('horasNormais', a.normais);
+    grava('extra50', a.e50);
+    grava('extra100', a.e100);
+  }
   grava('naoTrabalhadas', a.naoTrabalhadas);
   grava('faltasPonto', a.faltasPonto);
   grava('atrasosPonto', a.atrasosPonto);
   return criou;
+}
+
+/* Mês fechado com o MESMO extrato (mesmas pessoas, carga, normais e extras):
+   atualiza só as colunas brutas do script (naoTrabalhadas, faltasPonto,
+   atrasosPonto), que não são digitadas e seguem a regra do script de hoje.
+   Sem isso, MAR a AGO/26 ficaram com naoTrabalhadas da regra antiga (quem
+   foi admitido ou desligado no meio do mês contava o mês inteiro), 79 a
+   334 h a mais por mês, e a integridade acusou JUN/26 sem divergência real.
+   Extrato diferente: nada muda, o mês continua protegido. Devolve
+   { antes, depois } quando mudou, senão null. */
+function prBrutasDoMesFechado(ss, mes, ano, a, atual) {
+  if (!atual) return null;
+  var perto = function (x, y) { return Math.abs((x || 0) - (y || 0)) < 1; };
+  var mesmo = Math.round(atual.colaboradores) === a.n && perto(atual.horasCarga, a.carga) && perto(atual.horasNormais, a.normais)
+    && perto(atual.extra50, a.e50) && perto(atual.extra100, a.e100);
+  if (!mesmo || Math.abs((atual.naoTrabalhadas || 0) - a.naoTrabalhadas) < 0.05) return null;
+  prLancarHistorico(ss, mes, ano, a, true);
+  return { antes: atual.naoTrabalhadas || 0, depois: a.naoTrabalhadas };
 }
 
 /* O que a HISTORICO tem hoje para o mês (ou null se a linha não existe). */
@@ -504,7 +524,8 @@ function processarPontoDrive() {
                            + ' | h. normais ' + Math.round(r.a.normais) + ' × ' + Math.round(r.protegido.horasNormais)
                            + ' | extra50 ' + Math.round(r.a.e50) + ' × ' + Math.round(r.protegido.extra50)
                            + ' | extra100 ' + Math.round(r.a.e100) + ' × ' + Math.round(r.protegido.extra100)
-                           + '. Para aceitar o ponto: PR_PROTEGER_FECHADOS = false e reprocessar este arquivo.'
+                           + (r.brutas ? '. Mesmo extrato: não trabalhadas ' + Math.round(r.brutas.antes) + ' → ' + Math.round(r.brutas.depois) + ' h (coluna do script, atualizada pela regra atual)'
+                                       : '. Para aceitar o ponto: PR_PROTEGER_FECHADOS = false e reprocessar este arquivo.')
                          : ''));
         if (!r.a.e50 && !r.a.e100) feitos.push('   ATENÇÃO: extrato sem hora extra (colunas Ex50%/Ex100% ausentes ou zeradas). Exporte de novo com as colunas de extras.');
         if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
@@ -543,9 +564,10 @@ function prProcessarArquivo(ss, arq, func) {
     var ext = prExtrair(doc.getSheets()[0]);                     /* Extrato de Totais */
     var a = prAgregar(ext, func);
     if (!a.n) throw new Error('nenhum direto encontrado: confira a coluna direto (S/N) na ' + PR_ABA_FUNC);
-    var atual = prLerHistoricoMes(ss, ext.mes, ext.ano), protegido = null, criou = false;
+    var atual = prLerHistoricoMes(ss, ext.mes, ext.ano), protegido = null, criou = false, brutas = null;
     if (PR_PROTEGER_FECHADOS && atual && atual.horasNormais > 0) {
       protegido = atual;   /* mês fechado: HISTORICO fica como está */
+      brutas = prBrutasDoMesFechado(ss, ext.mes, ext.ano, a, atual);
     } else {
       criou = prLancarHistorico(ss, ext.mes, ext.ano, a);
     }
@@ -555,7 +577,7 @@ function prProcessarArquivo(ss, arq, func) {
     var setores = prAgregarSetores(ext, func);
     prGravarSetoresPonto(ss, ext, setores);
     var duplicidade = prApurarDuplicidade(ss, ext.mes, ext.ano);
-    return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido, duplicidade: duplicidade };
+    return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido, brutas: brutas, duplicidade: duplicidade };
   } finally {
     if (tmpId) { try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (ignore) {} }
   }
