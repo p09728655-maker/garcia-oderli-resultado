@@ -499,6 +499,26 @@ sec('Leitura por setor: setor de uma ou duas pessoas não ganha leitura');
   afirma('2-EMBALAGEM (25 pessoas) cobrindo falta', sx('2-EMBALAGEM').leitura === 'cobrindo falta');
 }
 
+sec('Horas disponíveis por setor = carga do ponto');
+{
+  const ini = HTML.indexOf('window.SetorHE = (function(){'), fim = HTML.indexOf('\n})();', ini) + 5;
+  const dados = [
+    { mes:'AGO', ano:2026, setor:'2-EMBALAGEM', direto:'S', pessoas:24, horasCarga:3800, horasNormais:3700, extra50:300 },
+    { mes:'SET', ano:2026, setor:'2-EMBALAGEM', direto:'S', pessoas:25, horasCarga:3995.2, horasNormais:3901.4, extra50:424 },
+    { mes:'SET', ano:2026, setor:'1-USINAGEM', direto:'S', pessoas:16, horasCarga:'2833,6', horasNormais:2778.18, extra50:137 },
+    { mes:'SET', ano:2026, setor:'14-ALMOXARIFADO', direto:'N', pessoas:9, horasCarga:1240.8, horasNormais:1204.72, extra50:41 },
+    { mes:'SET', ano:2026, setor:'6-PINTURA DE BORDA', direto:'S', pessoas:3, horasNormais:475.2, extra50:4 }];
+  const w = { localStorage: { getItem: () => JSON.stringify(dados) }, duplicidadeAplicada: () => false };
+  new Function('window', 'localStorage', HTML.slice(ini, fim)).call(w, w, w.localStorage);
+  const R = w.SetorHE.resumo('SET', 2026), sx = k => R.setores.find(x => x.setor === k);
+  ok('EMBALAGEM SET: carga do mês', sx('2-EMBALAGEM').hc, 3995.2);
+  ok('USINAGEM: carga em texto com vírgula vira número', sx('1-USINAGEM').hc, 2833.6);
+  ok('setor sem carga na linha: 0 (a tela mostra —)', sx('6-PINTURA DE BORDA').hc, 0);
+  ok('fábrica · diretos = soma dos diretos, sem indireto', R.hcDir, 3995.2 + 2833.6);
+  ok('ano: soma dos meses', w.SetorHE.resumo(null, 2026).setores.find(x => x.setor === '2-EMBALAGEM').hc, 7795.2);
+  ok('doMes devolve a carga', w.SetorHE.doMes('SET', 2026).find(x => x.setor === '14-ALMOXARIFADO').hc, 1240.8);
+}
+
 sec('Ciente na integridade (aviso conferido, com motivo)');
 {
   const ABR_C = Object.assign({}, ABR_H, { integridadeCiente: '' });
