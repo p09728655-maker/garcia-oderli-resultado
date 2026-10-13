@@ -4347,7 +4347,9 @@ body.lid-on{overflow:hidden}
       <div class="pageHdrTitle">Reunião do Mês</div>
       <div class="pageHdrSub">Nível 1 da pirâmide — diretoria, mensal · clique num indicador para descer ao detalhe · <b>Apresentar</b> segue a trilha da reunião</div>
     </div>
-    <div style="margin-left:auto;display:flex;align-items:center;gap:14px">
+    <!-- flex-wrap: em 1366 px os botões passavam da tela e a página inteira
+         rolava para o lado (Líderes ficava fora) -->
+    <div style="margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end;row-gap:8px;min-width:0">
       <!-- Filtro próprio da aba. Antes o período vinha só da barra lateral,
            que fica escondida no modo TV e em tela de reunião — trocar de mês
            no meio da apresentação exigia sair da tela. -->
@@ -5016,6 +5018,7 @@ function load(){ return _normalizarLista(loadBruto()); }
    FUNCIONARIOS. Sem a aba, tudo devolve vazio e as telas não mostram nada. */
 window.SetorHE = (function(){
   var SK_SET = 'dash_ponto_setor_v1';
+  var SETOR_MIN_PESSOAS = 3;
   function n(v){ if(typeof v==='number') return isFinite(v)?v:0; var x=parseFloat(String(v===null||v===undefined?'':v).replace(',','.')); return isFinite(x)?x:0; }
   function carregar(){ try{ var a=JSON.parse(localStorage.getItem(SK_SET)); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
   /* Atraso do setor pela regra de DashUtils.normalizar: o do ponto, menos a
@@ -5096,7 +5099,12 @@ window.SetorHE = (function(){
     var ref=hnDir>0?heDir/hnDir*100:0;   /* razão da fábrica (diretos) */
     dir.forEach(function(x){
       x.parte=heDir>0?x.he/heDir*100:0;
-      x.heAlta=x.he>0&&x.hePct>ref;
+      /* Setor com menos de SETOR_MIN_PESSOAS não ganha leitura nem destaque:
+         o percentual é o de uma ou duas pessoas, não do setor. 35-CONTROLE DE
+         PRODUÇÃO (1 pessoa, 31 h, 16,8%) aparecia como "HE alta" em SET/26 e
+         ainda entrava na lista principal por ter leitura. */
+      x.poucos=x.pessoas<SETOR_MIN_PESSOAS;
+      x.heAlta=x.he>0&&x.hePct>ref&&!x.poucos;
       x.leitura=!x.heAlta?'':(x.absPct===null?'HE alta':(x.absPct>absCrit?'cobrindo falta':'capacidade'));
     });
     dir.sort(function(a,b){ return b.he-a.he; });
@@ -21626,18 +21634,12 @@ window.CompAnos = (function () {
         +'<th style="text-align:left;width:16%;white-space:nowrap" title="Cobrindo falta: HE acima da fábrica e falta acima de '+RS.absCrit+'%. Capacidade: HE acima da fábrica com falta dentro">Leitura</th>'
       +'</tr></thead><tbody>'
       +top.map(linha).join('')
-      +(resto.length?('<tr class="reu-set-resto" onclick="reuSetoresMais()" title="Abrir os outros setores" style="cursor:pointer">'
+      +(resto.length?('<tr class="reu-set-resto" onclick="reuSetoresMais(this)" title="Abrir os outros setores" style="cursor:pointer">'
           +'<td class="reu-set-nome" style="color:var(--t3)!important"><span id="reu-set-lbl">▸ Outros '+resto.length+' setores diretos</span></td>'
           +'<td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(hRest)+'</td><td'+nCel+'>—</td><td'+nCel+'>'+fd(hRest/RS.heDir*100,0)+'%</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>'
           +resto.map(function(x){ return linha(x).replace('<tr>','<tr class="reu-set-extra" style="display:none">'); }).join('')):'')
       +'<tr class="reu-set-tot"><td class="reu-set-nome">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+fi(RS.heDir)+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>100%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
-      +'</tbody></table></div>'
-      +'<div class="reu-set-nota">'
-        +'Horas do ponto, não peças: a produção é da fábrica inteira. '
-        +(RS.varios?'Horas somadas no período; pessoas é a média mensal. ':'')
-        +'Indiretos, fora da dependência de HE: '
-        +fi(RS.heInd)+' h'+(RS.hnInd>0?(' ('+fd(RS.heInd/RS.hnInd*100,1)+'%)'):'')+'.'
-      +'</div></div>';
+      +'</tbody></table></div></div>';
   }
 
   /* ABSENTEÍSMO POR MOTIVO NA REUNIÃO
@@ -21825,15 +21827,27 @@ window.CompAnos = (function () {
        offline, ou antes de a aba existir) é reenviado. */
     mesclar: function(remotas){
       var l=this.lista(), mapa={}, rem={}, pend=[];
+      /* Campo que a planilha ainda não guarda (Code.gs antigo, sem a coluna):
+         na mesma versão, a cópia da planilha viria sem ele e apagaria o que
+         foi digitado aqui. Fica o local, e a ação é reenviada até a coluna
+         existir. */
+      var SO_LOCAL=['realizado','concluidoEm'];
+      var faltaLa=function(x,r){ return SO_LOCAL.some(function(k){ return x[k] && !r[k]; }); };
       l.forEach(function(x){ if(x&&x.id) mapa[x.id]=x; });
       (remotas||[]).forEach(function(r){
         if(!r||!r.id) return; rem[r.id]=r;
-        var loc=mapa[r.id];
-        if(!loc || String(r.atualizadoEm||'') >= String(loc.atualizadoEm||'')) mapa[r.id]=r;
+        var loc=mapa[r.id], tr=String(r.atualizadoEm||''), tl=loc?String(loc.atualizadoEm||''):'';
+        if(!loc || tr > tl) mapa[r.id]=r;
+        else if(tr === tl){
+          var m={}; for(var k in r) m[k]=r[k];
+          SO_LOCAL.forEach(function(k){ if(loc[k] && !r[k]) m[k]=loc[k]; });
+          mapa[r.id]=m;
+        }
       });
       l.forEach(function(x){
         if(!x||!x.id) return; var r=rem[x.id];
-        if(!r || String(x.atualizadoEm||'') > String(r.atualizadoEm||'')) pend.push(x);
+        if(!r || String(x.atualizadoEm||'') > String(r.atualizadoEm||'')
+           || (String(x.atualizadoEm||'') === String(r.atualizadoEm||'') && faltaLa(x,r))) pend.push(x);
       });
       var out=Object.keys(mapa).map(function(k){ return mapa[k]; });
       this._grava(out);
@@ -21904,14 +21918,16 @@ window.CompAnos = (function () {
         +'<td>'+esc(a.tipo||'Ação')+'</td>'
         +'<td><strong>'+esc(a.kpi||'—')+'</strong>'+(a.desvio?'<div style="color:var(--t3)">'+esc(a.desvio)+'</div>':'')+'</td>'
         +'<td>'+esc(a.causa||'—')+'</td>'
-        +'<td>'+esc(a.acao||'—')+'</td>'
+        +'<td>'+esc(a.acao||'—')
+          +(a.realizado?'<div style="color:'+(a.status==='Concluída'?'#4CAF50':'var(--t2)')+';margin-top:3px"><strong>Realizado:</strong> '+esc(a.realizado)+'</div>':'')+'</td>'
         +'<td>'+esc(a.responsavel||'—')+'</td>'
-        +'<td style="white-space:nowrap;'+(venc?'color:#F44336;font-weight:700':'')+'">'+fData(a.prazo)+(venc?' · vencido':'')+'</td>'
+        +'<td style="white-space:nowrap;'+(venc?'color:#F44336!important;font-weight:700':'')+'">'+fData(a.prazo)+(venc?'<div style="font-size:.62rem">vencido</div>':'')+'</td>'
         +'<td style="white-space:nowrap">'+esc(a.status||'Aberta')
+          +(a.status==='Concluída'&&a.concluidoEm?'<div style="color:var(--t3);font-size:.62rem">em '+fData(a.concluidoEm)+'</div>':'')
           +(a.enviadoEm?'<div style="color:var(--t3);font-size:.62rem">cobrada '+fData(a.enviadoEm)+'</div>':'')+'</td>'
         +'<td class="reu-noprint" style="white-space:nowrap">'
           +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEditar(\''+esc(a.id)+'\')" title="Editar"><span class="ic ic-lapis"></span></button> '
-          +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoStatus(\''+esc(a.id)+'\',\'Concluída\')" title="Marcar como concluída">✓</button> ':'')
+          +(aberta?'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoConcluir(\''+esc(a.id)+'\')" title="Concluir: registrar o que foi realizado">✓</button> ':'')
           +'<details class="reu-envio"><summary class="btn btn-g btn-sm" title="Enviar esta ação"><span class="ic ic-mail"></span> Enviar</summary><div class="reu-envio-menu">'
             +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'zap\');this.closest(\'details\').open=false" title="Enviar por WhatsApp para o responsável"><span class="ic ic-zap"></span> WhatsApp</button>'
             +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoEnviar(\''+esc(a.id)+'\',\'email\');this.closest(\'details\').open=false" title="Enviar agora, pela caixa do PPCP, para a lista da aba EMAIL">✉ E-mail</button>'
@@ -21940,12 +21956,20 @@ window.CompAnos = (function () {
         +'<label style="font-size:.6rem;color:var(--t3)">Causa principal<input type="text" id="ac-causa" '+inp+' placeholder="por quê"></label>'
         +'<label style="font-size:.6rem;color:var(--t3)">Ação<input type="text" id="ac-acao" '+inp+' placeholder="o que será feito"></label>'
       +'</div>'
+      +'<label style="display:block;font-size:.6rem;color:var(--t3);margin-top:8px">O que foi realizado <span style="color:var(--t2)">(obrigatório para concluir)</span>'
+        +'<textarea id="ac-realizado" rows="2" style="width:100%;font-size:.74rem;padding:6px 8px;resize:vertical" placeholder="o que foi feito de fato e o resultado (ex.: cronometrado, furação passou de 40 para 52 peças/min)"></textarea></label>'
       +'<div style="display:flex;gap:8px;margin-top:10px;align-items:center">'
         +'<button type="button" class="btn btn-c btn-sm" onclick="reuAcaoSalvar()">Salvar</button>'
         +'<button type="button" class="btn btn-g btn-sm" onclick="reuAcaoFechar()">Cancelar</button>'
         +'<span id="ac-erro" style="font-size:.68rem;color:#F44336"></span>'
       +'</div></div>';
-    return '<div id="reu-acoes" class="reu-acoes" style="background:var(--panel);border:1px solid var(--b);border-radius:var(--r);padding:10px 13px;min-width:0">'
+    /* O tema põe td{white-space:nowrap}: com causa, ação e o realizado em uma
+       linha só a tabela passava de 1.400 px e cortava em qualquer tela.
+       Texto quebra; prazo, status e botões (colunas 7 em diante) não. */
+    return '<style>#reu-acoes .reu-tab td{white-space:normal!important;vertical-align:top}'
+        +'#reu-acoes .reu-tab td:nth-child(-n+2),#reu-acoes .reu-tab td:nth-child(n+7){white-space:nowrap!important}'
+        +'#reu-acoes .reu-tab td:nth-child(3),#reu-acoes .reu-tab td:nth-child(5){min-width:120px}</style>'
+      +'<div id="reu-acoes" class="reu-acoes" style="background:var(--panel);border:1px solid var(--b);border-radius:var(--r);padding:10px 13px;min-width:0">'
       +'<div class="reu-noprint" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'
         +'<button type="button" class="btn btn-a btn-sm" onclick="reuAcaoNova()">+ Nova ação</button>'
         +'<label style="font-size:.66rem;color:var(--t3);display:inline-flex;align-items:center;gap:5px;cursor:pointer">'
@@ -22280,7 +22304,10 @@ window.CompAnos = (function () {
        esticada em 1.800 px deixava o número longe do nome e empurrava o
        segundo bloco para fora da tela. Em tela estreita e no relatório, um
        abaixo do outro. */
-    if(detalhesF1) detalhesF1='<div class="reu-det" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,600px),1fr));gap:2px 26px;align-items:start">'+detalhesF1+'</div>';
+    /* 720 px por coluna: a tabela de setores pede ~700. Com 600, num notebook
+       Full HD a 125% (1536 px) as duas ficavam lado a lado e a coluna Leitura
+       saía cortada; agora empilham ali e ficam lado a lado na TV (1920). */
+    if(detalhesF1) detalhesF1='<div class="reu-det" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,720px),1fr));gap:2px 26px;align-items:start">'+detalhesF1+'</div>';
 
     /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
        porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
@@ -22292,8 +22319,11 @@ window.CompAnos = (function () {
              +detalhesF1)
       +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
       +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
-             '<div class="reu-row3" style="display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:8px;align-items:start">'
-             +b4+blocoAcoes(mes+'/'+ano)+'</div>');
+             /* flex com quebra: card e plano lado a lado quando o plano cabe
+                (~1.000 px); em notebook o card sobe e o plano usa a largura toda */
+             '<div class="reu-row3" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">'
+             +'<div style="flex:1 1 260px;max-width:300px;min-width:220px">'+b4+'</div>'
+             +'<div style="flex:999 1 1000px;min-width:0">'+blocoAcoes(mes+'/'+ano)+'</div></div>');
   }
 
   /* Relatório de uma página, para circular antes da reunião. */
@@ -23103,12 +23133,17 @@ window.CompAnos = (function () {
      clique, para quem perguntar "e o meu setor?". No relatório impresso todos
      saem abertos e a linha de abrir some: papel é documento, não tela de
      decisão. */
-  window.reuSetoresMais=function(){
-    var tab=document.querySelector('.reu-set-tab'); if(!tab) return;
+  /* A tabela vem da linha clicada: desde b96.29 a de absenteísmo por motivo,
+     ao lado, também é .reu-set-tab, e querySelector pegava ela (sem linhas
+     extras) e a linha de abrir parou de responder. */
+  window.reuSetoresMais=function(el){
+    var tab=(el&&el.closest)?el.closest('table'):null;
+    if(!tab){ var ts=document.querySelectorAll('.reu-set-tab'); for(var i=0;i<ts.length&&!tab;i++){ if(ts[i].querySelector('tr.reu-set-extra')) tab=ts[i]; } }
+    if(!tab) return;
     var extras=tab.querySelectorAll('tr.reu-set-extra'); if(!extras.length) return;
     var abrir=(extras[0].style.display==='none');
     [].forEach.call(extras,function(tr){ tr.style.display=abrir?'':'none'; });
-    var lbl=document.getElementById('reu-set-lbl');
+    var lbl=tab.querySelector('#reu-set-lbl');
     if(lbl) lbl.textContent=(abrir?'▾ Ocultar os outros ':'▸ Outros ')+extras.length+' setores diretos';
     var lin=tab.querySelector('tr.reu-set-resto');
     if(lin) lin.title=abrir?'Ocultar os outros setores':'Abrir os outros setores';
@@ -23225,7 +23260,7 @@ window.CompAnos = (function () {
   window.reuAcaoNova=function(){
     _acSet('ac-id',''); _acSet('ac-tipo','Ação'); _acSet('ac-prioridade','Vermelho'); _acSet('ac-kpi','Outro');
     _acSet('ac-responsavel',''); _acSet('ac-prazo',''); _acSet('ac-status','Aberta');
-    _acSet('ac-desvio',''); _acSet('ac-causa',''); _acSet('ac-acao','');
+    _acSet('ac-desvio',''); _acSet('ac-causa',''); _acSet('ac-acao',''); _acSet('ac-realizado','');
     var e=document.getElementById('ac-erro'); if(e) e.textContent='';
     _acForm(true);
     var r=document.getElementById('ac-responsavel'); if(r) r.focus();
@@ -23235,26 +23270,38 @@ window.CompAnos = (function () {
     _acSet('ac-id',a.id); _acSet('ac-tipo',a.tipo||'Ação'); _acSet('ac-prioridade',a.prioridade||'Vermelho');
     _acSet('ac-kpi',ACAO_KPIS.indexOf(a.kpi)>=0?a.kpi:'Outro');
     _acSet('ac-responsavel',a.responsavel); _acSet('ac-prazo',a.prazo); _acSet('ac-status',a.status||'Aberta');
-    _acSet('ac-desvio',a.desvio); _acSet('ac-causa',a.causa); _acSet('ac-acao',a.acao);
+    _acSet('ac-desvio',a.desvio); _acSet('ac-causa',a.causa); _acSet('ac-acao',a.acao); _acSet('ac-realizado',a.realizado);
     var e=document.getElementById('ac-erro'); if(e) e.textContent='';
     _acForm(true);
     reuFoco('#reu-ac-form');
   };
+  /* ✓ não fecha direto: abre a ação já como Concluída e pede o que foi
+     realizado. "Concluída" sem dizer o quê não serve para a próxima reunião
+     cobrar resultado. */
+  window.reuAcaoConcluir=function(id){
+    reuAcaoEditar(id);
+    _acSet('ac-status','Concluída');
+    var r=document.getElementById('ac-realizado'); if(r) r.focus();
+  };
   window.reuAcaoFechar=function(){ _acForm(false); };
   window.reuAcaoSalvar=function(){
     var a={ id:_acGet('ac-id')||'', tipo:_acGet('ac-tipo'), prioridade:_acGet('ac-prioridade'), kpi:_acGet('ac-kpi'),
-            desvio:_acGet('ac-desvio'), causa:_acGet('ac-causa'), acao:_acGet('ac-acao'),
+            desvio:_acGet('ac-desvio'), causa:_acGet('ac-causa'), acao:_acGet('ac-acao'), realizado:_acGet('ac-realizado'),
             responsavel:_acGet('ac-responsavel'), prazo:_acGet('ac-prazo'), status:_acGet('ac-status') };
     var faltam=[];
     if(!a.acao) faltam.push('ação');
     if(!a.responsavel) faltam.push('responsável');
     if(!a.prazo) faltam.push('prazo');
     if(a.prioridade==='Vermelho' && !a.causa) faltam.push('causa (obrigatória para prioridade Vermelho)');
+    if(a.status==='Concluída' && !a.realizado) faltam.push('o que foi realizado (obrigatório para concluir)');
     if(faltam.length){
       var e=document.getElementById('ac-erro'); if(e) e.textContent='Falta: '+faltam.join(', ')+'.';
       return;
     }
-    if(a.id){ var ant=Acoes.lista().filter(function(x){ return x.id===a.id; })[0]; if(ant){ a.criadoEm=ant.criadoEm; a.mesRef=ant.mesRef; } }
+    var ant=a.id?Acoes.lista().filter(function(x){ return x.id===a.id; })[0]:null;
+    if(ant){ a.criadoEm=ant.criadoEm; a.mesRef=ant.mesRef; a.enviadoEm=ant.enviadoEm; a.enviadoPara=ant.enviadoPara; }
+    /* data em que virou Concluída; reaberta, perde a data */
+    a.concluidoEm=a.status==='Concluída'?((ant&&ant.status==='Concluída'&&ant.concluidoEm)?ant.concluidoEm:hojeISO()):'';
     if(!a.mesRef){ var l=document.getElementById('reu-per-lbl'); a.mesRef=l?l.textContent:''; }
     _acForm(false);          /* antes de salvar: salvar re-renderiza e preservaria o form aberto */
     Acoes.salvar(a);
@@ -23287,6 +23334,7 @@ window.CompAnos = (function () {
     return '• ['+(a.prioridade||'—')+'] '+(a.kpi||'—')+(a.desvio?(' — '+a.desvio):'')
       +'\n  Ação: '+(a.acao||'—')
       +(a.causa?('\n  Causa: '+a.causa):'')
+      +(a.realizado?('\n  Realizado'+(a.status==='Concluída'&&a.concluidoEm?(' em '+fData(a.concluidoEm)):'')+': '+a.realizado):'')
       +'\n  Responsável: '+(a.responsavel||'—')+' · Prazo: '+fData(a.prazo)+' · '+(a.status||'Aberta');
   }
   function textoPlano(id){
@@ -23638,9 +23686,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.37';
+var APP_VERSAO = 'b96.38';
 var APP_DATA   = '13/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.38', data:'13/10/2026', itens:[
+    'Plano de acao: o botao de concluir abre a acao ja como Concluida e pede O que foi realizado (obrigatorio para concluir). A data de conclusao entra sozinha; reaberta, perde a data. O realizado aparece embaixo da acao na tabela (com mostrar concluidas), no WhatsApp, no e-mail e na aba ACOES (colunas realizado e concluidoEm, criadas pelo Code.gs na primeira gravacao). Ate o Code.gs novo ser publicado, o texto fica no navegador e e reenviado.',
+    'Onde esta a hora extra: a linha Outros N setores diretos voltou a abrir no clique. Desde b96.29 a tabela de absenteismo ao lado tem a mesma classe e o clique procurava as linhas nela. Sai a nota de rodape (horas do ponto, indiretos).',
+    'Setor com menos de 3 pessoas nao ganha leitura nem destaque: 35-CONTROLE DE PRODUCAO (1 pessoa) aparecia como HE alta em SET/26; vai para Outros setores.',
+    'Notebook: absenteismo por motivo e setores so ficam lado a lado com 720 px cada (em 1536 px a coluna Leitura cortava); a barra do topo da Reuniao quebra linha (em 1366 px o botao Lideres saia da tela e a pagina rolava de lado); plano de acao quebra o texto em linhas e o card Acoes criticas sobe quando falta espaco. Prazo vencido volta a sair em vermelho.'
+  ]},
   { v:'b96.37', data:'13/10/2026', itens:[
     'PontoRH.gs: mes fechado reprocessado com o MESMO extrato (mesmos diretos, carga, normais e extras) passa a atualizar as colunas brutas do script (naoTrabalhadas, faltasPonto, atrasosPonto) pela regra de hoje; horas, extras e colaboradores continuam protegidos. MAR a AGO/26 guardavam naoTrabalhadas da regra antiga (quem entrou ou saiu no meio do mes contava o mes inteiro), 79 a 334 h a mais, e a integridade acusou JUN/26 (2.331 x 2.055) sem divergencia real. Nao muda absenteismo: com o controle lancado, essa coluna so serve para a conferencia.'
   ]},

@@ -153,7 +153,7 @@ function criarAbaDicionario() {
 }
 var ACOES_CAMPOS = ['id','tipo','prioridade','kpi','desvio','causa','acao',
   'responsavel','prazo','status','mesRef','criadoEm','atualizadoEm',
-  'enviadoEm','enviadoPara'];
+  'enviadoEm','enviadoPara','realizado','concluidoEm'];
 
 /* ══ ENVIO DE E-MAIL ══
    O painel abria o Gmail do navegador, então a cobrança saía na conta de
@@ -924,6 +924,16 @@ function gravarAcoes(ss, recebidas) {
   var col = {};
   cab.forEach(function (n, i) { if (n && col[n] === undefined) col[n] = i; });
   if (col.id === undefined) throw new Error('Coluna "id" não encontrada em ' + ABA_ACOES + '.');
+  /* Campo novo do painel (realizado, concluidoEm) em aba criada antes dele:
+     cria a coluna no fim do cabeçalho. Sem isso o valor era descartado em
+     silêncio (campo sem coluna é ignorado logo abaixo). */
+  var fim = cab.length;
+  while (fim > 0 && !cab[fim - 1]) fim--;
+  ACOES_CAMPOS.forEach(function (nome) {
+    if (col[nome] !== undefined) return;
+    aba.getRange(1, fim + 1).setValue(nome);
+    cab[fim] = nome; col[nome] = fim; fim++;
+  });
 
   var mapa = {};
   for (var r = 1; r < linhas.length; r++) {

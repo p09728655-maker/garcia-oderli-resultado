@@ -473,6 +473,22 @@ SH.w.aplicar = false;
 ok('base incompleta: setor fica na conta antiga, como o card', SH.doMes('SET', 2026).find(x => x.setor === '1-USINAGEM').aus, 120);
 ok('base incompleta: doPeriodo também', SH.doPeriodo(2026, ['SET']).find(x => x.setor === '1-USINAGEM').aus, 120);
 
+sec('Leitura por setor: setor de uma ou duas pessoas não ganha leitura');
+{
+  const ini = HTML.indexOf('window.SetorHE = (function(){'), fim = HTML.indexOf('\n})();', ini) + 5;
+  const dados = [
+    { mes:'SET', ano:2026, setor:'2-EMBALAGEM', direto:'S', pessoas:25, horasNormais:3900, extra50:424, ausFalta:300 },
+    { mes:'SET', ano:2026, setor:'1-USINAGEM', direto:'S', pessoas:16, horasNormais:2800, extra50:137, ausFalta:100 },
+    { mes:'SET', ano:2026, setor:'21-GERAL', direto:'S', pessoas:3, horasNormais:560, extra50:70, ausFalta:1 },
+    { mes:'SET', ano:2026, setor:'35-CONTROLE DE PRODUÇÃO', direto:'S', pessoas:1, horasNormais:184.8, extra50:31 }];
+  const w = { localStorage: { getItem: () => JSON.stringify(dados) }, duplicidadeAplicada: () => false };
+  new Function('window', 'localStorage', HTML.slice(ini, fim)).call(w, w, w.localStorage);
+  const R = w.SetorHE.resumo('SET', 2026), sx = k => R.setores.find(x => x.setor === k);
+  afirma('35-CONTROLE (1 pessoa, 16,8%): sem leitura e sem destaque', sx('35-CONTROLE DE PRODUÇÃO').leitura === '' && !sx('35-CONTROLE DE PRODUÇÃO').heAlta);
+  afirma('21-GERAL (3 pessoas) continua com leitura', sx('21-GERAL').leitura === 'capacidade');
+  afirma('2-EMBALAGEM (25 pessoas) cobrindo falta', sx('2-EMBALAGEM').leitura === 'cobrindo falta');
+}
+
 sec('Custo da hora extra (custoHE)');
 const CH0 = U.custoHE([SET_H], 0);
 afirma('sem custo-hora → valor null, nunca R$ 0', CH0.valor === null);
