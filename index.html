@@ -21671,6 +21671,12 @@ window.CompAnos = (function () {
     +'.reu-set-tab td{padding:5px 10px!important;font-size:.82rem!important;font-weight:400;border-top:1px solid rgba(255,255,255,.05)}'
     +'.reu-set-tab td.n{text-align:right;font-family:var(--sans);font-variant-numeric:tabular-nums;white-space:nowrap}'
     +'.reu-set-tab td.forte{font-weight:600}'
+    /* Modo TV: letra .98rem e 12 px de respiro por lado faziam a tabela de
+       hora extra por setor passar a metade da tela (790 px numa coluna de
+       771 em 1920 com a lateral aberta) e a Leitura saía cortada na borda.
+       Cabeçalho quebra em duas linhas e o respiro cai para 8 px, só nela. */
+    +'.tv-mode #page-reuniao .reu-set-he th{white-space:normal!important;vertical-align:bottom;line-height:1.25}'
+    +'.tv-mode #page-reuniao .reu-set-he th,.tv-mode #page-reuniao .reu-set-he td{padding:6px 8px!important}'
     +'.reu-set-tab .reu-set-tot td{border-top:1px solid var(--b);font-weight:600}'
     +'.reu-set-resto:hover td{background:rgba(245,166,35,.07)}'
     +'.reu-set-tab td.reu-abs-cai{color:#4CAF50!important}.reu-set-tab td.reu-abs-sobe{color:#F44336!important}'
@@ -21719,7 +21725,7 @@ window.CompAnos = (function () {
     return '<div class="reu-setores" style="margin:10px 2px 0">'+REU_DET_CSS
       +'<div class="reu-set-h">▸ Onde está a hora extra · '+RS.rotulo+'</div>'
       +'<div class="reu-set-p">'+frase+'</div>'
-      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab" style="min-width:520px">'
+      +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab reu-set-he" style="min-width:520px">'
       +'<thead><tr>'
         +'<th style="text-align:left;width:auto">Setor</th>'
         +'<th style="text-align:right;width:10%;white-space:nowrap">Pessoas</th>'
@@ -23854,9 +23860,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.46';
+var APP_VERSAO = 'b96.47';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.47', data:'14/10/2026', itens:[
+    'Modo TV: a tabela Onde esta a hora extra da Reuniao saia cortada na borda direita (a Leitura, cobrindo falta, perdia o fim). No Modo TV a letra da tabela sobe para .98rem com 12 px de respiro por lado, e ela passava a metade da tela: 790 px numa coluna de 771 em 1920 com a lateral aberta. Agora, so no Modo TV, o cabecalho quebra em duas linhas e o respiro cai para 8 px; conferido em 1920 e 1903 com fonte mais larga, inclusive com os outros setores abertos.'
+  ]},
   { v:'b96.46', data:'14/10/2026', itens:[
     'Onde esta a hora extra (Reuniao) e o slide de hora extra por setor dos Lideres voltam a uma tabela enxuta, de nove para seis colunas: Setor, Pessoas, HE em pessoas, HE dividida pelas normais, Falta e Leitura. HE dividida pelas normais fica porque e ela que explica a Leitura (USINAGEM e LINHA DE PINTURA tem as duas 0,7 pessoa de HE, mas so a pintura passa da fabrica). Horas disponiveis, HE em horas e parte da HE seguem na aba Eficiencia e Horas; a parte dos tres maiores fica na frase, que agora abre pelo total em pessoas.'
   ]},
