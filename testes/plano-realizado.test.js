@@ -123,7 +123,7 @@ afirma('FEV cumpriu com hora extra → âmbar', M.fita[1].cor === '#FF9800');
 afirma('SET em andamento é marcado como parcial', M.fita[8].parcial === true);
 ok('SET mostra o parcial (26.178 ÷ 34.810)', M.fita[8].pct, 75.20, 0.01);
 afirma('meses fechados não são parciais', M.fita.slice(0, 8).every(x => !x.parcial));
-afirma('OUT a DEZ sem % e cinza', M.fita.slice(9).every(x => x.pct === null && x.cor === '#2A2A2A'));
+afirma('OUT a DEZ sem % e na cor neutra do fundo (borda azul-marinho)', M.fita.slice(9).every(x => x.pct === null && x.cor === '#223550'));
 afirma('mês cumprido na jornada normal seria verde', PR.corStatus('Cumpriu') === '#4CAF50');
 
 /* ══ Hora extra — qualifica o veredito, não fica no rodapé ══
