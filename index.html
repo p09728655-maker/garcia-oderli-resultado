@@ -21081,12 +21081,17 @@ window.CompAnos = (function () {
     if (!r.peso.temPeso) return '';
     var g = r.geral;
     var comAmbos = r.produtos.filter(function (p) { return p.kgUnA > 0 && p.kgUnB > 0; });
+    /* Peso por peça do reporte é peso da linha ÷ quantidade: o arredondamento
+       do ERP faz o MESMO produto variar centésimos de %, e a lista enchia de
+       "+0,0%" — produto que não mudou nada aparecendo como "ficou mais
+       pesado". Abaixo de 1% é arredondamento, não mudança de produto. */
+    var LIM_KGUN = 1;
     function rank(arr, campo, dir, n) {
       return arr.slice().sort(function (a, b) { return dir * ((a[campo] || 0) - (b[campo] || 0)); }).slice(0, n || 5);
     }
     /* Mesma regra do bloco de mix: min-width:0 no item do grid e ellipsis no
        nome, senão um produto de nome comprido empurra a coluna para fora. */
-    function mini(titulo, arr, fmt, cor) {
+    function mini(titulo, arr, fmt, cor, vazio) {
       return '<div style="min-width:0"><div style="font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:' + cor
         + ';font-weight:700;margin-bottom:7px">' + titulo + '</div>'
         + (arr.length ? '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><tbody>'
@@ -21095,7 +21100,7 @@ window.CompAnos = (function () {
                     + esc(p.cod + ' — ' + p.desc) + '">' + esc(p.desc) + '</div>')
                   + td('<b style="color:' + cor + '">' + fmt(p) + '</b>', 'right', 'white-space:nowrap;width:78px') + '</tr>';
               }).join('') + '</tbody></table>'
-          : '<div style="font-size:.74rem;color:var(--t3)">—</div>')
+          : '<div style="font-size:.74rem;color:var(--t3)">' + (vazio || '—') + '</div>')
         + '</div>';
     }
     var dPM = g.varPesoMedio;
@@ -21117,10 +21122,10 @@ window.CompAnos = (function () {
         + mini('Mais leves em ' + anoB, rank(r.produtos.filter(function (p) { return p.kgUnB > 0; }), 'kgUnB', 1),
                function (p) { return fd(p.kgUnB, 1) + ' kg'; }, CIANO)
         + (r.peso.fonteCadastro ? '' :
-            mini('Ficaram mais pesados', rank(comAmbos.filter(function (p) { return p.varKgUn > 0; }), 'varKgUn', -1),
-                 function (p) { return pct(p.varKgUn); }, VERDE)
-          + mini('Ficaram mais leves', rank(comAmbos.filter(function (p) { return p.varKgUn < 0; }), 'varKgUn', 1),
-                 function (p) { return pct(p.varKgUn); }, VERM))
+            mini('Ficaram mais pesados', rank(comAmbos.filter(function (p) { return p.varKgUn >= LIM_KGUN; }), 'varKgUn', -1),
+                 function (p) { return pct(p.varKgUn); }, VERDE, 'Nenhum produto ficou 1% ou mais pesado por peça.')
+          + mini('Ficaram mais leves', rank(comAmbos.filter(function (p) { return p.varKgUn <= -LIM_KGUN; }), 'varKgUn', 1),
+                 function (p) { return pct(p.varKgUn); }, VERM, 'Nenhum produto ficou 1% ou mais leve por peça.'))
         + '</div>'
         + '<div style="font-size:.68rem;color:var(--t3);margin-top:13px;line-height:1.55;border-top:1px solid var(--b);padding-top:9px">'
         + (r.peso.fonteCadastro
@@ -21129,7 +21134,8 @@ window.CompAnos = (function () {
               + 'a fábrica fez mais e quais fez menos — e não o produto mudando.'
             : 'Peso unitário = peso reportado ÷ quantidade reportada, sobre os meses em que o produto teve peso informado. '
               + 'Mudança no peso unitário do mesmo código quer dizer que o produto em si mudou (projeto, material ou embalagem) — '
-              + 'a base não diz qual.')
+              + 'a base não diz qual. Nas listas de quem ficou mais pesado ou mais leve só entra variação de ' + LIM_KGUN
+              + '% ou mais: abaixo disso é arredondamento do peso no reporte, não mudança de produto.')
         + '</div>', ROXO);
   }
 
@@ -24051,9 +24057,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.52';
+var APP_VERSAO = 'b96.53';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.53', data:'14/10/2026', itens:[
+    'Produto x peso medio: as listas Ficaram mais pesados e Ficaram mais leves enchiam de +0,0% e -0,0% (KIT 2 MESA CABECEIRA, RACK SIRIUS...). O peso por peca do reporte e peso da linha dividido pela quantidade, e o arredondamento do ERP faz o mesmo produto variar centesimos de %. Agora so entra quem variou 1% ou mais no peso por peca; sem ninguem, a lista diz que nenhum produto mudou.'
+  ]},
   { v:'b96.52', data:'14/10/2026', itens:[
     'Comparativo, Produto x peso: sai o filtro de linha. Ele dava a mesma lista que abrir a linha na tabela Por linha de produto. A tabela fica como consulta por produto: busca por codigo ou nome, situacao na fabrica inteira (todos os que sairam, todos os novos) e ordenacao.'
   ]},
