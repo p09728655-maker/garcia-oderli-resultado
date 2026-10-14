@@ -64,8 +64,8 @@ html{scroll-behavior:smooth}
 body{font-family:var(--sans);background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   background:
-    linear-gradient(rgba(245,166,35,.02) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(245,166,35,.02) 1px,transparent 1px);
+    linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);
   background-size:40px 40px}
 #app{position:relative;z-index:1;width:96%;max-width:2200px;margin:0 auto;padding:16px 0 80px}
 .layout{display:flex;gap:16px;align-items:flex-start}
@@ -77,7 +77,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
    o botão no cabeçalho (em reunião quem está no mouse nem sempre sabe onde é). */
 #sb-handle{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:8000;display:none;
   align-items:center;gap:6px;padding:12px 7px 12px 5px;border:1px solid var(--cyan);border-left:0;
-  border-radius:0 10px 10px 0;background:rgba(28,28,28,.96);color:var(--cyan);cursor:pointer;
+  border-radius:0 10px 10px 0;background:rgba(17,31,48,.96);color:var(--cyan);cursor:pointer;
   font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
   writing-mode:vertical-rl;text-orientation:mixed;box-shadow:0 4px 18px rgba(0,0,0,.5)}
 #sb-handle.on{display:flex}
@@ -104,7 +104,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .mBtn.on{background:rgba(245,166,35,.15);border-color:var(--cyan);color:var(--cyan);font-weight:700}
 .sBtnAll{display:block;width:100%;padding:7px 10px;border:1px solid var(--b2);border-radius:var(--r);
   font-family:var(--mono);font-size:.7rem;color:var(--t2);cursor:pointer;
-  transition:all var(--tr);background:rgba(245,166,35,.04);text-align:center;margin-bottom:8px}
+  transition:all var(--tr);background:rgba(255,255,255,.04);text-align:center;margin-bottom:8px}
 .sBtnAll:hover{border-color:var(--cyan);color:var(--cyan)}
 .sCnt{font-family:var(--mono);font-size:.65rem;color:var(--t3);text-align:center;margin-top:8px;padding-top:6px;border-top:1px solid var(--b)}
 /* b92.4: a Reunião tem seletor próprio de período; os filtros da lateral ficavam acesos em outro ano e induziam leitura errada */
@@ -218,7 +218,7 @@ canvas{width:100%!important;display:block}
 .tWrap{background:var(--panel);border:1px solid var(--b);border-radius:var(--r);
   overflow-x:auto;margin-bottom:20px}
 table{width:100%;border-collapse:collapse;font-size:.77rem}
-thead tr{background:rgba(245,166,35,.04);border-bottom:1px solid var(--b)}
+thead tr{background:rgba(255,255,255,.04);border-bottom:1px solid var(--b)}
 th{padding:10px 12px;text-align:left;font-size:.59rem;letter-spacing:.1em;
   text-transform:uppercase;color:var(--t2);font-weight:600;white-space:nowrap}
 th[title]{cursor:help;border-bottom:1px dotted rgba(245,166,35,.35);
@@ -230,7 +230,7 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
 td{padding:10px 12px;white-space:nowrap;color:var(--t1)}
 td.cMes{font-family:var(--mono);font-weight:700;color:var(--cyan);letter-spacing:.05em}
 td.cNum{font-family:var(--mono);text-align:right}
-tfoot tr td{background:rgba(245,166,35,.04);border-top:2px solid var(--cyan);
+tfoot tr td{background:rgba(255,255,255,.04);border-top:2px solid var(--cyan);
   font-weight:700;color:var(--cyan);font-family:var(--mono)}
 .emp{padding:42px 20px;text-align:center;color:var(--t3)}
 .emp svg{width:38px;height:38px;fill:var(--t3);margin:0 auto 10px;opacity:.35;display:block}
@@ -346,7 +346,7 @@ select option{background:var(--card)}
 .compGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 @media(max-width:860px){.compGrid{grid-template-columns:1fr}}
 .deltaTable{width:100%;border-collapse:collapse;font-size:.75rem}
-.deltaTable thead tr{background:rgba(245,166,35,.04);border-bottom:1px solid var(--b)}
+.deltaTable thead tr{background:rgba(255,255,255,.04);border-bottom:1px solid var(--b)}
 .deltaTable th{padding:8px 10px;text-align:left;font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);font-weight:600;white-space:nowrap}
 .deltaTable tbody tr{border-bottom:1px solid var(--b);transition:background var(--tr)}
 .deltaTable tbody tr:hover{background:rgba(255,255,255,.02)}
@@ -417,7 +417,7 @@ select option{background:var(--card)}
 #zoomTabelaBody th{position:sticky;top:0;background:#0d1525;z-index:2}
 /* Tooltip nas células */
 td[title]{cursor:help}
-td[title]:hover{background:rgba(245,166,35,.04)!important}
+td[title]:hover{background:rgba(255,255,255,.04)!important}
 
 /* ─── ZOOM MODAL ─── */
 #zoomModal{position:fixed;inset:0;z-index:8000;background:rgba(3,8,18,.92);
@@ -1017,7 +1017,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .aaa-sub{font-size:.67rem;color:var(--t2);margin-top:2px}
 .aaa-wrap{background:var(--panel);border:1px solid var(--b);border-radius:var(--r);overflow-x:auto;margin-bottom:14px}
 .aaa-table{width:100%;border-collapse:collapse;font-size:.75rem;min-width:600px}
-.aaa-table thead tr{background:rgba(245,166,35,.04);border-bottom:2px solid var(--b)}
+.aaa-table thead tr{background:rgba(255,255,255,.04);border-bottom:2px solid var(--b)}
 .aaa-table th{padding:9px 11px;text-align:left;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);white-space:nowrap}
 .aaa-table tbody tr{border-bottom:1px solid var(--b);transition:background .15s}
 .aaa-table tbody tr:hover{background:rgba(255,255,255,.025)}
@@ -1116,8 +1116,8 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 @media(max-width:1100px){.enh-fc-grid{grid-template-columns:1fr 1fr}}@media(max-width:640px){.enh-fc-grid{grid-template-columns:1fr}}
 .enh-fc-col{background:#080f1c;border:1px solid #223550;border-radius:6px;overflow:hidden}
 .enh-fc-hdr{padding:8px 12px;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;border-bottom:1px solid #223550}
-.enh-fc-col.fc-s .enh-fc-hdr{color:#F5A623;background:rgba(245,166,35,.04)}
-.enh-fc-col.fc-c .enh-fc-hdr{color:#FF9800;background:rgba(255,152,0,.04)}.enh-fc-col.fc-f .enh-fc-hdr{color:#4FC3F7;background:rgba(79,195,247,.04)}.enh-fc-col.fc-a .enh-fc-hdr{color:#AB47BC;background:rgba(171,71,188,.04)}
+.enh-fc-col.fc-s .enh-fc-hdr{color:#F5A623;background:rgba(255,255,255,.04)}
+.enh-fc-col.fc-c .enh-fc-hdr{color:#FF9800;background:rgba(255,255,255,.04)}.enh-fc-col.fc-f .enh-fc-hdr{color:#4FC3F7;background:rgba(79,195,247,.04)}.enh-fc-col.fc-a .enh-fc-hdr{color:#AB47BC;background:rgba(171,71,188,.04)}
 .enh-row{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid rgba(26,45,69,.35)}
 .enh-row:last-child{border-bottom:none}
 .enh-row-lbl{font-size:.64rem;color:#4a7099}
@@ -1255,8 +1255,8 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
     <div class="sTitle">▸ Ações</div>
     <button class="sBtn" onclick="exportCSV()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"></path></svg>Exportar CSV</button>
     <button class="sBtn" onclick="printAtiva()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"></path></svg>Imprimir</button>
-    <button class="sBtn" style="color:var(--amber);border-color:rgba(255,152,0,.4);background:rgba(255,152,0,.05)" onclick="brfgImprimir()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"></path></svg>Briefing</button>
-    <button class="sBtn" style="color:#F5A623;border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05)" onclick="abrirMetas()" title="Metas oficiais (aba METAS da planilha): ver e alterar com origem e vigência"><span class="ic ic-alvo"></span> Metas oficiais</button>
+    <button class="sBtn" style="color:var(--amber);border-color:rgba(255,152,0,.4)" onclick="brfgImprimir()"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="vertical-align:-2px;margin-right:6px"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"></path></svg>Briefing</button>
+    <button class="sBtn" style="color:#F5A623;border-color:rgba(245,166,35,.4)" onclick="abrirMetas()" title="Metas oficiais (aba METAS da planilha): ver e alterar com origem e vigência"><span class="ic ic-alvo"></span> Metas oficiais</button>
 
     <div id="acoes-admin-toggle" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--b)">
       <button class="sBtn" style="font-size:.62rem;color:var(--t3);border-color:var(--b);background:transparent;padding:5px 8px" onclick="document.getElementById('acoes-admin-box').style.display='flex';this.parentElement.style.display='none'"><span class="ic ic-eng"></span> Modo edição (manutenção de dados)</button>
@@ -2114,7 +2114,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .prod-mes-btn:disabled{opacity:.3;cursor:default}
 .prod-btn-todos{
   padding:5px 12px;border:1px solid var(--b2);border-radius:5px;
-  font-size:.68rem;color:var(--t2);cursor:pointer;background:rgba(245,166,35,.04);
+  font-size:.68rem;color:var(--t2);cursor:pointer;background:rgba(255,255,255,.04);
   transition:all .15s;white-space:nowrap;
 }
 .prod-btn-todos:hover{border-color:var(--ds-destaque);color:var(--ds-destaque)}
@@ -2167,7 +2167,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   border-radius:6px;overflow-x:auto;margin-bottom:16px;
 }
 .prod-table{width:100%;border-collapse:collapse;font-size:.74rem}
-.prod-table thead tr{background:rgba(245,166,35,.04);border-bottom:1px solid var(--b)}
+.prod-table thead tr{background:rgba(255,255,255,.04);border-bottom:1px solid var(--b)}
 .prod-table th{
   padding:9px 12px;text-align:left;font-size:.57rem;letter-spacing:.1em;
   text-transform:uppercase;color:var(--t2);font-weight:600;white-space:nowrap
@@ -2180,14 +2180,14 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .prod-table td.ptd-num{font-family:'Consolas','Courier New',monospace;text-align:right}
 .prod-table td.ptd-takt{font-family:'Consolas','Courier New',monospace;text-align:right;font-weight:700;color:var(--ds-takt)}
 .prod-table tfoot tr td{
-  background:rgba(245,166,35,.04);border-top:2px solid #F5A623;
+  background:rgba(255,255,255,.04);border-top:2px solid #F5A623;
   font-weight:700;color:var(--ds-destaque);font-family:'Consolas','Courier New',monospace;
   font-size:.72rem;
 }
 
 /* ── Info box ── */
 .prod-info-box{
-  background:rgba(245,166,35,.04);border:1px solid rgba(245,166,35,.15);
+  background:rgba(255,255,255,.04);border:1px solid rgba(245,166,35,.15);
   border-radius:6px;padding:12px 16px;margin-bottom:16px;
   font-size:.72rem;color:var(--t2);line-height:1.8;
 }
@@ -2454,7 +2454,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .cap-mes-btn:disabled{opacity:.28;cursor:default}
 .cap-btn-todos{
   padding:5px 12px;border:1px solid var(--b2);border-radius:5px;
-  font-size:.68rem;color:var(--t2);cursor:pointer;background:rgba(255,152,0,.04);
+  font-size:.68rem;color:var(--t2);cursor:pointer;background:rgba(255,255,255,.04);
   transition:all .15s;white-space:nowrap;
 }
 .cap-btn-todos:hover{border-color:var(--ds-demanda);color:var(--ds-demanda)}
@@ -2581,7 +2581,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
   overflow-x:auto;margin-bottom:14px;
 }
 .cap-table{width:100%;border-collapse:collapse;font-size:.73rem}
-.cap-table thead tr{background:rgba(255,152,0,.04);border-bottom:1px solid var(--b)}
+.cap-table thead tr{background:rgba(255,255,255,.04);border-bottom:1px solid var(--b)}
 .cap-table th{
   padding:9px 12px;text-align:left;font-size:.56rem;letter-spacing:.1em;
   text-transform:uppercase;color:var(--t2);font-weight:600;white-space:nowrap;
@@ -2595,7 +2595,7 @@ td[title]:hover{background:rgba(245,166,35,.04)!important}
 .cap-table td.ct-takt{font-family:'Consolas','Courier New',monospace;text-align:right;color:var(--ds-takt);font-weight:700}
 .cap-table td.ct-util{font-family:'Consolas','Courier New',monospace;text-align:right;font-weight:700}
 .cap-table tfoot td{
-  background:rgba(255,152,0,.05);border-top:2px solid #FF9800;
+  background:rgba(255,255,255,.05);border-top:2px solid #FF9800;
   font-weight:700;color:var(--ds-demanda);font-family:'Consolas','Courier New',monospace;font-size:.72rem;
 }
 
@@ -2912,14 +2912,14 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
 .ppcp-chart-title { font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ds-neutro); margin-bottom:12px }
 .ppcp-table-wrap { background:#111F30; border:1px solid #223550; border-radius:6px; overflow-x:auto; margin-bottom:16px }
 .ppcp-table { width:100%; border-collapse:collapse; font-size:.75rem }
-.ppcp-table thead tr { background:rgba(245,166,35,.04); border-bottom:1px solid #223550 }
+.ppcp-table thead tr { background:rgba(255,255,255,.04); border-bottom:1px solid #223550 }
 .ppcp-table th { padding:10px 12px; font-size:.57rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ds-neutro); font-weight:600; white-space:nowrap; text-align:right }
 .ppcp-table th:first-child { text-align:left }
 .ppcp-table tbody tr { border-bottom:1px solid #223550; transition:background .15s }
 .ppcp-table tbody tr:hover { background:rgba(255,255,255,.02) }
 .ppcp-table td { padding:9px 12px; white-space:nowrap; text-align:right; color:#F5F5F5; font-family:Consolas,monospace }
 .ppcp-table td:first-child { text-align:left; font-weight:700; color:var(--ds-destaque) }
-.ppcp-table tfoot td { background:rgba(245,166,35,.04); border-top:2px solid #F5A623; font-weight:700; padding:9px 12px; text-align:right; font-family:Consolas,monospace }
+.ppcp-table tfoot td { background:rgba(255,255,255,.04); border-top:2px solid #F5A623; font-weight:700; padding:9px 12px; text-align:right; font-family:Consolas,monospace }
 .ppcp-table tfoot td:first-child { color:var(--ds-demanda); text-align:left }
 .ppcp-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:#111F30; border:1px solid #223550; border-radius:6px; padding:12px 16px; margin-bottom:14px }
 .ppcp-toolbar-lbl { font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ds-neutro) }
@@ -2928,7 +2928,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
 .ppcp-mes-btn { background:transparent; border:1px solid #223550; border-radius:4px; color:#888888; font-size:.68rem; font-family:Consolas,monospace; padding:4px 8px; cursor:pointer; transition:all .15s }
 .ppcp-mes-btn:hover { border-color:var(--ds-destaque); color:var(--ds-destaque) }
 .ppcp-mes-btn.on { background:rgba(245,166,35,.15); border-color:#F5A623; color:#F5A623; font-weight:700 }
-.ppcp-btn-todos { background:rgba(245,166,35,.04); border:1px solid #2E4868; border-radius:5px; color:#888888; font-size:.72rem; padding:6px 12px; cursor:pointer; transition:all .15s }
+.ppcp-btn-todos { background:rgba(255,255,255,.04); border:1px solid #2E4868; border-radius:5px; color:#888888; font-size:.72rem; padding:6px 12px; cursor:pointer; transition:all .15s }
 .ppcp-btn-todos:hover { border-color:var(--ds-destaque); color:var(--ds-destaque) }
 .ppcp-sec { font-size:.57rem; letter-spacing:.12em; text-transform:uppercase; color:#4D4D4D; margin-bottom:10px; padding-left:2px }
 .ppcp-header { display:flex; align-items:center; gap:16px; background:#111F30; border:1px solid #223550; border-top:3px solid #F5A623; border-radius:6px; padding:18px 24px; margin-bottom:16px; flex-wrap:wrap }
@@ -4264,7 +4264,7 @@ body.lid-on{overflow:hidden}
 .lid-k2{font-weight:800;font-size:.85em;margin-bottom:.5em;color:#F5A623}
 .lid-tab{width:100%;border-collapse:collapse;font-size:.8em}
 .lid-tab th{text-align:left;font-size:.7em;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:.25em .4em;border-bottom:1px solid #223550}
-.lid-tab td{padding:.25em .4em;border-top:1px solid #222}
+.lid-tab td{padding:.25em .4em;border-top:1px solid #223550}
 .lid-tab td:nth-child(n+2){font-family:var(--mono);text-align:right}
 .lid-tab td.lid-tx{text-align:left;font-family:inherit}
 /* cabeçalho no mesmo alinhamento da coluna: o número fica à direita, então o
@@ -10641,14 +10641,14 @@ function cfInicializar() {
         /* Tabela */
         '.ppcp-table-wrap { background:#111F30; border:1px solid #223550; border-radius:6px; overflow-x:auto; margin-bottom:16px }',
         '.ppcp-table { width:100%; border-collapse:collapse; font-size:.75rem }',
-        '.ppcp-table thead tr { background:rgba(245,166,35,.04); border-bottom:1px solid #223550 }',
+        '.ppcp-table thead tr { background:rgba(255,255,255,.04); border-bottom:1px solid #223550 }',
         '.ppcp-table th { padding:10px 12px; font-size:.57rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ds-neutro); font-weight:600; white-space:nowrap; text-align:right }',
         '.ppcp-table th:first-child { text-align:left }',
         '.ppcp-table tbody tr { border-bottom:1px solid #223550; transition:background .15s }',
         '.ppcp-table tbody tr:hover { background:rgba(255,255,255,.02) }',
         '.ppcp-table td { padding:9px 12px; white-space:nowrap; text-align:right; color:#F5F5F5; font-family:Consolas,monospace }',
         '.ppcp-table td:first-child { text-align:left; font-weight:700; color:var(--ds-destaque) }',
-        '.ppcp-table tfoot td { background:rgba(245,166,35,.04); border-top:2px solid #F5A623; font-weight:700; padding:9px 12px; text-align:right; font-family:Consolas,monospace }',
+        '.ppcp-table tfoot td { background:rgba(255,255,255,.04); border-top:2px solid #F5A623; font-weight:700; padding:9px 12px; text-align:right; font-family:Consolas,monospace }',
         '.ppcp-table tfoot td:first-child { color:var(--ds-demanda); text-align:left }',
 
         /* Toolbar / selects */
@@ -10659,7 +10659,7 @@ function cfInicializar() {
         '.ppcp-mes-btn { background:transparent; border:1px solid #223550; border-radius:4px; color:#888888; font-size:.68rem; font-family:Consolas,monospace; padding:4px 8px; cursor:pointer; transition:all .15s }',
         '.ppcp-mes-btn:hover { border-color:var(--ds-destaque); color:var(--ds-destaque) }',
         '.ppcp-mes-btn.on { background:rgba(245,166,35,.15); border-color:#F5A623; color:#F5A623; font-weight:700 }',
-        '.ppcp-btn-todos { background:rgba(245,166,35,.04); border:1px solid #2E4868; border-radius:5px; color:#888888; font-size:.72rem; padding:6px 12px; cursor:pointer; transition:all .15s }',
+        '.ppcp-btn-todos { background:rgba(255,255,255,.04); border:1px solid #2E4868; border-radius:5px; color:#888888; font-size:.72rem; padding:6px 12px; cursor:pointer; transition:all .15s }',
         '.ppcp-btn-todos:hover { border-color:var(--ds-destaque); color:var(--ds-destaque) }',
 
         /* Section labels */
@@ -11563,8 +11563,8 @@ function cfInicializar() {
       '@media(max-width:1100px){.enh-fc-grid{grid-template-columns:1fr 1fr}}@media(max-width:640px){.enh-fc-grid{grid-template-columns:1fr}}',
       '.enh-fc-col{background:#080f1c;border:1px solid #223550;border-radius:6px;overflow:hidden}',
       '.enh-fc-hdr{padding:8px 12px;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;border-bottom:1px solid #223550}',
-      '.enh-fc-col.fc-s .enh-fc-hdr{color:#F5A623;background:rgba(245,166,35,.04)}',
-      '.enh-fc-col.fc-c .enh-fc-hdr{color:#FF9800;background:rgba(255,152,0,.04)}.enh-fc-col.fc-f .enh-fc-hdr{color:#4FC3F7;background:rgba(79,195,247,.04)}.enh-fc-col.fc-a .enh-fc-hdr{color:#AB47BC;background:rgba(171,71,188,.04)}',
+      '.enh-fc-col.fc-s .enh-fc-hdr{color:#F5A623;background:rgba(255,255,255,.04)}',
+      '.enh-fc-col.fc-c .enh-fc-hdr{color:#FF9800;background:rgba(255,255,255,.04)}.enh-fc-col.fc-f .enh-fc-hdr{color:#4FC3F7;background:rgba(79,195,247,.04)}.enh-fc-col.fc-a .enh-fc-hdr{color:#AB47BC;background:rgba(171,71,188,.04)}',
       '.enh-row{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid rgba(26,45,69,.35)}',
       '.enh-row:last-child{border-bottom:none}',
       '.enh-row-lbl{font-size:.64rem;color:#4a7099}',
@@ -13443,9 +13443,9 @@ body {
 /* Grid de fundo mais sofisticado — dois layers */
 body::before {
   background:
-    linear-gradient(rgba(245,166,35,.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(245,166,35,.015) 1px, transparent 1px),
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(245,166,35,.03) 0%, transparent 70%) !important;
+    linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,255,255,.03) 0%, transparent 70%) !important;
   background-size: 44px 44px, 44px 44px, 100% 100% !important;
 }
 
@@ -13526,7 +13526,7 @@ h1 span { color: var(--cyan); text-shadow: 0 0 20px rgba(245,166,35,.35); }
 }
 .sBtn:hover {
   border-color: rgba(245,166,35,.4) !important;
-  background: rgba(245,166,35,.05) !important;
+  background: rgba(255,255,255,.05) !important;
   color: var(--cyan) !important;
   box-shadow: 0 2px 8px rgba(0,0,0,.3) !important;
 }
@@ -13552,7 +13552,7 @@ h1 span { color: var(--cyan); text-shadow: 0 0 20px rgba(245,166,35,.35); }
 }
 .mBtn:hover {
   border-color: rgba(245,166,35,.4) !important;
-  background: rgba(245,166,35,.05) !important;
+  background: rgba(255,255,255,.05) !important;
   color: var(--cyan) !important;
 }
 .mBtn.on {
@@ -13567,7 +13567,9 @@ h1 span { color: var(--cyan); text-shadow: 0 0 20px rgba(245,166,35,.35); }
   border-radius: 6px !important;
   font-size: .68rem !important;
   transition: all var(--tr-base) !important;
-  background: rgba(245,166,35,.03) !important;
+  /* fundo igual ao dos outros botões da lateral: a tinta âmbar daqui virava
+     cinza-marrom sobre o azul-marinho */
+  background: transparent !important;
   border-color: rgba(245,166,35,.12) !important;
   color: rgba(90,134,176,.8) !important;
 }
@@ -13828,7 +13830,7 @@ h1 span { color: var(--cyan); text-shadow: 0 0 20px rgba(245,166,35,.35); }
 table { font-size: .77rem !important; border-collapse: collapse !important; }
 
 thead tr {
-  background: linear-gradient(180deg, rgba(245,166,35,.06) 0%, rgba(245,166,35,.02) 100%) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.02) 100%) !important;
   border-bottom: 1px solid rgba(245,166,35,.12) !important;
 }
 
@@ -13857,7 +13859,7 @@ tbody tr {
   transition: background var(--tr-fast) !important;
 }
 tbody tr:hover {
-  background: rgba(245,166,35,.04) !important;
+  background: rgba(255,255,255,.04) !important;
 }
 
 td {
@@ -13879,7 +13881,7 @@ td.cNum {
 
 /* Footer da tabela */
 tfoot tr td {
-  background: linear-gradient(180deg, rgba(245,166,35,.06) 0%, rgba(245,166,35,.03) 100%) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.03) 100%) !important;
   border-top: 2px solid rgba(245,166,35,.3) !important;
   font-weight: 800 !important;
   color: var(--cyan) !important;
@@ -13888,14 +13890,14 @@ tfoot tr td {
 
 /* deltaTable */
 .deltaTable thead tr {
-  background: linear-gradient(180deg, rgba(245,166,35,.06) 0%, rgba(245,166,35,.02) 100%) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.02) 100%) !important;
   border-bottom: 1px solid rgba(245,166,35,.12) !important;
 }
 .deltaTable tbody tr:nth-child(even) {
   background: rgba(255,255,255,.015) !important;
 }
 .deltaTable tbody tr:hover {
-  background: rgba(245,166,35,.04) !important;
+  background: rgba(255,255,255,.04) !important;
 }
 .deltaTable td { padding: 8px 10px !important; }
 
@@ -13904,7 +13906,7 @@ tfoot tr td {
   background: rgba(255,255,255,.015) !important;
 }
 .aaa-table tbody tr:hover {
-  background: rgba(245,166,35,.04) !important;
+  background: rgba(255,255,255,.04) !important;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -14042,7 +14044,7 @@ tfoot tr td {
   box-shadow: inset 0 0 0 1px rgba(244,67,54,.08) !important;
 }
 .alerta.warn {
-  background: rgba(255,152,0,.05) !important;
+  background: rgba(255,255,255,.05) !important;
   border-color: rgba(255,152,0,.25) !important;
 }
 .alerta.good {
@@ -14356,7 +14358,7 @@ input::placeholder, textarea::placeholder {
 /* ─── 6. HIERARQUIA: meta inline com fundo sutil ─── */
 .mes-card-meta {
   padding: 8px 10px !important;
-  background: rgba(245,166,35,.03) !important;
+  background: rgba(255,255,255,.03) !important;
   border-radius: 5px !important;
   border: 1px solid rgba(245,166,35,.08) !important;
   margin-top: 12px !important;
@@ -14412,7 +14414,7 @@ input::placeholder, textarea::placeholder {
 
 /* ─── 11. GRÁFICOS: legendas com container sutil ─── */
 .lgnd {
-  background: rgba(245,166,35,.025) !important;
+  background: rgba(255,255,255,.025) !important;
   border: 1px solid rgba(245,166,35,.07) !important;
   border-radius: 5px !important;
   padding: 5px 9px !important;
@@ -14984,7 +14986,7 @@ input:disabled, select:disabled {
           + '<span style="font-size:.78rem;color:' + tcM[b.t] + ';line-height:1.5">' + b.txt + '</span>'
           + '</div>';
       }).join('')
-      + '<div style="margin-top:10px;padding:10px 12px;border-radius:5px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);font-size:.78rem;color:var(--ds-destaque);line-height:1.5">'
+      + '<div style="margin-top:10px;padding:10px 12px;border-radius:5px;background:rgba(255,255,255,.06);border:1px solid rgba(245,166,35,.2);font-size:.78rem;color:var(--ds-destaque);line-height:1.5">'
       + '<b>📌 Conclusão:</b> ' + conclusao + '</div>';
 
       /* ── Comparação com mês anterior (só 1 mês selecionado) ── */
@@ -15121,7 +15123,7 @@ input:disabled, select:disabled {
     '.aaa-sub{font-size:.67rem;color:var(--t2);margin-top:2px}',
     '.aaa-wrap{background:var(--panel);border:1px solid var(--b);border-radius:var(--r);overflow-x:auto;margin-bottom:14px}',
     '.aaa-table{width:100%;border-collapse:collapse;font-size:.75rem;min-width:600px}',
-    '.aaa-table thead tr{background:rgba(245,166,35,.04);border-bottom:2px solid var(--b)}',
+    '.aaa-table thead tr{background:rgba(255,255,255,.04);border-bottom:2px solid var(--b)}',
     '.aaa-table th{padding:9px 11px;text-align:left;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);white-space:nowrap}',
     '.aaa-table tbody tr{border-bottom:1px solid var(--b);transition:background .15s}',
     '.aaa-table tbody tr:hover{background:rgba(255,255,255,.025)}',
@@ -23918,14 +23920,14 @@ window.CompAnos = (function () {
 #page-comp-anos tbody tr:nth-child(even) { background: rgba(255,255,255,.02) !important; }
 /* hover igual em toda linha: a zebra com !important bloqueava o hover nas
    pares, e o destaque piscava uma linha sim, outra não ao descer o mouse */
-#page-comp-anos tbody tr:hover { background: rgba(245,166,35,.06) !important; }
+#page-comp-anos tbody tr:hover { background: rgba(255,255,255,.06) !important; }
 /* Por linha de produto: produto aberto embaixo da linha. A zebra vai por
    classe porque as linhas de produto escondidas contam no nth-child. */
 #page-comp-anos .ca-tab-fam tbody tr { background: transparent !important; }
 #page-comp-anos .ca-tab-fam tbody tr.ca-z { background: rgba(255,255,255,.02) !important; }
 #page-comp-anos .ca-tab-fam tbody tr.ca-fam { cursor: pointer; }
 #page-comp-anos .ca-tab-fam tbody tr.ca-aberta { background: rgba(245,166,35,.08) !important; }
-#page-comp-anos .ca-tab-fam tbody tr.ca-fam:hover { background: rgba(245,166,35,.06) !important; }
+#page-comp-anos .ca-tab-fam tbody tr.ca-fam:hover { background: rgba(255,255,255,.06) !important; }
 #page-comp-anos .ca-tab-fam tr.ca-fam:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
 #page-comp-anos .ca-seta { display: inline-block; width: 1.1em; color: var(--t3); }
 #page-comp-anos tr.ca-aberta .ca-seta { color: var(--cyan); }
@@ -24089,9 +24091,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.55';
+var APP_VERSAO = 'b96.56';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.56', data:'14/10/2026', itens:[
+    'Fundo igual no app todo: a tinta ambar bem fraca que varios fundos usavam (botoes Limpar trimestre, Todos os Meses, Briefing e Metas oficiais, cabecalhos de tabela, rodapes, linhas de grade) dava um tom quente discreto sobre o grafite e virava cinza-marrom sobre o azul-marinho. As tintas de ate 6% passam a clarear em azul, e os botoes da lateral ficam com o mesmo fundo dos outros; o destaque segue no texto e na borda. Aviso laranja e item selecionado mantem a cor. Tambem saem dois cinzas que sobraram: a aba Filtros da lateral recolhida e uma borda dos slides dos Lideres.'
+  ]},
   { v:'b96.55', data:'14/10/2026', itens:[
     'Comparativo: a barra Base e Periodo fica presa no alto da tela enquanto se rola a aba. Para comparar um mes com outro numa tabela do fim da aba nao precisa mais subir ate o topo a cada troca, e o topico que se esta lendo fica parado no mesmo lugar ao trocar o mes (antes a pagina pulava ~300 px porque os blocos de cima mudam de altura).'
   ]},
