@@ -20442,8 +20442,30 @@ window.CompAnos = (function () {
 
   /* ── estado da tela (os filtros do item 8 do pedido) ── */
   var _base='comuns', _mes='', _situacao='', _busca='', _ord='qtdB', _apuracao=null;
-  window._caBase=function(b){ _base=b; render(); };
-  window._caMes=function(m){ _mes=m; render(); };
+  /* Trocar base ou mês redesenha a aba inteira, e os blocos de cima mudam
+     de altura (outra lista de entrou/saiu, outro aviso): a tabela que se
+     estava comparando escorregava ~300 px. Guarda o tópico que está sendo
+     lido (o último título que já passou da barra presa) e devolve ele ao
+     mesmo ponto da tela depois de redesenhar. */
+  function manterTopico(fn) {
+    var barra = document.querySelector('#ca-corpo .ca-filtros');
+    var limite = (barra ? barra.getBoundingClientRect().bottom : 0) + 60;
+    var chave = null, topo = 0;
+    function nome(el) { return (el.firstChild && el.firstChild.nodeValue || el.textContent).trim(); }
+    document.querySelectorAll('#ca-corpo .ca-sec').forEach(function (el) {
+      var t = el.getBoundingClientRect().top;
+      if (t <= limite || chave === null) { chave = nome(el); topo = t; }
+    });
+    fn();
+    if (chave === null) return;
+    var alvo = null;
+    document.querySelectorAll('#ca-corpo .ca-sec').forEach(function (el) { if (!alvo && nome(el) === chave) alvo = el; });
+    /* instantâneo: o html tem scroll-behavior:smooth, e a aba deslizaria
+       300 px a cada clique em vez de ficar parada */
+    if (alvo) window.scrollBy({ top: alvo.getBoundingClientRect().top - topo, behavior: 'instant' });
+  }
+  window._caBase=function(b){ manterTopico(function () { _base=b; render(); }); };
+  window._caMes=function(m){ manterTopico(function () { _mes=m; render(); }); };
   window._caSit=function(v){ _situacao=v; renderTabela(); };
   window._caBusca=function(v){ _busca=v||''; renderTabela(); };
   window._caOrd=function(v){ _ord=v; renderTabela(); };
@@ -20615,7 +20637,10 @@ window.CompAnos = (function () {
   /* ── Filtros (item 8 do pedido) ── */
   function blocoFiltros(r, anoA, anoB) {
     var mesesPossiveis = ORDEM_M.filter(function (m) { return r.base.comuns.indexOf(m) >= 0; });
-    return '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
+    /* Barra presa no alto da tela (.ca-filtros, sticky): o período era trocado
+       lá em cima e lido lá embaixo — para comparar SET com AGO numa tabela do
+       fim da aba era rolar até o topo e voltar a cada troca. */
+    return '<div class="ca-filtros"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
       + '<span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-right:4px">Base</span>'
       + chip('Mesmos meses', _base === 'comuns', "_caBase('comuns')")
       + chip('Ano cheio', _base === 'cheio', "_caBase('cheio')")
@@ -20630,7 +20655,7 @@ window.CompAnos = (function () {
             + (r.base.usaB.join(', ') || '—') + '</b>. É a base que responde “o que mudou na produção”.'
           : 'Ano cheio: ' + anoA + ' com ' + r.base.usaA.length + ' ' + (r.base.usaA.length === 1 ? 'mês' : 'meses')
             + ' e ' + anoB + ' com ' + r.base.usaB.length + '. Serve para totalizar o exercício, não para comparar ritmo.')
-      + '</div>';
+      + '</div></div>';
   }
 
   /* ── Avisos: o que o gestor precisa saber ANTES de ler os números ── */
@@ -23913,6 +23938,10 @@ window.CompAnos = (function () {
   background: rgba(156,106,222,.1); color: #9C6ADE; font-size: .72rem; cursor: pointer; vertical-align: 1px; }
 #page-comp-anos tr.ca-aberta .ca-imp-linha { display: inline-block; }
 @media print { #page-comp-anos .ca-imp-linha { display: none !important; } }
+#page-comp-anos .ca-filtros { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 10px 0 2px;
+  margin: 0 0 12px; border-bottom: 1px solid var(--b); box-shadow: 0 6px 12px -8px rgba(0,0,0,.6); }
+#page-comp-anos .ca-filtros > div:last-child { margin-bottom: 8px !important; }
+@media print { #page-comp-anos .ca-filtros { position: static; box-shadow: none; } }
 #page-comp-anos .ca-sec-imp { float: right; padding: 3px 10px; border: 1px solid var(--b2); border-radius: 5px; background: transparent;
   color: var(--t2); font-size: .66rem; font-weight: 600; letter-spacing: .04em; text-transform: none; cursor: pointer; margin-top: -3px; }
 #page-comp-anos .ca-sec-imp:hover { color: #9C6ADE; border-color: #9C6ADE; }
@@ -24060,9 +24089,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.54';
+var APP_VERSAO = 'b96.55';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.55', data:'14/10/2026', itens:[
+    'Comparativo: a barra Base e Periodo fica presa no alto da tela enquanto se rola a aba. Para comparar um mes com outro numa tabela do fim da aba nao precisa mais subir ate o topo a cada troca, e o topico que se esta lendo fica parado no mesmo lugar ao trocar o mes (antes a pagina pulava ~300 px porque os blocos de cima mudam de altura).'
+  ]},
   { v:'b96.54', data:'14/10/2026', itens:[
     'Produto x peso compacta: um produto por linha. O codigo vai na mesma linha do nome (era empilhado em cima) e a coluna Linha fica mais larga e numa linha so; o modelo (subgrupo) aparece ao passar o mouse. Antes cada produto ocupava quatro linhas de altura com metade da coluna do nome vazia.'
   ]},
