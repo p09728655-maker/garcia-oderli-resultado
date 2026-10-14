@@ -450,5 +450,41 @@ sec('Caixa de produto de volume único (código 501 sem "VOL" na descrição)');
   afirma('ehCaixa: produto 1xx não é caixa', !CA.ehCaixa(['JAN', 2026, '105021079', 'RACK MARSELHA', 1]));
 }
 
+/* ══ MÊS A MÊS (linha × mês) ══
+   A célula de um mês tem de bater com a apuração filtrada naquele mês, e a
+   comparação "mês anterior" de JAN olha DEZ do ano anterior. */
+sec('Mês a mês: linha × mês');
+{
+  const CADM = { grupos: { '101': 'PENTEADEIRA', '105': 'RACKS' } };
+  const its = [
+    ['DEZ', 2025, 105001001, 'RACK A', 50],
+    ['JAN', 2025, 101001001, 'PENTEADEIRA A', 100], ['JAN', 2025, 105001001, 'RACK A', 200],
+    ['FEV', 2025, 101001001, 'PENTEADEIRA A', 100], ['FEV', 2025, 105001001, 'RACK A', 200],
+    ['JAN', 2026, 101001001, 'PENTEADEIRA A', 120], ['JAN', 2026, 105001001, 'RACK A', 190],
+    ['FEV', 2026, 101001001, 'PENTEADEIRA A', 125], ['FEV', 2026, 105001001, 'RACK A', 30],
+    ['FEV', 2026, '501001001', 'RACK A', 30],                 /* caixa: fora */
+    ['MAR', 2026, 101001001, 'PENTEADEIRA A', 90]];           /* só 2026 */
+  const regsM = [
+    { ano: 2025, mes: 'JAN', produtosReportados: 300 }, { ano: 2025, mes: 'FEV', produtosReportados: 300 },
+    { ano: 2026, mes: 'JAN', produtosReportados: 310 }, { ano: 2026, mes: 'FEV', produtosReportados: 200 }];
+  const M = CA.mesAMes(its, regsM, { anoA: 2025, anoB: 2026, cadastro: CADM });
+  afirma('meses comuns: só JAN e FEV (DEZ só em 2025, MAR só em 2026)', M.comuns.join(',') === 'JAN,FEV');
+  afirma('meses de 2026 para "mês anterior": JAN, FEV e MAR', M.mesesB.join(',') === 'JAN,FEV,MAR');
+  const pen = M.linhas.find(l => l.nome === 'PENTEADEIRA'), rck = M.linhas.find(l => l.nome === 'RACKS');
+  afirma('linhas ordenadas pelo acumulado de 2026 (PENTEADEIRA 245 > RACKS 220)', M.linhas[0].nome === 'PENTEADEIRA');
+  ok('RACKS FEV/26 = 30 (a caixa 501 não soma)', rck.cel.FEV.b.q, 30, 0);
+  ok('RACKS FEV/25 = 200', rck.cel.FEV.a.q, 200, 0);
+  ok('RACKS JAN/26 contra o mês anterior = DEZ/25 (50)', rck.cel.JAN.ant.q, 50, 0);
+  ok('PENTEADEIRA FEV/26 contra o mês anterior = JAN/26 (120)', pen.cel.FEV.ant.q, 120, 0);
+  afirma('PENTEADEIRA MAR/26 não tem MAR/25 para comparar', pen.cel.MAR.a === null);
+  ok('acumulado de RACKS em 2026 só nos meses comuns (190 + 30)', rck.acum.qb, 220, 0);
+  ok('total de FEV/26 = 155 peças', M.total.cel.FEV.b.q, 155, 0);
+  const R = CA.apurar(its, regsM, { anoA: 2025, anoB: 2026, base: 'comuns', mes: 'FEV', cadastro: CADM });
+  ok('a célula RACKS FEV bate com a apuração filtrada em FEV', R.familias.find(f => f.nome === 'RACKS').qtdB, rck.cel.FEV.b.q, 0);
+  afirma('conferência: JAN bate com a HISTORICO (310 = 310)', M.conf.JAN.alerta === false);
+  afirma('conferência: FEV/26 soma 155 contra 200 do relatório → alerta', M.conf.FEV.alerta === true && M.conf.FEV[2026] < -20);
+  afirma('mês sem registro na HISTORICO não acusa nada', M.conf.MAR.alerta === false);
+}
+
 console.log(`\n${total - falhas}/${total} passaram`);
 process.exit(falhas ? 1 : 0);
