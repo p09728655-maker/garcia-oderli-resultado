@@ -21718,7 +21718,7 @@ window.CompAnos = (function () {
     [/#00E5FF/gi, '#0B6E7F'], [/#c9d6e4/gi, '#1F2933'], [/#e6edf5/gi, '#1F2933'],
     [/#5a86b0/gi, '#52606D'],
     [/#7BE38A|#A6F0B0|#E9FFEC/gi, '#1E6C3A'], [/#FF9C95|#FFC0BB|#FFF0EE/gi, '#A32222'],
-    [/#8FA0B5/gi, '#52606D'], [/#4F6079|#5F7189/gi, '#9AA5B1'], [/#D9E1EA|#F5F5F5/gi, '#1F2933'],
+    [/#8FA0B5/gi, '#2D3A48'], [/#4F6079|#5F7189/gi, '#9AA5B1'], [/#D9E1EA|#F5F5F5/gi, '#1F2933'],
     [/var\(--t1\)/g, '#1F2933'], [/var\(--t2\)/g, '#3E4C59'], [/var\(--t3\)/g, '#7B8794'],
     [/var\(--panel\)/g, '#fff'], [/var\(--b2\)/g, '#C5CCD6'], [/var\(--b\)/g, '#D3D8DE'],
     [/var\(--r\)/g, '4px'], [/var\(--mono\)/g, "Consolas,'Courier New',monospace"], [/var\(--cyan\)/g, '#8A5A00'],
@@ -21760,6 +21760,10 @@ window.CompAnos = (function () {
       + '.hdrow{display:flex;align-items:center;gap:14px}'
       + '.bd{padding:10px 2px 0}'
       + 'button,select,input,textarea,.ca-fam-acoes,.ca-sec-imp,.ca-mm-opc{display:none!important}'
+      /* matriz Mês a mês no papel: número da tela (8,8 px, traço fino, mono)
+         saía apagado; maior e semi-negrito para ler a um braço de distância */
+      + '.ca-mm-tab td{font-size:10.5px!important;font-weight:600!important;padding:6px 3px!important}'
+      + '.ca-mm-tab td:first-child div:first-child{font-size:10px}'
       + '.bd *{max-height:none!important;box-shadow:none!important}'
       + '.bd [style*="overflow"]{overflow:visible!important}'
       /* nome cortado com "…" é recurso de tela; no papel, com o corte
@@ -24435,9 +24439,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.58';
+var APP_VERSAO = 'b96.59';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.59', data:'14/10/2026', itens:[
+    'Impressao do Mes a mes: numeros da matriz maiores (10,5 px) e em semi-negrito, e o cinza das celulas neutras mais escuro; antes saiam em 8,8 px de traco fino e liam apagados no papel. O cinza de apoio dos outros topicos impressos tambem escurece.'
+  ]},
   { v:'b96.58', data:'14/10/2026', itens:[
     'Mes a mes: dica propria no lugar da caixa cinza do navegador, com quantidades, variacao colorida, aviso de base pequena ou de reporte que nao fecha e o convite ao clique.',
     'Mes a mes mais limpo: as celulas voltam a ter espaco entre si (o tema global colava a tabela e a zebra vazava entre as celulas). Mes de comparacao com menos de 10% da media mensal da linha (ex.: 3 pecas contra media de 800) deixa de virar +39.950% e aparece como retomou, com as quantidades na dica; esses casos saem da leitura automatica. Acima de +500% a celula mostra >+500%.'
