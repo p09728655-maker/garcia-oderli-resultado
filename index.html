@@ -21671,12 +21671,15 @@ window.CompAnos = (function () {
     var sQA = 0, sQB = 0, sPA = 0, sPB = 0;
     lista.forEach(function (p) { sQA += p.qtdA; sQB += p.qtdB; sPA += p.pesoA; sPB += p.pesoB; });
 
+    /* Uma linha por produto, como na linha aberta da tabela Por linha: código
+       empilhado em cima do nome e linha + modelo quebrando em quatro linhas
+       numa coluna estreita faziam cada produto ocupar ~90 px, com metade da
+       coluna do nome vazia. O modelo vai para a dica ao passar o mouse. */
     var linhas = lista.slice(0, 400).map(function (p) {
       return '<tr>'
-        + td('<span style="font-family:var(--mono);font-size:.7rem;color:var(--t3)">' + esc(p.cod) + '</span><br>' + esc(p.desc),
-             'left', 'line-height:1.35;white-space:normal')
-        + td(esc(p.familia) + (p.modelo ? '<br><span style="color:var(--t3);font-size:.64rem">' + esc(p.modelo) + '</span>' : ''),
-             'left', 'color:var(--t2);font-size:.71rem;white-space:normal;overflow-wrap:anywhere')
+        + td('<span class="ca-cod">' + esc(p.cod) + '</span>' + esc(p.desc), 'left', 'line-height:1.3;white-space:normal')
+        + td('<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(p.familia + (p.modelo ? ' — ' + p.modelo : '')) + '">'
+             + esc(p.familia) + '</div>', 'left', 'color:var(--t2);font-size:.71rem')
         + td(p.qtdA ? fi(p.qtdA) : '—', 'right', 'color:var(--t2)')
         + td(p.qtdB ? '<b>' + fi(p.qtdB) + '</b>' : '—', 'right')
         + td(p.varQtd === null ? '<span style="color:var(--t3)">—</span>' : pct(p.varQtd), 'right', 'color:' + corVar(p.varQtd))
@@ -21698,7 +21701,7 @@ window.CompAnos = (function () {
       + '<thead style="position:sticky;top:0;background:var(--panel);z-index:1"><tr>'
         /* Larguras pelo pior caso real: um produto líder num ano cheio passa de
            1.600.000 kg — nove dígitos com ponto de milhar, em mono. */
-        + th('Produto') + th('Linha', 'left', 'width:118px')
+        + th('Produto') + th('Linha', 'left', 'width:235px')
         + th('Qtd ' + anoA, 'right', 'width:80px') + th('Qtd ' + anoB, 'right', 'width:80px') + th('Δ Qtd', 'right', 'width:70px')
         + (temP ? th('Kg ' + anoA, 'right', 'width:96px') + th('Kg ' + anoB, 'right', 'width:96px')
                 + th('Δ Kg', 'right', 'width:70px') + th('% Peso', 'right', 'width:62px') : '')
@@ -24057,9 +24060,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.53';
+var APP_VERSAO = 'b96.54';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.54', data:'14/10/2026', itens:[
+    'Produto x peso compacta: um produto por linha. O codigo vai na mesma linha do nome (era empilhado em cima) e a coluna Linha fica mais larga e numa linha so; o modelo (subgrupo) aparece ao passar o mouse. Antes cada produto ocupava quatro linhas de altura com metade da coluna do nome vazia.'
+  ]},
   { v:'b96.53', data:'14/10/2026', itens:[
     'Produto x peso medio: as listas Ficaram mais pesados e Ficaram mais leves enchiam de +0,0% e -0,0% (KIT 2 MESA CABECEIRA, RACK SIRIUS...). O peso por peca do reporte e peso da linha dividido pela quantidade, e o arredondamento do ERP faz o mesmo produto variar centesimos de %. Agora so entra quem variou 1% ou mais no peso por peca; sem ninguem, a lista diz que nenhum produto mudou.'
   ]},
