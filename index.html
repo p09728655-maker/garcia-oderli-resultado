@@ -20773,43 +20773,66 @@ window.CompAnos = (function () {
       if (ano) return c.alerta;
       return c[D.anoB] !== null && Math.abs(c[D.anoB]) > D.limConf;
     }
-    function v(c) { var b = base(c); return b ? window.CompAnos.variacao(kg ? b.p : b.q, kg ? c.b.p : c.b.q) : undefined; }
-    function cel(c, mes, nome, fraca) {
+    /* Média mensal da base da linha (ano anterior no modo "ano", o próprio
+       ano no "mês anterior"): mês de comparação com menos de 10% dela é base
+       pequena demais para porcentagem — 3 peças contra 1.200 dava +39.950%,
+       número que só polui. Vira "retomou", com as quantidades na dica. */
+    var BASE_MIN = 0.1;
+    function mediaBase(ac) {
+      var n = D.comuns.length || 1;
+      return (ano ? (kg ? ac.pa : ac.qa) : (kg ? ac.pb : ac.qb)) / n;
+    }
+    function basePequena(y, med) { return y > 0 && med > 0 && y < med * BASE_MIN; }
+    function v(c, med) {
+      var b = base(c); if (!b) return undefined;
+      var y = kg ? b.p : b.q;
+      if (basePequena(y, med)) return undefined;
+      return window.CompAnos.variacao(y, kg ? c.b.p : c.b.q);
+    }
+    function cel(c, mes, nome, fraca, med) {
       var b = base(c), x = kg ? c.b.p : c.b.q, y = b ? (kg ? b.p : b.q) : null;
       var st = 'text-align:center;font-family:var(--mono);font-size:.8rem;padding:7px 4px;border-radius:4px;white-space:nowrap;';
       var txt, bg = 'rgba(255,255,255,.03)', cor = '#8FA0B5', peso = '400';
       if (b === null) { txt = '—'; cor = '#4F6079'; bg = 'transparent'; }
       else if (!(y > 0) && !(x > 0)) { txt = '·'; cor = '#4F6079'; bg = 'transparent'; }
       else if (!(y > 0)) { txt = 'novo'; cor = CIANO; }
+      else if (basePequena(y, med) && x > y) { txt = 'retomou'; cor = CIANO; }
       else {
         var va = (x - y) / y * 100, a = Math.abs(va);
-        txt = pct(va);
+        txt = va > 500 ? '>+500%' : pct(va);
         if (a >= 10) { var t = MM_COR[va > 0 ? 'up' : 'dn'][a < 25 ? 0 : (a < 60 ? 1 : 2)]; bg = t[0]; cor = t[1]; if (a >= 60) peso = '700'; }
       }
       if (fraca && b !== null) { bg = 'transparent'; cor = '#4F6079'; peso = '400'; }
       var conf = alerta(mes);
       if (conf) st += 'outline:1px dashed rgba(255,152,0,.55);outline-offset:-1px;';
       var ref = ano ? rot(mes, D.anoA) : (function () { var i = ORDEM_M.indexOf(mes); return i > 0 ? rot(ORDEM_M[i - 1], D.anoB) : rot('DEZ', D.anoA); })();
-      var dica = (nome || 'Total da fábrica') + ' · ' + mes + '\n'
-        + ref + ': ' + (y === null ? 'sem reporte' : fi(y) + ' ' + un) + ' · ' + rot(mes, D.anoB) + ': ' + fi(x) + ' ' + un
-        + (y > 0 ? '\nvariação: ' + pct((x - y) / y * 100) + ' (' + (x - y >= 0 ? '+' : '') + fi(x - y) + ' ' + un + ')' : '')
-        + (ano && c.a ? '\nprodutos ativos: ' + c.a.n + ' → ' + c.b.n : '')
-        + (D.comuns.indexOf(mes) >= 0 ? '\nclique: abre ' + mes + ' na tabela Por linha' : '');
+      var dv = y > 0 ? (x - y) / y * 100 : null;
+      var dica = '<div class="t">' + esc(nome || 'Total da fábrica') + ' · ' + mes + '</div>'
+        + '<div><span class="k">' + ref + ':</span> ' + (y === null ? 'sem reporte' : fi(y) + ' ' + un)
+        + ' <span class="k">→ ' + rot(mes, D.anoB) + ':</span> <b>' + fi(x) + ' ' + un + '</b></div>'
+        + (dv !== null ? '<div><span class="k">variação:</span> <b style="color:' + (dv >= 0 ? VERDE : VERM) + '">' + pct(dv) + '</b> ('
+            + (x - y >= 0 ? '+' : '') + fi(x - y) + ' ' + un + ')</div>' : '')
+        + (basePequena(y, med) ? '<div class="a">base pequena: ' + fi(y) + ' ' + un + ' contra média de ' + fi(med) + ' ' + un + '/mês — a % não diz nada</div>' : '')
+        + (ano && c.a ? '<div><span class="k">produtos ativos:</span> ' + c.a.n + ' → ' + c.b.n + '</div>' : '')
+        + (alerta(mes) ? '<div class="a">⚠ reporte deste mês não fecha com a HISTORICO</div>' : '')
+        + (D.comuns.indexOf(mes) >= 0 ? '<div class="c">clique para abrir ' + mes + ' na tabela Por linha</div>' : '');
       var clic = D.comuns.indexOf(mes) >= 0;
       return '<td' + (clic ? ' data-m="' + mes + '" data-f="' + esc(nome || '') + '" onclick="_caIrMes(this)"' : '')
-        + ' title="' + esc(dica) + '" style="' + st + 'background:' + bg + ';color:' + cor + ';font-weight:' + peso + ';' + (clic ? 'cursor:pointer;' : '') + '">' + txt + '</td>';
+        + ' data-dica="' + esc(dica) + '" style="' + st + 'background:' + bg + ';color:' + cor + '!important;font-weight:' + peso + ';' + (clic ? 'cursor:pointer;' : '') + '">' + txt + '</td>';
     }
     function celAcum(ac, fraca) {
       var va = window.CompAnos.variacao(kg ? ac.pa : ac.qa, kg ? ac.pb : ac.qb);
       var st = 'text-align:center;font-family:var(--mono);font-size:.82rem;font-weight:700;padding:7px 4px;border-radius:4px;'
         + 'box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);white-space:nowrap;';
       var bg = 'rgba(255,255,255,.03)', cor = '#D9E1EA';
-      if (va === null) return '<td style="' + st + 'color:' + CIANO + '">novo</td>';
+      if (va === null) return '<td style="' + st + 'color:' + CIANO + '!important">novo</td>';
       var a = Math.abs(va);
       if (a >= 10 && !fraca) { var t = MM_COR[va > 0 ? 'up' : 'dn'][a < 25 ? 0 : (a < 60 ? 1 : 2)]; bg = t[0]; cor = t[1]; }
       if (fraca) cor = '#4F6079';
-      return '<td title="' + esc('Acumulado ' + (D.comuns[0] || '') + '–' + (D.comuns[D.comuns.length - 1] || '') + ': '
-        + fi(kg ? ac.pa : ac.qa) + ' → ' + fi(kg ? ac.pb : ac.qb) + ' ' + un) + '" style="' + st + 'background:' + bg + ';color:' + cor + '">' + pct(va) + '</td>';
+      return '<td data-dica="' + esc('<div class="t">Acumulado ' + (D.comuns[0] || '') + '–' + (D.comuns[D.comuns.length - 1] || '') + '</div>'
+        + '<div><span class="k">' + D.anoA + ':</span> ' + fi(kg ? ac.pa : ac.qa) + ' ' + un + ' <span class="k">→ ' + D.anoB + ':</span> <b>' + fi(kg ? ac.pb : ac.qb) + ' ' + un + '</b></div>'
+        + '<div><span class="k">variação:</span> <b style="color:' + (va >= 0 ? VERDE : VERM) + '">' + pct(va) + '</b> ('
+        + ((kg ? ac.pb - ac.pa : ac.qb - ac.qa) >= 0 ? '+' : '') + fi(kg ? ac.pb - ac.pa : ac.qb - ac.qa) + ' ' + un + ')</div>') + '" style="' + st + 'background:' + bg + ';color:' + cor + '!important">' + pct(va) + '</td>';
     }
     var thS = 'font-size:.62rem;letter-spacing:.09em;color:#9AA9B8;font-weight:700;padding:6px 4px;text-align:center;';
     var head = '<tr><th style="' + thS + 'text-align:left">Linha</th>'
@@ -20822,11 +20845,11 @@ window.CompAnos = (function () {
       var fraca = l.part < 1;
       return '<tr><td style="padding:6px 4px;white-space:nowrap"><div style="font-weight:700;font-size:.8rem;color:' + (fraca ? '#5F7189' : '#D9E1EA') + '">' + esc(l.nome) + '</div>'
         + '<div style="font-size:.64rem;color:#7A8BA3">' + fd(l.part, 1) + '% do volume</div></td>'
-        + meses.map(function (m) { return cel(l.cel[m], m, l.nome, fraca); }).join('')
+        + meses.map(function (m) { return cel(l.cel[m], m, l.nome, fraca, mediaBase(l.acum)); }).join('')
         + '<td></td>' + celAcum(l.acum, fraca) + '</tr>';
     }).join('');
     var tot = '<tr><td style="padding:8px 4px;font-weight:800;font-size:.8rem;color:#F5F5F5;border-top:2px solid #2E4868">TOTAL DA FÁBRICA</td>'
-      + meses.map(function (m) { return cel(D.total.cel[m], m, null, false); }).join('')
+      + meses.map(function (m) { return cel(D.total.cel[m], m, null, false, mediaBase(D.total.acum)); }).join('')
       + '<td></td>' + celAcum(D.total.acum, false) + '</tr>';
 
     /* Leitura: o que se repete é mix; o que acontece num mês só é lote. */
@@ -20835,7 +20858,8 @@ window.CompAnos = (function () {
       var sobe = [], cai = [], pont = [];
       D.linhas.forEach(function (l) {
         if (l.part < 1) return;
-        var vs = meses.map(function (m) { return v(l.cel[m]); }).filter(function (x) { return x !== null && x !== undefined; });
+        var med = mediaBase(l.acum);
+        var vs = meses.map(function (m) { return v(l.cel[m], med); }).filter(function (x) { return x !== null && x !== undefined; });
         if (vs.length < 3) return;
         var nS = vs.filter(function (x) { return x >= 10; }).length, nC = vs.filter(function (x) { return x <= -10; }).length;
         var precisa = Math.max(3, Math.ceil(vs.length * 0.75));
@@ -20843,7 +20867,7 @@ window.CompAnos = (function () {
         if (nS >= precisa && ac >= 10) { sobe.push(l.nome); return; }
         if (nC >= precisa && ac <= -10) { cai.push(l.nome); return; }
         meses.forEach(function (m) {
-          var x = v(l.cel[m]);
+          var x = v(l.cel[m], med);
           if (x === null || x === undefined || Math.abs(x) < 50) return;
           if ((x > 0 ? nS : nC) <= 2) pont.push({ nome: l.nome, mes: m, v: x });
         });
@@ -20866,14 +20890,18 @@ window.CompAnos = (function () {
       leitura = '<div style="font-size:.84rem;line-height:1.6;color:#D9E1EA;margin-bottom:12px;max-width:1250px">' + leitura + '</div>';
     }
     var alertas = meses.filter(alerta);
+    /* Uma linha só, mesmo com vários meses: "JAN (2026 +4,4%) · MAR (2025
+       −3,5%)". Antes cada mês virava uma frase e o aviso empurrava a matriz
+       para fora da tela. */
     var aviso = alertas.length
       ? '<div style="background:rgba(255,152,0,.06);border:1px solid rgba(255,152,0,.35);border-left:4px solid #FF9800;border-radius:6px;padding:8px 12px;font-size:.78rem;color:#F5F5F5;margin-bottom:12px;line-height:1.5">⚠ '
+        + '<b>Reporte por produto diferente do total do relatório (HISTORICO) em mais de ' + D.limConf + '%:</b> '
         + alertas.map(function (m) {
             var c = D.conf[m];
-            return '<b>' + m + ':</b> ' + (ano ? [D.anoA, D.anoB] : [D.anoB]).filter(function (a) { return c[a] !== null && Math.abs(c[a]) > D.limConf; })
-              .map(function (a) { return 'o reporte por produto de ' + a + ' soma ' + pct(c[a]) + ' contra o total do relatório na HISTORICO'; }).join('; ');
-          }).join(' · ')
-        + '. Coluna com produto faltando mente na linha inteira — conferir antes de concluir.</div>'
+            return '<b>' + m + '</b> (' + (ano ? [D.anoA, D.anoB] : [D.anoB]).filter(function (a) { return c[a] !== null && Math.abs(c[a]) > D.limConf; })
+              .map(function (a) { return a + ' ' + pct(c[a]); }).join(' · ') + ')';
+          }).join(', ')
+        + '. Mês com produto faltando mente na coluna inteira — conferir antes de concluir.</div>'
       : '';
     el.innerHTML = '<div class="ca-mm-opc" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'
         + '<span style="display:flex;gap:6px;align-items:center"><span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-right:4px">Medida</span>'
@@ -20882,7 +20910,7 @@ window.CompAnos = (function () {
         + chip('Mesmo mês de ' + D.anoA, ano, "_mmCmp('ano')") + chip('Mês anterior', !ano, "_mmCmp('ant')") + '</span>'
       + '</div>'
       + leitura + aviso
-      + (meses.length ? '<div style="overflow:auto"><table style="width:100%;border-collapse:separate;border-spacing:3px;min-width:' + (300 + meses.length * 80) + 'px">'
+      + (meses.length ? '<div style="overflow:auto"><table class="ca-mm-tab" style="width:100%;border-collapse:separate;border-spacing:3px;min-width:' + (300 + meses.length * 80) + 'px">'
           + '<thead>' + head + '</thead><tbody>' + corpo + tot + '</tbody></table></div>'
         : '<div style="font-size:.8rem;color:var(--t3)">Sem meses com reporte nos dois anos.</div>')
       + '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:.68rem;color:var(--t3);margin-top:10px">'
@@ -20897,6 +20925,40 @@ window.CompAnos = (function () {
         + 'A coluna Acumulado (mesmos meses nos dois anos) responde "o ano mudou?"; os meses respondem "quando começou". '
         + 'Não depende da base nem do Período escolhidos acima. Passe o mouse para ver as quantidades; clique para abrir o mês na tabela Por linha.'
       + '</div>';
+    ligarDica(el);
+  }
+
+  /* Dica da matriz no visual do painel. A do navegador (title) é uma caixa
+     cinza de texto corrido, sem cor e com atraso; aqui o sinal da variação
+     tem cor e o clique fica dito. Uma só dica para a tela, presa ao body e
+     posicionada junto à célula sem sair da janela. */
+  function ligarDica(raiz) {
+    var tip = document.getElementById('ca-dica');
+    function some() { tip.style.display = 'none'; }
+    if (!tip) {
+      tip = document.createElement('div'); tip.id = 'ca-dica'; tip.setAttribute('role', 'tooltip');
+      document.body.appendChild(tip);
+      window.addEventListener('scroll', some, { passive: true });
+    }
+    /* trocar Peças/Kg redesenha só o miolo de #ca-mm: o elemento é o mesmo e
+       não pode ganhar os eventos de novo a cada clique */
+    if (raiz._dicaLigada) return;
+    raiz._dicaLigada = true;
+    raiz.addEventListener('mouseover', function (e) {
+      var td = e.target.closest ? e.target.closest('td[data-dica]') : null;
+      if (!td || !raiz.contains(td)) return;
+      tip.innerHTML = td.getAttribute('data-dica');
+      tip.style.display = 'block';
+      var r = td.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+      var x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8);
+      var y = r.bottom + 8;
+      if (y + h > window.innerHeight - 8) y = r.top - h - 8;
+      tip.style.left = x + 'px'; tip.style.top = Math.max(8, y) + 'px';
+    });
+    raiz.addEventListener('mouseout', function (e) {
+      var para = e.relatedTarget;
+      if (!para || !para.closest || !para.closest('td[data-dica]')) some();
+    });
   }
 
   /* ── Filtros (item 8 do pedido) ── */
@@ -24209,6 +24271,23 @@ window.CompAnos = (function () {
   margin: 0 0 12px; border-bottom: 1px solid var(--b); box-shadow: 0 6px 12px -8px rgba(0,0,0,.6); }
 #page-comp-anos .ca-filtros > div:last-child { margin-bottom: 8px !important; }
 @media print { #page-comp-anos .ca-filtros { position: static; box-shadow: none; } }
+/* Mês a mês: células separadas. O tema global força
+   table{border-collapse:collapse!important} e a zebra por linha — sem isto
+   a matriz virava um bloco grudado com faixas vazando entre as células. */
+#page-comp-anos table.ca-mm-tab { border-collapse: separate !important; border-spacing: 5px 4px !important; }
+#page-comp-anos .ca-mm-tab tbody tr, #page-comp-anos .ca-mm-tab tbody tr:hover { background: transparent !important; border: none !important; }
+#page-comp-anos .ca-mm-tab td { padding: 9px 6px !important; border: none !important; }
+#page-comp-anos .ca-mm-tab td:first-child { padding-left: 2px !important; }
+#page-comp-anos .ca-mm-tab td[data-m]:hover { box-shadow: inset 0 0 0 2px #F5A623; }
+#ca-dica { display: none; position: fixed; z-index: 9800; pointer-events: none; max-width: 330px;
+  background: #16273B; border: 1px solid #2E4868; border-radius: 7px; padding: 9px 12px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.55); font-family: var(--sans); font-size: .78rem; line-height: 1.55; color: #D9E1EA; }
+#ca-dica .t { font-weight: 800; color: #F5F5F5; margin-bottom: 3px; letter-spacing: .02em; }
+#ca-dica .k { color: #7A8BA3; }
+#ca-dica .a { color: #FF9800; }
+#ca-dica .c { color: #F5A623; margin-top: 4px; font-size: .72rem; }
+.tv-mode #ca-dica { font-size: 1rem; max-width: 420px; }
+@media print { #ca-dica { display: none !important; } }
 #page-comp-anos .ca-sec-imp { float: right; padding: 3px 10px; border: 1px solid var(--b2); border-radius: 5px; background: transparent;
   color: var(--t2); font-size: .66rem; font-weight: 600; letter-spacing: .04em; text-transform: none; cursor: pointer; margin-top: -3px; }
 #page-comp-anos .ca-sec-imp:hover { color: #9C6ADE; border-color: #9C6ADE; }
@@ -24356,9 +24435,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.57';
+var APP_VERSAO = 'b96.58';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.58', data:'14/10/2026', itens:[
+    'Mes a mes: dica propria no lugar da caixa cinza do navegador, com quantidades, variacao colorida, aviso de base pequena ou de reporte que nao fecha e o convite ao clique.',
+    'Mes a mes mais limpo: as celulas voltam a ter espaco entre si (o tema global colava a tabela e a zebra vazava entre as celulas). Mes de comparacao com menos de 10% da media mensal da linha (ex.: 3 pecas contra media de 800) deixa de virar +39.950% e aparece como retomou, com as quantidades na dica; esses casos saem da leitura automatica. Acima de +500% a celula mostra >+500%.'
+  ]},
   { v:'b96.57', data:'14/10/2026', itens:[
     'Comparativo ganha o topico Mes a mes: uma matriz linha de produto x mes com a variacao de cada celula contra o mesmo mes do ano anterior (ou contra o mes anterior), em pecas ou kg, e o acumulado dos mesmos meses a direita. Cor so acima de +-10%, em tres tons pela forca da variacao; linha com menos de 1% do volume sai apagada. A leitura no topo separa o que se repete mes a mes (mudanca de mix) do que aconteceu num mes so (programacao de lote). Passando o mouse aparecem as quantidades; clicando, o mes abre na tabela Por linha ja com a linha aberta.',
     'Conferencia por mes: a soma do reporte por produto de cada mes e comparada com o total do relatorio lancado na HISTORICO (produtosReportados); diferenca acima de 2% marca a coluna e acende um aviso, porque mes com produto faltando mente na linha inteira.',
