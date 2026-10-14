@@ -273,6 +273,41 @@ afirma('CA.linhaDe sem cadastro cai para a família derivada',
 afirma('CA.linhaDe com código fora do padrão usa a família mesmo com aba GRUPOS',
   CA.linhaDe('ABC', 'MESA CABECEIRA LUA', CAD) === 'MESA CABECEIRA');
 
+afirma('com códigos no padrão, linha.semCodigo vem vazio', RG.linha.semCodigo.length === 0);
+
+/* Código como NÚMERO: o Sheets em pt-BR lê "108.009.001" como milhar e a
+   REPORTE_VOLUMES devolve 108009001. Antes nada casava com o padrão, a tabela
+   dizia "grupo do ERP" e mostrava ESCRIVANINHA, MESA COMPUTADOR e MESA COMP
+   em três linhas — todos grupo 108. */
+sec('Código sem pontos (número da planilha)');
+const CAD108 = { grupos: { '108': 'ESCRIVANINHAS' }, pesos: { '108009001': 20 } };
+const ITENS_NUM = [
+  ['SET', 2025, 108009001,     'ESCRIVANINHA TAL BRANCO', 10],
+  ['SET', 2025, '108010001',   'MESA COMPUTADOR X',        5],
+  ['SET', 2026, '108.009.001', 'ESCRIVANINHA TAL BRANCO', 12],
+  ['SET', 2026, '108011001',   'MESA COMP Y',              7],
+];
+const RN108 = CA.apurar(ITENS_NUM, [], { anoA: 2025, anoB: 2026, base: 'comuns', cadastro: CAD108 });
+afirma('normCod: número e texto sem ponto viram GRUPO.SUBGRUPO.ITEM',
+  CA.normCod(108009001) === '108.009.001' && CA.normCod('108009001') === '108.009.001'
+  && CA.normCod('108.009.001') === '108.009.001');
+afirma('normCod: código que não tem 9 dígitos fica como veio', CA.normCod('001') === '001' && CA.normCod('VOL') === 'VOL');
+afirma('escrivaninha, mesa computador e mesa comp caem na MESMA linha (grupo 108)',
+  RN108.familias.length === 1 && RN108.familias[0].nome === 'ESCRIVANINHAS');
+ok('linha 108 soma 2025 (10 + 5)', RN108.familias[0].qtdA, 15);
+ok('linha 108 soma 2026 (12 + 7)', RN108.familias[0].qtdB, 19);
+afirma('mesmo produto com e sem ponto é UM produto, não um novo e um que saiu',
+  RN108.produtos.filter(p => p.cod === '108.009.001').length === 1
+  && RN108.produtos.find(p => p.cod === '108.009.001').situacao === 'aumentou');
+ok('peso do cadastro chaveado por número chega ao produto (12 × 20)',
+  RN108.produtos.find(p => p.cod === '108.009.001').pesoB, 240);
+afirma('nenhum produto fora do padrão neste cenário', RN108.linha.semCodigo.length === 0);
+const RX = CA.apurar([['SET', 2026, 'ABC', 'MESA CABECEIRA LUA', 3]], [], { anoA: 2025, anoB: 2026, base: 'cheio', cadastro: CAD108 });
+afirma('código fora do padrão com aba GRUPOS é listado em linha.semCodigo',
+  RX.linha.semCodigo.join(',') === 'ABC');
+afirma('busca por código sem ponto ainda acha o produto',
+  CA.filtrar(RN108.produtos, { busca: '108009' }).length === 1);
+
 const RF = CA.apurar(ITENS_COD, [], { anoA: 2025, anoB: 2026, base: 'comuns' });
 afirma('sem cadastro: origem = familia e nenhum "GRUPO xxx" aparece',
   RF.linha.origem === 'familia' && RF.produtos.every(p => p.familia.indexOf('GRUPO ') !== 0));
