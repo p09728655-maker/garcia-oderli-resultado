@@ -20466,7 +20466,8 @@ window.CompAnos = (function () {
      tabela de baixo mede. */
   function secao(t,sub){
     return '<div class="ca-sec" style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--t2);margin:24px 0 10px;padding-left:2px">▸ '+t
-      +(sub?'<span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--t3);font-size:.76rem"> · '+sub+'</span>':'')+'</div>';
+      +(sub?'<span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--t3);font-size:.76rem"> · '+sub+'</span>':'')
+      +'<button class="ca-sec-imp" onclick="caImprimirSecao(this)" title="Imprime só este tópico">🖨 Imprimir</button></div>';
   }
   function painel(conteudo,borda){
     return '<div style="background:var(--panel);border:1px solid var(--b);'
@@ -20845,7 +20846,9 @@ window.CompAnos = (function () {
       return '<tr class="ca-fam' + (i % 2 ? ' ca-z' : '') + (aberta ? ' ca-aberta' : '') + '" data-fam="' + esc(f.nome) + '"'
         + ' tabindex="0" aria-expanded="' + aberta + '" title="Clique para ver os produtos desta linha"'
         + ' onclick="_caAbreFam(this)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();_caAbreFam(this)}">'
-        + td('<span class="ca-seta">' + (aberta ? '▾' : '▸') + '</span><b>' + esc(f.nome) + '</b>', 'left', 'white-space:normal;overflow-wrap:anywhere;line-height:1.3')
+        + td('<span class="ca-seta">' + (aberta ? '▾' : '▸') + '</span><b>' + esc(f.nome) + '</b>'
+            + '<button class="ca-imp-linha" title="Imprimir só esta linha, com os produtos" '
+            + 'onclick="event.stopPropagation();caImprimirLinhas(this.closest(\'tr\').getAttribute(\'data-fam\'))">🖨</button>', 'left', 'white-space:normal;overflow-wrap:anywhere;line-height:1.3')
         + td(fi(f.qtdA), 'right', 'color:var(--t2)')
         + td('<b>' + fi(f.qtdB) + '</b>', 'right')
         + td(pct(f.varQtd), 'right', 'color:' + corVar(f.varQtd))
@@ -21337,13 +21340,99 @@ window.CompAnos = (function () {
     setTimeout(function () { w.focus(); w.print(); }, 700);
   };
 
+  function rotuloBase(r) {
+    if (_mes) return _mes + ' de ' + r.anoA + ' e de ' + r.anoB;
+    return _base === 'comuns'
+      ? 'mesmos meses nos dois anos (' + (r.base.usaB.join(', ') || '—') + ')'
+      : 'ano cheio — ' + r.anoA + ': ' + r.base.usaA.length + ' meses, ' + r.anoB + ': ' + r.base.usaB.length + ' meses';
+  }
+
+  /* ── Impressão por tópico ──
+     Cada tópico da aba tem o seu 🖨: imprime o que está na tela daquele
+     tópico (com o filtro e as linhas abertas de agora), no papel padrão
+     do painel. Em vez de redesenhar cada bloco para impressão — e ter duas
+     versões de cada conta para manter —, copia o tópico e troca a paleta
+     da tela escura pela do papel: o verde/vermelho claro do azul-marinho
+     sumiria no branco, e o texto claro dos gráficos também.
+     "Por linha de produto" tem impressão própria (leitura, indicadores e
+     total) e é desviada para ela. */
+  var PAPEL = [
+    [/#56D364/gi, '#1E6C3A'], [/#FF7B72/gi, '#A32222'], [/#FF9800/gi, '#8A5A00'],
+    [/#00E5FF/gi, '#0B6E7F'], [/#c9d6e4/gi, '#1F2933'], [/#e6edf5/gi, '#1F2933'],
+    [/#5a86b0/gi, '#52606D'],
+    [/var\(--t1\)/g, '#1F2933'], [/var\(--t2\)/g, '#3E4C59'], [/var\(--t3\)/g, '#7B8794'],
+    [/var\(--panel\)/g, '#fff'], [/var\(--b2\)/g, '#C5CCD6'], [/var\(--b\)/g, '#D3D8DE'],
+    [/var\(--r\)/g, '4px'], [/var\(--mono\)/g, 'Consolas,"Courier New",monospace'], [/var\(--cyan\)/g, '#8A5A00'],
+    [/rgba\(255,\s*255,\s*255,\s*\.18\)/g, '#9AA5B1'], [/rgba\(255,\s*255,\s*255,\s*\.1\d?\)/g, '#D3D8DE'],
+    [/rgba\(255,\s*255,\s*255,\s*\.0\d+\)/g, '#EEF1F4'],
+    /* a faixa roxa do painel é marca da tela; no papel só pesa */
+    [/border-left:4px solid #9C6ADE;?/gi, '']
+  ];
+  window.caImprimirSecao = function (btn) {
+    var sec = btn && btn.closest ? btn.closest('.ca-sec') : null;
+    if (!sec || !_apuracao) return;
+    var partes = [];
+    for (var el = sec.nextElementSibling; el && !el.classList.contains('ca-sec'); el = el.nextElementSibling) partes.push(el);
+    if (partes.some(function (e) { return e.querySelector && e.querySelector('.ca-tab-fam'); })) { window.caImprimirLinhas(); return; }
+    var cab = sec.cloneNode(true);
+    var b = cab.querySelector('button'); if (b) b.remove();
+    var subEl = cab.querySelector('span');
+    var sub = subEl ? subEl.textContent.replace(/^\s*·\s*/, '').trim() : '';
+    if (subEl) subEl.remove();
+    var titulo = cab.textContent.replace(/^\s*▸\s*/, '').trim();
+    var html = partes.map(function (e) { return e.outerHTML; }).join('');
+    PAPEL.forEach(function (t) { html = html.replace(t[0], t[1]); });
+    var r = _apuracao;
+    var agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+
+    var w = window.open('', '_blank', 'width=1100,height=900');
+    if (!w) {
+      if (typeof toast === 'function') toast('O navegador bloqueou a janela de impressão. Libere pop-ups para este site.', 'wn');
+      return;
+    }
+    w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>'
+      + '<title>' + esc(titulo) + ' ' + r.anoA + ' × ' + r.anoB + '</title><style>'
+      + '@page{size:A4 landscape;margin:9mm 11mm 10mm}'
+      /* o tópico vem com tamanhos em rem pensados para a tela: com a raiz em
+         11px tudo desce na mesma proporção para a escala do papel */
+      + 'html{font-size:11px}'
+      + printBase()
+      + 'body{font-size:8.5pt}'
+      + '.hdrow{display:flex;align-items:center;gap:14px}'
+      + '.bd{padding:10px 2px 0}'
+      + 'button,select,input,textarea,.ca-fam-acoes,.ca-sec-imp{display:none!important}'
+      + '.bd *{max-height:none!important;box-shadow:none!important}'
+      + '.bd [style*="overflow"]{overflow:visible!important}'
+      + 'thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}'
+      + 'thead th{color:#fff!important;background:#1F2933!important;border:none!important}'
+      + 'tbody td{border-bottom:1px solid #E4E7EB}'
+      + 'svg{max-width:100%;height:auto;break-inside:avoid}'
+      + '.kGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}'
+      + '.kCard{background:#fff!important;border:1px solid #D3D8DE;border-radius:4px;padding:7px 9px;break-inside:avoid}'
+      + '.kLbl{font-size:7px;letter-spacing:.6px;text-transform:uppercase;color:#52606D;font-weight:600;margin-bottom:3px}'
+      + '.kVal{font-weight:700;line-height:1.15}.kSub{font-size:7.5px;color:#52606D;margin-top:2px;line-height:1.35}'
+      + '</style></head><body>'
+      + '<div class="pb-hd"><div class="hdrow">' + (typeof logoImprimir === 'function' ? logoImprimir(30) : '') + '<div>'
+      + '<div class="pb-lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis · Comparativo ' + r.anoA + ' × ' + r.anoB + '</div>'
+      + '<h1>' + esc(titulo) + '</h1>'
+      + '<div class="pb-sb">' + (sub ? esc(sub) + ' · ' : '') + 'base: ' + rotuloBase(r) + '</div>'
+      + '</div></div></div>'
+      + '<div class="bd">' + html + '</div>'
+      + '<div class="pb-ft"><span>Patrimar Móveis · PPCP · fonte: reporte mensal do ERP</span><span>Emitido em ' + agora + '</span></div>'
+      + '</body></html>');
+    w.document.close();
+    setTimeout(function () { w.focus(); w.print(); }, 700);
+  };
+
   /* ── Impressão só da tabela Por linha de produto ──
      Mesma apuração e mesma base da tela. Linha aberta na tela sai com os
      produtos dela; fechada sai só no resumo — o papel é o que o gestor
      escolheu detalhar, e "Abrir todas" dá a listagem completa. Segue o
      printBase da casa: cor só no sinal, e o sinal escrito (+/−) ao lado,
      porque o papel costuma sair em preto e branco. */
-  window.caImprimirLinhas = function () {
+  window.caImprimirLinhas = function (so) {
+    /* so = nome de uma linha: imprime só ela, com todos os produtos dela —
+       "quero levar só PENTEADEIRA para a reunião da linha". */
     var its = itens(), todos = regs();
     var anos = anosDisponiveis(its);
     if (anos.length < 2) {
@@ -21356,13 +21445,14 @@ window.CompAnos = (function () {
       if (typeof toast === 'function') toast('Sem produção nos dois anos sob este filtro.', 'wn');
       return;
     }
+    var fams = so ? r.familias.filter(function (f) { return f.nome === so; }) : r.familias;
+    if (!fams.length) {
+      if (typeof toast === 'function') toast('Linha ' + so + ' sem produção sob este filtro.', 'wn');
+      return;
+    }
     var temP = r.peso.temPeso, g = r.geral;
     var agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-    var meses = _mes ? [_mes] : r.base.usaB;
-    var rotBase = _mes ? _mes + ' de ' + anoA + ' e de ' + anoB
-      : (_base === 'comuns'
-          ? 'mesmos meses nos dois anos (' + (meses.join(', ') || '—') + ')'
-          : 'ano cheio — ' + anoA + ': ' + r.base.usaA.length + ' meses, ' + anoB + ': ' + r.base.usaB.length + ' meses');
+    var rotBase = rotuloBase(r);
 
     function sinal(v, txt) {
       if (v === null || !isFinite(v)) return '<span class="tr">—</span>';
@@ -21378,8 +21468,8 @@ window.CompAnos = (function () {
     }
 
     var abertas = r.familias.filter(function (f) { return _famAbertas[f.nome]; });
-    var corpo = r.familias.map(function (f, i) {
-      var prods = _famAbertas[f.nome] ? r.produtos.filter(function (p) { return p.familia === f.nome; }) : [];
+    var corpo = fams.map(function (f, i) {
+      var prods = (so || _famAbertas[f.nome]) ? r.produtos.filter(function (p) { return p.familia === f.nome; }) : [];
       var linha = '<tr class="fam' + (prods.length ? ' ab' : (i % 2 ? ' z' : '')) + '">'
         + '<td>' + esc(f.nome) + '</td>'
         + '<td>' + fi(f.qtdA) + '</td><td><b>' + fi(f.qtdB) + '</b></td><td>' + sinal(f.varQtd, pct(f.varQtd)) + '</td>'
@@ -21409,7 +21499,41 @@ window.CompAnos = (function () {
     if (desce && desce.ppQtd < 0) leitura += 'Maior perda: <b>' + esc(desce.nome) + '</b> (' + fd(desce.ppQtd, 1) + ' p.p.'
       + (desce.qtdB === 0 ? ', sem produção em ' + anoB : '') + ').';
 
-    var detalhe = !abertas.length ? 'só o resumo por linha'
+    function card(l, v, s) { return '<div class="pb-card"><div class="pb-l">' + l + '</div><div class="pb-v">' + v + '</div><div class="pb-s">' + s + '</div></div>'; }
+    var cards = '<div class="kg">'
+      + card('Peças', fi(g.A.qtd) + ' → ' + fi(g.B.qtd), sinal(g.varQtd, pct(g.varQtd)) + ' de ' + anoA + ' para ' + anoB)
+      + (temP ? card('Peso (kg)', fi(g.A.peso) + ' → ' + fi(g.B.peso), sinal(g.varPeso, pct(g.varPeso)) + ' · ' + fd(g.A.pesoMedio, 1) + ' → ' + fd(g.B.pesoMedio, 1) + ' kg/pç')
+              : card('Peso', '—', 'reporte sem coluna PESO'))
+      + card('Linhas de produto', r.familias.length, r.familias.filter(function (f) { return f.varQtd !== null && f.varQtd > 0; }).length + ' subiram · '
+          + r.familias.filter(function (f) { return f.varQtd !== null && f.varQtd < 0; }).length + ' caíram em peças')
+      + card('Produtos ativos', g.A.nProd + ' → ' + g.B.nProd, r.mix.entraram.length + ' entraram · ' + r.mix.sairam.length + ' saíram')
+      + '</div>';
+    if (so) {
+      /* Uma linha só: a leitura é dela — quanto mexeu, quanto espaço ganhou
+         ou perdeu no total, e quais produtos puxaram. */
+      var L = fams[0];
+      var ps = r.produtos.filter(function (p) { return p.familia === L.nome; });
+      var porDif = ps.slice().sort(function (a, b) { return b.difQtd - a.difQtd; });
+      var cima = porDif[0], baixo = porDif[porDif.length - 1];
+      var nNovo = ps.filter(function (p) { return p.situacao === 'novo'; }).length;
+      var nSaiu = ps.filter(function (p) { return p.situacao === 'saiu'; }).length;
+      leitura = '<b>' + esc(L.nome) + '</b> ' + (L.varQtd === null ? 'entrou em ' + anoB : (L.varQtd >= 0 ? 'subiu' : 'caiu') + ' <b>' + pct(L.varQtd) + '</b> em peças')
+        + (temP && L.varPeso !== null ? ' e <b>' + pct(L.varPeso) + '</b> em peso' : '')
+        + '; a participação no total foi de ' + fd(L.partQtdA, 1) + '% para ' + fd(L.partQtdB, 1) + '% ('
+        + (L.ppQtd >= 0 ? '+' : '') + fd(L.ppQtd, 1) + ' p.p.). '
+        + (cima && cima.difQtd > 0 ? 'Mais puxou para cima: <b>' + esc(cima.desc) + '</b> (+' + fi(cima.difQtd) + ' pç). ' : '')
+        + (baixo && baixo.difQtd < 0 ? 'Mais puxou para baixo: <b>' + esc(baixo.desc) + '</b> (' + fi(baixo.difQtd) + ' pç).' : '');
+      cards = '<div class="kg">'
+        + card('Peças da linha', fi(L.qtdA) + ' → ' + fi(L.qtdB), sinal(L.varQtd, pct(L.varQtd)) + ' de ' + anoA + ' para ' + anoB)
+        + (temP ? card('Peso da linha (kg)', fi(L.pesoA) + ' → ' + fi(L.pesoB), sinal(L.varPeso, pct(L.varPeso))
+                    + (L.kgUnA && L.kgUnB ? ' · ' + fd(L.kgUnA, 1) + ' → ' + fd(L.kgUnB, 1) + ' kg/pç' : ''))
+                : card('Peso', '—', 'reporte sem coluna PESO'))
+        + card('Participação no total', fd(L.partQtdA, 1) + '% → ' + fd(L.partQtdB, 1) + '%', sinal(L.ppQtd, (L.ppQtd >= 0 ? '+' : '') + fd(L.ppQtd, 1) + ' p.p.') + ' das peças da fábrica')
+        + card('Produtos ativos', L.nProdA + ' → ' + L.nProdB, nNovo + ' entraram · ' + nSaiu + ' saíram')
+        + '</div>';
+    }
+
+    var detalhe = so ? 'todos os produtos da linha' : !abertas.length ? 'só o resumo por linha'
       : (abertas.length === r.familias.length ? 'todas as linhas abertas por produto'
          : 'abertas por produto: ' + abertas.map(function (f) { return esc(f.nome); }).join(', '));
 
@@ -21419,7 +21543,7 @@ window.CompAnos = (function () {
       return;
     }
     w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>'
-      + '<title>Produção por linha de produto ' + anoA + ' × ' + anoB + '</title><style>'
+      + '<title>' + (so ? esc(so) : 'Produção por linha de produto') + ' ' + anoA + ' × ' + anoB + '</title><style>'
       /* paisagem: nove colunas de número mais o nome do produto não cabem em
          retrato sem o nome quebrar em três linhas */
       + '@page{size:A4 landscape;margin:9mm 11mm 10mm}'
@@ -21455,26 +21579,17 @@ window.CompAnos = (function () {
       + '</style></head><body>'
       + '<div class="pb-hd"><div class="hdrow">' + (typeof logoImprimir === 'function' ? logoImprimir(30) : '') + '<div>'
       + '<div class="pb-lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
-      + '<h1>Produção por linha de produto · ' + anoA + ' × ' + anoB + '</h1>'
+      + '<h1>' + (so ? 'Linha ' + esc(so) : 'Produção por linha de produto') + ' · ' + anoA + ' × ' + anoB + '</h1>'
       + '<div class="pb-sb">Base: ' + rotBase + ' · ' + detalhe + '</div>'
       + '</div></div></div>'
       + '<div class="bd">'
       + '<div class="leit">' + leitura + '</div>'
-      + '<div class="kg">'
-      + '<div class="pb-card"><div class="pb-l">Peças</div><div class="pb-v">' + fi(g.A.qtd) + ' → ' + fi(g.B.qtd) + '</div><div class="pb-s">' + sinal(g.varQtd, pct(g.varQtd)) + ' de ' + anoA + ' para ' + anoB + '</div></div>'
-      + (temP ? '<div class="pb-card"><div class="pb-l">Peso (kg)</div><div class="pb-v">' + fi(g.A.peso) + ' → ' + fi(g.B.peso) + '</div><div class="pb-s">' + sinal(g.varPeso, pct(g.varPeso)) + ' · ' + fd(g.A.pesoMedio, 1) + ' → ' + fd(g.B.pesoMedio, 1) + ' kg/pç</div></div>'
-              : '<div class="pb-card"><div class="pb-l">Peso</div><div class="pb-v">—</div><div class="pb-s">reporte sem coluna PESO</div></div>')
-      + '<div class="pb-card"><div class="pb-l">Linhas de produto</div><div class="pb-v">' + r.familias.length + '</div><div class="pb-s">'
-        + r.familias.filter(function (f) { return f.varQtd !== null && f.varQtd > 0; }).length + ' subiram · '
-        + r.familias.filter(function (f) { return f.varQtd !== null && f.varQtd < 0; }).length + ' caíram em peças</div></div>'
-      + '<div class="pb-card"><div class="pb-l">Produtos ativos</div><div class="pb-v">' + g.A.nProd + ' → ' + g.B.nProd + '</div><div class="pb-s">'
-        + r.mix.entraram.length + ' entraram · ' + r.mix.sairam.length + ' saíram</div></div>'
-      + '</div>'
-      + '<div class="pb-sec">Por linha de produto</div>'
+      + cards
+      + '<div class="pb-sec">' + (so ? 'Produtos da linha' : 'Por linha de produto') + '</div>'
       + '<table><thead><tr><th>Linha / produto</th><th>Qtd ' + anoA + '</th><th>Qtd ' + anoB + '</th><th>Δ Qtd</th>'
       + (temP ? '<th>Kg ' + anoA + '</th><th>Kg ' + anoB + '</th><th>Δ Kg</th>' : '')
       + '<th>Produtos ativos</th><th>Δ Part. (p.p.)</th></tr></thead>'
-      + '<tbody>' + corpo + '</tbody><tbody>' + total + '</tbody></table>'
+      + '<tbody>' + corpo + '</tbody>' + (so ? '' : '<tbody>' + total + '</tbody>') + '</table>'
       + '<div class="nota">'
       + (r.linha.origem === 'grupo'
           ? '<b>Linha</b> = grupo do Lógica, pelos três primeiros dígitos do código do produto (aba GRUPOS). '
@@ -23780,6 +23895,15 @@ window.CompAnos = (function () {
 #page-comp-anos .ca-tab-fam tr.ca-prod td { font-size: .78rem !important; padding-top: 6px !important; padding-bottom: 6px !important; }
 #page-comp-anos .ca-tab-fam tr.ca-prod td:first-child { padding-left: 34px !important; }
 #page-comp-anos .ca-cod { font-family: var(--mono); color: var(--t3); font-size: .9em; margin-right: 8px; }
+/* 🖨 da linha só aparece com ela aberta: é ali que se decide "quero esta" */
+#page-comp-anos .ca-imp-linha { display: none; margin-left: 10px; padding: 1px 8px; border: 1px solid #9C6ADE; border-radius: 5px;
+  background: rgba(156,106,222,.1); color: #9C6ADE; font-size: .72rem; cursor: pointer; vertical-align: 1px; }
+#page-comp-anos tr.ca-aberta .ca-imp-linha { display: inline-block; }
+@media print { #page-comp-anos .ca-imp-linha { display: none !important; } }
+#page-comp-anos .ca-sec-imp { float: right; padding: 3px 10px; border: 1px solid var(--b2); border-radius: 5px; background: transparent;
+  color: var(--t2); font-size: .66rem; font-weight: 600; letter-spacing: .04em; text-transform: none; cursor: pointer; margin-top: -3px; }
+#page-comp-anos .ca-sec-imp:hover { color: #9C6ADE; border-color: #9C6ADE; }
+@media print { #page-comp-anos .ca-sec-imp { display: none !important; } }
 #page-comp-anos .ca-fam-barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   font-size: .74rem; color: var(--t2); margin-bottom: 10px; }
 #page-comp-anos .ca-fam-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -23923,9 +24047,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.49';
+var APP_VERSAO = 'b96.50';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.50', data:'14/10/2026', itens:[
+    'Comparativo: impressao por topico. Cada topico da aba (Comparativo geral, Mudancas no mix, Produtos que mais impactaram, Impacto das mudancas, O que explica a mudanca de peso, Produto x peso medio, Produto x peso) ganha um botao Imprimir no titulo e sai sozinho em A4 paisagem, no papel padrao do painel: o que esta na tela agora, com o filtro de agora, cores trocadas para as de papel (verde e vermelho escuros, texto dos graficos escuro). Por linha de produto continua com a impressao propria.',
+    'Imprimir uma linha so: com a linha aberta (ex.: PENTEADEIRA), aparece um botao de impressora ao lado do nome e a impressao sai so com ela e todos os produtos dela, com leitura propria (quanto subiu ou caiu, participacao no total antes e depois e qual produto mais puxou) e indicadores da linha.'
+  ]},
   { v:'b96.49', data:'14/10/2026', itens:[
     'Comparativo sem a tela vibrar na leitura: o vermelho puro em texto fino sobre o azul-marinho e o branco em negrito faziam a letra tremer. Vermelho e verde passam a tons proprios para fundo azul (#FF7B72 e #56D364), o texto da tabela sai em branco suavizado (o mesmo tom do RitmoPatrimar Embalagem), a zebra volta a ser discreta e o destaque do mouse vale para toda linha (antes piscava uma sim, outra nao).',
     'Por linha de produto: clicar na linha (ex.: MESA DE CABECEIRA) abre logo abaixo os produtos dela, com codigo, quantidade, peso, variacao e situacao, nas mesmas colunas. Botoes Abrir todas e Fechar todas. A linha aberta continua aberta ao trocar base ou mes.',
