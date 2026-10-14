@@ -20417,7 +20417,12 @@ window.CompAnos = (function () {
 (function () {
   var ORDEM_M = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   var ROXO = '#9C6ADE', AMBAR = '#F5A623', CIANO = '#00E5FF',
-      VERDE = '#4CAF50', VERM = '#F44336', LARANJA = '#FF9800';
+      /* Verde e vermelho em tom de tela escura azul: o #F44336 puro em texto
+         fino sobre o azul-marinho "vibrava" na leitura (vermelho saturado
+         contra azul é o par em que o olho foca as duas cores em profundidades
+         diferentes). Mais claro e menos saturado, segue lendo como sinal.
+         Só a tela usa estas: o relatório impresso tem as cores dele. */
+      VERDE = '#56D364', VERM = '#FF7B72', LARANJA = '#FF9800';
 
   function fi(n){ return isFinite(n)&&n!==null?Math.round(n).toLocaleString('pt-BR'):'—'; }
   function fd(n,d){ return isFinite(n)&&n!==null?n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'; }
@@ -20799,12 +20804,48 @@ window.CompAnos = (function () {
       + painel(svg, ROXO);
   }
 
-  /* ── Item 3: análise por linha de produto (família) ── */
+  /* ── Item 3: análise por linha de produto (família) ──
+     Clicar na linha abre os produtos dela logo abaixo, nas mesmas colunas:
+     "MESA DE CABECEIRA caiu 5%" só vira ação quando se vê QUAL produto caiu.
+     As linhas abertas ficam guardadas pelo nome, para sobreviver à troca de
+     base ou de mês, que redesenha a aba inteira. */
+  var _famAbertas = {};
+  window._caAbreFam = function (tr) {
+    var nome = tr.getAttribute('data-fam'), aberta = !_famAbertas[nome];
+    if (aberta) _famAbertas[nome] = 1; else delete _famAbertas[nome];
+    tr.classList.toggle('ca-aberta', aberta);
+    tr.setAttribute('aria-expanded', aberta ? 'true' : 'false');
+    var seta = tr.querySelector('.ca-seta'); if (seta) seta.textContent = aberta ? '▾' : '▸';
+    for (var el = tr.nextElementSibling; el && el.classList.contains('ca-prod'); el = el.nextElementSibling)
+      el.style.display = aberta ? '' : 'none';
+  };
+  window._caAbreTodas = function (abrir) {
+    document.querySelectorAll('#ca-corpo tr.ca-fam').forEach(function (tr) {
+      if (!!_famAbertas[tr.getAttribute('data-fam')] !== abrir) window._caAbreFam(tr);
+    });
+  };
   function blocoFamilias(r, anoA, anoB) {
     var temP = r.peso.temPeso;
-    var linhas = r.familias.map(function (f) {
-      return '<tr>'
-        + td('<b>' + esc(f.nome) + '</b>', 'left', 'white-space:normal;overflow-wrap:anywhere;line-height:1.3')
+    function zeroTraco(v) { return v > 0 ? fi(v) : '<span style="color:var(--t3)">—</span>'; }
+    function produtosDa(f, aberta) {
+      return r.produtos.filter(function (p) { return p.familia === f.nome; }).map(function (p) {
+        return '<tr class="ca-prod"' + (aberta ? '' : ' style="display:none"') + '>'
+          + td('<span class="ca-cod">' + esc(p.cod) + '</span>' + esc(p.desc), 'left', 'white-space:normal;overflow-wrap:anywhere;line-height:1.3')
+          + td(zeroTraco(p.qtdA), 'right', 'color:var(--t2)')
+          + td(zeroTraco(p.qtdB), 'right')
+          + td(pct(p.varQtd), 'right', 'color:' + corVar(p.varQtd))
+          + (temP ? td(zeroTraco(p.pesoA), 'right', 'color:var(--t2)') + td(zeroTraco(p.pesoB), 'right')
+                  + td(pct(p.varPeso), 'right', 'color:' + corVar(p.varPeso)) : '')
+          + '<td colspan="2" style="text-align:right">' + tagSit(p) + '</td>'
+          + '</tr>';
+      }).join('');
+    }
+    var linhas = r.familias.map(function (f, i) {
+      var aberta = !!_famAbertas[f.nome];
+      return '<tr class="ca-fam' + (i % 2 ? ' ca-z' : '') + (aberta ? ' ca-aberta' : '') + '" data-fam="' + esc(f.nome) + '"'
+        + ' tabindex="0" aria-expanded="' + aberta + '" title="Clique para ver os produtos desta linha"'
+        + ' onclick="_caAbreFam(this)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();_caAbreFam(this)}">'
+        + td('<span class="ca-seta">' + (aberta ? '▾' : '▸') + '</span><b>' + esc(f.nome) + '</b>', 'left', 'white-space:normal;overflow-wrap:anywhere;line-height:1.3')
         + td(fi(f.qtdA), 'right', 'color:var(--t2)')
         + td('<b>' + fi(f.qtdB) + '</b>', 'right')
         + td(pct(f.varQtd), 'right', 'color:' + corVar(f.varQtd))
@@ -20814,11 +20855,15 @@ window.CompAnos = (function () {
             + (f.difProd ? '<span style="color:' + (f.difProd > 0 ? VERDE : VERM) + ';font-size:.66rem"> ('
                + (f.difProd > 0 ? '+' : '') + f.difProd + ')</span>' : ''), 'right')
         + td('<b>' + (f.ppQtd >= 0 ? '+' : '') + fd(f.ppQtd, 1) + '</b>', 'right', 'color:' + corVar(f.ppQtd))
-        + '</tr>';
+        + '</tr>' + produtosDa(f, aberta);
     }).join('');
     var porGrupo = r.linha.origem === 'grupo';
     return secao('Por linha de produto', porGrupo ? 'grupo do ERP, pelo código do produto' : 'família derivada da descrição do ERP')
-      + painel('<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:720px">'
+      + painel('<div class="ca-fam-barra"><span>Clique numa linha para ver os produtos dela. Na impressão, as linhas abertas saem com os produtos.</span>'
+        + '<span class="ca-fam-acoes"><button onclick="_caAbreTodas(true)">Abrir todas</button>'
+        + '<button onclick="_caAbreTodas(false)">Fechar todas</button>'
+        + '<button class="ca-imp" onclick="caImprimirLinhas()" title="Imprime só esta tabela, com os produtos das linhas abertas">🖨 Imprimir esta tabela</button></span></div>'
+        + '<div style="overflow:auto"><table class="ca-tab-fam" style="width:100%;border-collapse:collapse;min-width:720px">'
         + '<thead><tr>' + th('Linha')
         + th('Qtd ' + anoA, 'right') + th('Qtd ' + anoB, 'right') + th('Δ Qtd', 'right')
         + (temP ? th('Kg ' + anoA, 'right') + th('Kg ' + anoB, 'right') + th('Δ Kg', 'right') : '')
@@ -21287,6 +21332,159 @@ window.CompAnos = (function () {
       + 'A causa de cada mudança (decisão comercial, item fora de cadastro, mudança de projeto) não está na base e não é afirmada aqui.</p>'
       + '</div>'
       + '<div class="ft"><span>Patrimar Móveis · PPCP</span><span>Emitido em ' + hoje + '</span></div>'
+      + '</body></html>');
+    w.document.close();
+    setTimeout(function () { w.focus(); w.print(); }, 700);
+  };
+
+  /* ── Impressão só da tabela Por linha de produto ──
+     Mesma apuração e mesma base da tela. Linha aberta na tela sai com os
+     produtos dela; fechada sai só no resumo — o papel é o que o gestor
+     escolheu detalhar, e "Abrir todas" dá a listagem completa. Segue o
+     printBase da casa: cor só no sinal, e o sinal escrito (+/−) ao lado,
+     porque o papel costuma sair em preto e branco. */
+  window.caImprimirLinhas = function () {
+    var its = itens(), todos = regs();
+    var anos = anosDisponiveis(its);
+    if (anos.length < 2) {
+      if (typeof toast === 'function') toast('Sem dois anos de reporte para comparar.', 'wn');
+      return;
+    }
+    var anoB = anos[anos.length - 1], anoA = anos.indexOf(anoB - 1) >= 0 ? anoB - 1 : anos[anos.length - 2];
+    var r = window.CompAnos.apurar(its, todos, { anoA: anoA, anoB: anoB, base: _base, mes: _mes, cadastro: cadastro() });
+    if (!r.familias.length) {
+      if (typeof toast === 'function') toast('Sem produção nos dois anos sob este filtro.', 'wn');
+      return;
+    }
+    var temP = r.peso.temPeso, g = r.geral;
+    var agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    var meses = _mes ? [_mes] : r.base.usaB;
+    var rotBase = _mes ? _mes + ' de ' + anoA + ' e de ' + anoB
+      : (_base === 'comuns'
+          ? 'mesmos meses nos dois anos (' + (meses.join(', ') || '—') + ')'
+          : 'ano cheio — ' + anoA + ': ' + r.base.usaA.length + ' meses, ' + anoB + ': ' + r.base.usaB.length + ' meses');
+
+    function sinal(v, txt) {
+      if (v === null || !isFinite(v)) return '<span class="tr">—</span>';
+      /* "+0,0" é zero arredondado: sem cor, para não ler como alta */
+      if (!/[1-9]/.test(txt)) return txt;
+      return '<span class="' + (v > 0 ? 'pb-up' : 'pb-dn') + '">' + txt + '</span>';
+    }
+    function num(v) { return v > 0 ? fi(v) : '<span class="tr">—</span>'; }
+    var SELO = { novo: ['info', 'Novo'], saiu: ['bad', 'Saiu'], aumentou: ['ok', 'Aumentou'], reduziu: ['warn', 'Reduziu'] };
+    function selo(p) {
+      var s = SELO[p.situacao];
+      return s ? '<span class="pb-selo ' + s[0] + '">' + s[1] + '</span>' : '<span class="tr">Estável</span>';
+    }
+
+    var abertas = r.familias.filter(function (f) { return _famAbertas[f.nome]; });
+    var corpo = r.familias.map(function (f, i) {
+      var prods = _famAbertas[f.nome] ? r.produtos.filter(function (p) { return p.familia === f.nome; }) : [];
+      var linha = '<tr class="fam' + (prods.length ? ' ab' : (i % 2 ? ' z' : '')) + '">'
+        + '<td>' + esc(f.nome) + '</td>'
+        + '<td>' + fi(f.qtdA) + '</td><td><b>' + fi(f.qtdB) + '</b></td><td>' + sinal(f.varQtd, pct(f.varQtd)) + '</td>'
+        + (temP ? '<td>' + fi(f.pesoA) + '</td><td><b>' + fi(f.pesoB) + '</b></td><td>' + sinal(f.varPeso, pct(f.varPeso)) + '</td>' : '')
+        + '<td>' + f.nProdA + ' → ' + f.nProdB + (f.difProd ? ' <span class="tr">(' + (f.difProd > 0 ? '+' : '') + f.difProd + ')</span>' : '') + '</td>'
+        + '<td>' + sinal(f.ppQtd, (f.ppQtd >= 0 ? '+' : '') + fd(f.ppQtd, 1)) + '</td></tr>';
+      return linha + prods.map(function (p, k) {
+        return '<tr class="pr' + (k === prods.length - 1 ? ' ult' : '') + '">'
+          + '<td><span class="cod">' + esc(p.cod) + '</span>' + esc(p.desc) + '</td>'
+          + '<td>' + num(p.qtdA) + '</td><td>' + num(p.qtdB) + '</td><td>' + sinal(p.varQtd, pct(p.varQtd)) + '</td>'
+          + (temP ? '<td>' + num(p.pesoA) + '</td><td>' + num(p.pesoB) + '</td><td>' + sinal(p.varPeso, pct(p.varPeso)) + '</td>' : '')
+          + '<td colspan="2">' + selo(p) + '</td></tr>';
+      }).join('');
+    }).join('');
+    var total = '<tr class="tot"><td>Total</td>'
+      + '<td>' + fi(g.A.qtd) + '</td><td>' + fi(g.B.qtd) + '</td><td>' + sinal(g.varQtd, pct(g.varQtd)) + '</td>'
+      + (temP ? '<td>' + fi(g.A.peso) + '</td><td>' + fi(g.B.peso) + '</td><td>' + sinal(g.varPeso, pct(g.varPeso)) + '</td>' : '')
+      + '<td>' + g.A.nProd + ' → ' + g.B.nProd + '</td><td></td></tr>';
+
+    /* Leitura de abertura: quem mais ganhou e quem mais perdeu espaço no mix.
+       É a pergunta que a tabela inteira responde, dita antes dela. */
+    var porPP = r.familias.slice().sort(function (a, b) { return b.ppQtd - a.ppQtd; });
+    var sobe = porPP[0], desce = porPP[porPP.length - 1];
+    var leitura = 'Produção ' + (g.varQtd >= 0 ? 'subiu' : 'caiu') + ' <b>' + pct(g.varQtd) + '</b> em peças'
+      + (temP && g.varPeso !== null ? ' e <b>' + pct(g.varPeso) + '</b> em peso' : '') + '. ';
+    if (sobe && sobe.ppQtd > 0) leitura += 'Maior ganho de espaço no mix: <b>' + esc(sobe.nome) + '</b> (+' + fd(sobe.ppQtd, 1) + ' p.p.). ';
+    if (desce && desce.ppQtd < 0) leitura += 'Maior perda: <b>' + esc(desce.nome) + '</b> (' + fd(desce.ppQtd, 1) + ' p.p.'
+      + (desce.qtdB === 0 ? ', sem produção em ' + anoB : '') + ').';
+
+    var detalhe = !abertas.length ? 'só o resumo por linha'
+      : (abertas.length === r.familias.length ? 'todas as linhas abertas por produto'
+         : 'abertas por produto: ' + abertas.map(function (f) { return esc(f.nome); }).join(', '));
+
+    var w = window.open('', '_blank', 'width=1000,height=900');
+    if (!w) {
+      if (typeof toast === 'function') toast('O navegador bloqueou a janela de impressão. Libere pop-ups para este site.', 'wn');
+      return;
+    }
+    w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>'
+      + '<title>Produção por linha de produto ' + anoA + ' × ' + anoB + '</title><style>'
+      /* paisagem: nove colunas de número mais o nome do produto não cabem em
+         retrato sem o nome quebrar em três linhas */
+      + '@page{size:A4 landscape;margin:9mm 11mm 10mm}'
+      + printBase()
+      + 'body{font-size:8.5pt}'
+      + '.hdrow{display:flex;align-items:center;gap:14px}'
+      + '.bd{padding:10px 2px 0}'
+      + '.leit{border-left:3px solid #1F2933;background:#F5F7FA;padding:7px 11px;font-size:9pt;line-height:1.5;margin-bottom:8px}'
+      + '.kg{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:4px}'
+      /* a tabela: o cabeçalho repete em cada página; linha e produto nunca
+         partem no meio, e a linha não fica sozinha no pé da página */
+      + 'thead{display:table-header-group}tfoot{display:table-footer-group}'
+      + 'tr{page-break-inside:avoid;break-inside:avoid}'
+      + 'tbody tr:nth-child(even){background:transparent}'
+      + 'tbody td{padding:3.5px 7px;vertical-align:top}'
+      /* coluna de número do tamanho do número (width:1% + nowrap) e todo o
+         resto para o nome: dividido por igual, o nome do produto quebrava em
+         duas linhas e a listagem completa dobrava de páginas */
+      + 'th:not(:first-child),td:not(:first-child){width:1%;white-space:nowrap}'
+      + 'thead th:not(:first-child){white-space:normal;line-height:1.25}'
+      + 'thead th:nth-last-child(-n+2){min-width:62px}'
+      + 'thead th{padding:5px 7px}'
+      + 'tr.fam td{font-weight:700}tr.fam.z td{background:#F5F7FA}'
+      + 'tr.fam.ab td{background:#E4E8EE;border-top:1px solid #9AA5B1;page-break-after:avoid;break-after:avoid}'
+      + 'tr.pr td{font-size:7.6pt;font-weight:400;color:#3E4C59;padding:2.5px 7px;border-bottom:1px solid #EEF1F4}'
+      + 'tr.pr td:first-child{padding-left:16px;font-weight:400}'
+      + 'tr.pr.ult td{border-bottom:1px solid #9AA5B1}'
+      + 'tr.pr td[colspan]{text-align:right}'
+      + '.cod{font-family:Consolas,"Courier New",monospace;font-size:7pt;color:#7B8794;margin-right:6px}'
+      + '.tr{color:#9AA5B1;font-weight:400}'
+      + 'tr.tot td{border-top:2px solid #1F2933;border-bottom:none;font-weight:800;font-size:8.5pt;padding-top:5px;background:#fff}'
+      + '.nota{font-size:7.5pt;line-height:1.5;color:#52606D;margin-top:8px}'
+      + '</style></head><body>'
+      + '<div class="pb-hd"><div class="hdrow">' + (typeof logoImprimir === 'function' ? logoImprimir(30) : '') + '<div>'
+      + '<div class="pb-lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
+      + '<h1>Produção por linha de produto · ' + anoA + ' × ' + anoB + '</h1>'
+      + '<div class="pb-sb">Base: ' + rotBase + ' · ' + detalhe + '</div>'
+      + '</div></div></div>'
+      + '<div class="bd">'
+      + '<div class="leit">' + leitura + '</div>'
+      + '<div class="kg">'
+      + '<div class="pb-card"><div class="pb-l">Peças</div><div class="pb-v">' + fi(g.A.qtd) + ' → ' + fi(g.B.qtd) + '</div><div class="pb-s">' + sinal(g.varQtd, pct(g.varQtd)) + ' de ' + anoA + ' para ' + anoB + '</div></div>'
+      + (temP ? '<div class="pb-card"><div class="pb-l">Peso (kg)</div><div class="pb-v">' + fi(g.A.peso) + ' → ' + fi(g.B.peso) + '</div><div class="pb-s">' + sinal(g.varPeso, pct(g.varPeso)) + ' · ' + fd(g.A.pesoMedio, 1) + ' → ' + fd(g.B.pesoMedio, 1) + ' kg/pç</div></div>'
+              : '<div class="pb-card"><div class="pb-l">Peso</div><div class="pb-v">—</div><div class="pb-s">reporte sem coluna PESO</div></div>')
+      + '<div class="pb-card"><div class="pb-l">Linhas de produto</div><div class="pb-v">' + r.familias.length + '</div><div class="pb-s">'
+        + r.familias.filter(function (f) { return f.varQtd !== null && f.varQtd > 0; }).length + ' subiram · '
+        + r.familias.filter(function (f) { return f.varQtd !== null && f.varQtd < 0; }).length + ' caíram em peças</div></div>'
+      + '<div class="pb-card"><div class="pb-l">Produtos ativos</div><div class="pb-v">' + g.A.nProd + ' → ' + g.B.nProd + '</div><div class="pb-s">'
+        + r.mix.entraram.length + ' entraram · ' + r.mix.sairam.length + ' saíram</div></div>'
+      + '</div>'
+      + '<div class="pb-sec">Por linha de produto</div>'
+      + '<table><thead><tr><th>Linha / produto</th><th>Qtd ' + anoA + '</th><th>Qtd ' + anoB + '</th><th>Δ Qtd</th>'
+      + (temP ? '<th>Kg ' + anoA + '</th><th>Kg ' + anoB + '</th><th>Δ Kg</th>' : '')
+      + '<th>Produtos ativos</th><th>Δ Part. (p.p.)</th></tr></thead>'
+      + '<tbody>' + corpo + '</tbody><tbody>' + total + '</tbody></table>'
+      + '<div class="nota">'
+      + (r.linha.origem === 'grupo'
+          ? '<b>Linha</b> = grupo do Lógica, pelos três primeiros dígitos do código do produto (aba GRUPOS). '
+          : '<b>Linha</b> = família tirada da descrição do item (a aba GRUPOS não está na planilha). ')
+      + '<b>Δ Part.</b> = ganho ou perda de participação no total de peças, em pontos percentuais: uma linha pode cair em peças e ganhar espaço, se o total caiu mais que ela. '
+      + (temP ? '<b>Kg</b> = peso bruto (com embalagem). ' : '')
+      + 'Produto novo não tem variação percentual (não existe divisão por zero). '
+      + '“Estável” é variação menor que ' + r.limites.estavel + '%.'
+      + '</div></div>'
+      + '<div class="pb-ft"><span>Patrimar Móveis · PPCP · fonte: reporte mensal do ERP</span><span>Emitido em ' + agora + '</span></div>'
       + '</body></html>');
     w.document.close();
     setTimeout(function () { w.focus(); w.print(); }, 700);
@@ -23556,11 +23754,40 @@ window.CompAnos = (function () {
    (td .76rem, th .58rem em azul apagado, os dois !important) vencia, e o
    Modo TV não alcançava nada — célula de 12 px e cabeçalho de 9 px iguais
    na mesa e no telão. */
-#page-comp-anos td { font-size: .84rem !important; padding: 8px 11px !important; }
+/* Texto da tabela em branco suavizado: o #F5F5F5 em negrito sobre o
+   azul-marinho fazia halo em volta da letra e a tela parecia vibrar na
+   leitura. Mesmo tom que o RitmoPatrimar Embalagem usa nas seções. A cor de
+   sinal (verde/vermelho) vem inline com !important e continua valendo. */
+#page-comp-anos td { font-size: .84rem !important; padding: 8px 11px !important; color: #D9E1EA !important; }
 #page-comp-anos th { font-size: .66rem !important; color: var(--lbl-2) !important; }
-/* tabela larga: nome à esquerda, número na outra ponta; a zebra é o que
-   leva o olho pela linha certa no telão */
-#page-comp-anos tbody tr:nth-child(even) { background: rgba(255,255,255,.035) !important; }
+/* zebra só o bastante para guiar o olho pela linha: com .035 as faixas
+   viravam um listrado que somava à vibração */
+#page-comp-anos tbody tr:nth-child(even) { background: rgba(255,255,255,.02) !important; }
+/* hover igual em toda linha: a zebra com !important bloqueava o hover nas
+   pares, e o destaque piscava uma linha sim, outra não ao descer o mouse */
+#page-comp-anos tbody tr:hover { background: rgba(245,166,35,.06) !important; }
+/* Por linha de produto: produto aberto embaixo da linha. A zebra vai por
+   classe porque as linhas de produto escondidas contam no nth-child. */
+#page-comp-anos .ca-tab-fam tbody tr { background: transparent !important; }
+#page-comp-anos .ca-tab-fam tbody tr.ca-z { background: rgba(255,255,255,.02) !important; }
+#page-comp-anos .ca-tab-fam tbody tr.ca-fam { cursor: pointer; }
+#page-comp-anos .ca-tab-fam tbody tr.ca-aberta { background: rgba(245,166,35,.08) !important; }
+#page-comp-anos .ca-tab-fam tbody tr.ca-fam:hover { background: rgba(245,166,35,.06) !important; }
+#page-comp-anos .ca-tab-fam tr.ca-fam:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
+#page-comp-anos .ca-seta { display: inline-block; width: 1.1em; color: var(--t3); }
+#page-comp-anos tr.ca-aberta .ca-seta { color: var(--cyan); }
+#page-comp-anos .ca-tab-fam tbody tr.ca-prod { background: rgba(0,0,0,.22) !important; }
+#page-comp-anos .ca-tab-fam tr.ca-prod td { font-size: .78rem !important; padding-top: 6px !important; padding-bottom: 6px !important; }
+#page-comp-anos .ca-tab-fam tr.ca-prod td:first-child { padding-left: 34px !important; }
+#page-comp-anos .ca-cod { font-family: var(--mono); color: var(--t3); font-size: .9em; margin-right: 8px; }
+#page-comp-anos .ca-fam-barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-size: .74rem; color: var(--t2); margin-bottom: 10px; }
+#page-comp-anos .ca-fam-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+#page-comp-anos .ca-fam-acoes button { padding: 6px 12px; border: 1px solid var(--b2); border-radius: 6px; background: transparent;
+  color: var(--t2); font-size: .72rem; font-weight: 600; cursor: pointer; }
+#page-comp-anos .ca-fam-acoes button:hover { color: var(--t1); border-color: var(--t3); }
+#page-comp-anos .ca-fam-acoes button.ca-imp { border-color: #9C6ADE; color: #9C6ADE; background: rgba(156,106,222,.08); }
+@media print { #page-comp-anos .ca-fam-acoes { display: none !important; } }
 /* Telão: amplia a aba inteira em vez de caçar as ~30 letras inline uma a
    uma, e o que entrar de novo na aba já nasce ampliado. 1,3 em 1920 deixa
    ~1.200 px de layout, a largura de um notebook, onde a aba já funciona.
@@ -23696,9 +23923,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.48';
+var APP_VERSAO = 'b96.49';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.49', data:'14/10/2026', itens:[
+    'Comparativo sem a tela vibrar na leitura: o vermelho puro em texto fino sobre o azul-marinho e o branco em negrito faziam a letra tremer. Vermelho e verde passam a tons proprios para fundo azul (#FF7B72 e #56D364), o texto da tabela sai em branco suavizado (o mesmo tom do RitmoPatrimar Embalagem), a zebra volta a ser discreta e o destaque do mouse vale para toda linha (antes piscava uma sim, outra nao).',
+    'Por linha de produto: clicar na linha (ex.: MESA DE CABECEIRA) abre logo abaixo os produtos dela, com codigo, quantidade, peso, variacao e situacao, nas mesmas colunas. Botoes Abrir todas e Fechar todas. A linha aberta continua aberta ao trocar base ou mes.',
+    'Imprimir esta tabela: impressao so da tabela Por linha de produto, em A4 paisagem, no padrao de papel do painel. Abre com a leitura do periodo (quem mais ganhou e quem mais perdeu espaco no mix) e quatro indicadores; as linhas abertas na tela saem com os produtos, com selo de situacao e sinal +/- escrito ao lado da cor para valer em preto e branco. Cabecalho da tabela repete em cada pagina, linha de total no fim; listagem completa de 355 produtos coube em 12 paginas, um produto por linha.'
+  ]},
   { v:'b96.48', data:'14/10/2026', itens:[
     'Comparativo 2025 x 2026, tabela Por linha de produto: dizia "grupo do ERP" mas agrupava pelo nome do produto. O Sheets em pt-BR le o codigo 108.009.001 como milhar e a REPORTE_VOLUMES devolve 108009001, sem os pontos; nenhum codigo casava com GRUPO.SUBGRUPO.ITEM e cada produto caia na familia da descricao (ESCRIVANINHA, MESA COMPUTADOR e MESA COMP em tres linhas, todos grupo 108). Agora o codigo volta ao formato com pontos antes de achar o grupo, e o mesmo produto com e sem ponto deixa de virar dois (um novo e um que saiu). Produto sem codigo no formato do ERP aparece num aviso em vez de entrar calado pela descricao.',
     'Comparativo legivel na TV: colunas de variacao (Delta qtd, Delta kg, Delta part.) voltam a sair em verde e vermelho (o tema escuro deixava tudo branco); letra da tabela de 12 para 13,4 px, cabecalho de 9 para 10,6 px em cinza claro, titulos de secao maiores e linha zebrada visivel. No Modo TV a aba inteira amplia 30% (antes nada mudava) e as listas de Mudancas no mix vao em duas colunas, com o nome do produto inteiro.',
