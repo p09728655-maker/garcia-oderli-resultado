@@ -20909,6 +20909,15 @@ window.CompAnos = (function () {
         + '<span style="display:flex;gap:6px;align-items:center"><span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-right:4px">Comparar com</span>'
         + chip('Mesmo mês de ' + D.anoA, ano, "_mmCmp('ano')") + chip('Mês anterior', !ano, "_mmCmp('ant')") + '</span>'
       + '</div>'
+      /* Só no papel (na tela os botões acima já dizem): a impressão esconde
+         os botões, e sem esta linha não dava para saber se os números eram
+         peças ou kg, nem contra o quê. */
+      + '<div class="ca-mm-modo" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
+        + '<span style="border:1px solid #1F2933;border-radius:4px;padding:3px 10px;font-size:.78rem;font-weight:700;color:#1F2933">Medida: '
+          + (kg ? 'Kg (peso bruto)' : 'Peças') + '</span>'
+        + '<span style="border:1px solid #1F2933;border-radius:4px;padding:3px 10px;font-size:.78rem;font-weight:700;color:#1F2933">Comparado com: '
+          + (ano ? 'mesmo mês de ' + D.anoA : 'mês anterior (JAN contra DEZ de ' + D.anoA + ')') + '</span>'
+      + '</div>'
       + leitura + aviso
       + (meses.length ? '<div style="overflow:auto"><table class="ca-mm-tab" style="width:100%;border-collapse:separate;border-spacing:3px;min-width:' + (300 + meses.length * 80) + 'px">'
           + '<thead>' + head + '</thead><tbody>' + corpo + tot + '</tbody></table></div>'
@@ -21743,6 +21752,12 @@ window.CompAnos = (function () {
     PAPEL.forEach(function (t) { html = html.replace(t[0], t[1]); });
     var r = _apuracao;
     var agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    /* o Mês a mês não segue a base nem o Período: com SET escolhido lá em
+       cima, o cabeçalho diria "base: SET" sobre uma matriz de nove meses */
+    var ehMM = partes.some(function (e) { return e.querySelector && e.querySelector('#ca-mm'); });
+    var baseTopico = ehMM && _mmDados
+      ? 'meses com reporte nos dois anos: ' + (_mmDados.comuns.join(', ') || '—')
+      : 'base: ' + rotuloBase(r);
 
     var w = window.open('', '_blank', 'width=1100,height=900');
     if (!w) {
@@ -21786,7 +21801,7 @@ window.CompAnos = (function () {
       + '<div class="pb-hd"><div class="hdrow">' + (typeof logoImprimir === 'function' ? logoImprimir(30) : '') + '<div>'
       + '<div class="pb-lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis · Comparativo ' + r.anoA + ' × ' + r.anoB + '</div>'
       + '<h1>' + esc(titulo) + '</h1>'
-      + '<div class="pb-sb">' + (sub ? esc(sub) + ' · ' : '') + 'base: ' + rotuloBase(r) + '</div>'
+      + '<div class="pb-sb">' + (sub ? esc(sub) + ' · ' : '') + baseTopico + '</div>'
       + '</div></div></div>'
       + '<div class="bd">' + html + '</div>'
       + '<div class="pb-ft"><span>Patrimar Móveis · PPCP · fonte: reporte mensal do ERP</span><span>Emitido em ' + agora + '</span></div>'
@@ -24278,6 +24293,7 @@ window.CompAnos = (function () {
 /* Mês a mês: células separadas. O tema global força
    table{border-collapse:collapse!important} e a zebra por linha — sem isto
    a matriz virava um bloco grudado com faixas vazando entre as células. */
+#page-comp-anos .ca-mm-modo { display: none !important; }
 #page-comp-anos table.ca-mm-tab { border-collapse: separate !important; border-spacing: 5px 4px !important; }
 #page-comp-anos .ca-mm-tab tbody tr, #page-comp-anos .ca-mm-tab tbody tr:hover { background: transparent !important; border: none !important; }
 #page-comp-anos .ca-mm-tab td { padding: 9px 6px !important; border: none !important; }
@@ -24439,9 +24455,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.59';
+var APP_VERSAO = 'b96.60';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.60', data:'14/10/2026', itens:[
+    'Impressao do Mes a mes diz a medida e a comparacao: logo abaixo do titulo saem Medida: Pecas ou Kg e Comparado com: mesmo mes do ano anterior ou mes anterior. A impressao esconde os botoes, e sem isso o papel nao dizia se os numeros eram pecas ou kg. O cabecalho do papel tambem deixa de dizer base: SET quando o Periodo esta num mes: o Mes a mes mostra sempre todos os meses.'
+  ]},
   { v:'b96.59', data:'14/10/2026', itens:[
     'Impressao do Mes a mes: numeros da matriz maiores (10,5 px) e em semi-negrito, e o cinza das celulas neutras mais escuro; antes saiam em 8,8 px de traco fino e liam apagados no papel. O cinza de apoio dos outros topicos impressos tambem escurece.'
   ]},
