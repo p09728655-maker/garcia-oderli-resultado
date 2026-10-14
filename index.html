@@ -20441,14 +20441,13 @@ window.CompAnos = (function () {
   function cadastro(){ try{ return JSON.parse(localStorage.getItem('dash_prod_cad_v1'))||{} }catch(e){ return {} } }
 
   /* ── estado da tela (os filtros do item 8 do pedido) ── */
-  var _base='comuns', _mes='', _familia='', _situacao='', _busca='', _ord='qtdB', _apuracao=null;
+  var _base='comuns', _mes='', _situacao='', _busca='', _ord='qtdB', _apuracao=null;
   window._caBase=function(b){ _base=b; render(); };
   window._caMes=function(m){ _mes=m; render(); };
-  window._caFam=function(v){ _familia=v; renderTabela(); };
   window._caSit=function(v){ _situacao=v; renderTabela(); };
   window._caBusca=function(v){ _busca=v||''; renderTabela(); };
   window._caOrd=function(v){ _ord=v; renderTabela(); };
-  window._caLimpar=function(){ _familia=''; _situacao=''; _busca=''; render(); };
+  window._caLimpar=function(){ _situacao=''; _busca=''; render(); };
 
   function chip(rot,ativo,onclick,cor){
     cor=cor||ROXO;
@@ -21617,19 +21616,16 @@ window.CompAnos = (function () {
      Renderizada à parte para digitar na busca não redesenhar os gráficos
      (e não perder o foco do campo) — mesmo motivo da aba Produção por Produto. */
   function blocoTabela(r, anoA, anoB) {
-    var fams = r.familias.map(function (f) { return f.nome; }).sort();
     var sits = [['', 'Todas as situações'], ['aumentou', 'Aumentou produção'], ['reduziu', 'Reduziu produção'],
                 ['novo', 'Novo em ' + anoB], ['saiu', 'Não produzido em ' + anoB], ['estavel', 'Produção estável']];
     var sel = 'padding:6px 10px;border:1px solid var(--b);border-radius:6px;background:var(--panel);'
             + 'color:var(--t1);font-size:.73rem;max-width:200px';
-    return secao('Produto × peso', 'linha a linha, com filtro')
+    /* Sem filtro de linha: ver os produtos de UMA linha é abrir a linha na
+       tabela Por linha de produto — os dois davam a mesma lista. Aqui fica a
+       consulta que só esta tabela faz: buscar código, situação na fábrica
+       inteira e ordenar. */
+    return secao('Produto × peso', 'consulta por produto: busca, situação e ordem')
       + painel('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:11px">'
-        + '<select onchange="_caFam(this.value)" style="' + sel + '">'
-          + '<option value="">Todas as linhas</option>'
-          + fams.map(function (f) {
-              return '<option value="' + esc(f) + '"' + (_familia === f ? ' selected' : '') + '>' + esc(f) + '</option>';
-            }).join('')
-        + '</select>'
         + '<select onchange="_caSit(this.value)" style="' + sel + '">'
           + sits.map(function (s) {
               return '<option value="' + s[0] + '"' + (_situacao === s[0] ? ' selected' : '') + '>' + s[1] + '</option>';
@@ -21645,7 +21641,7 @@ window.CompAnos = (function () {
         + '<input placeholder="buscar código ou produto…" value="' + esc(_busca) + '" oninput="_caBusca(this.value)" '
           + 'style="margin-left:auto;min-width:200px;padding:6px 11px;border:1px solid var(--b);border-radius:6px;'
           + 'background:rgba(255,255,255,.03);color:var(--t1);font-size:.73rem">'
-        + ((_familia || _situacao || _busca)
+        + ((_situacao || _busca)
             ? '<button onclick="_caLimpar()" style="padding:6px 11px;border:1px solid var(--b);border-radius:6px;'
               + 'background:transparent;color:var(--t2);font-size:.72rem;cursor:pointer">limpar</button>' : '')
         + '</div><div id="ca-tabela"></div>', ROXO);
@@ -21654,7 +21650,7 @@ window.CompAnos = (function () {
   function renderTabela() {
     var el = document.getElementById('ca-tabela'); if (!el || !_apuracao) return;
     var r = _apuracao, temP = r.peso.temPeso, anoA = r.anoA, anoB = r.anoB;
-    var lista = window.CompAnos.filtrar(r.produtos, { familia: _familia, situacao: _situacao, busca: _busca });
+    var lista = window.CompAnos.filtrar(r.produtos, { situacao: _situacao, busca: _busca });
     var campo = _ord;
     lista = lista.slice().sort(function (a, b) {
       if (campo === 'difQtd' || campo === 'difPeso') return Math.abs(b[campo]) - Math.abs(a[campo]);
@@ -21689,7 +21685,7 @@ window.CompAnos = (function () {
     el.innerHTML = '<div style="font-size:.7rem;color:var(--t3);margin-bottom:8px">'
         + lista.length + ' produto' + (lista.length > 1 ? 's' : '')
         + (lista.length > 400 ? ' (mostrando os 400 primeiros)' : '')
-        + (_familia || _situacao || _busca ? ' · <b style="color:var(--t2)">filtro ativo</b>' : '')
+        + (_situacao || _busca ? ' · <b style="color:var(--t2)">filtro ativo</b>' : '')
         + '</div>'
       + '<div style="max-height:520px;overflow:auto;border:1px solid var(--b);border-radius:6px">'
       + '<table style="width:100%;border-collapse:collapse;min-width:820px;table-layout:fixed">'
@@ -21703,7 +21699,7 @@ window.CompAnos = (function () {
         + th('Situação', 'left', 'width:88px')
       + '</tr></thead><tbody>' + linhas + '</tbody>'
       + '<tfoot><tr style="border-top:2px solid var(--b)">'
-        + td('<b>TOTAL' + (_familia || _situacao || _busca ? ' (filtrado)' : '') + '</b>') + td('')
+        + td('<b>TOTAL' + (_situacao || _busca ? ' (filtrado)' : '') + '</b>') + td('')
         + td('<b>' + fi(sQA) + '</b>', 'right') + td('<b>' + fi(sQB) + '</b>', 'right')
         + td('<b>' + pct(window.CompAnos.variacao(sQA, sQB)) + '</b>', 'right', 'color:' + corVar(window.CompAnos.variacao(sQA, sQB)))
         + (temP ? td('<b>' + fi(sPA) + '</b>', 'right') + td('<b>' + fi(sPB) + '</b>', 'right')
@@ -24055,9 +24051,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.51';
+var APP_VERSAO = 'b96.52';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.52', data:'14/10/2026', itens:[
+    'Comparativo, Produto x peso: sai o filtro de linha. Ele dava a mesma lista que abrir a linha na tabela Por linha de produto. A tabela fica como consulta por produto: busca por codigo ou nome, situacao na fabrica inteira (todos os que sairam, todos os novos) e ordenacao.'
+  ]},
   { v:'b96.51', data:'14/10/2026', itens:[
     'Impressao por topico: em Produto x peso medio e Mudancas no mix o nome do produto passava por cima do valor (o corte com reticencias da tela era desligado no papel). Agora o nome sai inteiro, quebrando linha quando precisa, as listas vao em duas colunas e o valor nunca quebra.'
   ]},
