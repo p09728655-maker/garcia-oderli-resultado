@@ -21403,6 +21403,14 @@ window.CompAnos = (function () {
       + 'button,select,input,textarea,.ca-fam-acoes,.ca-sec-imp{display:none!important}'
       + '.bd *{max-height:none!important;box-shadow:none!important}'
       + '.bd [style*="overflow"]{overflow:visible!important}'
+      /* nome cortado com "…" é recurso de tela; no papel, com o corte
+         desligado acima, o nome passava por cima do número. Quebra a linha
+         e mostra inteiro, e as grades de listas vão em duas colunas para o
+         nome ter onde caber */
+      + '.bd [style*="text-overflow"]{white-space:normal!important;text-overflow:clip!important}'
+      + '.bd table[style*="table-layout:fixed"]{table-layout:auto!important}'
+      + '.bd td[style*="text-align:right"]{white-space:nowrap!important}'
+      + '.bd [style*="grid-template-columns:repeat(auto-fit"]{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px 28px!important}'
       + 'thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}'
       + 'thead th{color:#fff!important;background:#1F2933!important;border:none!important}'
       + 'tbody td{border-bottom:1px solid #E4E7EB}'
@@ -24047,9 +24055,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.50';
+var APP_VERSAO = 'b96.51';
 var APP_DATA   = '14/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.51', data:'14/10/2026', itens:[
+    'Impressao por topico: em Produto x peso medio e Mudancas no mix o nome do produto passava por cima do valor (o corte com reticencias da tela era desligado no papel). Agora o nome sai inteiro, quebrando linha quando precisa, as listas vao em duas colunas e o valor nunca quebra.'
+  ]},
   { v:'b96.50', data:'14/10/2026', itens:[
     'Comparativo: impressao por topico. Cada topico da aba (Comparativo geral, Mudancas no mix, Produtos que mais impactaram, Impacto das mudancas, O que explica a mudanca de peso, Produto x peso medio, Produto x peso) ganha um botao Imprimir no titulo e sai sozinho em A4 paisagem, no papel padrao do painel: o que esta na tela agora, com o filtro de agora, cores trocadas para as de papel (verde e vermelho escuros, texto dos graficos escuro). Por linha de produto continua com a impressao propria.',
     'Imprimir uma linha so: com a linha aberta (ex.: PENTEADEIRA), aparece um botao de impressora ao lado do nome e a impressao sai so com ela e todos os produtos dela, com leitura propria (quanto subiu ou caiu, participacao no total antes e depois e qual produto mais puxou) e indicadores da linha.'
