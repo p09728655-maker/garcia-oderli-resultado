@@ -4286,11 +4286,28 @@ body.lid-on{overflow:hidden}
 .lid-leg i{display:inline-block;width:14px;height:9px;margin-right:5px;border-radius:2px;vertical-align:middle}
 .lid-capa{display:flex;flex-direction:column;justify-content:center;flex:1;gap:.5em}
 .lid-capa h1{font-size:3.2em;margin:0;line-height:1.1}
+/* o tema do painel fixa h1 em 1,35rem, maiúsculo e espaçado (!important): a
+   capa saía com o título do tamanho do texto, menor que a logo em cima dele.
+   Fica igual ao PDF. Os títulos dos outros slides seguem a regra do tema. */
+#lid-ov .lid-capa h1{font-size:3.2em!important;letter-spacing:0!important;text-transform:none}
+/* Marca Patrimar: a mesma logo do cabeçalho do painel (logo-patrimar.jpg, fundo
+   branco). O "móveis" da logo é grafite e some no azul-marinho, então no fundo
+   escuro ela vai numa caixa branca, como no cabeçalho e na tela /plano; no fundo
+   branco a caixa não aparece. Capa grande, fecho médio, rodapé pequeno. Se o
+   arquivo não carregar, entra o nome escrito em vez de um ícone quebrado. */
+.lid-marca{display:inline-flex;align-items:center;align-self:flex-start;flex:none;background:#fff;border-radius:.3em}
+.lid-marca img{display:block;width:auto}
+.lid-marca-capa{padding:.55em 1em;margin-bottom:1.2em}.lid-marca-capa img{height:4.2em}
+.lid-marca-fim{padding:.35em .65em;margin-bottom:.8em}.lid-marca-fim img{height:2.2em}
+.lid-marca-rod{padding:.2em .45em}.lid-marca-rod img{height:1.6em}
+.lid-marca-txt img{display:none}
+.lid-marca-txt::after{content:'Patrimar Móveis';color:#DA2128;font-weight:800}
 .lid-capa-s{font-size:1.5em;color:#bbb}.lid-capa-r{font-size:.8em;color:#888;margin-top:1.2em}
 .lid-k{font-size:.75em;letter-spacing:.14em;text-transform:uppercase;color:#F5A623;font-weight:700}
 .lid-linha{display:flex;gap:.8em;align-items:flex-start;font-size:1.35em;line-height:1.4;margin:.4em 0}
 .lid-n{flex:none;width:1.6em;height:1.6em;border-radius:50%;background:#D9342B;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:.85em}
-.lid-foot{margin-top:auto;display:flex;justify-content:space-between;font-size:.65em;color:#666;padding-top:.5em;border-top:1px solid #223550}
+.lid-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:1em;font-size:.65em;color:#666;padding-top:.5em;border-top:1px solid #223550}
+.lid-foot-l{display:flex;align-items:center;gap:.8em}
 #lid-ov .lid-bar{display:flex;gap:10px;align-items:center;margin-top:8px;color:#aaa;font-family:var(--mono);font-size:.8rem}
 #lid-ov .lid-bar button{width:40px;height:40px;border-radius:8px;border:1px solid rgba(245,166,35,.5);background:rgba(245,166,35,.12);color:#F5A623;font-size:1.2rem;cursor:pointer}
 #lid-ov .lid-bar button:disabled{opacity:.3;cursor:default}
@@ -4311,6 +4328,9 @@ body.lid-on{overflow:hidden}
 #lid-ov.claro .lid-dest td{color:#D9342B!important}
 #lid-ov.claro .lid-mix-l{border-bottom-color:#D3D8DE}
 #lid-ov.claro .lid-foot{color:#8a94a0;border-top-color:#edf2f7}
+/* no branco a caixa da logo não aparece, e a folga lateral dela tirava a
+   logo do alinhamento do texto */
+#lid-ov.claro .lid-marca{background:transparent;padding-left:0;padding-right:0}
 #lid-ov.claro .lid-lbl{fill:#1F2933}
 #lid-ov.claro .lid-lbl-b{paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}
 #lid-ov.claro .lid-cat{fill:#52606D}
@@ -23429,11 +23449,11 @@ window.CompAnos = (function () {
     var acima=ref.at!==null&&ref.at>=100;
     var ritmoTxt=M.gapDia===null?'':(M.gapDia>0?'':(M.empata?'empata com o plano (folga de '+fd(M.folgaPct,1)+'%)':'ritmo já suficiente'));
     var passaram=M.ritmoExig!==null?ms.filter(function(m){ return m.pcDiaN>=M.ritmoExig; }):[];
-    var rod='<div class="lid-foot"><span>Como foi a produção · '+mesNome+'/'+anoS+' · PPCP</span>'
+    var rod='<div class="lid-foot"><span class="lid-foot-l">'+lidMarca('lid-marca-rod')+'<span>Como foi a produção · '+mesNome+'/'+anoS+' · PPCP</span></span>'
       +'<span>Fonte: HISTORICO do painel (ERP Lógica e RH) · gerado em '+new Date().toLocaleDateString('pt-BR')+'</span></div>';
     var S=[];
     /* 1 · capa */
-    S.push('<div class="lid-capa"><div class="lid-k">PATRIMAR MÓVEIS · PPCP</div><h1>Como foi a produção</h1>'
+    S.push('<div class="lid-capa">'+lidMarca('lid-marca-capa')+'<div class="lid-k">PPCP</div><h1>Como foi a produção</h1>'
       +'<div class="lid-capa-s">'+mesNome+' de '+anoS+(M.abertos.length?' e o que vem até '+NOME_MES[M.abertos[M.abertos.length-1].mes].toLowerCase():'')+'</div>'
       +'<div class="lid-capa-r">Reunião com a liderança de produção · dados fechados até '+mesNome.toLowerCase()+'/'+anoS+'</div></div>');
     /* 2 · resumo */
@@ -23670,12 +23690,39 @@ window.CompAnos = (function () {
                                           :(M.empata?'O ritmo de '+ref2+' empata com o plano até o fim do ano, sem margem. Agora é repetir sem depender da hora extra.':'O ritmo já cobre o plano até o fim do ano. Agora é manter sem depender da hora extra.'))
                           :'O ano está fechado: a base para o próximo plano é o ritmo demonstrado, não o nominal.';
     var l3=(ref.abs>M.absCrit?'Boa parte da diferença está na presença: cada 1% a menos de falta são '+fi(M.ganhoPP)+' peças no mês. ':'Presença dentro do limite: a próxima alavanca é balanceamento e perdas no turno. ')+'A liderança é parte importante disso.';
-    S.push('<div class="lid-capa lid-fim"><div class="lid-k">Em três linhas</div>'
+    S.push('<div class="lid-capa lid-fim">'+lidMarca('lid-marca-fim')+'<div class="lid-k">Em três linhas</div>'
       +[l1,l2,l3].map(function(t,i){ return '<div class="lid-linha"><span class="lid-n">'+(i+1)+'</span><span>'+t+'</span></div>'; }).join('')
       +'<div class="lid-capa-r">Fontes: HISTORICO do painel (ERP Lógica e RH) · Plano Mestre '+anoS+' · dados fechados em '+mesNome.toLowerCase()+'/'+anoS+'</div></div>');
     return S;
   }
-  var _lidIdx=0, _lidSlides=null;
+  var _lidIdx=0, _lidSlides=null, _lidTitulo='';
+  /* Logo da Patrimar nos slides. Na tela usa o arquivo; no PDF o src é trocado
+     por data URI (_lidLogoSrc), porque a janela de impressão nasce em
+     about:blank, onde caminho relativo não resolve. */
+  var LID_LOGO='logo-patrimar.jpg';
+  function lidMarca(cls){
+    return '<span class="lid-marca '+cls+'"><img class="lid-logo" src="'+LID_LOGO+'" alt="Patrimar Móveis"'
+      +' onerror="this.parentNode.classList.add(\'lid-marca-txt\')"></span>';
+  }
+  /* Reduzida para 1000 px de largura (o original tem 2910 px): a logo vai em
+     todas as páginas do PDF, e com ela reduzida o documento de dez páginas fica
+     em ~0,5 MB. Sem imagem carregada (ou canvas bloqueado em file://), devolve o
+     endereço completo do arquivo, que vem do cache. */
+  var _lidLogoUri=null;
+  function _lidLogoSrc(){
+    if(_lidLogoUri) return _lidLogoUri;
+    var img=document.querySelector('.hIcon-logo img')||document.querySelector('#lid-ov img.lid-logo');
+    try{
+      if(img&&img.complete&&img.naturalWidth){
+        var w=Math.min(1000,img.naturalWidth), h=Math.round(img.naturalHeight*w/img.naturalWidth);
+        var c=document.createElement('canvas'); c.width=w; c.height=h;
+        var g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,w,h); g.drawImage(img,0,0,w,h);
+        _lidLogoUri=c.toDataURL('image/jpeg',0.9);
+        return _lidLogoUri;
+      }
+    }catch(e){}
+    try{ return new URL(LID_LOGO, document.baseURI).href; }catch(e){ return LID_LOGO; }
+  }
   /* Slide do mix: lê a mesma apuração da aba Comparativo (CompAnos), com a
      mesma base de meses comuns. Devolve '' quando não há dois anos de
      reporte, peso de cadastro ou variação que valha um slide — apresentação
@@ -23857,6 +23904,7 @@ window.CompAnos = (function () {
     var M=lidModelo();
     if(!M){ if(typeof toast==='function') toast('Nenhum mês fechado para apresentar.','wn'); return; }
     _lidSlides=lidSlides(M); _lidIdx=0;
+    _lidTitulo='Patrimar Móveis - Como foi a produção - '+NOME_MES[M.ref.mes]+' '+M.ano;
     var ov=document.getElementById('lid-ov');
     if(!ov){
       ov=document.createElement('div'); ov.id='lid-ov';
@@ -23897,7 +23945,9 @@ window.CompAnos = (function () {
   window.reuLideresPDF=function(){
     if(!_lidSlides) return;
     var w=window.open('','_blank','width=1100,height=800'); if(!w) return;
-    w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Apresentação para líderes</title><style>'
+    var logo='src="'+_lidLogoSrc()+'"';
+    /* o título vira o nome sugerido do arquivo ao salvar em PDF */
+    w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>'+(_lidTitulo||'Patrimar Móveis - Apresentação para líderes')+'</title><style>'
       +'@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box;margin:0;padding:0}'
       +'body{font-family:"Segoe UI",Arial,sans-serif;color:#1a1a2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
       +'.pg{page-break-after:always;padding:6mm 4mm;min-height:180mm;position:relative;font-size:11pt;display:flex;flex-direction:column}'
@@ -23922,10 +23972,14 @@ window.CompAnos = (function () {
       +'.lid-capa{display:flex;flex-direction:column;justify-content:center;flex:1;gap:10px}.lid-capa h1{font-size:34pt}.lid-capa-s{font-size:18pt;color:#3E4C59}.lid-capa-r{font-size:9.5pt;color:#52606D;margin-top:14px}'
       +'.lid-k{font-size:9pt;letter-spacing:.14em;text-transform:uppercase;color:#B8860B;font-weight:700}'
       +'.lid-linha{display:flex;gap:12px;align-items:flex-start;font-size:15pt;line-height:1.4;margin:6px 0}.lid-n{flex:none;width:30px;height:30px;border-radius:50%;background:#D9342B;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:12pt}'
-      +'.lid-foot{margin-top:auto;display:flex;justify-content:space-between;font-size:7.5pt;color:#8a94a0;padding-top:6px;border-top:1px solid #edf2f7}'
+      +'.lid-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:7.5pt;color:#8a94a0;padding-top:6px;border-top:1px solid #edf2f7}'
+      +'.lid-foot-l{display:flex;align-items:center;gap:10px}'
+      +'.lid-marca{display:inline-flex;align-items:center;align-self:flex-start;flex:none}.lid-marca img{display:block;width:auto}'
+      +'.lid-marca-capa{margin-bottom:14px}.lid-marca-capa img{height:64px}.lid-marca-fim{margin-bottom:8px}.lid-marca-fim img{height:32px}.lid-marca-rod img{height:16px}'
+      +'.lid-marca-txt img{display:none}.lid-marca-txt::after{content:"Patrimar Móveis";color:#DA2128;font-weight:800}'
       +'.lid-lbl-b{paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}'
       +'polyline.lid-ln-claro{stroke:#1F2933}circle.lid-pt-claro{fill:#1F2933}i.lid-ln-claro{background:#1F2933!important}'
-      +'</style></head><body>'+_lidSlides.map(function(s){ return '<div class="pg">'+s+'</div>'; }).join('')+'</body></html>');
+      +'</style></head><body>'+_lidSlides.map(function(s){ return '<div class="pg">'+s.split('src="'+LID_LOGO+'"').join(logo)+'</div>'; }).join('')+'</body></html>');
     w.document.close(); w.focus();
     setTimeout(function(){ try{ w.print(); }catch(e){} },400);
   };
@@ -24455,9 +24509,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.60';
-var APP_DATA   = '14/10/2026';
+var APP_VERSAO = 'b96.61';
+var APP_DATA   = '15/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.61', data:'15/10/2026', itens:[
+    'Apresentacao para lideres com a marca Patrimar: logo grande na capa, no slide de fecho e pequena no rodape de todos os slides, na tela e no PDF. No fundo escuro a logo vai numa caixa branca, como no cabecalho do painel (o "moveis" e grafite e sumia no azul-marinho); no fundo branco a caixa nao aparece. O titulo da capa volta ao tamanho do PDF: o tema do painel o deixava do tamanho do texto. O PDF sai com o nome Patrimar Moveis - Como foi a producao - mes e ano. Se a logo nao carregar, entra o nome escrito.'
+  ]},
   { v:'b96.60', data:'14/10/2026', itens:[
     'Impressao do Mes a mes diz a medida e a comparacao: logo abaixo do titulo saem Medida: Pecas ou Kg e Comparado com: mesmo mes do ano anterior ou mes anterior. A impressao esconde os botoes, e sem isso o papel nao dizia se os numeros eram pecas ou kg. O cabecalho do papel tambem deixa de dizer base: SET quando o Periodo esta num mes: o Mes a mes mostra sempre todos os meses.'
   ]},
