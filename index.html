@@ -23939,16 +23939,17 @@ window.CompAnos = (function () {
     S.push('<div class="lid-capa lid-fim">'+lidMarca('lid-marca-fim')+'<div class="lid-k">Em três linhas</div>'
       +[l1,l2,l3].map(function(t,i){ return '<div class="lid-linha"><span class="lid-n">'+(i+1)+'</span><span>'+t+'</span></div>'; }).join('')
       +'<div class="lid-capa-r">Fontes: HISTORICO do painel (ERP Lógica e RH) · Plano Mestre '+anoS+' · dados fechados em '+mesNome.toLowerCase()+'/'+anoS+'</div></div>');
-    /* Apoio: tabelas e análises de detalhe, depois do fecho */
+    /* Apoio: tabelas e análises de detalhe. Fica FORA da apresentação (os
+       líderes não veem): vai em S.apoio e sai só pelo botão "Apoio (PDF)",
+       para o PPCP imprimir e consultar se alguém perguntar. */
     var AP=[ap.plano,ap.kg,ap.kgh,ap.mix,ap.cen,ap.venda,ap.ritmo].filter(Boolean);
-    if(AP.length){
-      S.push('<div class="lid-capa">'+lidMarca('lid-marca-fim')+'<div class="lid-k">Apoio</div><h1>Para consulta</h1>'
-        +'<div class="lid-capa-s">Tabelas e análises de detalhe dos slides anteriores.</div></div>');
-      AP.forEach(function(s){ S.push(kick('Apoio · para consulta')+s); });
-    }
+    S.apoio=AP.length?['<div class="lid-capa">'+lidMarca('lid-marca-capa')+'<div class="lid-k">Apoio · uso do PPCP</div><h1>Para consulta</h1>'
+        +'<div class="lid-capa-s">'+mesNome+' de '+anoS+': tabelas e análises de detalhe da apresentação para líderes.</div>'
+        +'<div class="lid-capa-r">Não faz parte da apresentação. Os números são os mesmos dos slides.</div></div>']
+      .concat(AP.map(function(s){ return kick('Apoio · para consulta')+s; })):[];
     return S;
   }
-  var _lidIdx=0, _lidSlides=null, _lidTitulo='';
+  var _lidIdx=0, _lidSlides=null, _lidApoio=[], _lidTitulo='';
   /* Logo da Patrimar nos slides. Na tela usa o arquivo; no PDF o src é trocado
      por data URI (_lidLogoSrc), porque a janela de impressão nasce em
      about:blank, onde caminho relativo não resolve. */
@@ -24156,7 +24157,7 @@ window.CompAnos = (function () {
   window.reuLideres=function(){
     var M=lidModelo();
     if(!M){ if(typeof toast==='function') toast('Nenhum mês fechado para apresentar.','wn'); return; }
-    _lidSlides=lidSlides(M); _lidIdx=0;
+    _lidSlides=lidSlides(M); _lidApoio=_lidSlides.apoio||[]; _lidIdx=0;
     _lidTitulo='Patrimar Móveis - Como foi a produção - '+NOME_MES[M.ref.mes]+' '+M.ano;
     var ov=document.getElementById('lid-ov');
     if(!ov){
@@ -24166,9 +24167,11 @@ window.CompAnos = (function () {
         +'<span id="lid-n"></span><button id="lid-next" onclick="reuLideresIr(1)" title="Próximo (→)">&#8594;</button>'
         +'<button class="lid-x" id="lid-tema" onclick="reuLideresTema()" title="Alterna entre fundo escuro e fundo branco">&#9680; Fundo branco</button>'
         +'<button class="lid-x" onclick="reuLideresPDF()" title="Abre a versão em papel, uma tela por página">&#9113; Baixar PDF</button>'
+        +'<button class="lid-x" id="lid-apoio" onclick="reuLideresPDF(\'apoio\')" title="Tabelas e análises de detalhe para o PPCP imprimir. Não aparecem na apresentação">&#9113; Apoio (PDF)</button>'
         +'<button class="lid-x" onclick="reuLideresFechar()" title="Sair (ESC)">&#10005; sair</button></div>';
       document.body.appendChild(ov);
     }
+    var bA=ov.querySelector('#lid-apoio'); if(bA) bA.disabled=!_lidApoio.length;
     ov.classList.add('on'); document.body.classList.add('lid-on');
     _lidTema(null);
     _lidPintar();
@@ -24195,12 +24198,15 @@ window.CompAnos = (function () {
     var ov=document.getElementById('lid-ov'); if(ov) ov.classList.remove('on');
     document.body.classList.remove('lid-on');
   };
-  window.reuLideresPDF=function(){
-    if(!_lidSlides) return;
+  /* qual='apoio' imprime só o Apoio (tabelas de detalhe, uso do PPCP); sem
+     argumento, a apresentação dos líderes, que não leva o Apoio */
+  window.reuLideresPDF=function(qual){
+    var lista=qual==='apoio'?_lidApoio:_lidSlides;
+    if(!lista||!lista.length) return;
     var w=window.open('','_blank','width=1100,height=800'); if(!w) return;
     var logo='src="'+_lidLogoSrc()+'"';
     /* o título vira o nome sugerido do arquivo ao salvar em PDF */
-    w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>'+(_lidTitulo||'Patrimar Móveis - Apresentação para líderes')+'</title><style>'
+    w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>'+(_lidTitulo||'Patrimar Móveis - Apresentação para líderes')+(qual==='apoio'?' - Apoio':'')+'</title><style>'
       +'@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box;margin:0;padding:0}'
       +'body{font-family:"Segoe UI",Arial,sans-serif;color:#1a1a2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
       +'.pg{page-break-after:always;padding:6mm 4mm;min-height:180mm;position:relative;font-size:11pt;display:flex;flex-direction:column}'
@@ -24238,7 +24244,7 @@ window.CompAnos = (function () {
       +'.lid-marca-txt img{display:none}.lid-marca-txt::after{content:"Patrimar Móveis";color:#DA2128;font-weight:800}'
       +'.lid-lbl-b{paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}'
       +'polyline.lid-ln-claro{stroke:#1F2933}circle.lid-pt-claro{fill:#1F2933}i.lid-ln-claro{background:#1F2933!important}'
-      +'</style></head><body>'+_lidSlides.map(function(s){ return '<div class="pg">'+s.split('src="'+LID_LOGO+'"').join(logo)+'</div>'; }).join('')+'</body></html>');
+      +'</style></head><body>'+lista.map(function(s){ return '<div class="pg">'+s.split('src="'+LID_LOGO+'"').join(logo)+'</div>'; }).join('')+'</body></html>');
     w.document.close(); w.focus();
     setTimeout(function(){ try{ w.print(); }catch(e){} },400);
   };
@@ -24768,9 +24774,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.68';
+var APP_VERSAO = 'b96.69';
 var APP_DATA   = '16/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.69', data:'16/10/2026', itens:[
+    'Apresentacao para lideres sem o Apoio: as tabelas e analises de detalhe saem da apresentacao e do Baixar PDF. O botao novo Apoio (PDF) imprime so o Apoio, com capa propria, para o PPCP consultar se alguem perguntar.'
+  ]},
   { v:'b96.68', data:'16/10/2026', itens:[
     'Apresentacao para lideres na linguagem do chao de fabrica. Cada slide abre com o assunto (1 Como foi, 2 O que fizemos bem, 3 O que esta atrapalhando, 4 os proximos meses, 5 O que o lider faz), o titulo e uma frase curta e os assuntos principais fecham com o bloco O que o lider precisa fazer. Hora extra por setor separa os dois motivos (cobrir falta e falta de capacidade); faltas separam o que o lider consegue mudar (falta sem justificativa e atraso) do que segue com o RH. O desafio dos proximos meses aparece em tres numeros: como aconteceu, com pecas de peso normal e o que o plano pede.',
     'Slide novo O que o lider faz no dia a dia (durante o turno, com os outros setores, com o PPCP). As tabelas de detalhe e os slides gerenciais (plano x produzido por mes, pecas e toneladas por dia, quilos por hora 2025 x 2026, mix, cenarios A/B/C, venda mes a mes, ritmo por mes e a conta da presenca) vao para o Apoio, depois do fecho. Numeros e formulas nao mudam.',
