@@ -23760,6 +23760,32 @@ window.CompAnos = (function () {
       +'<tr><td>'+mesNome+' · sem hora extra</td><td>'+fi(ref.pcDiaN)+'</td><td class="lid-tx">'+(M.ritAjust?'na peça média do ano, '+fi(M.ritmoRef)+': '+(M.ritmoRef>=M.cen.A?'melhor que':'abaixo da')+' média do ano (A)':(ref.pcDiaN>=M.cen.A?'melhor que':'abaixo da')+' média do ano (A)')+'</td></tr>'
       +'<tr><td>'+mesNome+' · com hora extra</td><td>'+fi(ref.pcDia)+'</td><td class="lid-tx">'+(M.ritAjust?'na peça média do ano, '+fi(ref.pcDia*M.fatorPeso(ref))+': '+(ref.pcDia*M.fatorPeso(ref)>=M.cen.B?'melhor que':'abaixo da')+' média do ano (B)':(ref.pcDia>=M.cen.B?'melhor que':'abaixo da')+' média do ano (B)')+'</td></tr></tbody></table>'
       +'<div class="lid-p lid-small">A venda varia muito de um mês para outro. Por isso olhamos o ano inteiro.'+(M.ritmoExig!==null?' O plano de '+M.periodo+' pede '+fi(M.ritmoExig)+' peças por dia.':'')+'</div></div></div>'+rod);
+    /* 7b · vendido × produzido mês a mês (b96.66). O slide 7 soma o ano; aqui
+       cada mês, com o plano junto: a fábrica pode cumprir o plano (101% em SET/26)
+       e ficar abaixo da venda (89%) porque o plano ficou abaixo dela (88%).
+       Produzido ÷ vendido é atendimento da venda, não eficiência: a fábrica é
+       cobrada pelo plano. Mês sem venda lançada fica fora das contas e do título. */
+    var mv=ms.filter(function(m){ return m.ven>0; });
+    if(mv.length>1){
+      var sv=0, sp=0, spl=0; mv.forEach(function(m){ sv+=m.ven; sp+=m.P; spl+=m.plano; });
+      var cobP=sp/sv*100, cobPl=spl/sv*100, pPl=spl>0?sp/spl*100:null;
+      var plAbaixo=mv.filter(function(m){ return m.plano>0&&m.plano<0.95*m.ven; });
+      var pct7=function(a,b){ return b>0?a/b*100:null; };
+      var cor7=function(v){ return v===null?'inherit':(v>=100?'#4CAF50':(v>=95?'#FF9800':'#F44336')); };
+      var h7b='Mês a mês, produzimos '+fd(cobP,0)+'% do que vendemos'+(pPl!==null?' e '+fd(pPl,0)+'% do plano':'')+'.'
+        +(plAbaixo.length?' O plano ficou abaixo da venda em '+plAbaixo.length+' de '+mv.length+' meses'
+            +(pPl!==null&&pPl>=100?': a fábrica cumpriu o plano, o plano é que ficou abaixo da venda.':'.')
+          :' O plano acompanhou a venda.');
+      var tab7b='<table class="lid-tab"><thead><tr><th>Mês</th><th>Vendido</th><th>Plano</th><th>Produzido</th><th>Produzido ÷ vendido</th><th>Plano ÷ vendido</th></tr></thead><tbody>'
+        +ms.map(function(m){ var ok=m.ven>0, a=ok?pct7(m.P,m.ven):null, b=ok&&m.plano>0?pct7(m.plano,m.ven):null;
+          return '<tr><td>'+MES_MIN[m.mes]+'</td><td>'+(ok?fi(m.ven):'—')+'</td><td>'+fi(m.plano)+'</td><td>'+fi(m.P)+'</td>'
+            +'<td style="color:'+cor7(a)+'">'+(a===null?'—':fd(a,0)+'%')+'</td><td style="color:'+cor7(b)+'">'+(b===null?'—':fd(b,0)+'%')+'</td></tr>'; }).join('')
+        +'<tr class="lid-tot"><td>'+(mv.length<ms.length?'Meses com venda':'Ano')+'</td><td>'+fi(sv)+'</td><td>'+fi(spl)+'</td><td>'+fi(sp)+'</td><td>'+fd(cobP,0)+'%</td><td>'+fd(cobPl,0)+'%</td></tr></tbody></table>';
+      S.push('<h1 class="lid-h">'+h7b+'</h1><div class="lid-sub">Vendido, plano e produzido por mês (peças) · '+MES_MIN[ms[0].mes]+' a '+MES_MIN[ref.mes]+' de '+anoS
+          +' · plano abaixo da venda = mais de 5% abaixo'+(mv.length<ms.length?' · '+(ms.length-mv.length)+' mês(es) sem venda lançada ficam fora das contas':'')+'</div>'
+        +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Vendido',cor:LID_COR.plano,v:ms.map(function(m){ return m.ven; })},{nome:'Produzido',cor:LID_COR.feito,v:ms.map(function(m){ return m.P; })}],h:640})+'</div>'
+        +'<div>'+tab7b+'<div class="lid-p lid-small">A venda de um mês oscila com pedido grande; o que pesa é a última linha. Produzido ÷ vendido mede quanto da venda a fábrica atendeu, não eficiência: a fábrica é cobrada pelo plano.</div></div></div>'+rod);
+    }
     /* 8 · plano dos meses abertos e de onde tirar */
     if(M.abertos.length){
       var s6=M.sim.filter(function(x){ return x.alvo===M.absCrit; })[0]||M.sim[M.sim.length-1];
@@ -24620,9 +24646,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.65';
+var APP_VERSAO = 'b96.66';
 var APP_DATA   = '16/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.66', data:'16/10/2026', itens:[
+    'Apresentacao para lideres ganha o slide Vendido x produzido mes a mes, logo depois do slide de venda do ano: barras de vendido e produzido por mes e tabela com vendido, plano, produzido, produzido / vendido e plano / vendido. O titulo diz quanto da venda a fabrica atendeu, quanto do plano cumpriu e em quantos meses o plano ficou mais de 5% abaixo da venda. Produzido / vendido e atendimento da venda, nao eficiencia: a fabrica e cobrada pelo plano.'
+  ]},
   { v:'b96.65', data:'16/10/2026', itens:[
     'Apresentacao para lideres sem contradicao sobre presenca: com a diferenca na peca media do ano (SET/26: 358 pecas por dia), chegar a 6% de falta fecha 13. O resumo, o slide de presenca e o fecho so dizem que a presenca e a alavanca quando ela cobre metade ou mais da diferenca; senao dizem quanto ela fecha. O slide de presenca cita as pecas por hora na peca media (1,81), a mesma da conta. O slide de pecas por hora diz quanto falta mesmo zerando a falta.'
   ]},
