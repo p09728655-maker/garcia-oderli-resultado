@@ -23627,7 +23627,17 @@ window.CompAnos = (function () {
       +'<div class="lid-p lid-small">Presença é o indicador que mais depende de quem está na linha todo dia: acompanhar, conversar, ajustar escala.'+(noLim.length?' '+lidLista(noLim).replace(/^./,function(c){ return c.toUpperCase(); })+' ('+noLim.map(function(m){ return fd(m.abs,1)+'%'; }).join(' e ')+') '+(noLim.length>1?'mostraram':'mostrou')+' que dá.'
           :(melhorAbs?' Nenhum mês de '+anoS+' chegou a '+M.absCrit+'% ainda; o melhor foi '+NOME_MES[melhorAbs.mes].toLowerCase()+' ('+fd(melhorAbs.abs,1)+'%).':''))+'</div></div></div>'+rod);
     /* 6 · peças por hora */
-    var prox=M.abertos[0]||null, hNec=prox&&ref.pcH>0?prox.plano/ref.pcH:null;
+    /* Horas do próximo mês na PEÇA MÉDIA DO ANO, não no mix do mês de referência:
+       SET/26 teve a peça mais leve do ano (20,1 kg) e as 2,33 pç/h davam 14.969 h
+       para as 34.810 de OUT, "1.349 a menos"; a programação de embalagem de OUT
+       tem peça de 25,6 kg, perto da média (25,8), e pede ~19.000 h. Sem o mix do
+       mês seguinte, a média do ano é a aposta neutra. O mix do mês de referência
+       sai como segunda conta quando ele fugiu 5% ou mais da média. */
+    var prox=M.abertos[0]||null;
+    var temMedH=kgOk.length>1&&kgOk.indexOf(ref)>=0;
+    var pcHbase=temMedH?ref.pcH*ref.kgPc/M.kgPcAno:ref.pcH;
+    var hNec=prox&&pcHbase>0?prox.plano/pcHbase:null;
+    var hMix=prox&&ref.pcH>0?prox.plano/ref.pcH:null;
     /* Peças por hora na peça média do ano: o mesmo rendimento em quilos, contado
        como se toda peça pesasse a média do ano. Em SET/26 as 2,33 peças por
        hora viram 1,86, abaixo de mai (2,06), jul (2,09) e ago (2,04): o peso
@@ -23672,11 +23682,11 @@ window.CompAnos = (function () {
           +(mixLeve&&m0Med&&dPc>0&&dMix>0?'<p>Desde '+m0N+', na peça média, o rendimento foi de '+fd(pcHmed(m0),2)+' para '+fd(pcHmed(ref),2)
             +(dMed>0?' (+'+fd(dMed,2)+'). As outras '+fd(dMix,2)+' peça por hora vieram da peça mais leve.'
               :(dMed<0?' (−'+fd(-dMed,2)+')':'')+': toda a subida em peças por hora veio da peça mais leve.')+'</p>':''):'')
-      +(prox&&hNec?'<p>Para as '+fi(prox.plano)+' de '+NOME_MES[prox.mes].toLowerCase()+', nesse rendimento, precisamos de '+fi(hNec)+' horas: '+(hNec>ref.HT?fi(hNec-ref.HT)+' a mais':fi(ref.HT-hNec)+' a menos')+'.</p>'
+      +(prox&&hNec?'<p>Para as '+fi(prox.plano)+' de '+NOME_MES[prox.mes].toLowerCase()+', '+(temMed?'no rendimento de '+ref2+' e com a peça média do ano ('+fd(M.kgPcAno,1)+' kg)':'nesse rendimento')+', precisamos de '+fi(hNec)+' horas: '+(hNec>ref.HT?fi(hNec-ref.HT)+' a mais':fi(ref.HT-hNec)+' a menos')+' que em '+ref2+'.</p>'
           +(hNec>ref.HT?'<p>Essas horas vêm de menos falta ou de mais hora extra.</p>'
             :'<p>'+(hNec<=ref.H?'Daria para fazer só com as '+fi(ref.H)+' horas da jornada normal de '+ref2:'Daria para fazer com menos hora extra que em '+ref2)
-              +', se o rendimento'+(temKg?' e o mix':'')+' de '+ref2+' se repetirem.</p>'
-              +(mixLeve?'<p>Com a peça mais perto da média do ano, o rendimento em peças cai.</p>':'')):'')
+              +(temMed?', se o rendimento de '+ref2+' se repetir e a peça ficar na média do ano.</p>':', se o rendimento'+(temKg?' e o mix':'')+' de '+ref2+' se repetirem.</p>'))
+          +(difPeso&&hMix?'<p>No mix '+(M.varKgPc<0?'leve':'pesado')+' de '+ref2+' (peça de '+fd(ref.kgPc,1)+' kg), seriam '+fi(hMix)+' horas.</p>':''):'')
       +'</div></div>'+rod);
     /* 6b · quilos por hora — responde "produto maior dá mais trabalho".
        Peso corrige tamanho do mix, não complexidade; a nota final diz isso.
@@ -24587,9 +24597,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.62';
+var APP_VERSAO = 'b96.63';
 var APP_DATA   = '16/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.63', data:'16/10/2026', itens:[
+    'Slide de pecas por hora: as horas do proximo mes passam a ser calculadas na peca media do ano, e nao no mix do mes de referencia. SET/26 teve a peca mais leve do ano (20,1 kg) e o slide dizia que OUT pedia 14.969 horas, 1.349 a menos; a programacao de embalagem de OUT tem peca de 25,6 kg, perto da media, e pede cerca de 19.000. A conta no mix do mes de referencia aparece como segunda linha quando ele fugiu 5% ou mais da media.'
+  ]},
   { v:'b96.62', data:'16/10/2026', itens:[
     'Apresentacao para lideres, slide de pecas por hora: o peso da peca aparece no grafico. Uma faixa embaixo mostra o peso medio da peca de cada mes, com a media do ano tracejada e o mes de referencia em destaque (SET/26: 20,1 kg, -22%). No mes de referencia, um colchete entre o ponto vermelho e a barra cinza diz quanto do rendimento veio do peso (+0,52 da peca mais leve). A legenda sobe para cima do grafico e explica o cinza: pecas por hora se toda peca pesasse a media do ano. O titulo troca "Parte disso e mix" por quanto a peca ficou mais leve, e a caixa ao lado diz quanto da subida desde janeiro ficou na peca media e quanto veio do peso. Na tela escura, no fundo branco e no PDF.',
     'Slide de pecas por hora: sai a frase "Ainda nao e meta: falta confirmar com o estudo de tempos" da caixa ao lado do grafico.'
