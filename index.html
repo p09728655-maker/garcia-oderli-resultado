@@ -23776,7 +23776,11 @@ window.CompAnos = (function () {
         +(plAbaixo.length?' O plano ficou abaixo da venda em '+plAbaixo.length+' de '+mv.length+' meses'
             +(pPl!==null&&pPl>=100?': a fábrica cumpriu o plano, o plano é que ficou abaixo da venda.':'.')
           :' O plano acompanhou a venda.');
-      var tab7b='<table class="lid-tab"><thead><tr><th>Mês</th><th>Vendido</th><th>Plano</th><th>Produzido</th><th>Produzido ÷ vendido</th><th>Plano ÷ vendido</th></tr></thead><tbody>'
+      /* colunas de largura igual e os títulos de % em duas linhas: com o título
+         numa linha só, as colunas de % ficavam com o dobro da largura e os
+         números se espremiam à esquerda */
+      var tab7b='<table class="lid-tab" style="table-layout:fixed"><colgroup><col style="width:10%"><col style="width:18%"><col style="width:18%"><col style="width:18%"><col style="width:18%"><col style="width:18%"></colgroup>'
+        +'<thead><tr style="vertical-align:bottom"><th>Mês</th><th>Vendido</th><th>Plano</th><th>Produzido</th><th>Produzido<br>÷ vendido</th><th>Plano<br>÷ vendido</th></tr></thead><tbody>'
         +ms.map(function(m){ var ok=m.ven>0, a=ok?pct7(m.P,m.ven):null, b=ok&&m.plano>0?pct7(m.plano,m.ven):null;
           return '<tr><td>'+MES_MIN[m.mes]+'</td><td>'+(ok?fi(m.ven):'—')+'</td><td>'+fi(m.plano)+'</td><td>'+fi(m.P)+'</td>'
             +'<td style="color:'+cor7(a)+'">'+(a===null?'—':fd(a,0)+'%')+'</td><td style="color:'+cor7(b)+'">'+(b===null?'—':fd(b,0)+'%')+'</td></tr>'; }).join('')
@@ -24646,9 +24650,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.66';
+var APP_VERSAO = 'b96.67';
 var APP_DATA   = '16/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.67', data:'16/10/2026', itens:[
+    'Slide Vendido x produzido mes a mes: colunas da tabela com a mesma largura e os titulos Produzido / vendido e Plano / vendido em duas linhas. Antes as colunas de % tinham o dobro da largura e os numeros ficavam espremidos a esquerda.'
+  ]},
   { v:'b96.66', data:'16/10/2026', itens:[
     'Apresentacao para lideres ganha o slide Vendido x produzido mes a mes, logo depois do slide de venda do ano: barras de vendido e produzido por mes e tabela com vendido, plano, produzido, produzido / vendido e plano / vendido. O titulo diz quanto da venda a fabrica atendeu, quanto do plano cumpriu e em quantos meses o plano ficou mais de 5% abaixo da venda. Produzido / vendido e atendimento da venda, nao eficiencia: a fabrica e cobrada pelo plano.'
   ]},
