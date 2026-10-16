@@ -23523,7 +23523,7 @@ window.CompAnos = (function () {
     /* 2 · resumo */
     var h2=mesNome+': '+(acima?'acima do plano':'abaixo do plano')+', hora extra '+fxHE.curto
       +(melhorPcH?rendTxt+'.':' e '+fd(ref.pcH,2)+' peças por hora.')
-      +(M.abertos.length?(M.empata?' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede o ritmo de '+ref2+', sem margem.':passaram.length?' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede mais, e dá para chegar.':' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede um ritmo que o ano ainda não fez.'):'');
+      +(M.abertos.length?(M.empata?' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede o ritmo de '+ref2+', sem margem.':passaram.length?' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede mais, e dá para chegar.':' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede um ritmo que o ano ainda não fez'+(M.ritAjust?' na peça média':'')+'.'):'');
     var resumo='<b>Resumindo:</b> a equipe entregou '+(acima?'acima':'abaixo')+' do plano ('+fd(ref.at,1)+'%), com a hora extra '+fxHE.texto
       +rendTxt+'.'
       +(M.gapDia!==null?(M.gapDia>0?' O desafio agora é transformar isso em padrão por '+M.abertos.length+' meses e subir '+fi(M.gapDia)+' peças por dia'+naMed+'.'
@@ -23746,8 +23746,8 @@ window.CompAnos = (function () {
       +'<tr><td>A · Sem hora extra</td><td>'+fi(M.cen.A)+'</td><td class="lid-tx">o que sai na jornada normal</td></tr>'
       +'<tr><td>B · Como está hoje</td><td>'+fi(M.cen.B)+'</td><td class="lid-tx">com a hora extra de hoje</td></tr>'
       +'<tr class="lid-dest"><td>C · Ritmo da venda</td><td>'+fi(M.cen.C)+'</td><td class="lid-tx">para os pedidos não acumularem</td></tr>'
-      +'<tr><td>'+mesNome+' · sem hora extra</td><td>'+fi(ref.pcDiaN)+'</td><td class="lid-tx">'+(ref.pcDiaN>=M.cen.A?'melhor':'abaixo')+' que a média do ano (A)'+(mixLeve?', com a peça '+fd(-M.varKgPc,0)+'% mais leve':'')+'</td></tr>'
-      +'<tr><td>'+mesNome+' · com hora extra</td><td>'+fi(ref.pcDia)+'</td><td class="lid-tx">'+(ref.pcDia>=M.cen.B?'melhor':'abaixo')+' que a média do ano (B)</td></tr></tbody></table>'
+      +'<tr><td>'+mesNome+' · sem hora extra</td><td>'+fi(ref.pcDiaN)+'</td><td class="lid-tx">'+(M.ritAjust?'na peça média do ano, '+fi(M.ritmoRef)+': '+(M.ritmoRef>=M.cen.A?'melhor que':'abaixo da')+' média do ano (A)':(ref.pcDiaN>=M.cen.A?'melhor que':'abaixo da')+' média do ano (A)')+'</td></tr>'
+      +'<tr><td>'+mesNome+' · com hora extra</td><td>'+fi(ref.pcDia)+'</td><td class="lid-tx">'+(M.ritAjust?'na peça média do ano, '+fi(ref.pcDia*M.fatorPeso(ref))+': '+(ref.pcDia*M.fatorPeso(ref)>=M.cen.B?'melhor que':'abaixo da')+' média do ano (B)':(ref.pcDia>=M.cen.B?'melhor que':'abaixo da')+' média do ano (B)')+'</td></tr></tbody></table>'
       +'<div class="lid-p lid-small">A venda varia muito de um mês para outro. Por isso olhamos o ano inteiro.'+(M.ritmoExig!==null?' O plano de '+M.periodo+' pede '+fi(M.ritmoExig)+' peças por dia.':'')+'</div></div></div>'+rod);
     /* 8 · plano dos meses abertos e de onde tirar */
     if(M.abertos.length){
@@ -24613,7 +24613,7 @@ var APP_VERSAO = 'b96.64';
 var APP_DATA   = '16/10/2026';
 var APP_HISTORICO = [
   { v:'b96.64', data:'16/10/2026', itens:[
-    'Apresentacao para lideres: o ritmo do mes de referencia passa a ser comparado com o plano na peca media do ano, como as horas do proximo mes. SET/26 fez 1.673 pecas por dia com a peca mais leve do ano e os slides diziam que empatava com o plano. Card Ritmo, resumo, slide do plano e fecho mostram o ritmo real e o ritmo na peca media; a simulacao de falta tambem usa a peca media.'
+    'Apresentacao para lideres: o ritmo do mes de referencia passa a ser comparado com o plano na peca media do ano, como as horas do proximo mes. SET/26 fez 1.673 pecas por dia com a peca mais leve do ano e os slides diziam que empatava com o plano. Card Ritmo, resumo, slide do plano, cenarios e fecho mostram o ritmo real e o ritmo na peca media; a simulacao de falta tambem usa a peca media.'
   ]},
   { v:'b96.63', data:'16/10/2026', itens:[
     'Slide de pecas por hora: as horas do proximo mes passam a ser calculadas na peca media do ano, e nao no mix do mes de referencia. SET/26 teve a peca mais leve do ano (20,1 kg) e o slide dizia que OUT pedia 14.969 horas, 1.349 a menos; a programacao de embalagem de OUT tem peca de 25,6 kg, perto da media, e pede cerca de 19.000. A conta no mix do mes de referencia aparece como segunda linha quando ele fugiu 5% ou mais da media.'
