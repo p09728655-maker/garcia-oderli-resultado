@@ -4284,6 +4284,15 @@ body.lid-on{overflow:hidden}
 .lid-lbl-g{font-size:30px}.lid-cat-g{font-size:32px;fill:#ddd}
 .lid-leg{display:flex;gap:1.2em;font-size:.75em;color:#aaa;margin-top:.2em}
 .lid-leg i{display:inline-block;width:14px;height:9px;margin-right:5px;border-radius:2px;vertical-align:middle}
+/* legenda em cima do gráfico (legTopo) e faixa de peso da peça (lidChart o.faixa):
+   barras do peso em azul-acinzentado, o mês de referência em destaque, média
+   tracejada; o rótulo leva um contorno da cor do fundo para não sumir no tracejado */
+.lid-leg-topo{margin:0 0 .2em}.lid-leg b{color:#F5F5F5}
+.lid-lbl-s{font-size:19px;fill:#aaa}.lid-lbl-s.lid-lbl-b{fill:#F5F5F5}
+.lid-halo{paint-order:stroke;stroke:#0E1A29;stroke-width:6px;stroke-linejoin:round}
+.lid-peso{fill:#4F6680}.lid-peso-ref{fill:#C9D6E3}
+.lid-media,.lid-colch{stroke:#F5F5F5}
+.lid-cat-ref{font-weight:800;fill:#F5F5F5}
 .lid-capa{display:flex;flex-direction:column;justify-content:center;flex:1;gap:.5em}
 .lid-capa h1{font-size:3.2em;margin:0;line-height:1.1}
 /* o tema do painel fixa h1 em 1,35rem, maiúsculo e espaçado (!important): a
@@ -4338,6 +4347,14 @@ body.lid-on{overflow:hidden}
 #lid-ov.claro polyline.lid-ln-claro{stroke:#1F2933}
 #lid-ov.claro circle.lid-pt-claro{fill:#1F2933}
 #lid-ov.claro i.lid-ln-claro{background:#1F2933!important}
+#lid-ov.claro .lid-leg b{color:#1F2933}
+#lid-ov.claro .lid-lbl-s{fill:#52606D}
+#lid-ov.claro .lid-lbl-s.lid-lbl-b{fill:#1F2933}
+#lid-ov.claro .lid-halo{stroke:#fff}
+#lid-ov.claro .lid-peso{fill:#9FB0C2}
+#lid-ov.claro .lid-peso-ref{fill:#2F4B68}
+#lid-ov.claro .lid-media,#lid-ov.claro .lid-colch{stroke:#1F2933}
+#lid-ov.claro .lid-cat-ref{fill:#1F2933}
 #lid-ov.claro .lid-bar{color:#3E4C59}
 #lid-ov.claro .lid-bar button.lid-x{border-color:#C6CBD3;color:#3E4C59}
 @media print { #lid-ov { display:none !important; } }
@@ -23377,7 +23394,11 @@ window.CompAnos = (function () {
   var LID_COR={plano:'#E8B84A',feito:'#D9342B',linha:'#F5F5F5',limite:'#E8B84A',falta:'#D9342B',cinza:'#8A8A8A'};
   function lidChart(o){
     var W=1000,Hh=o.h||360,top=34,bot=44,left=64,right=o.line?64:20;
-    var n=o.cats.length, ih=Hh-top-bot, iw=W-left-right, gw=iw/n;
+    /* faixa (o.faixa) embaixo e colchete (o.colchete) à direita do último mês:
+       os rótulos deles ("média 25,8 kg", "+0,52 da peça mais leve") ficam na margem */
+    if(o.faixa||o.colchete) right=150;
+    var fh=o.faixa?Math.round(Hh*0.36):0;
+    var n=o.cats.length, ih=Hh-top-bot-fh, iw=W-left-right, gw=iw/n;
     var bars=o.bars||[], vmax=0;
     bars.forEach(function(b){ b.v.forEach(function(v){ if(v>vmax) vmax=v; }); });
     vmax=vmax*1.15||1;
@@ -23409,12 +23430,43 @@ window.CompAnos = (function () {
       out+='<polyline'+lc+' fill="none" stroke="'+o.line.cor+'" stroke-width="4" points="'+pts.map(function(p){ return p.join(','); }).join(' ')+'"/>';
       pts.forEach(function(p,i){ out+='<circle'+(lc?' class="lid-pt-claro"':'')+' cx="'+p[0]+'" cy="'+p[1]+'" r="7" fill="'+o.line.cor+'"/>'
         +'<text x="'+p[0]+'" y="'+(p[1]-14)+'" text-anchor="middle" class="lid-lbl lid-lbl-b">'+(o.line.fmt?o.line.fmt(o.line.v[i]):fd(o.line.v[i],1))+'</text>'; });
+      /* colchete entre o ponto da linha e o topo da barra no mês o.colchete.i:
+         a distância entre os dois é o que o colchete explica (o peso da peça) */
+      if(o.colchete&&bars.length){
+        var ci=o.colchete.i, xb=left+gw*ci+gw/2+bw/2+8;
+        var yl=pts[ci][1], yz=top+ih-((bars[0].v[ci]||0)/vmax)*ih, ym=(yl+yz)/2;
+        out+='<path d="M'+(xb-6)+','+yl+' H'+xb+' V'+yz+' H'+(xb-6)+'" fill="none" class="lid-colch" stroke-width="2.5"/>';
+        o.colchete.linhas.forEach(function(t,k){ out+='<text x="'+(xb+10)+'" y="'+(ym-16+k*24)+'" class="lid-lbl'+(k?'':' lid-lbl-b')+'">'+t+'</text>'; });
+      }
     }
-    for(var c=0;c<n;c++) out+='<text x="'+(left+gw*c+gw/2)+'" y="'+(Hh-18)+'" text-anchor="middle" class="lid-cat">'+o.cats[c]+'</text>';
+    /* faixa embaixo, alinhada aos meses do gráfico de cima (ex.: peso médio da
+       peça), com a média tracejada e o mês o.faixa.destaque marcado */
+    if(o.faixa){
+      var f=o.faixa, t0=top+ih+92, b0=Hh-14, ph=b0-t0;
+      var kmax=Math.max(f.media||0,Math.max.apply(null,f.v))*1.15||1;
+      var yk=function(v){ return b0-v/kmax*ph; };
+      out+='<text x="'+left+'" y="'+(t0-12)+'" class="lid-lbl lid-lbl-b">'+f.titulo+'</text>';
+      f.v.forEach(function(v,i){ if(v>0) out+='<rect x="'+(left+gw*i+gw/2-bw/2)+'" y="'+yk(v)+'" width="'+(bw-3)+'" height="'+(b0-yk(v))+'" class="lid-peso'+(i===f.destaque?' lid-peso-ref':'')+'" rx="2"/>'; });
+      var yMed=f.media?yk(f.media):null;
+      if(yMed!==null) out+='<line x1="'+left+'" x2="'+(W-right)+'" y1="'+yMed+'" y2="'+yMed+'" class="lid-media" stroke-width="2" stroke-dasharray="8 6"/>'
+        +'<text x="'+(W-right+8)+'" y="'+(yMed-4)+'" class="lid-lbl">média</text><text x="'+(W-right+8)+'" y="'+(yMed+20)+'" class="lid-lbl lid-lbl-b">'+f.mediaLbl+'</text>';
+      f.v.forEach(function(v,i){ if(v>0) out+='<text x="'+(left+gw*i+gw/2-1.5)+'" y="'+(yk(v)-8)+'" text-anchor="middle" class="lid-lbl lid-lbl-s lid-halo'+(i===f.destaque?' lid-lbl-b':'')+'">'+f.fmt(v)+'</text>'; });
+      /* nota do mês em destaque na margem, sem encostar no "média" ao lado da linha */
+      var vd=f.v[f.destaque];
+      if(f.nota&&vd>0){
+        var yn=yMed===null?yk(vd)+30:(vd<f.media?Math.max(yk(vd)+30,yMed+48):Math.min(yk(vd)+24,yMed-30));
+        out+='<text x="'+(left+gw*f.destaque+gw/2+bw/2+8)+'" y="'+yn+'" class="lid-lbl lid-lbl-b">'+f.nota+'</text>';
+      }
+    }
+    for(var c=0;c<n;c++) out+='<text x="'+(left+gw*c+gw/2)+'" y="'+(top+ih+26)+'" text-anchor="middle" class="lid-cat'+(c===o.catRef?' lid-cat-ref':'')+'">'+o.cats[c]+'</text>';
     out+='</svg>';
-    var leg=[].concat(bars.map(function(b){ return '<span><i style="background:'+b.cor+'"></i>'+b.nome+'</span>'; }),
-                      o.line?['<span><i'+(o.line.cor===LID_COR.linha?' class="lid-ln-claro"':'')+' style="background:'+o.line.cor+';height:4px"></i>'+o.line.nome+'</span>']:[]);
-    return '<div class="lid-graf">'+out+(leg.length?'<div class="lid-leg">'+leg.join('')+'</div>':'')+'</div>';
+    var legB=bars.map(function(b){ return '<span><i style="background:'+b.cor+'"></i>'+b.nome+'</span>'; }),
+        legL=o.line?['<span><i'+(o.line.cor===LID_COR.linha?' class="lid-ln-claro"':'')+' style="background:'+o.line.cor+';height:4px"></i>'+o.line.nome+'</span>']:[];
+    /* legTopo: legenda em cima, linha primeiro — com a faixa embaixo, a legenda
+       no pé ficaria colada na faixa e longe das séries que explica */
+    var leg=o.legTopo?legL.concat(legB):legB.concat(legL);
+    var lg=leg.length?'<div class="lid-leg'+(o.legTopo?' lid-leg-topo':'')+'">'+leg.join('')+'</div>':'';
+    return '<div class="lid-graf">'+(o.legTopo?lg+out:out+lg)+'</div>';
   }
   function lidBarrasH(items){
     var vmax=Math.max.apply(null,items.map(function(i){ return i.v; }))*1.18||1, W=1000, rh=120, Hh=items.length*rh+10;
@@ -23584,18 +23636,42 @@ window.CompAnos = (function () {
     var temMed=kgOk.length>1&&kgOk.indexOf(ref)>=0;
     var pcHmed=function(m){ return (kgOk.indexOf(m)>=0)?m.pcH*m.kgPc/M.kgPcAno:0; };
     var acimaMed=temMed?kgOk.filter(function(m){ return m!==ref&&pcHmed(m)>pcHmed(ref); }):[];
+    /* O cinza sozinho era lido como "o peso", mas é o rendimento recontado na
+       peça média; o peso não aparecia no gráfico. Agora o slide mostra o peso de
+       cada mês numa faixa embaixo e, no mês de referência, um colchete com a
+       distância entre o feito e a peça média: é o que o peso explica. */
+    var difPeso=temMed&&Math.abs(M.varKgPc||0)>=5, iRef=ms.indexOf(ref);
+    var maisLeve=kgOk.every(function(m){ return m.kgPc>=ref.kgPc; }), maisPesada=kgOk.every(function(m){ return m.kgPc<=ref.kgPc; });
+    /* Desde o primeiro mês, quanto da subida em peças por hora ficou na peça
+       média e quanto veio do peso. Conta com os números arredondados do slide,
+       para a soma bater com o que está escrito (SET/26: 1,47 → 2,33 é +0,86; na
+       peça média 1,66 → 1,81, +0,15; as outras 0,71 vieram da peça mais leve). */
+    var r2=function(v){ return Math.round(v*100)/100; };
+    var m0Med=temMed&&m0!==ref&&kgOk.indexOf(m0)>=0;
+    var dPc=r2(r2(ref.pcH)-r2(m0.pcH)), dMed=m0Med?r2(r2(pcHmed(ref))-r2(pcHmed(m0))):0, dMix=r2(dPc-dMed);
+    var dPeso=temMed?r2(r2(ref.pcH)-r2(pcHmed(ref))):0;
     var h6='Cada hora trabalhada '+(ref.pcH>m0.pcH?'está rendendo mais':'rende')+': de '+fd(m0.pcH,2)+' peça por hora em '+m0N+' para '+fd(ref.pcH,2)+' em '+ref2+'.'+(melhorPcH?(melhorKgH?' Foi a equipe que fez isso.'
-          :(mixLeve?(temMed?' Parte disso é mix: na peça média do ano ('+fd(M.kgPcAno,1)+' kg), '+ref2+' teria feito '+fd(pcHmed(ref),2)+' por hora.'
+          :(mixLeve?(temMed?' Mas a peça de '+ref2+' ficou '+fd(-M.varKgPc,0)+'% mais leve ('+fd(ref.kgPc,1)+' kg): na peça média do ano ('+fd(M.kgPcAno,1)+' kg), seriam '+fd(pcHmed(ref),2)+' por hora.'
                            :' Parte disso é mix: a peça de '+ref2+' pesou '+fd(ref.kgPc,1)+' kg, contra '+fd(M.kgPcAno,1)+' kg na média do ano.')
                    :' Em quilos por hora, '+ref2+' não foi o melhor mês.')):'');
-    S.push('<h1 class="lid-h">'+h6+'</h1><div class="lid-sub">Peças produzidas por hora trabalhada (normal e extra)'+(temMed?' · barras: o mesmo rendimento com a peça média do ano ('+fd(M.kgPcAno,1)+' kg)':'')+'</div>'
+    S.push('<h1 class="lid-h">'+h6+'</h1><div class="lid-sub">Peças produzidas por hora trabalhada (normal e extra)'+(temMed?' · a distância entre o ponto vermelho e a barra cinza é o efeito do peso da peça':'')+'</div>'
       +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,
-          bars:temMed?[{nome:'Na peça média do ano ('+fd(M.kgPcAno,1)+' kg)',cor:LID_COR.cinza,v:ms.map(pcHmed)}]:undefined,barLabels:temMed,barLabelsBase:true,fmtBar:function(v){ return v>0?fd(v,2):''; },mesmaEscala:temMed,
-          line:{nome:'Peças por hora '+anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.pcH; }),fmt:function(v){ return fd(v,2); },max:Math.max.apply(null,ms.map(function(m){ return m.pcH; }))*1.1},h:740})+'</div>'
+          bars:temMed?[{nome:'Peças por hora <b>se toda peça pesasse '+fd(M.kgPcAno,1)+' kg</b> (média do ano)',cor:LID_COR.cinza,v:ms.map(pcHmed)}]:undefined,barLabels:temMed,barLabelsBase:true,fmtBar:function(v){ return v>0?fd(v,2):''; },mesmaEscala:temMed,
+          line:{nome:temMed?'<b>Peças por hora feitas</b> ('+anoS+')':'Peças por hora '+anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.pcH; }),fmt:function(v){ return fd(v,2); },max:Math.max.apply(null,ms.map(function(m){ return m.pcH; }))*1.1},
+          legTopo:temMed, catRef:temMed?iRef:undefined,
+          faixa:temMed?{titulo:'Peso médio da peça (kg)',v:ms.map(function(m){ return kgOk.indexOf(m)>=0?m.kgPc:0; }),media:M.kgPcAno,mediaLbl:fd(M.kgPcAno,1)+' kg',
+            destaque:iRef,nota:(M.varKgPc<0?'−':'+')+fd(Math.abs(M.varKgPc),0)+'%',fmt:function(v){ return fd(v,1); }}:undefined,
+          colchete:difPeso&&dPeso!==0?{i:iRef,linhas:[(dPeso>0?'+':'−')+fd(Math.abs(dPeso),2),'da peça',M.varKgPc<0?'mais leve':'mais pesada']}:undefined,
+          h:740})+'</div>'
       +'<div class="lid-box"><div class="lid-k2">O que isso significa para '+(M.periodo||'o próximo mês')+'</div>'
       +'<p>Em '+ref2+', '+fi(ref.HT)+' horas renderam '+fi(ref.P)+' peças.</p>'
-      +(temMed&&Math.abs(M.varKgPc||0)>=5?'<p>A peça de '+ref2+' pesou '+fd(ref.kgPc,1)+' kg, contra '+fd(M.kgPcAno,1)+' kg na média do ano. Na peça média, seriam '+fd(pcHmed(ref),2)+' peças por hora'
-          +(acimaMed.length?', abaixo de '+lidLista(acimaMed)+'.':', ainda o melhor do ano.')+'</p>':'')
+      +(difPeso?'<p><b>A peça de '+ref2+' pesou '+fd(ref.kgPc,1)+' kg, '+fd(Math.abs(M.varKgPc),0)+'% '+(M.varKgPc<0?'abaixo':'acima')+' da média do ano ('+fd(M.kgPcAno,1)+' kg)</b>'
+          +(M.varKgPc<0&&maisLeve?', a mais leve de '+anoS:(M.varKgPc>0&&maisPesada?', a mais pesada de '+anoS:''))
+          +'. Na peça média, seriam '+fd(pcHmed(ref),2)+' peças por hora'
+          +(acimaMed.length?', abaixo de '+lidLista(acimaMed)+'.':', ainda o melhor do ano.')+'</p>'
+          +(mixLeve&&m0Med&&dPc>0&&dMix>0?'<p>Desde '+m0N+', na peça média, o rendimento foi de '+fd(pcHmed(m0),2)+' para '+fd(pcHmed(ref),2)
+            +(dMed>0?' (+'+fd(dMed,2)+'). As outras '+fd(dMix,2)+' peça por hora vieram da peça mais leve.'
+              :(dMed<0?' (−'+fd(-dMed,2)+')':'')+': toda a subida em peças por hora veio da peça mais leve.')+'</p>':''):'')
       +(prox&&hNec?'<p>Para as '+fi(prox.plano)+' de '+NOME_MES[prox.mes].toLowerCase()+', nesse rendimento, precisamos de '+fi(hNec)+' horas: '+(hNec>ref.HT?fi(hNec-ref.HT)+' a mais':fi(ref.HT-hNec)+' a menos')+'.</p>'
           +(hNec>ref.HT?'<p>Essas horas vêm de menos falta ou de mais hora extra.</p>'
             :'<p>'+(hNec<=ref.H?'Daria para fazer só com as '+fi(ref.H)+' horas da jornada normal de '+ref2:'Daria para fazer com menos hora extra que em '+ref2)
@@ -23969,6 +24045,8 @@ window.CompAnos = (function () {
       +'.lid-tab td:nth-child(n+2){font-family:Consolas,monospace;text-align:right}.lid-tab td.lid-tx{text-align:left;font-family:inherit}.lid-tab th:nth-child(n+2){text-align:right}.lid-tab th.lid-tx{text-align:left}.lid-tot td{font-weight:800}.lid-dest td{color:#D9342B;font-weight:700}'
       +'.lid-svg{width:100%;height:auto}.lid-lbl{font-size:22px;fill:#1F2933}.lid-lbl-base{fill:#111;font-weight:700}.lid-lbl-b{font-weight:700}.lid-cat{font-size:24px;fill:#52606D}.lid-lbl-g{font-size:30px}.lid-cat-g{font-size:32px;fill:#1F2933}'
       +'.lid-leg{display:flex;gap:16px;font-size:8.5pt;color:#52606D;margin-top:2px}.lid-leg i{display:inline-block;width:14px;height:9px;margin-right:5px;border-radius:2px;vertical-align:middle}'
+      +'.lid-leg-topo{margin:0 0 2px}.lid-leg b{color:#1F2933}.lid-lbl-s{font-size:19px;fill:#52606D}.lid-lbl-s.lid-lbl-b{fill:#1F2933}'
+      +'.lid-halo{paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}.lid-peso{fill:#9FB0C2}.lid-peso-ref{fill:#2F4B68}.lid-media,.lid-colch{stroke:#1F2933}.lid-cat-ref{font-weight:800;fill:#1F2933}'
       +'.lid-capa{display:flex;flex-direction:column;justify-content:center;flex:1;gap:10px}.lid-capa h1{font-size:34pt}.lid-capa-s{font-size:18pt;color:#3E4C59}.lid-capa-r{font-size:9.5pt;color:#52606D;margin-top:14px}'
       +'.lid-k{font-size:9pt;letter-spacing:.14em;text-transform:uppercase;color:#B8860B;font-weight:700}'
       +'.lid-linha{display:flex;gap:12px;align-items:flex-start;font-size:15pt;line-height:1.4;margin:6px 0}.lid-n{flex:none;width:30px;height:30px;border-radius:50%;background:#D9342B;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:12pt}'
@@ -24509,9 +24587,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.61';
-var APP_DATA   = '15/10/2026';
+var APP_VERSAO = 'b96.62';
+var APP_DATA   = '16/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.62', data:'16/10/2026', itens:[
+    'Apresentacao para lideres, slide de pecas por hora: o peso da peca aparece no grafico. Uma faixa embaixo mostra o peso medio da peca de cada mes, com a media do ano tracejada e o mes de referencia em destaque (SET/26: 20,1 kg, -22%). No mes de referencia, um colchete entre o ponto vermelho e a barra cinza diz quanto do rendimento veio do peso (+0,52 da peca mais leve). A legenda sobe para cima do grafico e explica o cinza: pecas por hora se toda peca pesasse a media do ano. O titulo troca "Parte disso e mix" por quanto a peca ficou mais leve, e a caixa ao lado diz quanto da subida desde janeiro ficou na peca media e quanto veio do peso. Na tela escura, no fundo branco e no PDF.'
+  ]},
   { v:'b96.61', data:'15/10/2026', itens:[
     'Apresentacao para lideres com a marca Patrimar: logo grande na capa, no slide de fecho e pequena no rodape de todos os slides, na tela e no PDF. No fundo escuro a logo vai numa caixa branca, como no cabecalho do painel (o "moveis" e grafite e sumia no azul-marinho); no fundo branco a caixa nao aparece. O titulo da capa volta ao tamanho do PDF: o tema do painel o deixava do tamanho do texto. O PDF sai com o nome Patrimar Moveis - Como foi a producao - mes e ano. Se a logo nao carregar, entra o nome escrito.'
   ]},
