@@ -4293,6 +4293,22 @@ body.lid-on{overflow:hidden}
 .lid-peso{fill:#4F6680}.lid-peso-ref{fill:#C9D6E3}
 .lid-media,.lid-colch{stroke:#F5F5F5}
 .lid-cat-ref{font-weight:800;fill:#F5F5F5}
+/* linguagem dos líderes (b96.68): bloco "O que o líder precisa fazer", aviso,
+   três números do desafio e frentes de trabalho */
+.lid-lider{border-left:4px solid #D9342B;background:rgba(217,52,43,.12);border-radius:6px;padding:.45em .8em;margin-top:.6em;font-size:.82em;line-height:1.4}
+.lid-lider-t{font-weight:800;font-size:.85em;letter-spacing:.06em;text-transform:uppercase;color:#FF7A72;margin-bottom:.15em}
+.lid-lider ul,.lid-box ul{margin:0 0 0 1.1em;padding:0}.lid-lider li,.lid-box li{margin:.15em 0}
+.lid-att{border-left:4px solid #FF9800;background:rgba(255,152,0,.12);border-radius:6px;padding:.5em .8em;margin-top:.8em;font-size:.9em;line-height:1.45}
+.lid-stack{display:grid;gap:.6em}
+.lid-steps{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:.6em;margin-bottom:.5em}
+.lid-step{border:1px solid #223550;border-radius:8px;padding:.45em .5em;text-align:center}
+.lid-step-v{font-family:var(--mono);font-size:1.9em;font-weight:800;line-height:1.15}
+.lid-step-s{font-size:.72em;color:#bbb}
+.lid-step-base{border-color:#4F6680;background:rgba(159,176,194,.10)}
+.lid-step-plan{border-color:#E8B84A;background:rgba(232,184,74,.10)}
+.lid-fr{display:grid;grid-template-columns:repeat(3,1fr);gap:.45em;margin-top:.3em}
+.lid-fr>div{border:1px solid #223550;border-radius:6px;padding:.35em .6em;font-size:.78em;color:#ccc}
+.lid-fr b{display:block;color:#F5F5F5}
 .lid-capa{display:flex;flex-direction:column;justify-content:center;flex:1;gap:.5em}
 .lid-capa h1{font-size:3.2em;margin:0;line-height:1.1}
 /* o tema do painel fixa h1 em 1,35rem, maiúsculo e espaçado (!important): a
@@ -4355,6 +4371,14 @@ body.lid-on{overflow:hidden}
 #lid-ov.claro .lid-peso-ref{fill:#2F4B68}
 #lid-ov.claro .lid-media,#lid-ov.claro .lid-colch{stroke:#1F2933}
 #lid-ov.claro .lid-cat-ref{fill:#1F2933}
+#lid-ov.claro .lid-lider{background:#FDF2F1}
+#lid-ov.claro .lid-lider-t{color:#D9342B}
+#lid-ov.claro .lid-att{background:#FFF8EC}
+#lid-ov.claro .lid-step,#lid-ov.claro .lid-fr>div{border-color:#D3D8DE}
+#lid-ov.claro .lid-step-s,#lid-ov.claro .lid-fr>div{color:#3E4C59}
+#lid-ov.claro .lid-fr b{color:#1F2933}
+#lid-ov.claro .lid-step-base{background:#F3F6F9;border-color:#9FB0C2}
+#lid-ov.claro .lid-step-plan{background:#FFF9EA;border-color:#E8B84A}
 #lid-ov.claro .lid-bar{color:#3E4C59}
 #lid-ov.claro .lid-bar button.lid-x{border-color:#C6CBD3;color:#3E4C59}
 @media print { #lid-ov { display:none !important; } }
@@ -23400,7 +23424,7 @@ window.CompAnos = (function () {
   function lidMenorDesde(meses,ref){
     var i=meses.length-1; var ant=null;
     for(var j=i-1;j>=0;j--){ if(meses[j].hePct<ref.hePct){ ant=meses[j]; break; } }
-    return ant?('menor desde '+MES_MIN[ant.mes]):'menor do ano';
+    return ant?('a menor desde '+NOME_MES[ant.mes].toLowerCase()):'a menor do ano';
   }
   function lidRankAbs(meses,ref){
     var ord=meses.slice().sort(function(a,b){ return b.abs-a.abs; });
@@ -23530,47 +23554,43 @@ window.CompAnos = (function () {
     S.push('<div class="lid-capa">'+lidMarca('lid-marca-capa')+'<div class="lid-k">PPCP</div><h1>Como foi a produção</h1>'
       +'<div class="lid-capa-s">'+mesNome+' de '+anoS+(M.abertos.length?' e o que vem até '+NOME_MES[M.abertos[M.abertos.length-1].mes].toLowerCase():'')+'</div>'
       +'<div class="lid-capa-r">Reunião com a liderança de produção · dados fechados até '+mesNome.toLowerCase()+'/'+anoS+'</div></div>');
+    /* Linguagem dos líderes de chão de fábrica (b96.68). Cada slide abre com o
+       assunto (as 5 perguntas: como foi, o que fizemos bem, o que atrapalha,
+       os próximos meses, o que o líder faz), o título é uma frase curta e os
+       assuntos principais fecham com "O que o líder precisa fazer". As tabelas
+       de detalhe e os slides gerenciais (quilos por hora 2025 × 2026, mix,
+       cenários A/B/C, venda mês a mês, ritmo por mês e a conta da presença)
+       vão para o Apoio, depois do fecho: nenhum dado sai da apresentação.
+       Números e fórmulas não mudam. */
+    var ap={};
+    var kick=function(t){ return '<div class="lid-k">'+t+'</div>'; };
+    var lider=function(itens){ return '<div class="lid-lider"><div class="lid-lider-t">O que o líder precisa fazer</div><ul>'+itens.map(function(t){ return '<li>'+t+'</li>'; }).join('')+'</ul></div>'; };
+    var cap=function(t){ return t?t.charAt(0).toUpperCase()+t.slice(1):t; };
+    var listaTxt=function(a){ return a.join(', ').replace(/, ([^,]*)$/,' e $1'); };
+    var leve=M.varKgPc!==null&&M.varKgPc<0;
+    var pesoFora=temKg&&M.varKgPc!==null&&Math.abs(M.varKgPc)>=5;
+    var perLongo=M.abertos.length?(M.abertos.length===1?'Em '+NOME_MES[M.abertos[0].mes].toLowerCase()
+      :'De '+NOME_MES[M.abertos[0].mes].toLowerCase()+' a '+NOME_MES[M.abertos[M.abertos.length-1].mes].toLowerCase()):'';
+    var perCap=cap(M.periodo||'');
     /* 2 · resumo */
-    var h2=mesNome+': '+(acima?'acima do plano':'abaixo do plano')+', hora extra '+fxHE.curto
-      +(melhorPcH?rendTxt+'.':' e '+fd(ref.pcH,2)+' peças por hora.')
-      +(M.abertos.length?(M.empata?' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede o ritmo de '+ref2+', sem margem.':passaram.length?' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede mais, e dá para chegar.':' '+M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede um ritmo que o ano ainda não fez'+(M.ritAjust?' na peça média':'')+'.'):'');
-    var resumo='<b>Resumindo:</b> a equipe entregou '+(acima?'acima':'abaixo')+' do plano ('+fd(ref.at,1)+'%), com a hora extra '+fxHE.texto
-      +rendTxt+'.'
-      +(M.gapDia!==null?(M.gapDia>0?' O desafio agora é transformar isso em padrão por '+M.abertos.length+' meses e subir '+fi(M.gapDia)+' peças por dia'+naMed+'.'
-                                 :(M.empata?' O ritmo de '+ref2+' empata com o que o plano pede até o fim do ano (folga de '+fd(M.folgaPct,1)+'%), num mês só'+(mixLeve&&!M.ritAjust?' e com a peça mais leve que a média':'')+(M.ritAjust?', contando a peça média do ano':'')+': não há margem, o desafio é repetir.'
-                                           :' O ritmo de '+ref2+(M.ritAjust?', na peça média do ano,':'')+' já cobre o que o plano pede até o fim do ano: o desafio é manter.')):'')
-      +(passaram.length&&M.gapDia>0?' Em '+lidLista(passaram)+' já passamos desse ritmo.':'')
-      +(ref.abs>M.absCrit?(M.presAlavanca?' Boa parte da diferença está nas horas perdidas com falta: para cada '+fi(100/ref.abs)+' horas trabalhadas, 1 foi perdida.':' '+M.presPoucoTxt):'');
-    S.push('<h1 class="lid-h">'+h2+'</h1><div class="lid-grid4">'
-      +lidCard('Produção',fi(ref.P),'peças · o plano era '+fi(ref.plano)+'<br>'+(acima?fi(ref.P-ref.plano)+' peças acima do plano':fi(ref.plano-ref.P)+' peças abaixo do plano'),acima?'#4CAF50':'#F44336')
-      +lidCard('Hora extra',fd(ref.hePct,1)+'%','sobre as horas da jornada normal · limite '+M.limHE+'%<br>'+lidMenorDesde(ms,ref),corHE)
-      +lidCard('Faltas',fd(ref.abs,1)+'%','das horas trabalhadas na jornada normal (critério do RH) · limite '+M.absCrit+'%<br>'+lidRankAbs(ms,ref),corAbs)
-      +lidCard('Ritmo',fi(ref.pcDiaN),'peças por dia na jornada normal · com a hora extra: '+fi(ref.pcDia)+(M.ritmoExig!==null?(M.ritAjust?'<br>na peça média do ano: '+fi(M.ritmoRef):'')+'<br>'+M.periodo+' pede '+fi(M.ritmoExig)+(M.gapDia>0?' · faltam '+fi(M.gapDia)+' por dia ('+fd(M.gapDia/M.ritmoRef*100,1)+'%)':' · '+ritmoTxt):''),M.gapDia===null?'#F5A623':(M.gapDia<=0&&!M.empata?'#4CAF50':'#FF9800'))
-      +'</div><div class="lid-p lid-resumo">'+resumo+'</div>'+rod);
-    /* 3 · mês a mês */
-    var nC=M.cumpriram.length, nP=M.comPlano.length;
-    var h3='Cumprimos o plano em '+nC+' de '+nP+' meses. '
-      +(M.cumpriuNoLimite.length?('Só '+lidLista(M.cumpriuNoLimite)+' '+(M.cumpriuNoLimite.length>1?'fizeram':'fez')+' isso com a hora extra dentro do limite.')
-                                :'Nenhum fez isso com a hora extra dentro do limite'+(ref.cumpriu?'; '+ref2+' ficou a '+fd(ref.hePct-M.limHE,1)+' p.p.':'.'))
-      +' É esse o padrão a repetir.';
-    var comHE=M.cumpriram.filter(function(m){ return m.hePct>M.limHE&&m.mes!==ref.mes; });
-    var abaixo=M.comPlano.filter(function(m){ return !m.cumpriu&&m.mes!==ref.mes; });
-    var t3=(comHE.length?lidLista(comHE).replace(/^./,function(c){ return c.toUpperCase(); })+' '+(comHE.length>1?'bateram':'bateu')+' o plano, mas com '+(function(){ var lo=fd(Math.min.apply(null,comHE.map(function(m){ return m.hePct; })),0), hi=fd(Math.max.apply(null,comHE.map(function(m){ return m.hePct; })),0); return lo===hi?lo+'%':lo+'% a '+hi+'%'; })()+' de hora extra sobre a jornada normal. ':'')
-      +(abaixo.length?lidLista(abaixo).replace(/^./,function(c){ return c.toUpperCase(); })+' '+(abaixo.length>1?'ficaram':'ficou')+' abaixo do plano. ':'')
-      +mesNome+' '+(ref.cumpriu?'bateu':'não bateu')+' o plano, com '+fd(ref.hePct,1)+'% de hora extra, '+fxHE.texto+'.';
-    var tab='<table class="lid-tab"><thead><tr><th>Mês</th><th>Plano</th><th>Feito</th><th>% plano</th><th>HE (h)</th><th>HE ÷ normal</th></tr></thead><tbody>'
-      +ms.map(function(m){ var f=lidFaixa(m.hePct,M.limHE); return '<tr><td>'+MES_MIN[m.mes]+'</td><td>'+fi(m.plano)+'</td><td>'+fi(m.P)+'</td>'
-        +'<td style="color:'+(m.at===null?'inherit':(m.at>=100?'#4CAF50':'#F44336'))+'">'+(m.at===null?'—':fd(m.at,0)+'%')+'</td><td>'+fi(m.heH)+'</td>'
-        +'<td style="color:'+(f.nivel==='dentro'?'#4CAF50':(f.nivel==='perto'?'#FF9800':'#F44336'))+'">'+fd(m.hePct,1)+'%</td></tr>'; }).join('')
-      +'<tr class="lid-tot"><td>Ano</td><td>'+fi(M.tot.plano)+'</td><td>'+fi(M.tot.P)+'</td><td>'+(M.tot.plano>0?fd(M.tot.P/M.tot.plano*100,0)+'%':'—')+'</td><td>'+fi(M.tot.heH)+'</td><td>'+fd(M.tot.hePct,1)+'%</td></tr></tbody></table>';
-    S.push('<h1 class="lid-h">'+h3+'</h1><div class="lid-sub">Colunas: plano e produzido (peças) · Linha: horas extras sobre as horas da jornada normal · limite '+M.limHE+'%</div>'
-      +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Plano',cor:LID_COR.plano,v:ms.map(function(m){ return m.plano; })},{nome:'Produzido',cor:LID_COR.feito,v:ms.map(function(m){ return m.P; })}],
-          line:{nome:'Hora extra ÷ jornada normal (%)',cor:LID_COR.linha,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20},h:700})+'</div>'
-      +'<div>'+tab+'<div class="lid-p lid-small">'+t3+'</div></div></div>'+rod);
-    /* 3b · produção em quilos mês a mês — o par do slide 3. "1.673 peças por
-       dia, o maior do ano" sem o peso vira conquista inteira; em SET/26 a peça
-       pesou 20,1 kg contra 25,2 na média e, em toneladas por dia, setembro foi
-       o 6º de 9 meses. Base: jornada normal, a mesma do 1.673. Mês com kg/peça
+    var bom=acima&&fxHE.nivel==='dentro';
+    var h2=(bom?mesNome+' foi um bom mês: produzimos mais do que o planejado'
+              :(acima?mesNome+': produzimos mais do que o planejado':mesNome+': ficamos abaixo do planejado'))
+      +(fxHE.curto?', com a hora extra '+fxHE.curto:'')+'.';
+    var att2=pesoFora?'<div class="lid-att"><b>Atenção:</b> as peças de '+ref2+' foram mais '+(leve?'leves':'pesadas')+' que o normal: '+fd(ref.kgPc,1)+' kg em média, contra '+fd(M.kgPcAno,1)+' kg na média do ano. '
+        +(leve?'Peça leve sai mais rápido. Se as peças voltarem ao peso normal, o mesmo esforço dá menos peças.'
+              :'Peça pesada leva mais tempo. Com peças de peso normal, o mesmo esforço daria mais peças.')
+        +(M.abertos.length?' Isso aparece no slide de '+M.periodo+'.':'')+'</div>':'';
+    S.push(kick('1 · Como foi '+ref2)+'<h1 class="lid-h">'+h2+'</h1><div class="lid-grid4">'
+      +lidCard('Produção',fi(ref.P),'peças · planejado: '+fi(ref.plano)+'<br><b>'+(acima?fi(ref.P-ref.plano)+' a mais':fi(ref.plano-ref.P)+' a menos')+(ref.at!==null?' ('+fd(ref.at,0)+'%)':'')+'</b>',acima?'#4CAF50':'#F44336')
+      +lidCard('Hora extra',fd(ref.hePct,1)+'%','da jornada normal · limite '+M.limHE+'%<br>'+lidMenorDesde(ms,ref),corHE)
+      +lidCard('Faltas',fd(ref.abs,1)+'%','das horas da jornada normal · limite '+M.absCrit+'%<br>'+(ref.abs>M.absCrit?'ainda acima do limite':'dentro do limite'),corAbs)
+      +lidCard('Peças por dia',fi(ref.pcDiaN),'só na jornada normal<br>com hora extra: '+fi(ref.pcDia),'#F5A623')
+      +'</div>'+att2+rod);
+    /* 3 · produção por dia em peças e em quilos (antes vinha depois do plano).
+       "1.673 peças por dia, o maior do ano" sem o peso vira conquista inteira;
+       em SET/26 a peça pesou 20,1 kg contra 25,8 na média e, em toneladas por
+       dia, setembro foi o 6º de 9 meses. Base: jornada normal. Mês com kg/peça
        fora de 0,6–1,67× a média do ano não entra (peso digitado com a linha
        "Geral" do relatório quase dobra o mês — mesma régua do b96.16). Só
        entra quando o mês de referência tem peso. */
@@ -23580,9 +23600,9 @@ window.CompAnos = (function () {
       var pos=function(k){ var o=kgOk.slice().sort(function(a,b){ return k(b)-k(a); }); return o.indexOf(ref)+1; };
       var posPc=pos(function(m){ return m.pcDiaN; }), posT=pos(tDia), nK=kgOk.length;
       var ordinal=function(p){ return p===1?'o maior do ano':(p===nK?'o menor do ano':'o '+p+'º de '+nK+' meses'); };
-      var h3b=mesNome+' fez '+fi(ref.pcDiaN)+' peças por dia na jornada normal, '+ordinal(posPc)+'. Em quilos, '
-        +fd(tDia(ref),1)+' toneladas por dia, '+(posT===posPc?'também ':'')+ordinal(posT)
-        +(M.varKgPc!==null&&Math.abs(M.varKgPc)>=5?': a peça pesou '+fd(ref.kgPc,1)+' kg, '+fd(Math.abs(M.varKgPc),0)+'% mais '+(M.varKgPc<0?'leve':'pesada')+' que a média do ano.':'.');
+      var lugar=function(p){ return p===1?'em 1º lugar no ano':(p===nK?'em último lugar no ano':'em '+p+'º lugar entre os '+nK+' meses'); };
+      var h3b='Em '+ref2+' saíram '+fi(ref.pcDiaN)+' peças por dia na jornada normal, '+ordinal(posPc)+'.'
+        +(pesoFora?' Mas foram peças mais '+(leve?'leves':'pesadas')+': em quilos, '+ref2+' ficou '+lugar(posT)+'.':' Em quilos, '+ref2+' ficou '+lugar(posT)+'.');
       var tKg=function(m){ return kgOk.indexOf(m)>=0; };
       var tabKg='<table class="lid-tab"><thead><tr><th>Mês</th><th>Peças</th><th>Toneladas</th><th>kg/peça</th><th>Peças/dia</th><th>t/dia</th></tr></thead><tbody>'
         +ms.map(function(m){ var ok=tKg(m); return '<tr'+(m===ref?' class="lid-dest"':'')+'><td>'+MES_MIN[m.mes]+'</td><td>'+fi(m.P)+'</td><td>'+(ok?fd(m.kg/1000,1):'—')+'</td>'
@@ -23590,30 +23610,74 @@ window.CompAnos = (function () {
         +(function(){ var kg=kgOk.reduce(function(a,m){ return a+m.kg; },0);
             return '<tr class="lid-tot"><td>Ano</td><td>'+fi(M.tot.P)+'</td><td>'+fd(kg/1000,1)+'</td><td>'+fd(M.kgPcAno,1)+'</td><td>'+fi(M.tot.pcDiaN)+'</td><td>'+fd(M.kgPcAno*M.tot.pcDiaN/1000,1)+'</td></tr>'; })()
         +'</tbody></table>';
-      S.push('<h1 class="lid-h">'+h3b+'</h1><div class="lid-sub">Colunas: toneladas por dia · Linha: peças por dia · os dois na jornada normal, sem hora extra · peso do REPORTE do ERP</div>'
+      S.push(kick('1 · Como foi '+ref2)+'<h1 class="lid-h">'+h3b+'</h1><div class="lid-sub">Colunas: toneladas por dia · Linha: peças por dia · os dois só na jornada normal, sem hora extra</div>'
         +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Toneladas por dia',cor:LID_COR.plano,v:ms.map(function(m){ return tKg(m)?tDia(m):0; })}],barLabels:true,barLabelsBase:true,fmtBar:function(v){ return v>0?fd(v,1):''; },
             line:{nome:'Peças por dia',cor:LID_COR.linha,v:ms.map(function(m){ return m.pcDiaN; }),fmt:function(v){ return fi(v); },max:Math.max.apply(null,ms.map(function(m){ return m.pcDiaN; }))*1.25},h:700})+'</div>'
-        +'<div>'+tabKg+'<div class="lid-p lid-small">Peças por dia contam quantas saíram; toneladas por dia, quanto material a fábrica transformou. Quando as peças sobem e as toneladas não, foi a peça que ficou mais leve, não a linha que rendeu mais. Peso corrige tamanho, não complexidade.</div></div></div>'+rod);
+        +'<div><div class="lid-box"><div class="lid-k2">Por que olhar o peso</div>'
+        +'<p>Uma mesa de cabeceira e uma penteadeira contam igual: uma peça cada. Mas a penteadeira leva muito mais material pela linha.</p>'
+        +'<p>Num mês com mais peças leves, o número de peças sobe sem a fábrica ter processado mais material.</p>'
+        +'<p class="lid-small">Peças por dia mostram quantas saíram. Toneladas por dia mostram quanto material passou. O peso mostra o tamanho da peça, não a dificuldade de fazer.</p></div>'
+        +lider(['Avaliar o dia olhando quais produtos passaram, não só quantas peças saíram.','Não comparar equipes ou pessoas só pelo número de peças.'])
+        +'</div></div>'+rod);
+      ap.kg='<h1 class="lid-h">Peças e toneladas por dia, mês a mês</h1><div class="lid-sub">Jornada normal, sem hora extra · peso do REPORTE do ERP</div>'+tabKg
+        +'<div class="lid-p lid-small">Peças por dia contam quantas saíram; toneladas por dia, quanto material a fábrica transformou. Quando as peças sobem e as toneladas não, foi a peça que ficou mais leve, não a linha que rendeu mais. Peso corrige tamanho, não complexidade.</div>'+rod;
     }
-    /* 4 · hora extra */
+    /* 4 · plano × produzido mês a mês (a tabela vai para o Apoio) */
+    var nC=M.cumpriram.length, nP=M.comPlano.length;
+    var h3=(nC?'Batemos o plano em '+nC+' dos '+nP+' meses.':'Não batemos o plano em nenhum dos '+nP+' meses.')
+      +(M.cumpriuNoLimite.length?' Em '+lidLista(M.cumpriuNoLimite)+', sem passar do limite de hora extra: é esse o jeito que queremos repetir.'
+        :(nC?' Nenhum deles ficou dentro do limite de hora extra: o desafio é bater o plano sem depender dela.':''));
+    var faixaHE=function(arr){ var lo=fd(Math.min.apply(null,arr.map(function(m){ return m.hePct; })),0), hi=fd(Math.max.apply(null,arr.map(function(m){ return m.hePct; })),0); return lo===hi?lo+'%':lo+'% a '+hi+'%'; };
+    var okLim=M.cumpriuNoLimite, comHEa=M.cumpriram.filter(function(m){ return m.hePct>M.limHE; }), abaixoA=M.comPlano.filter(function(m){ return !m.cumpriu; });
+    var box3=(okLim.length?'<p><b>'+cap(lidLista(okLim))+':</b> '+(okLim.length>1?'bateram':'bateu')+' o plano com a hora extra dentro do limite ('+listaTxt(okLim.map(function(m){ return fd(m.hePct,1)+'%'; }))+').</p>':'')
+      +(comHEa.length?'<p><b>'+cap(lidLista(comHEa))+':</b> '+(comHEa.length>1?'bateram':'bateu')+' o plano, mas com '+faixaHE(comHEa)+' de hora extra.</p>':'')
+      +(abaixoA.length?'<p><b>'+cap(lidLista(abaixoA))+':</b> '+(abaixoA.length>1?'ficaram':'ficou')+' abaixo do plano.</p>':'')
+      +(M.tot.plano>0?'<p class="lid-small">No ano: '+fi(M.tot.P)+' peças produzidas para '+fi(M.tot.plano)+' planejadas ('+fd(M.tot.P/M.tot.plano*100,0)+'%).</p>':'');
+    var comHE=M.cumpriram.filter(function(m){ return m.hePct>M.limHE&&m.mes!==ref.mes; });
+    var abaixo=M.comPlano.filter(function(m){ return !m.cumpriu&&m.mes!==ref.mes; });
+    var t3=(comHE.length?lidLista(comHE).replace(/^./,function(c){ return c.toUpperCase(); })+' '+(comHE.length>1?'bateram':'bateu')+' o plano, mas com '+faixaHE(comHE)+' de hora extra sobre a jornada normal. ':'')
+      +(abaixo.length?lidLista(abaixo).replace(/^./,function(c){ return c.toUpperCase(); })+' '+(abaixo.length>1?'ficaram':'ficou')+' abaixo do plano. ':'')
+      +mesNome+' '+(ref.cumpriu?'bateu':'não bateu')+' o plano, com '+fd(ref.hePct,1)+'% de hora extra, '+fxHE.texto+'.';
+    var tab='<table class="lid-tab"><thead><tr><th>Mês</th><th>Plano</th><th>Feito</th><th>% plano</th><th>HE (h)</th><th>HE ÷ normal</th></tr></thead><tbody>'
+      +ms.map(function(m){ var f=lidFaixa(m.hePct,M.limHE); return '<tr><td>'+MES_MIN[m.mes]+'</td><td>'+fi(m.plano)+'</td><td>'+fi(m.P)+'</td>'
+        +'<td style="color:'+(m.at===null?'inherit':(m.at>=100?'#4CAF50':'#F44336'))+'">'+(m.at===null?'—':fd(m.at,0)+'%')+'</td><td>'+fi(m.heH)+'</td>'
+        +'<td style="color:'+(f.nivel==='dentro'?'#4CAF50':(f.nivel==='perto'?'#FF9800':'#F44336'))+'">'+fd(m.hePct,1)+'%</td></tr>'; }).join('')
+      +'<tr class="lid-tot"><td>Ano</td><td>'+fi(M.tot.plano)+'</td><td>'+fi(M.tot.P)+'</td><td>'+(M.tot.plano>0?fd(M.tot.P/M.tot.plano*100,0)+'%':'—')+'</td><td>'+fi(M.tot.heH)+'</td><td>'+fd(M.tot.hePct,1)+'%</td></tr></tbody></table>';
+    S.push(kick(nC?'2 · O que fizemos bem':'2 · Plano e produção')+'<h1 class="lid-h">'+h3+'</h1><div class="lid-sub">Colunas: planejado e produzido (peças) · Linha: hora extra sobre a jornada normal · limite '+M.limHE+'%</div>'
+      +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Planejado',cor:LID_COR.plano,v:ms.map(function(m){ return m.plano; })},{nome:'Produzido',cor:LID_COR.feito,v:ms.map(function(m){ return m.P; })}],
+          line:{nome:'Hora extra ÷ jornada normal (%)',cor:LID_COR.linha,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20},h:700})+'</div>'
+      +'<div><div class="lid-box">'+box3+'</div>'
+      +lider([ref.cumpriu?'Entender com a equipe o que ajudou em '+ref2+' (peças, pessoas, sequência) e manter.':'Entender com a equipe o que travou em '+ref2+' (peças, pessoas, material, sequência).',
+              'Buscar o plano dentro da jornada normal: hora extra é exceção, não rotina.'])
+      +'</div></div>'+rod);
+    ap.plano='<h1 class="lid-h">Plano, produzido e hora extra por mês</h1><div class="lid-sub">Peças · hora extra sobre as horas da jornada normal · limite '+M.limHE+'%</div>'
+      +tab+'<div class="lid-p lid-small">'+t3+'</div>'+rod;
+    /* 5 · hora extra */
     var m0=ms[0], minHE=ms.reduce(function(a,m){ return m.hePct<a.hePct?m:a; },ms[0]);
     var m0N=NOME_MES[m0.mes].toLowerCase();
-    var h4=(ref.hePct<m0.hePct?'A hora extra caiu de '+fd(m0.hePct,0)+'% da jornada normal em '+m0N+' para '+fd(ref.hePct,1)+'% em '+ref2
-                              :'A hora extra foi de '+fd(m0.hePct,0)+'% da jornada normal em '+m0N+' para '+fd(ref.hePct,1)+'% em '+ref2)
+    var h4=(ref.hePct<m0.hePct?'A hora extra caiu de '+fd(m0.hePct,0)+'% em '+m0N+' para '+fd(ref.hePct,1)+'% em '+ref2
+                              :'A hora extra foi de '+fd(m0.hePct,0)+'% em '+m0N+' para '+fd(ref.hePct,1)+'% em '+ref2)
       +', '+fxHE.texto+'.';
-    S.push('<h1 class="lid-h">'+h4+'</h1><div class="lid-sub">Horas extras ÷ horas trabalhadas na jornada normal · limite '+M.limHE+'%</div>'
+    /* "o menor ritmo" de lidMelhorEm é COM a hora extra (pcDia): em SET/26 março
+       fez 1.255 com HE, o menor do ano, mas 1.211 sem HE não é o menor (jan 1.133,
+       fev 1.176). O texto antigo punha os dois números e o "menor" valia só pra um. */
+    S.push(kick('3 · O que está atrapalhando')+'<h1 class="lid-h">'+h4+'</h1><div class="lid-sub">Horas extras ÷ horas da jornada normal · limite '+M.limHE+'%</div>'
       +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,line:{nome:anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.hePct; }),fmt:function(v){ return fd(v,1)+'%'; },max:20,ref:M.limHE,refLbl:'limite '+M.limHE+'%'},h:740})+'</div>'
-      +'<div class="lid-box"><div class="lid-k2">Na prática</div>'
-      +'<p>Em '+ref2+', '+fi(ref.heH)+' horas extras sobre '+fi(ref.H)+' horas da jornada normal: '+fd(ref.hePct,1)+'%.</p>'
-      +'<p>No ano: '+fi(M.tot.heH)+' horas extras; o índice do ano é '+fd(M.tot.hePct,1)+'%.</p>'
-      +(minHE.mes!==ref.mes?'<p>'+NOME_MES[minHE.mes]+' teve a menor hora extra ('+fd(minHE.hePct,1)+'%)'+(lidMelhorEm(ms,'pcDia',minHE,false)?', mas também foi o mês de menor ritmo: '+fi(minHE.pcDia)+' peças por dia com a hora extra, '+fi(minHE.pcDiaN)+' sem.':'.')+'</p>':'')
+      +'<div><div class="lid-box">'
+      +'<p>Em '+ref2+' foram <b>'+fi(ref.heH)+' horas extras</b> sobre '+fi(ref.H)+' horas da jornada normal. No ano, '+fi(M.tot.heH)+' horas extras ('+fd(M.tot.hePct,1)+'%).</p>'
+      +'<p>Hora extra custa pelo menos 50% a mais. Ela fecha o mês, mas não resolve a causa.</p>'
+      +(minHE.mes!==ref.mes?'<p>'+NOME_MES[minHE.mes]+' teve a menor hora extra ('+fd(minHE.hePct,1)+'%)'+(lidMelhorEm(ms,'pcDia',minHE,false)?', mas também o menor ritmo com hora extra: '+fi(minHE.pcDia)+' peças por dia. <b>Menos hora extra só é bom quando o ritmo se mantém.</b>':'.')+'</p>':'')
+      +'</div>'
+      +lider(['Antes de pedir hora extra, saber o motivo: falta de gente ou volume maior do que o setor dá conta?','Avisar o PPCP quando a hora extra começar a virar rotina no setor.'])
       +'</div></div>'+rod);
-    /* 4b · hora extra por setor (só quando a PONTO_SETOR tem o mês) */
+    /* 6 · hora extra por setor (só quando a PONTO_SETOR tem o mês) */
     var RS=(window.SetorHE&&SetorHE.resumo)?SetorHE.resumo(ref.mes,ref.ano):null;
     if(RS&&RS.setores.length&&RS.heDir>0){
+      var dois=RS.cobrindo.length&&RS.capacidade.length;
       var h4b='Em '+ref2+', '+fd(RS.topParte,0)+'% da hora extra ficou em '+RS.top.length+(RS.top.length===1?' setor: ':' setores: ')+SetorHE.lista(RS.top)+'.'
-        +(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' a falta também passa de '+RS.absCrit+'%: hora extra cobrindo presença.':'')
-        +(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a falta está dentro: é capacidade.':'');
+        +(dois?' A hora extra tem dois motivos diferentes, e cada um pede uma ação diferente.'
+          :(RS.cobrindo.length?' Em '+SetorHE.lista(RS.cobrindo)+' ela está cobrindo falta.'
+            :(RS.capacidade.length?' Em '+SetorHE.lista(RS.capacidade)+' a equipe está presente, mas o setor não dá conta na jornada normal.':'')));
       var linhaSet=function(x){
         var cor=x.leitura==='cobrindo falta'?'#F44336':(x.leitura==='capacidade'?'#FF9800':(x.leitura?'#FF9800':'#888'));
         return '<tr><td>'+x.setor+'</td><td>'+fi(x.pessoas)+'</td><td>'+(x.heP===null?'—':fd(x.heP,1))+'</td><td'+(x.heAlta?' style="font-weight:800"':'')+'>'+fd(x.hePct,1)+'%</td>'
@@ -23623,32 +23687,40 @@ window.CompAnos = (function () {
         +RS.setores.map(linhaSet).join('')
         +(RS.indiretos.length?'<tr><td class="lid-tx" style="color:#888">Indiretos ('+RS.indiretos.length+' setores, fora do '+fd(ref.hePct,1)+'%)</td><td>'+fi(RS.indiretos.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+(RS.hePesInd===null?'—':fd(RS.hePesInd,1))+'</td><td>'+(RS.hnInd>0?fd(RS.heInd/RS.hnInd*100,1)+'%':'—')+'</td><td>—</td><td class="lid-tx">—</td></tr>':'')
         +'<tr class="lid-tot"><td>Fábrica (diretos)</td><td>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td>'+(RS.hePesDir===null?'—':fd(RS.hePesDir,1))+'</td><td>'+fd(RS.refPct,1)+'%</td><td>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td class="lid-tx"></td></tr></tbody></table>';
-      S.push('<h1 class="lid-h">'+h4b+'</h1><div class="lid-sub">Horas extras do ponto por setor · HE em pessoas = HE ÷ jornada do mês ('+fd(RS.jornada,1)+' h) · HE ÷ horas normais do setor, "alta" = acima da fábrica ('+fd(RS.refPct,1)+'%) · falta = falta, atestado, afastado e atraso ÷ horas normais · limite '+RS.absCrit+'%</div>'
-        +tabSet
-        +'<div class="lid-p lid-small">Cobrindo falta = hora extra alta num setor com falta acima do limite: a HE repõe presença. Capacidade = hora extra alta com falta dentro do limite: o setor não dá conta na jornada normal. '
-        +'É hora por setor, não peça por setor; a produção é da fábrica inteira. O setor é o atual da pessoa na lista do RH.</div>'+rod);
+      var caixa=function(lbl,txt,cor){ return '<div class="lid-card" style="border-top-color:'+cor+'"><div class="lid-clbl">'+lbl+'</div><div class="lid-csub" style="margin-top:.35em">'+txt+'</div></div>'; };
+      var caixas=(RS.cobrindo.length?caixa('Hora extra para cobrir falta',cap(listaTxt(RS.cobrindo.map(function(x){ return SetorHE.lista([x])+(x.absPct===null?'':' (falta de '+fd(x.absPct,1)+'%)'); })))+'.<br>A hora extra está repondo quem faltou.','#F44336'):'')
+        +(RS.capacidade.length?caixa('Hora extra por falta de capacidade',cap(SetorHE.lista(RS.capacidade))+': a falta está dentro do limite.<br>A equipe está presente, mas o setor não dá conta do volume na jornada normal.','#FF9800'):'');
+      S.push(kick('3 · O que está atrapalhando')+'<h1 class="lid-h">'+h4b+'</h1><div class="lid-sub">Hora extra do ponto por setor · "HE em pessoas" = quantas pessoas a mais a hora extra representa no mês ('+fd(RS.jornada,1)+' h cada) · em negrito: acima da fábrica ('+fd(RS.refPct,1)+'%) · falta inclui atestado e afastamento · limite '+RS.absCrit+'%</div>'
+        +'<div class="lid-2col"><div>'+tabSet
+        +'<div class="lid-p lid-small">É hora extra por setor, não produção por setor: não serve para dizer qual setor produz mais. O setor é o atual da pessoa na lista do RH.</div></div>'
+        +'<div>'+(caixas?'<div class="lid-stack">'+caixas+'</div>':'')
+        +lider(['Se o seu setor faz hora extra por causa de falta: acompanhar a presença e avisar cedo quando vai faltar gente.',
+                'Se faz hora extra com a equipe completa: mostrar ao PPCP onde a peça para (máquina, material, sequência ou gente) antes de pedir mais horas.'])
+        +'</div></div>'+rod);
     }
-    /* 5 · faltas */
-    /* HE ≈ falta em horas não quer dizer que a HE cobriu a falta: a tabela por
-       setor separa "cobrindo falta" de "capacidade". Quando ela existe, a frase
-       usa só a HE dos setores com falta acima do limite. Meses que "mostraram
-       que dá" são só os que ficaram no limite; janeiro com 7,9% não mostra 6%. */
-    var temSet=!!(RS&&RS.setores&&RS.setores.length&&RS.heDir>0);
-    var heCobr=temSet?RS.cobrindo.reduce(function(t,x){ return t+x.he; },0):0;
-    var heCap=temSet?RS.capacidade.reduce(function(t,x){ return t+x.he; },0):0;
+    /* 7 · faltas. Separa o que o líder consegue mudar (falta sem justificativa
+       e atraso) do que segue com o RH (atestado e afastamento). */
     var noLim=ms.filter(function(m){ return m.abs>0&&m.abs<=M.absCrit; });
     var melhorAbs=ms.filter(function(m){ return m.abs>0; }).sort(function(a,b){ return a.abs-b.abs; })[0];
-    var h5='Falta é onde a liderança mais pode ajudar: '+fd(ref.abs,1)+'% em '+ref2+', o mesmo que '+fi(M.foraHoje)+' pessoas fora todo dia. Cada 1% a menos são '+fi(M.ganhoPP)+' peças no mês.';
-    S.push('<h1 class="lid-h">'+h5+'</h1><div class="lid-sub">Horas de falta e atraso sobre as horas trabalhadas na jornada normal (critério do RH) · '+anoS+' · limite '+M.absCrit+'%</div>'
+    var h5='Em '+ref2+', a falta foi de '+fd(ref.abs,1)+'%'
+      +(ref.abs>M.absCrit?': é como ter '+fi(M.foraHoje)+' pessoas fora todos os dias. O limite é '+M.absCrit+'%.'
+                         :', dentro do limite de '+M.absCrit+'%: é como ter '+fi(M.foraHoje)+' pessoas fora todos os dias.');
+    var ausTxt=ref.temAus?'<p><b>Onde o líder pode agir mais:</b> faltas sem justificativa ('+fi(ref.aFalta)+' h) e atrasos ('+fi(ref.atraso)+' h).</p>'
+        +'<p><b>Atestado ('+fi(ref.aAtest)+' h) e afastamento ('+fi(ref.aAfast)+' h):</b> pesam igual na produção, mas seguem com o RH. Não são cobrança do líder.</p>'
+      :(ref.temPonto?'<p><b>Onde o líder pode agir mais:</b> faltas sem justificativa ('+fi(ref.fPonto)+' h) e atrasos ('+fi(ref.aPonto)+' h).</p>'
+        +'<p><b>O resto ('+fi(Math.max(0,ref.F-ref.fPonto-ref.aPonto))+' h) é atestado, afastamento e licença:</b> pesa igual na produção, mas segue com o RH.</p>':'');
+    S.push(kick('3 · O que está atrapalhando')+'<h1 class="lid-h">'+h5+'</h1><div class="lid-sub">Horas de falta e atraso sobre as horas da jornada normal (critério do RH) · '+anoS+' · limite '+M.absCrit+'%</div>'
       +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:[{nome:'Faltas '+anoS,cor:LID_COR.falta,v:ms.map(function(m){ return m.abs; })}],barLabels:true,fmtBar:function(v){ return fd(v,1)+'%'; },h:740})+'</div>'
-      +'<div><div class="lid-grid2">'+lidCard('Horas perdidas',fi(ref.F)+' h','com falta, em '+ref2,'#F44336')+lidCard('Horas extras feitas',fi(ref.heH)+' h',temSet&&heCap>0?'no mês, para repor falta e para dar capacidade':'no mês','#FF9800')+'</div>'
-      +'<div class="lid-p lid-small"><b>'+(temSet&&heCobr>0?'Das '+fi(ref.heH)+' h de hora extra, '+fi(heCobr)+' h ficaram em setores com falta acima do limite ('+SetorHE.lista(RS.cobrindo).toLowerCase()+'): ali a hora extra repõe presença'
-          :'Hora extra não é só reposição de falta: parte pode ser falta de capacidade')+', e cada hora extra custa pelo menos 50% a mais.</b> Reduzir falta é o jeito mais barato de produzir mais: cada 1% a menos são '+fi(ref.H/100)+' horas por mês, quase '+fi(M.ganhoPP)+' peças '+(M.ritAjust?'com a peça média do ano':'no ritmo de '+ref2)+'.</div>'
-      +(ref.temAus?'<div class="lid-p lid-small">Das '+fi(ref.F)+' h não trabalhadas, '+fi(ref.aFalta)+' h são faltas sem justificativa e '+fi(ref.atraso)+' h atrasos: é aí que a liderança age. As outras '+fi(ref.aAtest+ref.aAfast)+' h são atestado ('+fi(ref.aAtest)+' h) e afastamento ('+fi(ref.aAfast)+' h): pesam igual na produção, mas pedem outra conversa.</div>'
-      :ref.temPonto?'<div class="lid-p lid-small">Das '+fi(ref.F)+' h não trabalhadas, '+fi(ref.fPonto)+' h são faltas sem justificativa e '+fi(ref.aPonto)+' h atrasos. O resto, '+fi(Math.max(0,ref.F-ref.fPonto-ref.aPonto))+' h, é atestado, afastamento e licença: pesa igual na produção, mas pede outra conversa.</div>':'')
-      +'<div class="lid-p lid-small">Presença é o indicador que mais depende de quem está na linha todo dia: acompanhar, conversar, ajustar escala.'+(noLim.length?' '+lidLista(noLim).replace(/^./,function(c){ return c.toUpperCase(); })+' ('+noLim.map(function(m){ return fd(m.abs,1)+'%'; }).join(' e ')+') '+(noLim.length>1?'mostraram':'mostrou')+' que dá.'
-          :(melhorAbs?' Nenhum mês de '+anoS+' chegou a '+M.absCrit+'% ainda; o melhor foi '+NOME_MES[melhorAbs.mes].toLowerCase()+' ('+fd(melhorAbs.abs,1)+'%).':''))+'</div></div></div>'+rod);
-    /* 6 · peças por hora */
+      +'<div><div class="lid-grid2">'+lidCard('Horas perdidas',fi(ref.F)+' h','com falta, em '+ref2,'#F44336')+lidCard('Horas extras',fi(ref.heH)+' h','no mês','#FF9800')+'</div>'
+      +'<div class="lid-box lid-small" style="margin-top:.6em">'+ausTxt
+      +'<p>Quando falta alguém, o setor muda: alguém cobre, uma etapa fica mais lenta e o setor seguinte pode ficar sem peça.</p>'
+      +'<p>Cada 1% a menos de falta são cerca de '+fi(ref.H/100)+' horas por mês, perto de '+fi(M.ganhoPP)+' peças'+(M.ritAjust?' com peças de peso normal':'')+'.'
+      +(noLim.length?' '+cap(lidLista(noLim))+' ('+listaTxt(noLim.map(function(m){ return fd(m.abs,1)+'%'; }))+') '+(noLim.length>1?'mostraram':'mostrou')+' que dá.'
+          :(melhorAbs?' Nenhum mês de '+anoS+' chegou a '+M.absCrit+'%; o melhor foi '+NOME_MES[melhorAbs.mes].toLowerCase()+' ('+fd(melhorAbs.abs,1)+'%).':''))+'</p></div>'
+      +lider(['Conferir a presença no início do turno e reorganizar as pessoas e as atividades logo.','Avisar com antecedência quando a falta vai afetar o plano do dia.',
+              'Conversar com quem falta ou atrasa sem justificativa. Atestado e afastamento seguem com o RH.'])
+      +'</div></div>'+rod);
+    /* 8 · peças por hora */
     /* Horas do próximo mês na PEÇA MÉDIA DO ANO, não no mix do mês de referência:
        SET/26 teve a peça mais leve do ano (20,1 kg) e as 2,33 pç/h davam 14.969 h
        para as 34.810 de OUT, "1.349 a menos"; a programação de embalagem de OUT
@@ -23661,59 +23733,52 @@ window.CompAnos = (function () {
     var hNec=prox&&pcHbase>0?prox.plano/pcHbase:null;
     var hMix=prox&&ref.pcH>0?prox.plano/ref.pcH:null;
     /* Peças por hora na peça média do ano: o mesmo rendimento em quilos, contado
-       como se toda peça pesasse a média do ano. Em SET/26 as 2,33 peças por
-       hora viram 1,86, abaixo de mai (2,06), jul (2,09) e ago (2,04): o peso
-       explica a maior parte da subida desde janeiro (1,61 → 2,33 em peças,
-       1,70 → 1,86 na peça média). Só com o mês dentro da régua de peso (kgOk). */
+       como se toda peça pesasse a média do ano. Só com o mês dentro da régua de
+       peso (kgOk). O gráfico mostra o peso de cada mês numa faixa embaixo e, no
+       mês de referência, um colchete com o que o peso explica. */
     var temMed=kgOk.length>1&&kgOk.indexOf(ref)>=0;
     var pcHmed=function(m){ return (kgOk.indexOf(m)>=0)?m.pcH*m.kgPc/M.kgPcAno:0; };
-    var acimaMed=temMed?kgOk.filter(function(m){ return m!==ref&&pcHmed(m)>pcHmed(ref); }):[];
-    /* O cinza sozinho era lido como "o peso", mas é o rendimento recontado na
-       peça média; o peso não aparecia no gráfico. Agora o slide mostra o peso de
-       cada mês numa faixa embaixo e, no mês de referência, um colchete com a
-       distância entre o feito e a peça média: é o que o peso explica. */
     var difPeso=temMed&&Math.abs(M.varKgPc||0)>=5, iRef=ms.indexOf(ref);
-    var maisLeve=kgOk.every(function(m){ return m.kgPc>=ref.kgPc; }), maisPesada=kgOk.every(function(m){ return m.kgPc<=ref.kgPc; });
     /* Desde o primeiro mês, quanto da subida em peças por hora ficou na peça
-       média e quanto veio do peso. Conta com os números arredondados do slide,
-       para a soma bater com o que está escrito (SET/26: 1,47 → 2,33 é +0,86; na
-       peça média 1,66 → 1,81, +0,15; as outras 0,71 vieram da peça mais leve). */
+       média e quanto veio do peso (SET/26: 1,47 → 2,33 é +0,86; na peça média
+       1,66 → 1,81, +0,15; as outras 0,71 vieram da peça mais leve). Conta com
+       os números arredondados, para a soma bater. Vai para o Apoio, no slide de
+       quilos por hora: é a conta mais analítica da apresentação. */
     var r2=function(v){ return Math.round(v*100)/100; };
     var m0Med=temMed&&m0!==ref&&kgOk.indexOf(m0)>=0;
     var dPc=r2(r2(ref.pcH)-r2(m0.pcH)), dMed=m0Med?r2(r2(pcHmed(ref))-r2(pcHmed(m0))):0, dMix=r2(dPc-dMed);
     var dPeso=temMed?r2(r2(ref.pcH)-r2(pcHmed(ref))):0;
-    var h6='Cada hora trabalhada '+(ref.pcH>m0.pcH?'está rendendo mais':'rende')+': de '+fd(m0.pcH,2)+' peça por hora em '+m0N+' para '+fd(ref.pcH,2)+' em '+ref2+'.'+(melhorPcH?(melhorKgH?' Foi a equipe que fez isso.'
-          :(mixLeve?(temMed?' Mas a peça de '+ref2+' ficou '+fd(-M.varKgPc,0)+'% mais leve ('+fd(ref.kgPc,1)+' kg): na peça média do ano ('+fd(M.kgPcAno,1)+' kg), seriam '+fd(pcHmed(ref),2)+' por hora.'
-                           :' Parte disso é mix: a peça de '+ref2+' pesou '+fd(ref.kgPc,1)+' kg, contra '+fd(M.kgPcAno,1)+' kg na média do ano.')
-                   :' Em quilos por hora, '+ref2+' não foi o melhor mês.')):'');
-    S.push('<h1 class="lid-h">'+h6+'</h1><div class="lid-sub">Peças produzidas por hora trabalhada (normal e extra)'+(temMed?' · a distância entre o ponto vermelho e a barra cinza é o efeito do peso da peça':'')+'</div>'
+    var desdeTxt=(mixLeve&&m0Med&&dPc>0&&dMix>0)?'Desde '+m0N+', na peça média do ano, o rendimento foi de '+fd(pcHmed(m0),2)+' para '+fd(pcHmed(ref),2)+' peças por hora'
+      +(dMed>0?' (+'+fd(dMed,2)+'). As outras '+fd(dMix,2)+' peça por hora vieram da peça mais leve.':(dMed<0?' (−'+fd(-dMed,2)+')':'')+': toda a subida em peças por hora veio da peça mais leve.'):'';
+    var h6='Em '+ref2+', cada hora trabalhada fez '+fd(ref.pcH,2)+' peças'+(melhorPcH?', o melhor do ano':'')+'.'
+      +(difPeso?(leve?' Parte disso veio das peças mais leves: com peças de peso normal, seriam '+fd(pcHmed(ref),2)+' por hora.'
+                     :' As peças foram mais pesadas: com peças de peso normal, seriam '+fd(pcHmed(ref),2)+' por hora.')
+        :(melhorPcH&&melhorKgH?' Foi a equipe que fez isso.':''));
+    S.push(kick('Para entender o número')+'<h1 class="lid-h">'+h6+'</h1><div class="lid-sub">Peças por hora trabalhada (jornada normal + hora extra)'+(temMed?' · barra cinza: quantas seriam com peças de peso normal':'')+'</div>'
       +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,
-          bars:temMed?[{nome:'Peças por hora <b>se toda peça pesasse '+fd(M.kgPcAno,1)+' kg</b> (média do ano)',cor:LID_COR.cinza,v:ms.map(pcHmed)}]:undefined,barLabels:temMed,barLabelsBase:true,fmtBar:function(v){ return v>0?fd(v,2):''; },mesmaEscala:temMed,
+          bars:temMed?[{nome:'Se as peças tivessem o <b>peso normal</b> ('+fd(M.kgPcAno,1)+' kg, média do ano)',cor:LID_COR.cinza,v:ms.map(pcHmed)}]:undefined,barLabels:temMed,barLabelsBase:true,fmtBar:function(v){ return v>0?fd(v,2):''; },mesmaEscala:temMed,
           line:{nome:temMed?'<b>Peças por hora feitas</b> ('+anoS+')':'Peças por hora '+anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.pcH; }),fmt:function(v){ return fd(v,2); },max:Math.max.apply(null,ms.map(function(m){ return m.pcH; }))*1.1},
           legTopo:temMed, catRef:temMed?iRef:undefined,
           faixa:temMed?{titulo:'Peso médio da peça (kg)',v:ms.map(function(m){ return kgOk.indexOf(m)>=0?m.kgPc:0; }),media:M.kgPcAno,mediaLbl:fd(M.kgPcAno,1)+' kg',
             destaque:iRef,nota:(M.varKgPc<0?'−':'+')+fd(Math.abs(M.varKgPc),0)+'%',fmt:function(v){ return fd(v,1); }}:undefined,
           colchete:difPeso&&dPeso!==0?{i:iRef,linhas:[(dPeso>0?'+':'−')+fd(Math.abs(dPeso),2),'da peça',M.varKgPc<0?'mais leve':'mais pesada']}:undefined,
           h:740})+'</div>'
-      +'<div class="lid-box"><div class="lid-k2">O que isso significa para '+(M.periodo||'o próximo mês')+'</div>'
-      +'<p>Em '+ref2+', '+fi(ref.HT)+' horas renderam '+fi(ref.P)+' peças.</p>'
-      +(difPeso?'<p><b>A peça de '+ref2+' pesou '+fd(ref.kgPc,1)+' kg, '+fd(Math.abs(M.varKgPc),0)+'% '+(M.varKgPc<0?'abaixo':'acima')+' da média do ano ('+fd(M.kgPcAno,1)+' kg)</b>'
-          +(M.varKgPc<0&&maisLeve?', a mais leve de '+anoS:(M.varKgPc>0&&maisPesada?', a mais pesada de '+anoS:''))
-          +'. Na peça média, seriam '+fd(pcHmed(ref),2)+' peças por hora'
-          +(acimaMed.length?', abaixo de '+lidLista(acimaMed)+'.':', ainda o melhor do ano.')+'</p>'
-          +(mixLeve&&m0Med&&dPc>0&&dMix>0?'<p>Desde '+m0N+', na peça média, o rendimento foi de '+fd(pcHmed(m0),2)+' para '+fd(pcHmed(ref),2)
-            +(dMed>0?' (+'+fd(dMed,2)+'). As outras '+fd(dMix,2)+' peça por hora vieram da peça mais leve.'
-              :(dMed<0?' (−'+fd(-dMed,2)+')':'')+': toda a subida em peças por hora veio da peça mais leve.')+'</p>':''):'')
-      +(prox&&hNec?'<p>Para as '+fi(prox.plano)+' de '+NOME_MES[prox.mes].toLowerCase()+', '+(temMed?'no rendimento de '+ref2+' e com a peça média do ano ('+fd(M.kgPcAno,1)+' kg)':'nesse rendimento')+', precisamos de '+fi(hNec)+' horas: '+(hNec>ref.HT?fi(hNec-ref.HT)+' a mais':fi(ref.HT-hNec)+' a menos')+' que em '+ref2+'.</p>'
-          +(hNec>ref.HT?(ref.F>0&&ref.F<hNec-ref.HT?'<p>Toda a falta de '+ref2+' foi '+fi(ref.F)+' horas: mesmo zerando a falta, faltariam '+fi(hNec-ref.HT-ref.F)+' horas, que vêm de hora extra, de mais gente ou de mais rendimento por hora.</p>'
-              :'<p>Essas horas vêm de menos falta ou de mais hora extra.</p>')
-            :'<p>'+(hNec<=ref.H?'Daria para fazer só com as '+fi(ref.H)+' horas da jornada normal de '+ref2:'Daria para fazer com menos hora extra que em '+ref2)
-              +(temMed?', se o rendimento de '+ref2+' se repetir e a peça ficar na média do ano.</p>':', se o rendimento'+(temKg?' e o mix':'')+' de '+ref2+' se repetirem.</p>'))
-          +(difPeso&&hMix?'<p>No mix '+(M.varKgPc<0?'leve':'pesado')+' de '+ref2+' (peça de '+fd(ref.kgPc,1)+' kg), seriam '+fi(hMix)+' horas.</p>':''):'')
+      +'<div><div class="lid-box"><div class="lid-k2">O que isso quer dizer</div>'
+      +'<p>Em '+ref2+', <b>'+fi(ref.HT)+' horas</b> (normal + extra) fizeram <b>'+fi(ref.P)+' peças</b>.</p>'
+      +(difPeso?'<p>A peça de '+ref2+' pesou <b>'+fd(ref.kgPc,1)+' kg</b>; a média do ano é <b>'+fd(M.kgPcAno,1)+' kg</b>. '+(leve?'Peça mais leve sai mais rápido.':'Peça mais pesada leva mais tempo.')+'</p>':'')
+      +(prox&&hNec?'<p><b>Para as '+fi(prox.plano)+' peças de '+NOME_MES[prox.mes].toLowerCase()+':</b> '+(temMed?'com peças de peso normal, são cerca de ':'nesse ritmo, são cerca de ')+fi(hNec)+' horas, '
+          +(hNec>ref.HT?fi(hNec-ref.HT)+' a mais':fi(ref.HT-hNec)+' a menos')+' que em '+ref2+'.'
+          +(difPeso&&hMix?' Se as peças continuarem '+(leve?'leves':'pesadas')+' como em '+ref2+', '+fi(hMix)+' horas.':'')+'</p>'
+          +(hNec>ref.HT?(ref.F>0&&ref.F<hNec-ref.HT?'<p class="lid-small">Mesmo zerando a falta ('+fi(ref.F)+' h), ainda faltariam cerca de '+fi(hNec-ref.HT-ref.F)+' horas. Elas teriam de vir de hora extra, de mais gente ou de render mais em cada hora.</p>'
+              :'<p class="lid-small">Essas horas podem vir de menos falta ou de mais hora extra.</p>')
+            :'<p class="lid-small">'+(hNec<=ref.H?'Daria para fazer só com as '+fi(ref.H)+' horas da jornada normal de '+ref2:'Daria para fazer com menos hora extra que em '+ref2)
+              +(temMed?', se o ritmo de '+ref2+' se repetir com peças de peso normal.':', se o ritmo'+(temKg?' e o tipo de peça':'')+' de '+ref2+' se repetirem.')+'</p>'):'')
+      +'</div>'
+      +lider(['Comparar o ritmo do dia com o produto que está passando.','Avisar o PPCP quando uma sequência de produtos pesados apertar o setor.'])
       +'</div></div>'+rod);
-    /* 6b · quilos por hora — responde "produto maior dá mais trabalho".
-       Peso corrige tamanho do mix, não complexidade; a nota final diz isso.
-       Só entra quando a HISTORICO tem quilosProduzidos (REPORTE do ERP). */
+    /* quilos por hora (Apoio) — responde "produto maior dá mais trabalho".
+       Peso corrige tamanho do mix, não complexidade. Só entra quando a
+       HISTORICO tem quilosProduzidos (REPORTE do ERP). */
     if(ref.kg>0&&ms.some(function(m){ return m.kg>0; })){
       var anoAnt=String(M.ano-1), antM=M.antPor[ref.mes]||null, antKg=(antM&&antM.kg>0)?antM:null;
       var kgHAnt=ms.map(function(m){ var a=M.antPor[m.mes]; return (a&&a.kg>0)?a.kgH:0; });
@@ -23726,45 +23791,50 @@ window.CompAnos = (function () {
         +(baseCmp?' O produto médio ficou '+fd(Math.abs(varMix),0)+'% mais '+(varMix>=0?'pesado':'leve')+'.':'');
       var barsKg=[]; if(temAnt) barsKg.push({nome:anoAnt,cor:LID_COR.cinza,v:kgHAnt});
       barsKg.push({nome:anoS,cor:LID_COR.feito,v:ms.map(function(m){ return m.kgH; })});
-      S.push('<h1 class="lid-h">'+h6b+'</h1><div class="lid-sub">Quilos produzidos por hora trabalhada (normal e extra) · fonte: REPORTE do ERP</div>'
+      ap.kgh='<h1 class="lid-h">'+h6b+'</h1><div class="lid-sub">Quilos produzidos por hora trabalhada (normal e extra) · fonte: REPORTE do ERP</div>'
         +'<div class="lid-2col lid-2col-w"><div>'+lidChart({cats:cats,bars:barsKg,barLabels:true,fmtBar:function(v){ return v>0?fd(v,0):''; },h:740})+'</div>'
         +'<div><div class="lid-grid2">'
           +lidCard('kg por peça em '+ref2,fd(ref.kgPc,1)+' kg',baseCmp?(baseN+': '+fd(baseCmp.kgPc,1)+' kg'):'sem base de comparação',LID_COR.feito)
           +lidCard('Peças por hora em '+ref2,fd(ref.pcH,2),baseCmp?(baseN+': '+fd(baseCmp.pcH,2)):'',LID_COR.cinza)+'</div>'
         +'<div class="lid-p"><b>Peças por hora medem quantas saíram. Quilos por hora medem quanto material a fábrica transformou.</b> Juntos, separam ritmo de tamanho: quando as peças caem e os quilos não, foi o mix que ficou maior, não a linha que rendeu menos; quando as peças sobem e os quilos não, foi o mix que ficou menor, não a linha que rendeu mais.</div>'
-        +'</div></div>'+rod);
+        +(desdeTxt?'<div class="lid-p lid-small">'+desdeTxt+'</div>':'')
+        +'</div></div>'+rod;
     }
-    /* 6c · mix de produtos — só quando há dois anos de reporte com peso.
-       Vem logo depois de peças e quilos por hora porque é o que qualifica o
-       "rendimento": um plano em peças cobrado sobre um mix que mudou não é o
-       mesmo plano. No fim da apresentação, depois da presença, ficava solto.
-       Fora da apresentação isso vive na aba Comparativo; aqui vem só o
-       veredito, em números que cabem na tela de reunião. */
-    var mix = lidMix(M, rod);
-    if (mix) S.push(mix);
-    /* 7 · vendido, produzido, faturado */
+    /* mix de produtos (Apoio) — só quando há dois anos de reporte com peso */
+    ap.mix=lidMix(M, rod)||null;
+    /* 9 · venda, plano, produção e faturamento */
     var vp=M.tot.ven-M.tot.P;
-    /* Plano abaixo da venda = carteira cresce mesmo cumprindo 100% do plano.
-       É o dado que mais pesa para o líder; vai no título, não na nota. */
     var cresce=(M.ritmoExig!==null&&M.cen.C>M.ritmoExig)?(M.cen.C-M.ritmoExig)*M.diasAbertos:0;
-    var h7=(M.tot.ven>0?'Vendemos '+fd(Math.abs(vp)/1000,0)+' mil peças a '+(vp>=0?'mais':'menos')+' do que produzimos no ano.':'')
-      +(M.carteira>0&&M.carteiraDias!==null?' Faltam faturar '+fd(M.carteira/1000,1)+' mil: '+fi(M.carteiraDias)+' dias de produção.':'')
-      +(cresce>0?' O plano de '+M.periodo+' ('+fi(M.ritmoExig)+' por dia) fica abaixo da venda ('+fi(M.cen.C)+'): mesmo cumprindo o plano, a carteira cresce cerca de '+fi(cresce)+' peças.':'');
-    S.push('<h1 class="lid-h">'+h7+'</h1><div class="lid-sub">'+MES_MIN[ms[0].mes]+' a '+MES_MIN[ref.mes]+' de '+anoS+' · peças</div>'
-      +'<div class="lid-2col"><div>'+lidBarrasH([{nome:'Vendido',v:M.tot.ven,cor:LID_COR.plano},{nome:'Produzido',v:M.tot.P,cor:LID_COR.feito},{nome:'Faturado',v:M.tot.fat,cor:LID_COR.cinza}])+'</div>'
-      +'<div><div class="lid-k2">Ritmo por dia (peças) · apurado em '+MES_MIN[ms[0].mes]+'–'+MES_MIN[ref.mes]+'</div>'
+    var pPlA=M.tot.plano>0?M.tot.P/M.tot.plano*100:null, plVen=M.tot.ven>0?M.tot.plano/M.tot.ven*100:null;
+    var qtTxt=function(v){ v=Math.abs(v); return v>=1000?fd(v/1000,0)+' mil':fi(v); };
+    var h7=M.tot.ven>0?(vp>0?((pPlA!==null&&pPlA>=100?'No ano, cumprimos o plano. Mas vendemos ':'No ano, vendemos ')+qtTxt(vp)+' peças a mais do que produzimos'+(plVen!==null&&plVen<95?': o plano ficou abaixo da venda.':'.'))
+                               :'No ano, produzimos '+qtTxt(vp)+' peças a mais do que vendemos.')
+      :'Venda, plano, produção e faturamento no ano.';
+    var s7a=plVen!==null?'O plano cobriu <b>'+fd(plVen,0)+'% da venda</b>.':'';
+    var s7b=(M.carteira>0&&M.carteiraDias!==null)?((plVen!==null&&plVen<100)?' Por isso, mesmo cumprindo o plano, os pedidos se acumulam: hoje são ':' Hoje são ')
+      +'<b>'+fd(M.carteira/1000,1)+' mil peças</b> vendidas esperando faturamento, cerca de '+fi(M.carteiraDias)+' dias de produção.':'';
+    var box7=(s7a||s7b?'<p>'+s7a+s7b+'</p>':'')
+      +(cresce>0?'<p>Para '+M.periodo+', o plano pede '+fi(M.ritmoExig)+' peças por dia e a venda está em '+fi(M.cen.C)+' por dia. Mesmo cumprindo o plano, a carteira ainda cresce cerca de '+fi(cresce)+' peças.</p>':'');
+    S.push(kick('4 · '+(perCap||'Venda e plano'))+'<h1 class="lid-h">'+h7+'</h1><div class="lid-sub">'+MES_MIN[ms[0].mes]+' a '+MES_MIN[ref.mes]+' de '+anoS+' · peças</div>'
+      +'<div class="lid-grid4">'
+      +lidCard('Vendido',fi(M.tot.ven),'pedidos que entraram',LID_COR.plano)
+      +lidCard('Planejado',fi(M.tot.plano),'o que foi programado para produzir','#9FB0C2')
+      +lidCard('Produzido',fi(M.tot.P),'o que saiu da fábrica'+(pPlA!==null?' · '+fd(pPlA,0)+'% do plano':''),pPlA!==null&&pPlA>=100?'#4CAF50':'#F44336')
+      +lidCard('Faturado',fi(M.tot.fat),'o que foi faturado para o cliente',LID_COR.cinza)
+      +'</div>'+(box7?'<div class="lid-box" style="margin-top:.7em">'+box7+'</div>':'')
+      +lider(['Lembrar que cada dia abaixo do plano vira pedido atrasado para o cliente.','Avisar cedo quando houver risco de não cumprir o plano do dia.'])
+      +rod);
+    ap.cen='<h1 class="lid-h">Ritmo por dia: cenários</h1><div class="lid-sub">Peças por dia · apurado em '+MES_MIN[ms[0].mes]+'–'+MES_MIN[ref.mes]+' de '+anoS+'</div>'
       +'<table class="lid-tab"><thead><tr><th>Cenário</th><th>por dia</th><th class="lid-tx">O que é</th></tr></thead><tbody>'
       +'<tr><td>A · Sem hora extra</td><td>'+fi(M.cen.A)+'</td><td class="lid-tx">o que sai na jornada normal</td></tr>'
       +'<tr><td>B · Como está hoje</td><td>'+fi(M.cen.B)+'</td><td class="lid-tx">com a hora extra de hoje</td></tr>'
       +'<tr class="lid-dest"><td>C · Ritmo da venda</td><td>'+fi(M.cen.C)+'</td><td class="lid-tx">para os pedidos não acumularem</td></tr>'
       +'<tr><td>'+mesNome+' · sem hora extra</td><td>'+fi(ref.pcDiaN)+'</td><td class="lid-tx">'+(M.ritAjust?'na peça média do ano, '+fi(M.ritmoRef)+': '+(M.ritmoRef>=M.cen.A?'melhor que':'abaixo da')+' média do ano (A)':(ref.pcDiaN>=M.cen.A?'melhor que':'abaixo da')+' média do ano (A)')+'</td></tr>'
       +'<tr><td>'+mesNome+' · com hora extra</td><td>'+fi(ref.pcDia)+'</td><td class="lid-tx">'+(M.ritAjust?'na peça média do ano, '+fi(ref.pcDia*M.fatorPeso(ref))+': '+(ref.pcDia*M.fatorPeso(ref)>=M.cen.B?'melhor que':'abaixo da')+' média do ano (B)':(ref.pcDia>=M.cen.B?'melhor que':'abaixo da')+' média do ano (B)')+'</td></tr></tbody></table>'
-      +'<div class="lid-p lid-small">A venda varia muito de um mês para outro. Por isso olhamos o ano inteiro.'+(M.ritmoExig!==null?' O plano de '+M.periodo+' pede '+fi(M.ritmoExig)+' peças por dia.':'')+'</div></div></div>'+rod);
-    /* 7b · vendido × produzido mês a mês (b96.66). O slide 7 soma o ano; aqui
-       cada mês, com o plano junto: a fábrica pode cumprir o plano (101% em SET/26)
-       e ficar abaixo da venda (89%) porque o plano ficou abaixo dela (88%).
-       Produzido ÷ vendido é atendimento da venda, não eficiência: a fábrica é
-       cobrada pelo plano. Mês sem venda lançada fica fora das contas e do título. */
+      +'<div class="lid-p lid-small">A venda varia muito de um mês para outro. Por isso olhamos o ano inteiro.'+(M.ritmoExig!==null?' O plano de '+M.periodo+' pede '+fi(M.ritmoExig)+' peças por dia.':'')+'</div>'+rod;
+    /* vendido × produzido mês a mês (Apoio, b96.66). Produzido ÷ vendido é
+       atendimento da venda, não eficiência: a fábrica é cobrada pelo plano.
+       Mês sem venda lançada fica fora das contas e do título. */
     var mv=ms.filter(function(m){ return m.ven>0; });
     if(mv.length>1){
       var sv=0, sp=0, spl=0; mv.forEach(function(m){ sv+=m.ven; sp+=m.P; spl+=m.plano; });
@@ -23776,62 +23846,106 @@ window.CompAnos = (function () {
         +(plAbaixo.length?' O plano ficou abaixo da venda em '+plAbaixo.length+' de '+mv.length+' meses'
             +(pPl!==null&&pPl>=100?': a fábrica cumpriu o plano, o plano é que ficou abaixo da venda.':'.')
           :' O plano acompanhou a venda.');
-      /* colunas de largura igual e os títulos de % em duas linhas: com o título
-         numa linha só, as colunas de % ficavam com o dobro da largura e os
-         números se espremiam à esquerda */
+      /* colunas de largura igual e os títulos de % em duas linhas */
       var tab7b='<table class="lid-tab" style="table-layout:fixed"><colgroup><col style="width:10%"><col style="width:18%"><col style="width:18%"><col style="width:18%"><col style="width:18%"><col style="width:18%"></colgroup>'
         +'<thead><tr style="vertical-align:bottom"><th>Mês</th><th>Vendido</th><th>Plano</th><th>Produzido</th><th>Produzido<br>÷ vendido</th><th>Plano<br>÷ vendido</th></tr></thead><tbody>'
         +ms.map(function(m){ var ok=m.ven>0, a=ok?pct7(m.P,m.ven):null, b=ok&&m.plano>0?pct7(m.plano,m.ven):null;
           return '<tr><td>'+MES_MIN[m.mes]+'</td><td>'+(ok?fi(m.ven):'—')+'</td><td>'+fi(m.plano)+'</td><td>'+fi(m.P)+'</td>'
             +'<td style="color:'+cor7(a)+'">'+(a===null?'—':fd(a,0)+'%')+'</td><td style="color:'+cor7(b)+'">'+(b===null?'—':fd(b,0)+'%')+'</td></tr>'; }).join('')
         +'<tr class="lid-tot"><td>'+(mv.length<ms.length?'Meses com venda':'Ano')+'</td><td>'+fi(sv)+'</td><td>'+fi(spl)+'</td><td>'+fi(sp)+'</td><td>'+fd(cobP,0)+'%</td><td>'+fd(cobPl,0)+'%</td></tr></tbody></table>';
-      S.push('<h1 class="lid-h">'+h7b+'</h1><div class="lid-sub">Vendido, plano e produzido por mês (peças) · '+MES_MIN[ms[0].mes]+' a '+MES_MIN[ref.mes]+' de '+anoS
+      ap.venda='<h1 class="lid-h">'+h7b+'</h1><div class="lid-sub">Vendido, plano e produzido por mês (peças) · '+MES_MIN[ms[0].mes]+' a '+MES_MIN[ref.mes]+' de '+anoS
           +' · plano abaixo da venda = mais de 5% abaixo'+(mv.length<ms.length?' · '+(ms.length-mv.length)+' mês(es) sem venda lançada ficam fora das contas':'')+'</div>'
         +'<div class="lid-2col"><div>'+lidChart({cats:cats,bars:[{nome:'Vendido',cor:LID_COR.plano,v:ms.map(function(m){ return m.ven; })},{nome:'Produzido',cor:LID_COR.feito,v:ms.map(function(m){ return m.P; })}],h:640})+'</div>'
-        +'<div>'+tab7b+'<div class="lid-p lid-small">A venda de um mês oscila com pedido grande; o que pesa é a última linha. Produzido ÷ vendido mede quanto da venda a fábrica atendeu, não eficiência: a fábrica é cobrada pelo plano.</div></div></div>'+rod);
+        +'<div>'+tab7b+'<div class="lid-p lid-small">A venda de um mês oscila com pedido grande; o que pesa é a última linha. Produzido ÷ vendido mede quanto da venda a fábrica atendeu, não eficiência: a fábrica é cobrada pelo plano.</div></div></div>'+rod;
     }
-    /* 8 · plano dos meses abertos e de onde tirar */
+    /* 10 · o desafio dos meses abertos. A diferença aparece em três números
+       (como aconteceu, com peças de peso normal, o que o plano pede) para não
+       misturar a produção real com a comparação na peça média. O ritmo por mês
+       e a conta da presença vão para o Apoio. */
     if(M.abertos.length){
       var s6=M.sim.filter(function(x){ return x.alvo===M.absCrit; })[0]||M.sim[M.sim.length-1];
       var cobreTxt=s6&&M.gapDia>0?(s6.dia>=M.gapDia?'cobre a diferença':(s6.dia>=0.8*M.gapDia?'cobre quase toda a diferença':'cobre parte da diferença')):'';
-      var melhorRit=passaram.filter(function(m){ return m.mes!==ref.mes; }).sort(function(a,b){ return M.ritN(b)-M.ritN(a); })[0];
-      var h8=M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede '+fi(M.ritmoExig)+' peças por dia. '+mesNome+' fez '+fi(ref.pcDiaN)+' na jornada normal ('+fi(ref.pcDia)+' com a hora extra'+(M.ritAjust?'; '+fi(M.ritmoRef)+' na peça média do ano':'')+')'
-        +(M.gapDia>0&&melhorRit?' e '+NOME_MES[melhorRit.mes].toLowerCase()+' fez '+fi(M.ritN(melhorRit))+naMed:'')
-        +'. '+(M.gapDia>0?'A diferença é '+fi(M.gapDia)+' por dia, e a conta mostra de onde tirar.'
-          :(M.empata?'Empata com o plano: '+fi(-M.gapDia)+' por dia de folga, num mês só. A presença é a margem que falta.':'O ritmo de '+ref2+' já cobre o plano; a conta mostra a folga que a presença daria.'));
-      S.push('<h1 class="lid-h">'+h8+'</h1><div class="lid-sub">Plano de '+NOME_MES[M.abertos[0].mes].toLowerCase()+' a '+NOME_MES[M.abertos[M.abertos.length-1].mes].toLowerCase()+' de '+anoS+' · Plano Mestre</div>'
-        +'<div class="lid-2col"><div><table class="lid-tab"><thead><tr><th>Mês</th><th>Dias</th><th>Plano (peças)</th><th>Por dia</th></tr></thead><tbody>'
+      var h8=perLongo+', o plano pede '+fi(M.ritmoExig)+' peças por dia na jornada normal.'
+        +(M.gapDia>0?(M.ritAjust?' Com peças de peso normal, ainda faltam cerca de '+fi(M.gapDia)+' por dia.':' Ainda faltam cerca de '+fi(M.gapDia)+' por dia.')
+          :(M.empata?' O ritmo de '+ref2+(M.ritAjust?', com peças de peso normal,':'')+' empata com isso, sem margem.'
+                    :' O ritmo de '+ref2+(M.ritAjust?', com peças de peso normal,':'')+' já cobre isso.'));
+      var tabPl='<table class="lid-tab"><thead><tr><th>Mês</th><th>Dias</th><th>Plano (peças)</th><th>Por dia</th></tr></thead><tbody>'
         +M.abertos.map(function(x){ return '<tr><td>'+NOME_MES[x.mes]+'</td><td>'+x.dias+'</td><td>'+fi(x.plano)+'</td><td>'+(x.dias>0?fi(x.plano/x.dias):'—')+'</td></tr>'; }).join('')
-        +'<tr class="lid-tot"><td>Total</td><td>'+M.diasAbertos+'</td><td>'+fi(M.planoAberto)+'</td><td>'+fi(M.ritmoExig)+'</td></tr></tbody></table>'
-        +'<div class="lid-p lid-small">Ritmo de '+anoS+' por mês na jornada normal, sem hora extra (peças por dia): '+ms.map(function(m){ return MES_MIN[m.mes]+' '+fi(m.pcDiaN); }).join(' · ')+'. Média do ano: '+fi(M.tot.pcDiaN)+'. Com a hora extra, '+ref2+' fez '+fi(ref.pcDia)+'.'+(M.ritAjust?' Na peça média do ano ('+fd(M.kgPcAno,1)+' kg), '+ref2+' faria '+fi(M.ritmoRef)+' por dia: é esse número que se compara com o plano.':'')+'</div></div>'
+        +'<tr class="lid-tot"><td>Total</td><td>'+M.diasAbertos+'</td><td>'+fi(M.planoAberto)+'</td><td>'+fi(M.ritmoExig)+'</td></tr></tbody></table>';
+      var passo=function(cls,a,v,b){ return '<div class="lid-step'+cls+'"><div class="lid-step-s">'+a+'</div><div class="lid-step-v">'+v+'</div><div class="lid-step-s">'+b+'</div></div>'; };
+      var steps='<div class="lid-steps">'+passo('',mesNome+', como aconteceu',fi(ref.pcDiaN),'por dia, jornada normal')
+        +(M.ritAjust?passo(' lid-step-base',mesNome+' com peças de peso normal',fi(M.ritmoRef),'por dia'):'')
+        +passo(' lid-step-plan','O plano de '+M.periodo+' pede',fi(M.ritmoExig),'por dia')+'</div>';
+      var fimDif=M.gapDia>0?'A diferença é de cerca de '+fi(M.gapDia)+' peças por dia.':(M.empata?'Empata com o plano, sem margem.':'Cobre o plano.');
+      var expl=M.ritAjust?'<p>'+mesNome+' fez '+(ref.pcDiaN>=M.ritmoExig?'mais':'menos')+' do que o plano pede, mas com peças '+(leve?'leves':'pesadas')+'. Com peças de peso normal, o mesmo esforço daria cerca de '+fi(M.ritmoRef)+' por dia. <b>'+fimDif+'</b></p>'
+          +'<p class="lid-small">Isso não é previsão de '+NOME_MES[M.abertos[0].mes].toLowerCase()+': é uma comparação justa, com peças do mesmo peso.</p>'
+        :'<p><b>'+fimDif+'</b></p>';
+      var frentes='<div class="lid-k2" style="margin-top:.7em">'+(M.gapDia>0?'Frentes de trabalho para fechar a diferença':'Frentes para manter o ritmo sem hora extra')+'</div><div class="lid-fr">'
+        +'<div><b>Presença</b>'+(s6?'chegar a '+s6.alvo+'% de falta dá cerca de '+fi(s6.dia)+' peças por dia':'falta já dentro do limite: manter')+'</div>'
+        +'<div><b>Paradas e perdas</b>no turno</div>'
+        +'<div><b>Equilíbrio entre as etapas</b>um setor não pode ficar esperando o outro</div>'
+        +'<div><b>Gargalos</b>saber onde a peça para</div>'
+        +'<div><b>Material e peças</b>disponíveis na hora certa</div>'
+        +'<div><b>Organização do turno</b>aproveitar melhor a jornada normal</div></div>'
+        +'<div class="lid-p lid-small">Nenhuma frente resolve tudo sozinha. Elas precisam ser acompanhadas juntas.</div>';
+      S.push(kick('4 · '+perCap)+'<h1 class="lid-h">'+h8+'</h1><div class="lid-sub">Plano de '+NOME_MES[M.abertos[0].mes].toLowerCase()+' a '+NOME_MES[M.abertos[M.abertos.length-1].mes].toLowerCase()+' de '+anoS+' · Plano Mestre</div>'
+        +'<div class="lid-2col"><div>'+tabPl+'<div class="lid-p lid-small">A meta é fazer isso na jornada normal, sem depender de hora extra.</div></div>'
+        +'<div>'+steps+expl+'</div></div>'+frentes+rod);
+      ap.ritmo='<h1 class="lid-h">Ritmo por mês e a conta da presença</h1><div class="lid-sub">Peças por dia na jornada normal, sem hora extra · '+anoS+'</div>'
+        +'<div class="lid-2col"><div><div class="lid-p">Ritmo de '+anoS+' por mês: '+ms.map(function(m){ return MES_MIN[m.mes]+' '+fi(m.pcDiaN); }).join(' · ')+'. Média do ano: '+fi(M.tot.pcDiaN)+'. Com a hora extra, '+ref2+' fez '+fi(ref.pcDia)+'.'
+        +(M.ritAjust?' Na peça média do ano ('+fd(M.kgPcAno,1)+' kg), '+ref2+' faria '+fi(M.ritmoRef)+' por dia: é esse número que se compara com o plano.':'')+'</div></div>'
         +'<div class="lid-box"><div class="lid-k2">'+(M.gapDia>0?'De onde tirar as '+fi(M.gapDia)+' peças por dia que faltam':'O que a presença ainda pode dar')+'</div>'
         +(s6?'<p>Se a falta cair de '+fd(ref.abs,1)+'% para '+s6.alvo+'%, sobram cerca de '+fi(s6.h)+' horas por mês.</p>'
              +'<p>No rendimento de '+ref2+(M.ritAjust?', com a peça média do ano ('+fd(ref.pcH*M.fatorPeso(ref),2)+' peças por hora)':' ('+fd(ref.pcH,2)+' peças por hora)')+', isso dá perto de '+fi(s6.pc)+' peças por mês: '+fi(s6.dia)+' por dia.</p>'
              +'<p>'+(M.gapDia>0?'Ou seja: reduzir a falta '+cobreTxt+', sem aumentar a hora extra. O que faltar vem de processo estável, equipes balanceadas e menos perdas no turno.'
                                  :'Ou seja: reduzir a falta é folga de '+fi(s6.dia)+' peças por dia sem aumentar a hora extra, e menos hora extra para entregar o mesmo.')+'</p>'
             :'<p>A falta de '+ref2+' já está dentro do limite; a diferença vem de balanceamento, perdas no turno e capacidade.</p>')
-        +'<p class="lid-small">Conta aproximada, linear, feita com as horas e o rendimento de '+ref2+'.</p></div></div>'+rod);
+        +'<p class="lid-small">Conta aproximada, linear, feita com as horas e o rendimento de '+ref2+'.</p></div></div>'+rod;
     }
-    /* 9 · presença */
+    /* 11 · presença */
     if(M.sim.length){
+      var sL=M.sim.filter(function(x){ return x.alvo===M.absCrit; })[0]||M.sim[M.sim.length-1];
       var cards9=lidCard('Hoje · falta de '+fd(ref.abs,1)+'%',fi(M.foraHoje)+' fora','pessoas fora por dia<br>'+fi(ref.F)+' horas perdidas no mês<br>'+fi(ref.heH)+' h de hora extra no mês','#F44336')
         +M.sim.map(function(x){ var refM=ms.filter(function(m){ return m.abs<=x.alvo&&m.mes!==ref.mes; }).sort(function(a,b){ return a.abs-b.abs; })[0];
             return lidCard('Se chegar a '+x.alvo+'%','+'+fi(x.pc),'peças a mais por mês (+'+fi(x.dia)+' por dia)<br>'+fi(x.fora)+' pessoas fora por dia<br>'
               +(refM?NOME_MES[refM.mes].toLowerCase()+' já fez '+fd(refM.abs,1)+'%':(M.gapDia>0?(x.dia>=M.gapDia?'cobre a diferença de '+M.periodo:'cobre '+fi(x.dia)+' das '+fi(M.gapDia)+' que faltam'):(M.empata?'a margem que o plano ainda não tem':'folga sobre o plano, sem hora extra'))),x.alvo<=M.absCrit?'#4CAF50':'#FF9800'); }).join('');
-      S.push('<h1 class="lid-h">'+(M.abertos.length?(M.presAlavanca?'O desafio de '+M.periodo+' é presença. ':'Presença ajuda '+M.periodo+', mas não fecha a diferença sozinha. '):'')+'Cada ponto a menos de falta vira peça sem precisar de hora extra.</h1>'
-        +'<div class="lid-sub">Conta feita com as horas e o rendimento de '+ref2+' ('+fi(ref.colab)+' pessoas, '+fi(ref.H)+' horas trabalhadas na jornada normal, '+(M.ritAjust?fd(ref.pcH*M.fatorPeso(ref),2)+' peças por hora na peça média do ano':fd(ref.pcH,2)+' peças por hora')+')</div>'
+      var h9=(M.abertos.length&&M.gapDia>0?(M.presAlavanca?'Presença fecha boa parte da diferença: ':'Presença ajuda, mas não fecha a diferença sozinha: ')
+               :'Cada ponto a menos de falta vira peça sem precisar de hora extra: ')
+        +'chegar a '+sL.alvo+'% de falta dá cerca de '+fi(sL.pc)+' peças por mês, '+fi(sL.dia)+' por dia.';
+      S.push(kick('4 · '+(perCap||'Presença'))+'<h1 class="lid-h">'+h9+'</h1>'
+        +'<div class="lid-sub">Conta com as horas de '+ref2+(M.ritAjust?' e peças de peso normal ('+fd(ref.pcH*M.fatorPeso(ref),2)+' peças por hora)':' ('+fd(ref.pcH,2)+' peças por hora)')+' · '+fi(ref.colab)+' pessoas</div>'
         +'<div class="lid-grid3">'+cards9+'</div>'
-        +'<div class="lid-p"><b>Presença é meta de linha, não só de RH.</b> Quem percebe primeiro que alguém vai faltar é o líder. A liderança é parte importante dessa melhoria: quanto mais cedo identificarmos falta, cobertura, balanceamento e gargalo, menor o impacto na produção e menos hora extra'+(M.abertos.length?' para fechar '+M.periodo:'')+'.</div>'+rod);
+        +'<div class="lid-p">Quem percebe primeiro que alguém vai faltar é o líder. Reorganizar a equipe antes de a produção parar faz diferença no dia'+(M.gapDia>0&&!M.presAlavanca?', mesmo quando não fecha a diferença do período':'')+'.</div>'+rod);
     }
-    /* 10 · três linhas */
-    var l1=mesNome+' mostrou que dá: '+(acima?'acima do plano':fd(ref.at,0)+'% do plano')+', hora extra '+fxHE.curto+rendTxt+'.';
-    var l2=M.gapDia!==null?(M.gapDia>0?M.periodo.charAt(0).toUpperCase()+M.periodo.slice(1)+' pede '+fd(M.gapDia/M.ritmoRef*100,0)+'% a mais por dia na jornada normal'+(M.ritAjust?', contando a peça média do ano':'')+'.'+(passaram.length?' Em '+lidLista(passaram)+' já fizemos isso.':'')+' Agora é fazer sem depender da hora extra.'
+    /* 12 · o que o líder faz no dia a dia (novo). Só ações de rotina; nenhuma
+       meta individual, meta por setor ou indicador novo. */
+    S.push(kick('5 · O que o líder faz')+'<h1 class="lid-h">O que o líder faz no dia a dia'+(M.gapDia>0?' para fechar a diferença':'')+'</h1>'
+      +'<div class="lid-grid3 lid-chk">'
+      +'<div class="lid-box"><div class="lid-k2">Durante o turno</div><ul><li>Acompanhar o ritmo e perceber cedo quando a produção fica abaixo do esperado.</li><li>Verificar se faltam peças, material, pessoas ou informação para trabalhar.</li><li>Conferir a presença no início do turno e redistribuir pessoas e atividades.</li></ul></div>'
+      +'<div class="lid-box"><div class="lid-k2">Com os outros setores</div><ul><li>Avisar o setor anterior quando faltar peça.</li><li>Avisar o responsável quando o setor seguinte estiver acumulando peças.</li><li>Descobrir onde a peça para e por quê.</li></ul></div>'
+      +'<div class="lid-box"><div class="lid-k2">Com o PPCP e a gerência</div><ul><li>Registrar os problemas que se repetem.</li><li>Buscar a causa da parada antes de propor a solução, e conferir depois se a ação resolveu.</li><li>Avisar com antecedência quando houver risco de não cumprir o plano.</li></ul></div>'
+      +'</div><div class="lid-p">Não é trabalhar mais: é perder menos tempo com parada, espera e retrabalho.</div>'+rod);
+    /* 13 · três linhas */
+    var l1=(bom?mesNome+' foi um bom mês: produzimos acima do plano'
+               :(acima?mesNome+': produzimos acima do plano':mesNome+': ficamos abaixo do plano ('+fd(ref.at,0)+'%)'))
+      +(fxHE.curto?', com hora extra '+fxHE.curto:'')+'.'
+      +(pesoFora?(leve?' Parte do resultado veio de peças mais leves.':' As peças foram mais pesadas que o normal.'):'');
+    var l2=M.gapDia!==null?(M.gapDia>0?perLongo+', o plano pede '+fi(M.ritmoExig)+' peças por dia na jornada normal. '+(M.ritAjust?'Com peças de peso normal, ainda faltam cerca de '+fi(M.gapDia)+' por dia.':'Ainda faltam cerca de '+fi(M.gapDia)+' por dia.')
                                           :(M.empata?'O ritmo de '+ref2+' empata com o plano até o fim do ano, sem margem. Agora é repetir sem depender da hora extra.':'O ritmo já cobre o plano até o fim do ano. Agora é manter sem depender da hora extra.'))
                           :'O ano está fechado: a base para o próximo plano é o ritmo demonstrado, não o nominal.';
-    var l3=(ref.abs>M.absCrit?(M.presAlavanca?'Boa parte da diferença está na presença: cada 1% a menos de falta são '+fi(M.ganhoPP)+' peças no mês. ':M.presPoucoTxt+' O resto vem de processo, balanceamento e capacidade. '):'Presença dentro do limite: a próxima alavanca é balanceamento e perdas no turno. ')+'A liderança é parte importante disso.';
+    var l3=ref.abs>M.absCrit?(M.presAlavanca?'Presença fecha boa parte da diferença: cada 1% a menos de falta são cerca de '+fi(M.ganhoPP)+' peças no mês. Junto com menos paradas e etapas equilibradas.'
+                                            :'Presença ajuda, mas não resolve sozinha. O caminho é perder menos: menos paradas, etapas equilibradas e material na hora certa.')
+                            :'Presença dentro do limite. O caminho agora é perder menos: menos paradas, etapas equilibradas e material na hora certa.';
     S.push('<div class="lid-capa lid-fim">'+lidMarca('lid-marca-fim')+'<div class="lid-k">Em três linhas</div>'
       +[l1,l2,l3].map(function(t,i){ return '<div class="lid-linha"><span class="lid-n">'+(i+1)+'</span><span>'+t+'</span></div>'; }).join('')
       +'<div class="lid-capa-r">Fontes: HISTORICO do painel (ERP Lógica e RH) · Plano Mestre '+anoS+' · dados fechados em '+mesNome.toLowerCase()+'/'+anoS+'</div></div>');
+    /* Apoio: tabelas e análises de detalhe, depois do fecho */
+    var AP=[ap.plano,ap.kg,ap.kgh,ap.mix,ap.cen,ap.venda,ap.ritmo].filter(Boolean);
+    if(AP.length){
+      S.push('<div class="lid-capa">'+lidMarca('lid-marca-fim')+'<div class="lid-k">Apoio</div><h1>Para consulta</h1>'
+        +'<div class="lid-capa-s">Tabelas e análises de detalhe dos slides anteriores.</div></div>');
+      AP.forEach(function(s){ S.push(kick('Apoio · para consulta')+s); });
+    }
     return S;
   }
   var _lidIdx=0, _lidSlides=null, _lidTitulo='';
@@ -24109,6 +24223,10 @@ window.CompAnos = (function () {
       +'.lid-svg{width:100%;height:auto}.lid-lbl{font-size:22px;fill:#1F2933}.lid-lbl-base{fill:#111;font-weight:700}.lid-lbl-b{font-weight:700}.lid-cat{font-size:24px;fill:#52606D}.lid-lbl-g{font-size:30px}.lid-cat-g{font-size:32px;fill:#1F2933}'
       +'.lid-leg{display:flex;gap:16px;font-size:8.5pt;color:#52606D;margin-top:2px}.lid-leg i{display:inline-block;width:14px;height:9px;margin-right:5px;border-radius:2px;vertical-align:middle}'
       +'.lid-leg-topo{margin:0 0 2px}.lid-leg b{color:#1F2933}.lid-lbl-s{font-size:19px;fill:#52606D}.lid-lbl-s.lid-lbl-b{fill:#1F2933}'
+      +'.lid-lider{border-left:4px solid #D9342B;background:#FDF2F1;border-radius:6px;padding:6px 10px;margin-top:8px;font-size:9.5pt;line-height:1.4}.lid-lider-t{font-weight:800;font-size:8pt;letter-spacing:.06em;text-transform:uppercase;color:#D9342B;margin-bottom:2px}.lid-lider ul,.lid-box ul{margin:0 0 0 16px;padding:0}.lid-lider li,.lid-box li{margin:2px 0}'
+      +'.lid-att{border-left:4px solid #FF9800;background:#FFF8EC;border-radius:6px;padding:7px 10px;margin-top:10px;font-size:10.5pt;line-height:1.45}.lid-stack{display:grid;gap:8px}'
+      +'.lid-steps{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin-bottom:6px}.lid-step{border:1px solid #D3D8DE;border-radius:6px;padding:6px;text-align:center}.lid-step-v{font-size:20pt;font-weight:800}.lid-step-s{font-size:8pt;color:#3E4C59}.lid-step-base{background:#F3F6F9;border-color:#9FB0C2}.lid-step-plan{background:#FFF9EA;border-color:#E8B84A}'
+      +'.lid-fr{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px}.lid-fr>div{border:1px solid #D3D8DE;border-radius:5px;padding:4px 8px;font-size:9pt;color:#3E4C59}.lid-fr b{display:block;color:#1F2933}'
       +'.lid-halo{paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}.lid-peso{fill:#9FB0C2}.lid-peso-ref{fill:#2F4B68}.lid-media,.lid-colch{stroke:#1F2933}.lid-cat-ref{font-weight:800;fill:#1F2933}'
       +'.lid-capa{display:flex;flex-direction:column;justify-content:center;flex:1;gap:10px}.lid-capa h1{font-size:34pt}.lid-capa-s{font-size:18pt;color:#3E4C59}.lid-capa-r{font-size:9.5pt;color:#52606D;margin-top:14px}'
       +'.lid-k{font-size:9pt;letter-spacing:.14em;text-transform:uppercase;color:#B8860B;font-weight:700}'
@@ -24650,9 +24768,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.67';
+var APP_VERSAO = 'b96.68';
 var APP_DATA   = '16/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.68', data:'16/10/2026', itens:[
+    'Apresentacao para lideres na linguagem do chao de fabrica. Cada slide abre com o assunto (1 Como foi, 2 O que fizemos bem, 3 O que esta atrapalhando, 4 os proximos meses, 5 O que o lider faz), o titulo e uma frase curta e os assuntos principais fecham com o bloco O que o lider precisa fazer. Hora extra por setor separa os dois motivos (cobrir falta e falta de capacidade); faltas separam o que o lider consegue mudar (falta sem justificativa e atraso) do que segue com o RH. O desafio dos proximos meses aparece em tres numeros: como aconteceu, com pecas de peso normal e o que o plano pede.',
+    'Slide novo O que o lider faz no dia a dia (durante o turno, com os outros setores, com o PPCP). As tabelas de detalhe e os slides gerenciais (plano x produzido por mes, pecas e toneladas por dia, quilos por hora 2025 x 2026, mix, cenarios A/B/C, venda mes a mes, ritmo por mes e a conta da presenca) vao para o Apoio, depois do fecho. Numeros e formulas nao mudam.',
+    'Correcao: o slide de hora extra dizia que marco teve o menor ritmo, 1.211 pecas por dia sem hora extra; janeiro e fevereiro foram menores sem hora extra. O menor era so com hora extra (1.255), e e isso que o slide diz agora.'
+  ]},
   { v:'b96.67', data:'16/10/2026', itens:[
     'Slide Vendido x produzido mes a mes: colunas da tabela com a mesma largura e os titulos Produzido / vendido e Plano / vendido em duas linhas. Antes as colunas de % tinham o dobro da largura e os numeros ficavam espremidos a esquerda.'
   ]},
