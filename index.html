@@ -22964,9 +22964,12 @@ window.CompAnos = (function () {
       var PCano = DashUtils.pontosColab(ateAqui);
       var rotPCant = anoTodo ? (mesesPC.length===12?String(ano-1):('mesmos '+mesesPC.length+' meses de '+(ano-1))) : (mes+'/'+String(ano-1).slice(2));
       /* b96.75: a comparação com o ano anterior e o quadro total são as duas
-         leituras do card que a reunião usa; ganham destaque (só marcação). */
+         leituras do card que a reunião usa; ganham destaque (só marcação).
+         b96.79: a variação vem primeiro, com "vs" e a base entre parênteses.
+         Em "SET/25: 87.129 +4,3%" o percentual ficava colado no número de
+         2025 e lia-se como se 2025 tivesse subido 4,3%. */
       var fmtAnt = function(rot, v, ant){ return (v!==null&&ant!==null&&ant>0)
-        ? (rot+': '+fi(ant)+' <span class="reu-pts-delta" style="font-family:var(--mono);font-weight:800;color:#F5A623">'+pct((v/ant-1)*100)+'</span>') : ''; };
+        ? ('<span class="reu-pts-delta" style="font-family:var(--mono);font-weight:800;color:#F5A623">'+pct((v/ant-1)*100)+'</span> vs '+rot+' ('+fi(ant)+')') : ''; };
       var vsAnt = function(v, ant){ return fmtAnt(rotPCant, v, ant); };
       /* b96.76: ticket médio (DashUtils.periodo: receita ÷ peças faturadas, o
          mesmo da aba Produção) no card de pontos por pessoa. Pontos =
@@ -25024,9 +25027,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.78';
+var APP_VERSAO = 'b96.79';
 var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.79', data:'21/10/2026', itens:[
+    'Reuniao do Mes, cards de pontos: a comparacao com o ano anterior le na ordem certa. Era "SET/25: 87.129 +4,3%", com o percentual colado no numero de 2025, como se 2025 tivesse subido 4,3%. Agora: "+4,3% vs SET/25 (87.129)", a variacao do numero atual primeiro e a base entre parenteses. Vale para os quatro cards (mes e ano) e para a linha do quadro total. So texto.'
+  ]},
   { v:'b96.78', data:'21/10/2026', itens:[
     'Relatorio da Reuniao do Mes (PDF): sai sem o roteiro da apresentacao. O roteiro e guia de quem conduz a reuniao e continua na trilha de apresentacao da tela; no papel repetia as manchetes ja impressas nas perguntas.'
   ]},
