@@ -22968,6 +22968,11 @@ window.CompAnos = (function () {
       var fmtAnt = function(rot, v, ant){ return (v!==null&&ant!==null&&ant>0)
         ? (rot+': '+fi(ant)+' <span class="reu-pts-delta" style="font-family:var(--mono);font-weight:800;color:#F5A623">'+pct((v/ant-1)*100)+'</span>') : ''; };
       var vsAnt = function(v, ant){ return fmtAnt(rotPCant, v, ant); };
+      /* b96.76: ticket médio (DashUtils.periodo: receita ÷ peças faturadas, o
+         mesmo da aba Produção) no card de pontos por pessoa. Pontos =
+         faturado × ticket: sem o ticket ao lado, queda de preço seria lida
+         como queda de produtividade. */
+      var tktLinha = function(v){ return v>0 ? ('<div class="reu-pts-tkt" style="margin-top:3px">ticket médio R$ '+fd(v,2)+'</div>') : ''; };
       var cmpDest = function(txt){ return txt ? ('<div class="reu-pts-cmp" style="margin-top:5px;font-size:.88rem;font-weight:700;color:var(--t1)">'+txt+'</div>') : ''; };
       var qtDest = function(valor, base){
         return '<div class="reu-pts-qt" style="margin-top:7px;padding-top:6px;border-top:1px solid var(--b)">'
@@ -23006,6 +23011,7 @@ window.CompAnos = (function () {
                (PC.porDireto!==null
                  ? (baseDir+semPC+cmpDest(comp2Dir))
                  : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'))
+               +tktLinha(A.tktMed)
                +linhaTot,
                '#F5A623', false)
         +card('Pontos por hora trabalhada',
@@ -23033,6 +23039,7 @@ window.CompAnos = (function () {
                PCano.porDireto!==null
                  ? (fi(PCano.pontosDir)+' pontos em '+PCano.mesesDir+' meses ÷ '+fi(PCano.colabDir/PCano.mesesDir)+' diretos (média por mês)'
                     +cmpDest(cmpDirAno)
+                    +tktLinha(Y.tktMed)
                     +(PCano.porTotal!==null?qtDest(fi(PCano.porTotal), fi(PCano.colabTot/PCano.mesesTot)+' no quadro (média por mês)'):''))
                  : 'sem diretos nos meses com pontos',
                '#F5A623', false)
@@ -25005,9 +25012,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.75';
+var APP_VERSAO = 'b96.76';
 var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.76', data:'21/10/2026', itens:[
+    'Reuniao do Mes: os cards de pontos por pessoa (mes e ano) mostram o ticket medio do periodo, o mesmo da aba Producao (receita / pecas faturadas). Pontos = faturado x ticket: com o ticket ao lado, queda de preco nao e lida como queda de produtividade. SET/26: R$ 229,64. So exibe um numero que o painel ja calcula.'
+  ]},
   { v:'b96.75', data:'21/10/2026', itens:[
     'Reuniao do Mes, cards de pontos: a comparacao com o ano anterior ganha linha propria em negrito, com a variacao em destaque (SET/25: 87.129 +4,3%), e o quadro total vira um bloco separado com o numero em destaque (QUADRO TOTAL 57.484). Mesmo padrao nos quatro cards de pontos, do mes e do ano. So visual.'
   ]},
