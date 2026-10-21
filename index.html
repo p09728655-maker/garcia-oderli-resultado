@@ -4190,6 +4190,9 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
    preso no topo ao rolar. Com a tela rolada até o plano de ação, trocar de
    mês obrigava a subir a página inteira. Fundo opaco do próprio .pageHdr. */
 #page-reuniao > .pageHdr { position: sticky; top: 0; z-index: 40; }
+/* b96.74: pontos em 2 colunas, o mês em cima e o ano embaixo */
+#page-reuniao .reu-pts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 640px) { #page-reuniao .reu-pts { grid-template-columns: 1fr; } }
 #page-reuniao .reu-link { transition: border-color .15s, transform .15s; }
 #page-reuniao .reu-link:hover { border-color: var(--cyan); transform: translateY(-2px); }
 #page-reuniao .reu-link:hover .reu-lbl::after { content: ' ↗'; color: var(--cyan); }
@@ -22965,18 +22968,15 @@ window.CompAnos = (function () {
       var baseDir = anoTodo
         ? (fi(PC.pontosDir)+' pontos em '+PC.mesesDir+' meses ÷ '+fi(PC.colabDir/PC.mesesDir)+' diretos (média)')
         : (fi(PC.pontosDir)+' pontos ÷ '+fi(PC.colabDir)+' diretos');
-      /* Mês sem pontos: o card diz o que falta e mostra o ano até o último
-         mês lançado, para a reunião ainda ter o número. */
+      /* Mês sem pontos: o card diz o que falta; o ano até o último mês
+         lançado fica nos cards do ano, logo abaixo. */
       var ultPC = ateAqui.filter(function(r){ return r.pontos>0; }).map(function(r){ return r.mes; }).pop();
-      var anoAte = function(v){ return v!==null ? ('<br>ano '+fi(v)+' até '+ultPC) : ''; };
       var comp2Dir = vsAnt(PC.porDireto, PCant.porDireto);
-      if(!anoTodo&&PCano.porDireto!==null) comp2Dir += (comp2Dir?' · ':'')+'ano '+fi(PCano.porDireto);
       /* Por hora trabalhada (normais + extras dos diretos): pontos por hora,
          sem o efeito de dias úteis, hora extra e falta que mexe no por
          pessoa. Pontos é faturamento, então não é ritmo de produção. Mesma
          comparação: mesmos meses do ano anterior. */
       var comp2Hora = vsAnt(PC.porHora, PCant.porHora);
-      if(!anoTodo&&PCano.porHora!==null) comp2Hora += (comp2Hora?' · ':'')+'ano '+fi(PCano.porHora);
       var baseTot = anoTodo
         ? (fi(PC.pontosTot)+' pontos em '+PC.mesesTot+' meses ÷ '+fi(PC.colabTot/(PC.mesesTot||1))+' no quadro (média)')
         : (fi(PC.pontosTot)+' pontos ÷ '+fi(PC.colabTot)+' no quadro');
@@ -22986,13 +22986,13 @@ window.CompAnos = (function () {
         ? ('quadro total <b>'+fi(PC.porTotal)+'</b> · '+baseTot+partDir+(vsAntTot?(' · '+vsAntTot):''))
         : (PC.porDireto!==null
            ? ('quadro total: sem o total de colaboradores em '+rotPer+' (HISTORICO, coluna colaboradoresTotal)')
-           : (PCano.porTotal!==null?('quadro total: ano '+fi(PCano.porTotal)+' até '+ultPC):''));
+           : '');
       var subRot = '<span style="font-size:.72rem;font-weight:600;color:var(--t2);margin-left:8px">por direto</span>';
       bPontos=card('Pontos por pessoa'+(anoTodo?' · média/mês':''),
                PC.porDireto!==null ? (fi(PC.porDireto)+subRot) : '—',
                (PC.porDireto!==null
                  ? (baseDir+semPC+(comp2Dir?'<br>'+comp2Dir:''))
-                 : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'+anoAte(PCano.porDireto)))
+                 : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'))
                +(linhaTot?('<br>'+linhaTot):''),
                '#F5A623', false)
         +card('Pontos por hora trabalhada',
@@ -23001,8 +23001,37 @@ window.CompAnos = (function () {
                  ? (fi(PC.pontosHora)+' pontos ÷ '+fi(PC.horas)+' h'+(anoTodo?(' em '+PC.mesesHora+' meses'):'')
                     +'<br>horas normais + extras dos diretos'
                     +(comp2Hora?'<br>'+comp2Hora:''))
-                 : ('pontos de '+mes+' não lançados'+anoAte(PCano.porHora)),
+                 : ('pontos de '+mes+' não lançados'),
                '#F5A623', false);
+      /* Média do ano em cards próprios, abaixo dos do mês (b96.74): os
+         números da antiga linha "ano" (PCano, até o mês escolhido), com a
+         comparação contra os mesmos meses do ano anterior, a mesma da visão
+         Ano todo. Na visão Ano todo os cards de cima já são o ano: não
+         repete. */
+      if(!anoTodo && (PCano.porDireto!==null || PCano.porHora!==null)){
+        var mesesAno = ateAqui.filter(function(r){ return r.pontos>0; }).map(function(r){ return r.mes; });
+        var PCantAno = DashUtils.pontosColab(todos.filter(function(r){ return r.ano===ano-1 && mesesAno.indexOf(r.mes)>=0; }));
+        var rotAnoAnt = mesesAno.length===12 ? String(ano-1) : ('mesmos '+mesesAno.length+' meses de '+(ano-1));
+        var vsAntAno = function(v, ant){ return (v!==null&&ant!==null&&ant>0) ? (rotAnoAnt+': '+fi(ant)+' ('+pct((v/ant-1)*100)+')') : ''; };
+        var cmpDirAno = vsAntAno(PCano.porDireto, PCantAno.porDireto);
+        var cmpHoraAno = vsAntAno(PCano.porHora, PCantAno.porHora);
+        bPontos+=card('Pontos por pessoa · ano até '+ultPC,
+               PCano.porDireto!==null ? (fi(PCano.porDireto)+subRot) : '—',
+               PCano.porDireto!==null
+                 ? (fi(PCano.pontosDir)+' pontos em '+PCano.mesesDir+' meses ÷ '+fi(PCano.colabDir/PCano.mesesDir)+' diretos (média por mês)'
+                    +(cmpDirAno?'<br>'+cmpDirAno:'')
+                    +(PCano.porTotal!==null?('<br>quadro total <b>'+fi(PCano.porTotal)+'</b> · '+fi(PCano.colabTot/PCano.mesesTot)+' no quadro (média)'):''))
+                 : 'sem diretos nos meses com pontos',
+               '#F5A623', false)
+          +card('Pontos por hora · ano até '+ultPC,
+               PCano.porHora!==null ? fi(PCano.porHora) : '—',
+               PCano.porHora!==null
+                 ? (fi(PCano.pontosHora)+' pontos ÷ '+fi(PCano.horas)+' h em '+PCano.mesesHora+' meses'
+                    +'<br>horas normais + extras dos diretos'
+                    +(cmpHoraAno?'<br>'+cmpHoraAno:''))
+                 : 'sem horas nos meses com pontos',
+               '#F5A623', false);
+      }
     }
     var CT = DashUtils.carteira(todos, ano, mes);
     var diasCart=null;
@@ -23171,7 +23200,7 @@ window.CompAnos = (function () {
     /* ── 3 · O que entregamos e o que falta faturar? ── */
     var q3 = bloco('3','O que entregamos e o que falta faturar?', r2, c2,
       '<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">'+b3+'</div>'
-      +(bPontos?('<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:8px">'+bPontos+'</div>'):''));
+      +(bPontos?('<div class="reu-grid reu-pts" style="display:grid;gap:8px;margin-top:8px">'+bPontos+'</div>'):''));
 
     /* ── 4 · O que vamos fazer sobre o vermelho? ── o plano na largura toda.
        O card "Ações críticas" repetia a resposta da pergunta; saiu. */
@@ -23215,6 +23244,7 @@ window.CompAnos = (function () {
       +'.reu-sec-r{color:#3E4C59!important;font-size:9pt!important;font-weight:600!important}'
       +'.reu-row3{display:block!important}.reu-row3 .reu-card{margin-bottom:6px}'
       +'.reu-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;gap:7px!important}'
+      +'.reu-pts{grid-template-columns:repeat(2,minmax(0,1fr))!important}'
       +'.reu-noprint{display:none!important}'
       +'.reu-acoes{background:#fff!important;border:1px solid #D3D8DE!important;border-radius:5px!important;padding:6px 8px!important}'
       +'.reu-tab{width:100%;border-collapse:collapse;font-size:7.5pt!important}'
@@ -24958,9 +24988,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.73';
+var APP_VERSAO = 'b96.74';
 var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.74', data:'21/10/2026', itens:[
+    'Reuniao do Mes, pergunta 3: a media do ano sai dos cards do mes e ganha dois cards proprios, embaixo: Pontos por pessoa e Pontos por hora, ano ate o mes escolhido, com a comparacao contra os mesmos meses do ano anterior (SET/26: 85.480 por direto, +7,7%; 498 por hora, +14,0%). Sao os numeros da antiga linha "ano" e os mesmos da visao Ano todo. Na visao Ano todo os cards do ano nao se repetem.'
+  ]},
   { v:'b96.73', data:'21/10/2026', itens:[
     'Reuniao do Mes: o cabecalho (ano, meses, Apresentar, Relatorio, Lideres) fica preso no topo ao rolar. Com a tela rolada ate o plano de acao, trocar de mes obrigava a subir a pagina.',
     'Pergunta 3: o card de pontos vira dois. Pontos por pessoa: por direto, comparacao com o ano anterior e quadro total. Pontos por hora trabalhada: pontos / horas normais + extras dos diretos, com a mesma comparacao (SET/26: 518, +13,7% contra SET/25). Sai a descricao "faturamento por pessoa". Mesmas contas.'
