@@ -79,6 +79,23 @@ sec('pontosColab: cada base com os seus meses (2025 sem quadro total)');
   ok('JAN/25 sozinho por direto (5.775.743 ÷ 83)', U.pontosColab([reg('JAN', 2025, 5775743, 83, 0)]).porDireto, 69587.27);
 }
 
+sec('pontosColab: por hora trabalhada (normais + extras dos diretos)');
+{
+  /* SET/26 × SET/25, planilha em 21/10/2026: o por colaborador dá +4,3% e o
+     por hora +13,7% — 21 dias contra 22 e 1.130 h extras contra 1.865. */
+  const set26 = Object.assign(reg('SET', 2026, 8450122, 93, 147), { horasNormais: 15188.43, totalExtras: 1129.6 });
+  const set25 = Object.assign(reg('SET', 2025, 8538678, 98, 0),   { horasNormais: 16876,    totalExtras: 1865 });
+  const A = U.pontosColab([set26]), B = U.pontosColab([set25]);
+  ok('SET/26 por hora = 8.450.122 ÷ 16.318,03', A.porHora, 8450122 / 16318.03);
+  ok('SET/25 por hora = 8.538.678 ÷ 18.741', B.porHora, 8538678 / 18741);
+  ok('por colaborador: +4,3%', (A.porDireto / B.porDireto - 1) * 100, 4.29, 0.05);
+  ok('por hora: +13,7%', (A.porHora / B.porHora - 1) * 100, 13.66, 0.05);
+  const P = U.pontosColab([set26, Object.assign(reg('AGO', 2026, 8156190, 93, 148), { horasNormais: 14514.82, totalExtras: 1193.2 })]);
+  ok('período: Σ pontos ÷ Σ horas', P.porHora, (8450122 + 8156190) / (16318.03 + 15708.02));
+  const semHoras = U.pontosColab([reg('SET', 2026, 8450122, 93, 147)]);
+  afirma('mês com pontos e sem horas: por hora fica null, por colaborador continua', semHoras.porHora === null && semHoras.porDireto !== null);
+}
+
 sec('Sync do painel: pontos e colaboradoresTotal não saem');
 {
   const ini = HTML.indexOf("var _SO_PLANILHA");
