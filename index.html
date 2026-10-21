@@ -10121,6 +10121,8 @@ function cfInicializar() {
     '.tv-mode #page-reuniao .reu-sec-n, .tv-mode #page-reuniao .reu-sec-q, .tv-mode #page-reuniao .reu-sec-r { font-size: 1.05rem !important; }',
     '.tv-mode #page-reuniao .reu-manchete { font-size: 1.8rem !important; }',
     '.tv-mode #page-reuniao .reu-rit-v { font-size: 1.5rem !important; }',
+    '.tv-mode #page-reuniao .reu-pts-cmp { font-size: 1.15rem !important; }',
+    '.tv-mode #page-reuniao .reu-pts-qtv { font-size: 1.6rem !important; }',
     '.tv-mode #page-reuniao .reu-frase { font-size: 1rem !important; }',
     /* tabelas de detalhe da faixa 1 (REU_DET_CSS) no telão */
     '.tv-mode #page-reuniao .reu-set-tab td { font-size: .98rem !important; padding: 6px 12px !important; }',
@@ -22961,7 +22963,18 @@ window.CompAnos = (function () {
       var PCant = DashUtils.pontosColab(todos.filter(function(r){ return r.ano===ano-1 && mesesPC.indexOf(r.mes)>=0; }));
       var PCano = DashUtils.pontosColab(ateAqui);
       var rotPCant = anoTodo ? (mesesPC.length===12?String(ano-1):('mesmos '+mesesPC.length+' meses de '+(ano-1))) : (mes+'/'+String(ano-1).slice(2));
-      var vsAnt = function(v, ant){ return (v!==null&&ant!==null&&ant>0) ? (rotPCant+': '+fi(ant)+' ('+pct((v/ant-1)*100)+')') : ''; };
+      /* b96.75: a comparação com o ano anterior e o quadro total são as duas
+         leituras do card que a reunião usa; ganham destaque (só marcação). */
+      var fmtAnt = function(rot, v, ant){ return (v!==null&&ant!==null&&ant>0)
+        ? (rot+': '+fi(ant)+' <span class="reu-pts-delta" style="font-family:var(--mono);font-weight:800;color:#F5A623">'+pct((v/ant-1)*100)+'</span>') : ''; };
+      var vsAnt = function(v, ant){ return fmtAnt(rotPCant, v, ant); };
+      var cmpDest = function(txt){ return txt ? ('<div class="reu-pts-cmp" style="margin-top:5px;font-size:.88rem;font-weight:700;color:var(--t1)">'+txt+'</div>') : ''; };
+      var qtDest = function(valor, base){
+        return '<div class="reu-pts-qt" style="margin-top:7px;padding-top:6px;border-top:1px solid var(--b)">'
+          +'<span style="font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t2)">quadro total</span> '
+          +'<b class="reu-pts-qtv" style="font-family:var(--mono);font-size:1.2rem;font-weight:800;color:#F5A623">'+valor+'</b>'
+          +'<div style="font-size:.74rem;color:var(--t2)">'+base+'</div></div>';
+      };
       var semPC = anoTodo
         ? (PC.semPontos.length?(' · sem pontos: '+PC.semPontos.join(', ')):'')
         : '';
@@ -22983,24 +22996,24 @@ window.CompAnos = (function () {
       var partDir = (PC.mesesTot===PC.mesesDir && PC.colabTot>0) ? (' · diretos '+fd(PC.colabDir/PC.colabTot*100,0)+'%') : '';
       var vsAntTot = vsAnt(PC.porTotal, PCant.porTotal);
       var linhaTot = PC.porTotal!==null
-        ? ('quadro total <b>'+fi(PC.porTotal)+'</b> · '+baseTot+partDir+(vsAntTot?(' · '+vsAntTot):''))
+        ? qtDest(fi(PC.porTotal), baseTot+partDir+(vsAntTot?(' · '+vsAntTot):''))
         : (PC.porDireto!==null
-           ? ('quadro total: sem o total de colaboradores em '+rotPer+' (HISTORICO, coluna colaboradoresTotal)')
+           ? ('<div style="margin-top:6px;font-size:.74rem;color:var(--t2)">quadro total: sem o total de colaboradores em '+rotPer+' (HISTORICO, coluna colaboradoresTotal)</div>')
            : '');
       var subRot = '<span style="font-size:.72rem;font-weight:600;color:var(--t2);margin-left:8px">por direto</span>';
       bPontos=card('Pontos por pessoa'+(anoTodo?' · média/mês':''),
                PC.porDireto!==null ? (fi(PC.porDireto)+subRot) : '—',
                (PC.porDireto!==null
-                 ? (baseDir+semPC+(comp2Dir?'<br>'+comp2Dir:''))
+                 ? (baseDir+semPC+cmpDest(comp2Dir))
                  : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'))
-               +(linhaTot?('<br>'+linhaTot):''),
+               +linhaTot,
                '#F5A623', false)
         +card('Pontos por hora trabalhada',
                PC.porHora!==null ? fi(PC.porHora) : '—',
                PC.porHora!==null
                  ? (fi(PC.pontosHora)+' pontos ÷ '+fi(PC.horas)+' h'+(anoTodo?(' em '+PC.mesesHora+' meses'):'')
                     +'<br>horas normais + extras dos diretos'
-                    +(comp2Hora?'<br>'+comp2Hora:''))
+                    +cmpDest(comp2Hora))
                  : ('pontos de '+mes+' não lançados'),
                '#F5A623', false);
       /* Média do ano em cards próprios, abaixo dos do mês (b96.74): os
@@ -23012,15 +23025,15 @@ window.CompAnos = (function () {
         var mesesAno = ateAqui.filter(function(r){ return r.pontos>0; }).map(function(r){ return r.mes; });
         var PCantAno = DashUtils.pontosColab(todos.filter(function(r){ return r.ano===ano-1 && mesesAno.indexOf(r.mes)>=0; }));
         var rotAnoAnt = mesesAno.length===12 ? String(ano-1) : ('mesmos '+mesesAno.length+' meses de '+(ano-1));
-        var vsAntAno = function(v, ant){ return (v!==null&&ant!==null&&ant>0) ? (rotAnoAnt+': '+fi(ant)+' ('+pct((v/ant-1)*100)+')') : ''; };
+        var vsAntAno = function(v, ant){ return fmtAnt(rotAnoAnt, v, ant); };
         var cmpDirAno = vsAntAno(PCano.porDireto, PCantAno.porDireto);
         var cmpHoraAno = vsAntAno(PCano.porHora, PCantAno.porHora);
         bPontos+=card('Pontos por pessoa · ano até '+ultPC,
                PCano.porDireto!==null ? (fi(PCano.porDireto)+subRot) : '—',
                PCano.porDireto!==null
                  ? (fi(PCano.pontosDir)+' pontos em '+PCano.mesesDir+' meses ÷ '+fi(PCano.colabDir/PCano.mesesDir)+' diretos (média por mês)'
-                    +(cmpDirAno?'<br>'+cmpDirAno:'')
-                    +(PCano.porTotal!==null?('<br>quadro total <b>'+fi(PCano.porTotal)+'</b> · '+fi(PCano.colabTot/PCano.mesesTot)+' no quadro (média)'):''))
+                    +cmpDest(cmpDirAno)
+                    +(PCano.porTotal!==null?qtDest(fi(PCano.porTotal), fi(PCano.colabTot/PCano.mesesTot)+' no quadro (média por mês)'):''))
                  : 'sem diretos nos meses com pontos',
                '#F5A623', false)
           +card('Pontos por hora · ano até '+ultPC,
@@ -23028,7 +23041,7 @@ window.CompAnos = (function () {
                PCano.porHora!==null
                  ? (fi(PCano.pontosHora)+' pontos ÷ '+fi(PCano.horas)+' h em '+PCano.mesesHora+' meses'
                     +'<br>horas normais + extras dos diretos'
-                    +(cmpHoraAno?'<br>'+cmpHoraAno:''))
+                    +cmpDest(cmpHoraAno))
                  : 'sem horas nos meses com pontos',
                '#F5A623', false);
       }
@@ -23245,6 +23258,10 @@ window.CompAnos = (function () {
       +'.reu-row3{display:block!important}.reu-row3 .reu-card{margin-bottom:6px}'
       +'.reu-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;gap:7px!important}'
       +'.reu-pts{grid-template-columns:repeat(2,minmax(0,1fr))!important}'
+      +'.reu-pts-cmp{font-size:8pt!important;color:#1F2933!important}'
+      +'.reu-pts-delta{color:#1F2933!important}'
+      +'.reu-pts-qt{border-top-color:#D3D8DE!important}'
+      +'.reu-pts-qtv{font-size:10pt!important;color:#1F2933!important}'
       +'.reu-noprint{display:none!important}'
       +'.reu-acoes{background:#fff!important;border:1px solid #D3D8DE!important;border-radius:5px!important;padding:6px 8px!important}'
       +'.reu-tab{width:100%;border-collapse:collapse;font-size:7.5pt!important}'
@@ -24988,9 +25005,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.74';
+var APP_VERSAO = 'b96.75';
 var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.75', data:'21/10/2026', itens:[
+    'Reuniao do Mes, cards de pontos: a comparacao com o ano anterior ganha linha propria em negrito, com a variacao em destaque (SET/25: 87.129 +4,3%), e o quadro total vira um bloco separado com o numero em destaque (QUADRO TOTAL 57.484). Mesmo padrao nos quatro cards de pontos, do mes e do ano. So visual.'
+  ]},
   { v:'b96.74', data:'21/10/2026', itens:[
     'Reuniao do Mes, pergunta 3: a media do ano sai dos cards do mes e ganha dois cards proprios, embaixo: Pontos por pessoa e Pontos por hora, ano ate o mes escolhido, com a comparacao contra os mesmos meses do ano anterior (SET/26: 85.480 por direto, +7,7%; 498 por hora, +14,0%). Sao os numeros da antiga linha "ano" e os mesmos da visao Ano todo. Na visao Ano todo os cards do ano nao se repetem.'
   ]},
