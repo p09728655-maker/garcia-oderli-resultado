@@ -4186,6 +4186,10 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
    rola de qualquer jeito, e a barra "encolhendo" só nesta aba parecia bug. */
 /* card que desce um nível da pirâmide: só sinaliza no hover, para não poluir
    a tela projetada com afordância que ninguém usa durante a fala */
+/* b96.73: o cabeçalho da Reunião (ano, mês, Apresentar, Relatório) fica
+   preso no topo ao rolar. Com a tela rolada até o plano de ação, trocar de
+   mês obrigava a subir a página inteira. Fundo opaco do próprio .pageHdr. */
+#page-reuniao > .pageHdr { position: sticky; top: 0; z-index: 40; }
 #page-reuniao .reu-link { transition: border-color .15s, transform .15s; }
 #page-reuniao .reu-link:hover { border-color: var(--cyan); transform: translateY(-2px); }
 #page-reuniao .reu-link:hover .reu-lbl::after { content: ' ↗'; color: var(--cyan); }
@@ -22942,9 +22946,10 @@ window.CompAnos = (function () {
        diretos e ÷ quadro inteiro. Sem meta, sem veredito: cor da marca, como
        a produção. Compara com os MESMOS meses do ano anterior (os que têm
        pontos no período), para o ano em curso não ser medido contra um ano
-       inteiro. Pontos é faturamento por pessoa (uso interno do PPCP). Um card
-       só, na largura da pergunta 3: diretos, quadro total e por hora. Ano sem
-       nenhum ponto lançado: o card não aparece. */
+       inteiro. Uso interno do PPCP (pontos = faturado × ticket médio). Dois
+       cards na pergunta 3: pontos por pessoa (diretos e quadro total) e
+       pontos por hora trabalhada. Ano sem nenhum ponto lançado: os cards não
+       aparecem. */
     var bPontos='';
     if(fechados.some(function(r){ return r.pontos>0; })){
       var regsPC = anoTodo?fechados:[rMes];
@@ -22968,12 +22973,10 @@ window.CompAnos = (function () {
       if(!anoTodo&&PCano.porDireto!==null) comp2Dir += (comp2Dir?' · ':'')+'ano '+fi(PCano.porDireto);
       /* Por hora trabalhada (normais + extras dos diretos): pontos por hora,
          sem o efeito de dias úteis, hora extra e falta que mexe no por
-         colaborador. Pontos é faturamento, então não é ritmo de produção.
-         Mesma comparação do card: mesmos meses do ano anterior. */
-      var linhaHora = PC.porHora!==null
-        ? ('por hora trabalhada: '+fi(PC.porHora)
-           +(PCant.porHora>0?(' ('+pct((PC.porHora/PCant.porHora-1)*100)+' vs '+(anoTodo?('mesmo período de '+(ano-1)):(mes+'/'+String(ano-1).slice(2)))+')'):''))
-        : '';
+         pessoa. Pontos é faturamento, então não é ritmo de produção. Mesma
+         comparação: mesmos meses do ano anterior. */
+      var comp2Hora = vsAnt(PC.porHora, PCant.porHora);
+      if(!anoTodo&&PCano.porHora!==null) comp2Hora += (comp2Hora?' · ':'')+'ano '+fi(PCano.porHora);
       var baseTot = anoTodo
         ? (fi(PC.pontosTot)+' pontos em '+PC.mesesTot+' meses ÷ '+fi(PC.colabTot/(PC.mesesTot||1))+' no quadro (média)')
         : (fi(PC.pontosTot)+' pontos ÷ '+fi(PC.colabTot)+' no quadro');
@@ -22985,13 +22988,20 @@ window.CompAnos = (function () {
            ? ('quadro total: sem o total de colaboradores em '+rotPer+' (HISTORICO, coluna colaboradoresTotal)')
            : (PCano.porTotal!==null?('quadro total: ano '+fi(PCano.porTotal)+' até '+ultPC):''));
       var subRot = '<span style="font-size:.72rem;font-weight:600;color:var(--t2);margin-left:8px">por direto</span>';
-      bPontos=card('Pontos por colaborador · faturamento por pessoa'+(anoTodo?' · média/mês':''),
+      bPontos=card('Pontos por pessoa'+(anoTodo?' · média/mês':''),
                PC.porDireto!==null ? (fi(PC.porDireto)+subRot) : '—',
                (PC.porDireto!==null
-                 ? (baseDir+semPC+(comp2Dir?'<br>'+comp2Dir:'')+(linhaHora?'<br>'+linhaHora:''))
-                 : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'+anoAte(PCano.porDireto)
-                    +(PCano.porDireto!==null&&PCano.porHora!==null?(' · '+fi(PCano.porHora)+' por hora'):'')))
+                 ? (baseDir+semPC+(comp2Dir?'<br>'+comp2Dir:''))
+                 : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'+anoAte(PCano.porDireto)))
                +(linhaTot?('<br>'+linhaTot):''),
+               '#F5A623', false)
+        +card('Pontos por hora trabalhada',
+               PC.porHora!==null ? fi(PC.porHora) : '—',
+               PC.porHora!==null
+                 ? (fi(PC.pontosHora)+' pontos ÷ '+fi(PC.horas)+' h'+(anoTodo?(' em '+PC.mesesHora+' meses'):'')
+                    +'<br>horas normais + extras dos diretos'
+                    +(comp2Hora?'<br>'+comp2Hora:''))
+                 : ('pontos de '+mes+' não lançados'+anoAte(PCano.porHora)),
                '#F5A623', false);
     }
     var CT = DashUtils.carteira(todos, ano, mes);
@@ -23161,7 +23171,7 @@ window.CompAnos = (function () {
     /* ── 3 · O que entregamos e o que falta faturar? ── */
     var q3 = bloco('3','O que entregamos e o que falta faturar?', r2, c2,
       '<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">'+b3+'</div>'
-      +(bPontos?('<div class="reu-grid" style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px">'+bPontos+'</div>'):''));
+      +(bPontos?('<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:8px">'+bPontos+'</div>'):''));
 
     /* ── 4 · O que vamos fazer sobre o vermelho? ── o plano na largura toda.
        O card "Ações críticas" repetia a resposta da pergunta; saiu. */
@@ -24948,9 +24958,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.72';
+var APP_VERSAO = 'b96.73';
 var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.73', data:'21/10/2026', itens:[
+    'Reuniao do Mes: o cabecalho (ano, meses, Apresentar, Relatorio, Lideres) fica preso no topo ao rolar. Com a tela rolada ate o plano de acao, trocar de mes obrigava a subir a pagina.',
+    'Pergunta 3: o card de pontos vira dois. Pontos por pessoa: por direto, comparacao com o ano anterior e quadro total. Pontos por hora trabalhada: pontos / horas normais + extras dos diretos, com a mesma comparacao (SET/26: 518, +13,7% contra SET/25). Sai a descricao "faturamento por pessoa". Mesmas contas.'
+  ]},
   { v:'b96.72', data:'21/10/2026', itens:[
     'Reuniao do Mes reorganizada em quatro perguntas, na ordem da decisao, cada uma num quadro com a resposta embaixo do titulo: 1 Fechamos o ano? 2 O plano do mes coube sem hora extra? 3 O que entregamos e o que falta faturar? 4 O que vamos fazer sobre o vermelho? So muda a tela: numeros, contas e cores sao os mesmos.',
     'Pergunta 1: a manchete passa a mostrar o ritmo do ano e o do mes lado a lado, cada um contra o proprio exigido (SET/26: ano 1.339 contra 1.482, -9,6%; setembro 1.673 contra 1.658, +0,9%), e o "para fechar o ano: 91.169 pc em 55 dias uteis = 1.658 pc/dia", que ficava na quarta linha do card de ritmo. A acao da manchete vai para o quadro Decisao.',
