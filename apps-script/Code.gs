@@ -167,8 +167,11 @@ var ACOES_CAMPOS = ['id','tipo','prioridade','kpi','desvio','causa','acao',
    verificado nela (Gmail › Ver todas as configurações › Contas › Enviar
    e-mail como). Se não for nenhum dos dois, o envio é RECUSADO com o motivo
    — mandar em nome errado seria pior que não mandar. */
-var REMETENTE = 'ppcp@patrimarmoveis.com.br';
+// PROVISÓRIO: voltar para 'ppcp@patrimarmoveis.com.br' quando o alias for configurado.
+var REMETENTE = 'p09728655@gmail.com';
 var REMETENTE_NOME = 'PPCP · Patrimar Móveis';
+/* Para onde vão as respostas: a caixa do setor, não a conta que envia. */
+var RESPONDER_PARA = 'ppcp@patrimarmoveis.com.br';
 
 /* Aba com a lista de distribuição do plano de ação. Uma linha por pessoa.
    Tirar alguém da lista é apagar um "S", não mexer em código. */
@@ -187,7 +190,7 @@ var MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','
 /* Precisa ser igual a SHEETS_SECRET no index.html. Não é segurança de
    verdade — o valor viaja no JavaScript da página, que é público. Serve para
    evitar escrita acidental por quem esbarrar na URL. */
-var SECRET = 'TROQUE_ESTA_SENHA_2026';
+var SECRET = 'zYjhEkzRm3cc0lYiO4A7IUtmvgAkqrZC';
 
 /* Colunas que o app NÃO pode sobrescrever ao gravar. A previsão vem do
    PLANO MESTRE; se o app pudesse escrevê-la, um dado local desatualizado
@@ -1029,7 +1032,7 @@ function enviarPlanoAcao(ss, pedido) {
       + 'acima do limite de ' + EMAIL_MAX_DESTINATARIOS + '. Confira a lista. Nada foi enviado.');
   }
 
-  var opcoes = { name: REMETENTE_NOME };
+  var opcoes = { name: REMETENTE_NOME, replyTo: RESPONDER_PARA };
   var eu = '';
   try { eu = Session.getEffectiveUser().getEmail() || ''; } catch (e) {}
   if (REMETENTE && REMETENTE.toLowerCase() !== String(eu).toLowerCase()) {
