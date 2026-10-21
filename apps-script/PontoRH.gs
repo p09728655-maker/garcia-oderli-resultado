@@ -11,8 +11,9 @@
  *   2. processarPontoDrive() converte para Planilha Google, lê o extrato,
  *      cruza cada Nº Folha com a aba FUNCIONARIOS (quem é direto), soma o
  *      grupo e lança na HISTORICO: colaboradores, horasCarga, horasNormais,
- *      extra50, extra100 e três colunas brutas do ponto: naoTrabalhadas,
- *      faltasPonto, atrasosPonto. O arquivo vai para PROCESSADOS. Rodar
+ *      extra50, extra100 e as colunas brutas do ponto: naoTrabalhadas,
+ *      faltasPonto, atrasosPonto e colaboradoresTotal (diretos + indiretos,
+ *      base de pontos por colaborador). O arquivo vai para PROCESSADOS. Rodar
  *      duas vezes no mesmo mês só regrava — não duplica.
  *   3. O painel (DashUtils.normalizar) deriva faltas e atraso daí:
  *        atraso = atrasosPonto
@@ -228,19 +229,20 @@ function prExtrair(sheet) {
 
 /* ══ 3 · SOMA DOS DIRETOS ══ */
 function prAgregar(ext, func) {
-  var dir = [], pend = [], depois = [];
+  var dir = [], pend = [], depois = [], nTotal = 0;
   ext.pessoas.forEach(function (p) {
     var f = func.mapa[p.codigo];
     if (!f) { pend.push(p.codigo + ' ' + p.nome); return; }
+    if (f.admissao && ext.fim && f.admissao > ext.fim) { if (f.direto) depois.push(p.codigo + ' ' + p.nome); return; }
+    nTotal++;   /* quadro inteiro: o mesmo filtro da PONTO_SETOR (prAgregarSetores) */
     if (!f.direto) return;
-    if (f.admissao && ext.fim && f.admissao > ext.fim) { depois.push(p.codigo + ' ' + p.nome); return; }
     dir.push(p);
   });
   var soma = function (k) { return dir.reduce(function (a, p) { return a + p[k]; }, 0); };
   /* jornada cheia = carga mais frequente (arredondada a 0,1 h) */
   var cont = {}, jornada = 0, melhor = 0;
   dir.forEach(function (p) { if (p.carga > 0) { var k = Math.round(p.carga * 10) / 10; cont[k] = (cont[k] || 0) + 1; if (cont[k] > melhor) { melhor = cont[k]; jornada = k; } } });
-  var a = { n: dir.length, carga: soma('carga'), normais: soma('normais'), faltasPonto: soma('faltas'),
+  var a = { n: dir.length, nTotal: nTotal, carga: soma('carga'), normais: soma('normais'), faltasPonto: soma('faltas'),
             atrasosPonto: soma('atrasos'), e50: soma('e50'), e100: soma('e100'), jornada: jornada };
   /* Quem entrou ou saiu dentro do mês tem a própria carga como jornada: os
      dias antes da admissão e depois do desligamento não são ausência. Com
@@ -273,7 +275,7 @@ function prLancarHistorico(ss, mes, ano, a, soBrutas) {
   if (iCab < 0) throw new Error('cabeçalho com "mes" e "ano" não encontrado na ' + PR_ABA_HISTORICO);
   /* colunas brutas do ponto: cria na primeira coluna livre se faltarem */
   var largura = linhas[iCab].length;
-  ['naoTrabalhadas', 'faltasPonto', 'atrasosPonto'].forEach(function (nome) {
+  ['naoTrabalhadas', 'faltasPonto', 'atrasosPonto', 'colaboradoresTotal'].forEach(function (nome) {
     var n = prNormaliza(nome);
     if (col[n] === undefined) {
       while (largura > 0 && !String(linhas[iCab][largura - 1] || '').trim()) largura--;
@@ -305,12 +307,17 @@ function prLancarHistorico(ss, mes, ano, a, soBrutas) {
   grava('naoTrabalhadas', a.naoTrabalhadas);
   grava('faltasPonto', a.faltasPonto);
   grava('atrasosPonto', a.atrasosPonto);
+  /* Quadro inteiro (diretos + indiretos), base de "pontos por colaborador
+     (total)" na Reunião. Só vem do extrato: a soma do log (aceitarPonto...,
+     prSomaDoLog) não tem o total e não mexe na coluna. */
+  if (a.nTotal > 0) grava('colaboradoresTotal', a.nTotal);
   return criou;
 }
 
 /* Mês fechado com o MESMO extrato (mesmas pessoas, carga, normais e extras):
    atualiza só as colunas brutas do script (naoTrabalhadas, faltasPonto,
-   atrasosPonto), que não são digitadas e seguem a regra do script de hoje.
+   atrasosPonto, colaboradoresTotal), que não são digitadas e seguem a regra
+   do script de hoje.
    Sem isso, MAR a AGO/26 ficaram com naoTrabalhadas da regra antiga (quem
    foi admitido ou desligado no meio do mês contava o mês inteiro), 79 a
    334 h a mais por mês, e a integridade acusou JUN/26 sem divergência real.
@@ -323,9 +330,12 @@ function prMesmoExtrato(atual, a) {
     && perto(atual.extra50, a.e50) && perto(atual.extra100, a.e100);
 }
 function prBrutasDoMesFechado(ss, mes, ano, a, atual) {
-  if (!prMesmoExtrato(atual, a) || Math.abs((atual.naoTrabalhadas || 0) - a.naoTrabalhadas) < 0.05) return null;
+  if (!prMesmoExtrato(atual, a)) return null;
+  var mudouNT = Math.abs((atual.naoTrabalhadas || 0) - a.naoTrabalhadas) >= 0.05;
+  var mudouTotal = a.nTotal > 0 && Math.round(atual.colaboradoresTotal || 0) !== a.nTotal;
+  if (!mudouNT && !mudouTotal) return null;
   prLancarHistorico(ss, mes, ano, a, true);
-  return { antes: atual.naoTrabalhadas || 0, depois: a.naoTrabalhadas };
+  return mudouNT ? { antes: atual.naoTrabalhadas || 0, depois: a.naoTrabalhadas } : null;
 }
 
 /* O que a HISTORICO tem hoje para o mês (ou null se a linha não existe). */
@@ -343,7 +353,8 @@ function prLerHistoricoMes(ss, mes, ano) {
     var m = String(linhas[r][col.mes] || '').trim().toUpperCase().slice(0, 3);
     if (m === mes && parseInt(linhas[r][col.ano], 10) === ano)
       return { colaboradores: num(linhas[r], 'colaboradores'), horasCarga: num(linhas[r], 'horasCarga'), horasNormais: num(linhas[r], 'horasNormais'),
-               extra50: num(linhas[r], 'extra50'), extra100: num(linhas[r], 'extra100'), naoTrabalhadas: num(linhas[r], 'naoTrabalhadas') };
+               extra50: num(linhas[r], 'extra50'), extra100: num(linhas[r], 'extra100'), naoTrabalhadas: num(linhas[r], 'naoTrabalhadas'),
+               colaboradoresTotal: num(linhas[r], 'colaboradoresTotal') };
   }
   return null;
 }
