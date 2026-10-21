@@ -23335,12 +23335,6 @@ window.CompAnos = (function () {
       +'.reu-sub{font-size:7pt!important;color:#52606D!important}'
       +'.reu-manchete{font-size:14pt!important}'
       +'.reu-frase{color:#2d3748!important;font-size:9pt!important}'
-      /* O roteiro segue no espaço que sobra: inteiro, ia sozinho para uma
-         folha nova. Quebra entre itens, nunca no meio de um. */
-      +'.reu-rot{margin-top:12px;border-top:1.5px solid #edf2f7;padding-top:6px}'
-      +'.reu-rot h2{font-size:10pt;color:#1F2933;margin-bottom:4px;break-after:avoid;page-break-after:avoid}'
-      +'.reu-rot ol{padding-left:16px}.reu-rot li{font-size:8pt;color:#1F2933;margin:2px 0;line-height:1.35;break-inside:avoid;page-break-inside:avoid}'
-      +'.reu-rot li b{color:#1F2933}.reu-rot .rt-aba{color:#52606D;font-size:7pt}'
       +'.ft{display:flex;justify-content:space-between;font-size:7pt;color:#a0aec0;'
         +'padding:8px 22px;border-top:1px solid #edf2f7;margin-top:10px}'
       +'</style></head><body>'
@@ -23348,7 +23342,7 @@ window.CompAnos = (function () {
       +'<div class="lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
       +'<h1>Reunião do Mês — '+per+'</h1>'
       +'<div class="sb">Plano · entrega · capacidade · carteira · plano de ação</div></div></div></div>'
-      +'<div class="bd">'+corpo.innerHTML.replace(/<details class="reu-set-det"/g,'<details open class="reu-set-det"')+_roteiroHTML()+'</div>'
+      +'<div class="bd">'+corpo.innerHTML.replace(/<details class="reu-set-det"/g,'<details open class="reu-set-det"')+'</div>'
       +'<div class="ft"><span>RitmoPatrimar Resultado — PPCP</span><span>Gerado em: '+hoje+'</span></div>'
       +'</body></html>');
     w.document.close();
@@ -23500,13 +23494,6 @@ window.CompAnos = (function () {
     el.querySelectorAll('.rt-dot').forEach(function(d,i){
       d.classList.toggle('on',i===_trilhaIdx); d.classList.toggle('feito',i<_trilhaIdx);
     });
-  }
-  function _roteiroHTML(){
-    return '<div class="reu-rot"><h2>Roteiro da apresentação</h2><ol>'
-      +TRILHA.map(function(p){
-        return '<li><b>'+p.n+' · '+p.t+'</b> <span class="rt-aba">('+(ABAS_NOME[p.id]||p.id)+')</span><br>'
-          +(_falas[p.fala]||'—')+'</li>';
-      }).join('')+'</ol></div>';
   }
   window.reuApresentar=function(){
     var corpo=document.getElementById('reu-corpo');
@@ -25037,9 +25024,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.77';
+var APP_VERSAO = 'b96.78';
 var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.78', data:'21/10/2026', itens:[
+    'Relatorio da Reuniao do Mes (PDF): sai sem o roteiro da apresentacao. O roteiro e guia de quem conduz a reuniao e continua na trilha de apresentacao da tela; no papel repetia as manchetes ja impressas nas perguntas.'
+  ]},
   { v:'b96.77', data:'21/10/2026', itens:[
     'Relatorio da Reuniao do Mes (PDF): as perguntas podem quebrar entre paginas. Antes cada pergunta ia inteira para a pagina seguinte quando nao cabia, e a pergunta 2 deixava 60% da primeira folha em branco (SET/26 saia em 4 paginas, agora 3). Continuam inteiros: card, decisao, cada tabela de detalhe e cada linha; o titulo nao fica sozinho no pe da pagina. O roteiro segue no espaco que sobra em vez de abrir folha nova.',
     'Relatorio da Reuniao do Mes, plano de acao: a tabela cabe na folha. Saia com a barra de rolagem impressa e a coluna Status cortada; agora cada coluna tem largura fixa, o texto quebra e fica alinhado a esquerda, e o cabecalho fica legivel. Responsavel com varios nomes (Ricardo/Marcelinho/Adriano) quebra depois da barra.'
