@@ -6221,18 +6221,27 @@ window.DashUtils = (function() {
      por mês ponderada pelo quadro, não média de razões. Cada base tem o seu
      conjunto de meses (2025 não tem o total), por isso os pontos de cada uma
      vêm separados. Mês fechado sem pontos fica fora e vai para semPontos,
-     para a tela dizer que faltou o lançamento em vez de mostrar zero. */
+     para a tela dizer que faltou o lançamento em vez de mostrar zero.
+     porHora = Σ pontos ÷ Σ horas trabalhadas dos diretos (horasNormais +
+     totalExtras, as mesmas horas em que os pontos saíram). Por colaborador
+     sobe e desce com dias úteis, hora extra e falta; por hora, não: em SET/26
+     o por colaborador dava +4,3% contra SET/25 e o por hora, +13,7% (21 dias
+     contra 22 e 1.130 h extras contra 1.865). */
   function pontosColab(regs) {
     var o = { pontosDir:0, colabDir:0, mesesDir:0, porDireto:null,
-              pontosTot:0, colabTot:0, mesesTot:0, porTotal:null, semPontos:[] };
+              pontosTot:0, colabTot:0, mesesTot:0, porTotal:null,
+              pontosHora:0, horas:0, mesesHora:0, porHora:null, semPontos:[] };
     (regs || []).forEach(function (r) {
       if (!r) return;
       if (!(r.pontos > 0)) { if (r.producaoReal > 0) o.semPontos.push(r.mes); return; }
       if (r.colaboradores > 0)      { o.pontosDir += r.pontos; o.colabDir += r.colaboradores;      o.mesesDir++; }
       if (r.colaboradoresTotal > 0) { o.pontosTot += r.pontos; o.colabTot += r.colaboradoresTotal; o.mesesTot++; }
+      var h = (r.horasNormais || 0) + (r.totalExtras || 0);
+      if (h > 0)                    { o.pontosHora += r.pontos; o.horas += h;                     o.mesesHora++; }
     });
     if (o.colabDir > 0) o.porDireto = o.pontosDir / o.colabDir;
     if (o.colabTot > 0) o.porTotal  = o.pontosTot / o.colabTot;
+    if (o.horas > 0)    o.porHora   = o.pontosHora / o.horas;
     return o;
   }
 
@@ -22960,11 +22969,19 @@ window.CompAnos = (function () {
       var anoAte = function(v){ return v!==null ? ('<br>ano '+fi(v)+' até '+ultPC) : ''; };
       var comp2Dir = vsAnt(PC.porDireto, PCant.porDireto);
       if(!anoTodo&&PCano.porDireto!==null) comp2Dir += (comp2Dir?' · ':'')+'ano '+fi(PCano.porDireto);
+      /* Por hora trabalhada (normais + extras dos diretos): o ritmo, sem o
+         efeito de dias úteis, hora extra e falta que mexe no por colaborador.
+         Mesma comparação do card: mesmos meses do ano anterior. */
+      var linhaHora = PC.porHora!==null
+        ? ('por hora trabalhada: '+fi(PC.porHora)
+           +(PCant.porHora>0?(' ('+pct((PC.porHora/PCant.porHora-1)*100)+' vs '+(anoTodo?('mesmo período de '+(ano-1)):(mes+'/'+String(ano-1).slice(2)))+')'):''))
+        : '';
       b3+=card('Pontos por colaborador direto'+(anoTodo?' · média/mês':''),
                PC.porDireto!==null ? fi(PC.porDireto) : '—',
                PC.porDireto!==null
-                 ? (baseDir+semPC+(comp2Dir?'<br>'+comp2Dir:''))
-                 : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'+anoAte(PCano.porDireto)),
+                 ? (baseDir+semPC+(comp2Dir?'<br>'+comp2Dir:'')+(linhaHora?'<br>'+linhaHora:''))
+                 : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'+anoAte(PCano.porDireto)
+                    +(PCano.porDireto!==null&&PCano.porHora!==null?(' · '+fi(PCano.porHora)+' por hora'):'')),
                '#F5A623', false);
       var baseTot = anoTodo
         ? (fi(PC.pontosTot)+' pontos em '+PC.mesesTot+' meses ÷ '+fi(PC.colabTot/(PC.mesesTot||1))+' no quadro (média)')
@@ -24852,9 +24869,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.70';
+var APP_VERSAO = 'b96.71';
 var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.71', data:'21/10/2026', itens:[
+    'Card Pontos por colaborador direto ganha a linha por hora trabalhada: pontos / (horas normais + horas extras dos diretos), comparada com os mesmos meses do ano anterior. Por colaborador sobe e desce com dias uteis, hora extra e falta; por hora mostra o ritmo. SET/26: 90.862 por colaborador (+4,3% vs SET/25) e 518 por hora (+13,7%), com 21 dias contra 22 e 1.130 h extras contra 1.865.'
+  ]},
   { v:'b96.70', data:'21/10/2026', itens:[
     'Reuniao do Mes, faixa 2, ganha dois cards: Pontos por colaborador direto (pontos do mes / colaboradores) e Pontos por colaborador do quadro total (pontos / diretos + indiretos). No ano, soma dos pontos / soma dos colaboradores dos meses que tem os dois: media por mes. Cada card compara com os mesmos meses do ano anterior. Sem meta, sem veredito: cor da marca, como a producao. Mes fechado sem pontos aparece como nao lancado, nunca zero.',
     'HISTORICO ganha as colunas pontos (o PPCP digita; JAN/25 a AGO/26 ja lancados) e colaboradoresTotal (PontoRH.gs grava do extrato do ponto, diretos + indiretos que estao na FUNCIONARIOS, a mesma soma da PONTO_SETOR; JAN a SET/26 preenchidos, 2025 vazio porque nao ha extrato processado). O painel so le as duas: nao manda no sync e o Code.gs nao deixa gravar por cima, para uma copia aberta antes do lancamento nao apagar o que foi digitado.'
