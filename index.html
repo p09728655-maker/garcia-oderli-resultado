@@ -10113,6 +10113,7 @@ function cfInicializar() {
     '.tv-mode #page-reuniao .reu-sec { margin: 12px 0 7px !important; }',
     '.tv-mode #page-reuniao .reu-sec-n, .tv-mode #page-reuniao .reu-sec-q, .tv-mode #page-reuniao .reu-sec-r { font-size: 1.05rem !important; }',
     '.tv-mode #page-reuniao .reu-manchete { font-size: 1.8rem !important; }',
+    '.tv-mode #page-reuniao .reu-rit-v { font-size: 1.5rem !important; }',
     '.tv-mode #page-reuniao .reu-frase { font-size: 1rem !important; }',
     /* tabelas de detalhe da faixa 1 (REU_DET_CSS) no telão */
     '.tv-mode #page-reuniao .reu-set-tab td { font-size: .98rem !important; padding: 6px 12px !important; }',
@@ -22223,7 +22224,10 @@ window.CompAnos = (function () {
    ritmo demonstrado vs exigido, carteira em dias úteis de produção,
    dependência de hora extra, absenteísmo e ações críticas em aberto.
    Depois vieram o custo da hora extra e os pontos por colaborador (diretos
-   e quadro total), na faixa da entrega.
+   e quadro total), na faixa da entrega. b96.72: a tela vira quatro
+   perguntas em quadros, na ordem da decisão (fechamos o ano? o plano do mês
+   coube sem hora extra? o que entregamos e o que falta faturar? o que vamos
+   fazer sobre o vermelho?), com os mesmos números e as mesmas contas.
 
    Plano de ação: regra da reunião — nenhum indicador vermelho sem causa,
    ação, responsável e prazo. Fica na aba ACOES da planilha (fonte), com
@@ -22303,6 +22307,9 @@ window.CompAnos = (function () {
     +'.reu-set-tab td.reu-abs-cai{color:#4CAF50!important}.reu-set-tab td.reu-abs-sobe{color:#F44336!important}'
     +'.reu-set-tab td.reu-abs-nat{color:var(--t2)!important;font-size:.76rem!important}'
     +'.reu-set-nota{font-size:.68rem;color:var(--t2);margin-top:5px;line-height:1.35}'
+    +'.reu-set-det>summary{cursor:pointer;font-size:.74rem;font-weight:700;color:#F5A623;margin:2px 0 4px;width:max-content}'
+    +'.reu-set-det>summary:hover{text-decoration:underline}'
+    +'.reu-set-det[open]>summary{margin-bottom:6px}'
     +'</style>';
 
   function reuBlocoSetores(mes,ano){
@@ -22346,6 +22353,7 @@ window.CompAnos = (function () {
     return '<div class="reu-setores" style="margin:10px 2px 0">'+REU_DET_CSS
       +'<div class="reu-set-h">▸ Onde está a hora extra · '+RS.rotulo+'</div>'
       +'<div class="reu-set-p">'+frase+'</div>'
+      +'<details class="reu-set-det"><summary>Ver por setor</summary>'
       +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab reu-set-he" style="min-width:520px">'
       +'<thead><tr>'
         +'<th style="text-align:left;width:auto">Setor</th>'
@@ -22361,7 +22369,7 @@ window.CompAnos = (function () {
           +'<td'+nCel+'>'+fi(resto.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+(RS.jornada>0?fd(hRest/RS.jornada,1):'—')+'</td><td'+nCel+'>—</td><td'+nCel+'>—</td><td style="color:var(--t3)!important">—</td></tr>'
           +resto.map(function(x){ return linha(x).replace('<tr>','<tr class="reu-set-extra" style="display:none">'); }).join('')):'')
       +'<tr class="reu-set-tot"><td class="reu-set-nome">Fábrica · diretos</td><td'+nCel+'>'+fi(RS.setores.reduce(function(t,x){ return t+x.pessoas; },0))+'</td><td'+nCel+'>'+(RS.hePesDir===null?'—':fd(RS.hePesDir,1))+'</td><td'+nCel+'>'+fd(RS.refPct,1)+'%</td><td'+nCel+'>'+(RS.absDir===null?'—':fd(RS.absDir,1)+'%')+'</td><td style="color:var(--t3)!important">—</td></tr>'
-      +'</tbody></table></div></div>';
+      +'</tbody></table></div></details></div>';
   }
 
   /* ABSENTEÍSMO POR MOTIVO NA REUNIÃO
@@ -22398,6 +22406,7 @@ window.CompAnos = (function () {
     return '<div class="reu-setores reu-abs" style="margin:10px 2px 0">'+REU_DET_CSS
       +'<div class="reu-set-h">▸ Absenteísmo por motivo · '+rot+(C?' contra '+rotAnt:'')+'</div>'
       +'<div class="reu-set-p">'+frase+'</div>'
+      +'<details class="reu-set-det"><summary>Ver por motivo</summary>'
       +'<div style="overflow-x:auto"><table class="reu-tab reu-set-tab reu-abs-tab" style="min-width:460px">'
       +'<thead><tr>'
         +'<th style="text-align:left;width:auto">Motivo</th>'
@@ -22417,17 +22426,21 @@ window.CompAnos = (function () {
         +'% sobre as horas normais, a mesma conta do card. Falta, atestado e afastamento vêm do controle de faltas do RH; atraso, do ponto. '
         +'Afastamento e atestado são saúde e licença: ação de presença não mexe neles.'
         +(regsAnt&&!Ma?(' '+rotAnt+' sem controle de faltas: sem comparação.'):'')
-      +'</div></div>';
+      +'</div></details></div>';
   }
 
-  function faixa(num,pergunta,resposta,corResp,cards,extra){
-    return '<div class="reu-sec" style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:13px 0 7px;padding-left:2px">'
-      +'<span class="reu-sec-n" style="font-family:var(--mono);font-size:.8rem;font-weight:800;color:#F5A623">'+num+'</span>'
-      +'<span class="reu-sec-q" style="font-size:.82rem;font-weight:700;color:var(--t1);letter-spacing:.02em">'+pergunta+'</span>'
-      +(resposta?'<span class="reu-sec-r" style="font-size:.82rem;font-weight:700;color:'+(corResp||'var(--t2)')+'">→ '+resposta+'</span>':'')
+  /* b96.72: cada pergunta num quadro próprio, a resposta logo abaixo do
+     título. As classes reu-sec* continuam (modo TV e relatório). */
+  function bloco(num,pergunta,resposta,corResp,corpoHtml,corTopo){
+    return '<section class="reu-q" style="background:var(--panel);border:1px solid var(--b);'
+        +(corTopo?('border-top:4px solid '+corTopo+';'):'')+'border-radius:var(--r);padding:11px 15px 13px;min-width:0">'
+      +'<div class="reu-sec" style="display:flex;flex-direction:column;gap:3px;margin:0 0 10px;padding-left:2px">'
+        +'<div><span class="reu-sec-n" style="font-family:var(--mono);font-size:.8rem;font-weight:800;color:#F5A623;margin-right:8px">'+num+'</span>'
+        +'<span class="reu-sec-q" style="font-size:.86rem;font-weight:700;color:var(--t1);letter-spacing:.02em">'+pergunta+'</span></div>'
+        +(resposta?'<span class="reu-sec-r" style="font-size:.86rem;font-weight:700;color:'+(corResp||'var(--t2)')+'">→ '+resposta+'</span>':'')
       +'</div>'
-      +(cards?'<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:8px">'+cards+'</div>':'')
-      +(extra||'');
+      +corpoHtml
+      +'</section>';
   }
 
   /* Integridade dos dados — a porta de entrada da reunião. Se acende
@@ -22839,19 +22852,8 @@ window.CompAnos = (function () {
     var CHano=DashUtils.custoHE(ateAqui, CUSTO_HORA_);
     var pm=(typeof window.pmApurado==='function')?window.pmApurado():null;
 
-    /* ── 1 · manchete ── */
-    var manchete='';
-    if(pm&&pm.ano===ano&&pm.titulo){
-      manchete='<div style="background:linear-gradient(135deg,var(--panel),rgba(255,255,255,.02));border:1px solid var(--b);'
-        +'border-left:5px solid '+pm.cor+';border-radius:var(--r);padding:11px 18px">'
-        +'<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px">'
-          +'<span class="reu-manchete" style="font-size:1.45rem;font-weight:800;color:'+pm.cor+'">'+pm.titulo+'</span>'
-          +'<span style="font-family:var(--mono);font-size:1rem;font-weight:700;color:'+pm.cor+'">'+pct(pm.pctFolga)+'</span>'
-          +'<span style="font-size:.68rem;color:var(--t3)">ritmo demonstrado vs exigido pelo plano</span>'
-        +'</div>'
-        +'<div class="reu-frase" style="font-size:.84rem;color:var(--t2);line-height:1.5;max-width:1100px">'+pm.acao+'</div>'
-        +'</div>';
-    }
+    /* A manchete (pm) vira a pergunta 1, "Fechamos o ano?", montada depois do
+       ritmo: o ritmo do ano e o do mês ficam lado a lado com ela (b96.72). */
 
     var META_ABS_   =(typeof META_ABS    !=='undefined')?META_ABS    :3;
     var META_DEP_HE_=(typeof META_DEP_HE !=='undefined')?META_DEP_HE :8;
@@ -22890,35 +22892,27 @@ window.CompAnos = (function () {
        SET/26 o card dizia 1.673 e a manchete -7,4% (1.373 vs 1.482) sem
        dizer que eram períodos diferentes, e o "exigido 1.658" do mês
        (plano de SET ÷ 21 dias) coincidia com o necessário até dezembro
-       (91.169 ÷ 55). Cada linha agora diz de que período é. */
-    var subRit = (ritExg!==null?('exigido'+(anoTodo?'':' em '+mes)+' '+fi(ritExg)+' pç/dia'+(anoTodo&&!pmAno?' · '+fi(A.dias)+' dias trabalhados':'')):('sem plano no '+(anoTodo?'ano':'mês')))
-      +(!anoTodo&&pmAno?('<br>acumulado do ano '+fi(pm.ritmoDem)+' vs '+fi(pm.ritmoExig)+' ('+pct(pm.pctFolga)+', o da manchete)'):'')
-      +(pmAno&&pm.planoAberto>0?('<br>até o fim do ano: '+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'
-        +(pm.ritmoNecR>0?(' = '+fi(pm.ritmoNecR)+' pç/dia'):'')):'');
+       (91.169 ÷ 55). Cada linha agora diz de que período é: desde b96.72,
+       uma linha por período na pergunta 1, cada uma com o próprio exigido. */
 
     var perdPc   = (A._P.pecasPerdidas!==null && A._P.pecasPerdidas!==undefined) ? A._P.pecasPerdidas : null;
     var perdDias = (perdPc!==null && A._P.prodDia>0) ? perdPc/A._P.prodDia : null;
 
+    var corAder = aderSE===null?'#00E5FF':corMeta(aderSE,100);
+    var corHE   = A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336');
+    var corAbsC = corMeta(A.absMed,META_ABS_,true);
     var b2=card('Aderência ao plano de '+(anoTodo?ano:mes)+' · s/ HE', aderSE!==null?(fd(aderSE,1)+'%'):'—',
                 aderSE!==null ? ('com hora extra '+fd(ader,1)+'%<br>previsto '+fi(planoRef)+' pç')
                               : 'sem previsão lançada no Plano Mestre',
-                aderSE===null?'#00E5FF':corMeta(aderSE,100), true, 'mestre')
-      +card('Ritmo demonstrado'+(anoTodo?' no ano':' só em '+mes), ritDem!==null?(fi(ritDem)+' pç/dia'):'—',
-                subRit, corRit, false, 'mestre')
+                corAder, true, 'mestre')
+      /* Custo da hora extra (DashUtils.custoHE) dentro do card de HE: era um
+         card próprio que passava meses em "—". Sem custo-hora na aba METAS, a
+         linha de rodapé da pergunta diz o que falta, nunca R$ 0. */
       +card('Dependência de hora extra', fd(A.depHE,1)+'%',
              fi(A.deHE)+' pç de '+fi(A.he)+' h extras<br>'+fd(A.pctHE,1)+'% das horas totais'
-             +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%')),
-             A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'), false, 'eficiencia')
-      /* Custo da hora extra em card próprio (DashUtils.custoHE). Sem meta em
-         reais, não há veredito: cor da marca, como o card de produção. Sem
-         custo-hora na aba METAS o valor é "—" e a linha diz o que falta, nunca
-         R$ 0. */
-      +card('Custo da hora extra', CH.valor!==null?('R$ '+fi(CH.valor)):'—',
-             fi(CH.h50)+' h a 50% + '+fi(CH.h100)+' h a 100%<br>'
-             +(CH.valor!==null
-               ? ('R$ '+fd(CUSTO_HORA_,2)+'/h com encargos'+(anoTodo?'':(' · ano R$ '+fi(CHano.valor))))
-               : 'falta o custo-hora (aba METAS)'),
-             CH.valor!==null?'#F5A623':'#00E5FF', false, 'eficiencia')
+             +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%'))+' · limite '+META_DEP_HE_+'%'
+             +(CH.valor!==null?('<br>custo R$ '+fi(CH.valor)+' (R$ '+fd(CUSTO_HORA_,2)+'/h)'+(anoTodo?'':(' · ano R$ '+fi(CHano.valor)))):''),
+             corHE, false, 'eficiencia')
       +card('Absenteísmo', fd(A.absMed,1)+'%',
              /* A tradução que a diretoria entende: horas perdidas ao ritmo da
                 jornada normal do próprio período = peças que não saíram, e
@@ -22927,7 +22921,7 @@ window.CompAnos = (function () {
              (perdPc!==null ? (fi(A._P.hPerdidas)+' h de falta e atraso = '+fi(perdPc)+' pç'
                                +(perdDias!==null?(' · '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de produção'):'')+'<br>') : '')
              +(anoTodo?'':('ano '+fd(Y.absMed,1)+'% · '))+'meta '+META_ABS_+'%',
-             corMeta(A.absMed,META_ABS_,true), false, 'pessoas');
+             corAbsC, false, 'pessoas');
 
     /* ── 3 · entrega e carteira ──
        Produção é volume, não veredito: cor da marca, e o "% do plano com hora
@@ -22948,7 +22942,10 @@ window.CompAnos = (function () {
        diretos e ÷ quadro inteiro. Sem meta, sem veredito: cor da marca, como
        a produção. Compara com os MESMOS meses do ano anterior (os que têm
        pontos no período), para o ano em curso não ser medido contra um ano
-       inteiro. Ano sem nenhum ponto lançado: os dois cards não aparecem. */
+       inteiro. Pontos é faturamento por pessoa (uso interno do PPCP). Um card
+       só, na largura da pergunta 3: diretos, quadro total e por hora. Ano sem
+       nenhum ponto lançado: o card não aparece. */
+    var bPontos='';
     if(fechados.some(function(r){ return r.pontos>0; })){
       var regsPC = anoTodo?fechados:[rMes];
       var PC = DashUtils.pontosColab(regsPC);
@@ -22969,31 +22966,32 @@ window.CompAnos = (function () {
       var anoAte = function(v){ return v!==null ? ('<br>ano '+fi(v)+' até '+ultPC) : ''; };
       var comp2Dir = vsAnt(PC.porDireto, PCant.porDireto);
       if(!anoTodo&&PCano.porDireto!==null) comp2Dir += (comp2Dir?' · ':'')+'ano '+fi(PCano.porDireto);
-      /* Por hora trabalhada (normais + extras dos diretos): o ritmo, sem o
-         efeito de dias úteis, hora extra e falta que mexe no por colaborador.
+      /* Por hora trabalhada (normais + extras dos diretos): pontos por hora,
+         sem o efeito de dias úteis, hora extra e falta que mexe no por
+         colaborador. Pontos é faturamento, então não é ritmo de produção.
          Mesma comparação do card: mesmos meses do ano anterior. */
       var linhaHora = PC.porHora!==null
         ? ('por hora trabalhada: '+fi(PC.porHora)
            +(PCant.porHora>0?(' ('+pct((PC.porHora/PCant.porHora-1)*100)+' vs '+(anoTodo?('mesmo período de '+(ano-1)):(mes+'/'+String(ano-1).slice(2)))+')'):''))
         : '';
-      b3+=card('Pontos por colaborador direto'+(anoTodo?' · média/mês':''),
-               PC.porDireto!==null ? fi(PC.porDireto) : '—',
-               PC.porDireto!==null
-                 ? (baseDir+semPC+(comp2Dir?'<br>'+comp2Dir:'')+(linhaHora?'<br>'+linhaHora:''))
-                 : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'+anoAte(PCano.porDireto)
-                    +(PCano.porDireto!==null&&PCano.porHora!==null?(' · '+fi(PCano.porHora)+' por hora'):'')),
-               '#F5A623', false);
       var baseTot = anoTodo
         ? (fi(PC.pontosTot)+' pontos em '+PC.mesesTot+' meses ÷ '+fi(PC.colabTot/(PC.mesesTot||1))+' no quadro (média)')
         : (fi(PC.pontosTot)+' pontos ÷ '+fi(PC.colabTot)+' no quadro');
       var partDir = (PC.mesesTot===PC.mesesDir && PC.colabTot>0) ? (' · diretos '+fd(PC.colabDir/PC.colabTot*100,0)+'%') : '';
-      b3+=card('Pontos por colaborador · quadro total'+(anoTodo?' · média/mês':''),
-               PC.porTotal!==null ? fi(PC.porTotal) : '—',
-               PC.porTotal!==null
-                 ? (baseTot+partDir+'<br>'+(vsAnt(PC.porTotal, PCant.porTotal)||'diretos + indiretos do ponto'))
-                 : (PC.porDireto!==null
-                    ? ('sem o total de colaboradores em '+rotPer+'<br>HISTORICO, coluna colaboradoresTotal')
-                    : ('pontos de '+mes+' não lançados'+anoAte(PCano.porTotal))),
+      var vsAntTot = vsAnt(PC.porTotal, PCant.porTotal);
+      var linhaTot = PC.porTotal!==null
+        ? ('quadro total <b>'+fi(PC.porTotal)+'</b> · '+baseTot+partDir+(vsAntTot?(' · '+vsAntTot):''))
+        : (PC.porDireto!==null
+           ? ('quadro total: sem o total de colaboradores em '+rotPer+' (HISTORICO, coluna colaboradoresTotal)')
+           : (PCano.porTotal!==null?('quadro total: ano '+fi(PCano.porTotal)+' até '+ultPC):''));
+      var subRot = '<span style="font-size:.72rem;font-weight:600;color:var(--t2);margin-left:8px">por direto</span>';
+      bPontos=card('Pontos por colaborador · faturamento por pessoa'+(anoTodo?' · média/mês':''),
+               PC.porDireto!==null ? (fi(PC.porDireto)+subRot) : '—',
+               (PC.porDireto!==null
+                 ? (baseDir+semPC+(comp2Dir?'<br>'+comp2Dir:'')+(linhaHora?'<br>'+linhaHora:''))
+                 : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'+anoAte(PCano.porDireto)
+                    +(PCano.porDireto!==null&&PCano.porHora!==null?(' · '+fi(PCano.porHora)+' por hora'):'')))
+               +(linhaTot?('<br>'+linhaTot):''),
                '#F5A623', false);
     }
     var CT = DashUtils.carteira(todos, ano, mes);
@@ -23022,13 +23020,12 @@ window.CompAnos = (function () {
     /* Vermelho na tela sem ação registrada é o pior estado desta faixa — a
        regra da reunião existe para isso. "0 críticas" em verde com quatro
        cards vermelhos acima seria a tela se contradizendo de novo. */
-    var vermelhos=((b2+b3).match(/border-top:3px solid #F44336/g)||[]).length;
+    /* Os mesmos indicadores de antes (aderência, ritmo, hora extra,
+       absenteísmo e carteira), contados pela cor: o ritmo saiu do card e foi
+       para a pergunta 1, e contar a marcação dos cards deixaria ele de fora. */
+    var vermelhos=[corAder, corRit, corHE, corAbsC, corCart].filter(function(c){ return c==='#F44336'; }).length;
     var semDono = vermelhos>0 && R.abertas===0;
     var corAc = R.criticas>0?'#F44336':(semDono?'#F44336':(R.abertas>0?'#FF9800':'#4CAF50'));
-    var b4=card('Ações críticas', String(R.criticas),
-             R.abertas+' em aberto · '+R.vencidas+' com prazo vencido<br>'
-             +(semDono?(vermelhos+' indicador'+(vermelhos===1?'':'es')+' vermelho'+(vermelhos===1?'':'s')+' sem ação'):(R.concluidas+' concluída'+(R.concluidas===1?'':'s'))),
-             corAc, true, '#reu-acoes');
 
     /* Respostas das faixas — a história em três frases, na cor do veredito. */
     /* A pergunta precisa de resposta, não só de diagnóstico: faltou quanto, o
@@ -23059,6 +23056,7 @@ window.CompAnos = (function () {
            +(diasCart!==null?(' · carteira de '+fi(diasCart)+' dias úteis'):'');
     var c2 = diasCart===null?'var(--t2)':(diasCart<=0.5*DUTEIS_?'#4CAF50':(diasCart<=1.5*DUTEIS_?'#FF9800':'#F44336'));
     var r3 = R.abertas+' em aberto · '+R.criticas+' crítica'+(R.criticas===1?'':'s')
+           +(R.vencidas>0?(' · '+R.vencidas+' com prazo vencido'):'')
            +(semDono?(' · '+vermelhos+' indicador'+(vermelhos===1?'':'es')+' vermelho'+(vermelhos===1?'':'s')+' sem ação registrada'):'');
     var c3 = corAc;
 
@@ -23097,21 +23095,89 @@ window.CompAnos = (function () {
        saía cortada; agora empilham ali e ficam lado a lado na TV (1920). */
     if(detalhesF1) detalhesF1='<div class="reu-det" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,720px),1fr));gap:2px 26px;align-items:start">'+detalhesF1+'</div>';
 
-    /* Ordem = ordem da decisão: o plano cabe sem hora extra? O que saiu pela
-       porta e o que falta faturar? E o que vamos fazer sobre o vermelho. */
+    /* ── 1 · Fechamos o ano? ──
+       A manchete (pmApurado) com o ritmo do ano e o do mês lado a lado, cada
+       um contra o próprio exigido: os números que ficavam no card de ritmo,
+       sem conta nova. Em SET/26 o card dizia 1.673 no mês e a manchete −9,6%
+       no ano, e só a 4ª linha do card ligava os dois. Ano sem Plano Mestre
+       apurado (2025): só a linha do período, como o card fazia. */
+    var linhasRit=[];
+    if(anoTodo){
+      if(ritDem!==null) linhasRit.push({ rot:'Ritmo do ano', dem:ritDem, exg:ritExg, f:folga, cor:(pmAno&&pm.cor)?pm.cor:corRit,
+                                         sub:pmAno?'':('sem hora extra · '+fi(A.dias)+' dias trabalhados') });
+    } else {
+      if(pmAno&&pm.ritmoExig>0) linhasRit.push({ rot:'Ritmo do ano', dem:pm.ritmoDem, exg:pm.ritmoExig, f:pm.pctFolga, cor:pm.cor||corRit });
+      if(ritDem!==null) linhasRit.push({ rot:'Ritmo de '+mes, dem:ritDem, exg:ritExg, f:folga, cor:corRit });
+    }
+    var escRit=linhasRit.reduce(function(m,l){ return Math.max(m,l.dem||0,l.exg||0); },0)*1.08;
+    var pE=function(v){ return (escRit>0?Math.min(100,v/escRit*100):0).toFixed(1)+'%'; };
+    var barrasRit=linhasRit.map(function(l){
+      return '<div style="font-size:.8rem;color:var(--t1);line-height:1.25">'+l.rot+'<div style="font-size:.68rem;color:var(--t2)">'+(l.sub||'sem hora extra')+'</div></div>'
+        +'<div class="reu-rit-trilho" style="position:relative;height:22px;background:var(--input);border-radius:3px;margin-top:14px">'
+          +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+pE(l.dem)+';background:'+l.cor+';border-radius:3px"></div>'
+          +(l.exg>0?('<div class="reu-rit-m" style="position:absolute;left:'+pE(l.exg)+';top:-5px;bottom:-5px;border-left:2px dashed #F5F5F5"></div>'
+            +'<span class="reu-rit-ml" style="position:absolute;left:'+pE(l.exg)+';top:-17px;transform:translateX(-60%);font-size:.68rem;color:var(--t2);white-space:nowrap">exigido '+fi(l.exg)+'</span>'):'')
+        +'</div>'
+        +'<div style="text-align:right;white-space:nowrap"><span class="reu-rit-v" style="font-family:var(--mono);font-size:1.05rem;font-weight:800">'+fi(l.dem)+'</span>'
+          +(l.f!==null&&l.f!==undefined&&isFinite(l.f)?(' <span style="font-family:var(--mono);font-size:.85rem;font-weight:700;color:'+l.cor+'">'+pct(l.f)+'</span>'):'')
+          +'<div style="font-size:.66rem;color:var(--t2)">pç/dia'+(l.exg>0?'':' · sem plano')+'</div></div>';
+    }).join('');
+    var fecharTxt = (pmAno&&pm.planoAberto>0)
+      ? ('Para fechar o ano: <b>'+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'+(pm.ritmoNecR>0?(' = '+fi(pm.ritmoNecR)+' pç/dia'):'')+'</b>')
+      : '';
+    var temManchete = pmAno && pm.titulo;
+    var l0 = linhasRit[0]||null;
+    var corQ1 = temManchete ? pm.cor : (l0?l0.cor:'var(--t2)');
+    var cabQ1 = temManchete
+      ? ('<div style="display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap">'
+          +'<span class="reu-manchete" style="font-size:1.45rem;font-weight:800;color:'+pm.cor+'">'+pm.titulo+'</span>'
+          +'<span style="font-family:var(--mono);font-size:1.05rem;font-weight:800;color:'+pm.cor+'">'+pct(pm.pctFolga)+'</span>'
+          +'<span style="font-size:.72rem;color:var(--t2)">ritmo demonstrado no ano vs exigido pelo plano</span></div>')
+      : '';
+    var respQ1 = temManchete ? '' : (l0 ? (fi(l0.dem)+' pç/dia'+(l0.exg>0?(' contra '+fi(l0.exg)+' exigidos ('+pct(l0.f)+')'):' · sem plano lançado')) : 'sem ritmo apurado');
+    var q1 = bloco('1','Fechamos o ano?', respQ1, corQ1,
+      '<div style="display:flex;flex-wrap:wrap;gap:12px 28px;align-items:stretch">'
+        +'<div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:10px">'
+          +cabQ1
+          +(barrasRit?('<div style="display:grid;grid-template-columns:150px minmax(0,1fr) 150px;gap:6px 14px;align-items:center">'+barrasRit+'</div>'):'')
+          +(fecharTxt?('<div class="reu-frase" style="font-size:.84rem;color:var(--t1);line-height:1.45">'+fecharTxt+'</div>'):'')
+          +'<div class="reu-noprint"><button type="button" class="btn btn-g btn-sm" onclick="reuIr(\'mestre\')" title="Ritmo mês a mês, plano e lotes">Ver o Planejamento Mestre ›</button></div>'
+        +'</div>'
+        +(temManchete&&pm.acao?('<div class="reu-decisao" style="flex:1 1 280px;background:var(--input);border:1px solid var(--b2);border-radius:var(--r);padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:6px">'
+          +'<div style="font-size:.66rem;font-weight:800;letter-spacing:.1em;color:var(--t2);text-transform:uppercase">Decisão</div>'
+          +'<div class="reu-frase" style="font-size:.92rem;font-weight:700;color:var(--t1);line-height:1.4">'+pm.acao+'</div></div>'):'')
+      +'</div>', corQ1);
+
+    /* ── 2 · O plano coube sem hora extra? ── os cards e as duas leituras de
+       detalhe (absenteísmo por motivo e hora extra por setor), com as tabelas
+       a um clique. Sem custo-hora, a linha de rodapé diz o que falta. */
+    var custoFalta = CH.valor===null
+      ? '<div style="font-size:.72rem;color:var(--t2);margin:8px 2px 0">Custo da hora extra: falta o custo-hora (aba METAS).</div>' : '';
+    var q2 = bloco('2','O plano '+(anoTodo?'do ano':'de '+mes)+' coube sem hora extra?', r1Curta, c1,
+      '<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:8px">'+b2+'</div>'
+      +(r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.85;margin:8px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
+      +detalhesF1+custoFalta);
+
+    /* ── 3 · O que entregamos e o que falta faturar? ── */
+    var q3 = bloco('3','O que entregamos e o que falta faturar?', r2, c2,
+      '<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">'+b3+'</div>'
+      +(bPontos?('<div class="reu-grid" style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px">'+bPontos+'</div>'):''));
+
+    /* ── 4 · O que vamos fazer sobre o vermelho? ── o plano na largura toda.
+       O card "Ações críticas" repetia a resposta da pergunta; saiu. */
+    var q4 = bloco('4','O que vamos fazer sobre o vermelho?', r3, c3, blocoAcoes(mes+'/'+ano));
+
+    /* Ordem = ordem da decisão: fechamos o ano? O plano do mês coube sem hora
+       extra? O que saiu pela porta e o que falta faturar? O que fazemos sobre
+       o vermelho. 2 e 3 lado a lado quando cabem (TV, Full HD); em notebook
+       estreito e no relatório, uma abaixo da outra. */
     var bruto=(typeof loadBruto==='function')?loadBruto().filter(function(r){ return r.ano===ano; }):doAno;
     corpo.innerHTML=blocoIntegridade(DashUtils.integridade(bruto,{erpDesde:(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025,aplicarDuplicidade:duplicidadeAplicada(),duplicidade:DashUtils.duplicidadeCompleta(loadBruto())}), ano)
-      +manchete
-      +faixa('1','O plano cabe sem hora extra?', r1Curta, c1, b2,
-             (r1Detalhe?'<div class="reu-detalhe" style="font-size:.8rem;color:var(--t1);opacity:.8;margin:6px 2px 0;line-height:1.4">'+r1Detalhe+'</div>':'')
-             +detalhesF1)
-      +faixa('2','O que entregamos e o que falta faturar?', r2, c2, b3)
-      +faixa('3','O que vamos fazer sobre o vermelho?', r3, c3, null,
-             /* flex com quebra: card e plano lado a lado quando o plano cabe
-                (~1.000 px); em notebook o card sobe e o plano usa a largura toda */
-             '<div class="reu-row3" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">'
-             +'<div style="flex:1 1 260px;max-width:300px;min-width:220px">'+b4+'</div>'
-             +'<div style="flex:999 1 1000px;min-width:0">'+blocoAcoes(mes+'/'+ano)+'</div></div>');
+      +'<div class="reu-qs" style="display:flex;flex-direction:column;gap:12px">'
+        +q1
+        +'<div class="reu-pares" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,600px),1fr));gap:12px;align-items:start">'+q2+q3+'</div>'
+        +q4
+      +'</div>';
   }
 
   /* Relatório de uma página, para circular antes da reunião. */
@@ -23155,6 +23221,19 @@ window.CompAnos = (function () {
       +'.reu-set-nota{font-size:6.8pt!important;color:#7B8794!important;margin-top:4px!important}'
       +'.reu-setores{break-inside:avoid;page-break-inside:avoid;margin-top:8px!important}'
       +'.reu-det{display:block!important}'
+      /* b96.72: perguntas em quadros. No papel, uma abaixo da outra, sem a
+         cor do tema; as tabelas de detalhe saem abertas. */
+      +'.reu-qs{gap:0!important}'
+      +'.reu-pares{display:block!important}'
+      +'.reu-q{background:#fff!important;border:1px solid #D3D8DE!important;border-top-width:1px!important;'
+        +'border-radius:5px!important;padding:8px 10px!important;margin-top:8px;break-inside:avoid;page-break-inside:avoid}'
+      +'.reu-q .reu-sec{margin:0 0 6px!important}'
+      +'.reu-rit-trilho{background:#EDF2F7!important}'
+      +'.reu-rit-m{border-left-color:#1F2933!important}'
+      +'.reu-rit-ml{color:#52606D!important}'
+      +'.reu-rit-v{color:#1F2933!important}'
+      +'.reu-decisao{background:#fff!important;border:1px solid #D3D8DE!important}'
+      +'.reu-set-det>summary{display:none!important}'
       +'.bd .reu-set-tab th{font-size:6.5pt!important;padding:3px 5px!important}'
       +'.bd .reu-set-tab td{font-size:7.5pt!important;padding:3px 5px!important}'
       +'.bd .reu-abs-tab td.reu-abs-cai,.bd .reu-abs-tab td.reu-abs-sobe{color:#1F2933!important}'
@@ -23180,7 +23259,7 @@ window.CompAnos = (function () {
       +'<div class="lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis</div>'
       +'<h1>Reunião do Mês — '+per+'</h1>'
       +'<div class="sb">Plano · entrega · capacidade · carteira · plano de ação</div></div></div></div>'
-      +'<div class="bd">'+corpo.innerHTML+_roteiroHTML()+'</div>'
+      +'<div class="bd">'+corpo.innerHTML.replace(/<details class="reu-set-det"/g,'<details open class="reu-set-det"')+_roteiroHTML()+'</div>'
       +'<div class="ft"><span>RitmoPatrimar Resultado — PPCP</span><span>Gerado em: '+hoje+'</span></div>'
       +'</body></html>');
     w.document.close();
@@ -23272,8 +23351,8 @@ window.CompAnos = (function () {
   };
 
   /* ── TRILHA DE APRESENTAÇÃO ───────────────────────────────────────────────
-     A reunião tem uma ordem: abrir pela manchete, responder as três perguntas
-     descendo só nas abas que apuram cada uma, fechar registrando ações. O
+     A reunião tem uma ordem: abrir pela manchete (pergunta 1), responder as
+     outras três perguntas descendo só nas abas que apuram cada uma, fechar registrando ações. O
      Briefing não é passo: circula impresso ANTES da reunião. Sem
      trilha, quem apresenta procura aba, abre a errada e lê card em vez de
      resposta. Aqui a ordem é fixa, a resposta de cada passo vem calculada da
@@ -23281,17 +23360,17 @@ window.CompAnos = (function () {
      A pílula "Voltar" fica escondida enquanto a trilha manda — seriam dois
      botões flutuantes dizendo coisas diferentes. */
   var TRILHA = [
-    { id:'reuniao',    n:'Abertura',   t:'A manchete e as três perguntas',           fala:'abertura', cor:'cAbertura',
-      dica:'Leia a manchete e as três respostas. Não leia os cards — eles são a prova, não a fala.' },
-    { id:'mestre',     n:'Pergunta 1', t:'O plano cabe sem hora extra?',             fala:'r1',       cor:'c1',
+    { id:'reuniao',    n:'Pergunta 1', t:'Fechamos o ano?',                          fala:'abertura', cor:'cAbertura',
+      dica:'Leia a manchete e as respostas das quatro perguntas. Não leia os cards — eles são a prova, não a fala.' },
+    { id:'mestre',     n:'Pergunta 2', t:'O plano do mês coube sem hora extra?',     fala:'r1',       cor:'c1',
       dica:'Ritmo exigido × demonstrado, o que falta do plano do ano e em quantos dias úteis.' },
     { id:'eficiencia', n:'Causa 1 · hora extra', t:'Quanto da entrega veio de hora extra?',    fala:'he',       cor:'cHe',
       dica:'Dependência de HE contra a meta e a evolução mês a mês. Custo da HE vira decisão: turno, headcount ou nada.' },
     { id:'pessoas',    n:'Causa 2 · absenteísmo', t:'O que falta e atraso custaram?',           fala:'abs',      cor:'cAbs',
       dica:'Absenteísmo traduzido em peças e dias de fábrica — é a causa da hora extra, não um indicador de RH.' },
-    { id:'producao',   n:'Pergunta 2', t:'O que entregamos e o que falta faturar?', fala:'r2',       cor:'c2',
+    { id:'producao',   n:'Pergunta 3', t:'O que entregamos e o que falta faturar?', fala:'r2',       cor:'c2',
       dica:'Vendido, produzido e faturado no mês. A carteira em dias úteis diz se a fila cabe no ritmo normal.' },
-    { id:'reuniao',    n:'Pergunta 3', t:'O que vamos fazer sobre o vermelho?',     fala:'r3',       cor:'c3', foco:'#reu-acoes',
+    { id:'reuniao',    n:'Pergunta 4', t:'O que vamos fazer sobre o vermelho?',     fala:'r3',       cor:'c3', foco:'#reu-acoes',
       dica:'Fechamento: todo indicador vermelho sai daqui com dono e prazo. Registre na hora — o plano é a ata. O Briefing já circulou antes da reunião; não se apresenta.' }
   ];
   var ABAS_NOME={reuniao:'Reunião do Mês',mestre:'Planejamento Mestre',eficiencia:'Eficiência & Horas',
@@ -24869,9 +24948,17 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.71';
+var APP_VERSAO = 'b96.72';
 var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.72', data:'21/10/2026', itens:[
+    'Reuniao do Mes reorganizada em quatro perguntas, na ordem da decisao, cada uma num quadro com a resposta embaixo do titulo: 1 Fechamos o ano? 2 O plano do mes coube sem hora extra? 3 O que entregamos e o que falta faturar? 4 O que vamos fazer sobre o vermelho? So muda a tela: numeros, contas e cores sao os mesmos.',
+    'Pergunta 1: a manchete passa a mostrar o ritmo do ano e o do mes lado a lado, cada um contra o proprio exigido (SET/26: ano 1.339 contra 1.482, -9,6%; setembro 1.673 contra 1.658, +0,9%), e o "para fechar o ano: 91.169 pc em 55 dias uteis = 1.658 pc/dia", que ficava na quarta linha do card de ritmo. A acao da manchete vai para o quadro Decisao.',
+    'Pergunta 2: aderencia, hora extra e absenteismo. O custo da hora extra entra no card de hora extra; sem custo-hora, uma linha discreta diz o que falta, no lugar de um card com "-". As tabelas de absenteismo por motivo e hora extra por setor ficam a um clique (Ver por motivo, Ver por setor); a frase de cada uma continua a vista. No relatorio impresso saem abertas.',
+    'Pergunta 3: os dois cards de pontos viram um so, "Pontos por colaborador, faturamento por pessoa", com diretos, quadro total e por hora. Pergunta 4: o plano de acao na largura toda; o card Acoes criticas repetia a resposta e saiu, e a resposta ganha "N com prazo vencido".',
+    'Perguntas 2 e 3 lado a lado em tela larga (TV, Full HD); em notebook, uma abaixo da outra. A trilha do Apresentar passa a numerar as quatro perguntas como a tela.',
+    'Correcao de texto: pontos e faturamento por pessoa (pontos = faturado x ticket medio), nao conteudo de trabalho; "por hora" e faturamento por hora trabalhada, nao ritmo de producao, ao contrario do que dizia a b96.71.'
+  ]},
   { v:'b96.71', data:'21/10/2026', itens:[
     'Card Pontos por colaborador direto ganha a linha por hora trabalhada: pontos / (horas normais + horas extras dos diretos), comparada com os mesmos meses do ano anterior. Por colaborador sobe e desce com dias uteis, hora extra e falta; por hora mostra o ritmo. SET/26: 90.862 por colaborador (+4,3% vs SET/25) e 518 por hora (+13,7%), com 21 dias contra 22 e 1.130 h extras contra 1.865.'
   ]},
