@@ -5257,10 +5257,19 @@ function _syncSheetsDebounced(d){
 
 /* integridadeCiente só sai no envio do próprio Ciente (comCiente): no envio
    em massa, uma cópia aberta antes do ciente gravaria vazio por cima. Sem a
-   chave, gravarHistorico não toca na coluna. */
+   chave, gravarHistorico não toca na coluna.
+   pontos e colaboradoresTotal nunca saem: o PPCP digita os pontos na
+   HISTORICO e o PontoRH.gs grava o total. O painel só lê — uma cópia aberta
+   antes do lançamento mandaria 0 por cima do que foi digitado. */
+var _SO_PLANILHA = ['pontos', 'colaboradoresTotal'];
 function _syncSheetsAgora(d, comCiente){
   if (!SHEETS_WEBAPP_URL || !d || !d.length) return;
-  if (!comCiente) d = d.map(function(r){ if (!r || r.integridadeCiente === undefined) return r; var o = {}; for (var k in r) if (k !== 'integridadeCiente') o[k] = r[k]; return o; });
+  d = d.map(function(r){
+    if (!r) return r;
+    var o = {};
+    for (var k in r) if (_SO_PLANILHA.indexOf(k) < 0 && (comCiente || k !== 'integridadeCiente')) o[k] = r[k];
+    return o;
+  });
   var payload = JSON.stringify({ secret: SHEETS_SECRET, dados: d });
   fetch(SHEETS_WEBAPP_URL, {
     method: 'POST',
@@ -5297,7 +5306,7 @@ var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFal
   'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao','horasFerias',
   'produtosReportados','volumesProduzidos','quilosProduzidos','planoNaHistorico',
   'naoTrabalhadas','faltasPonto','atrasosPonto','ausFalta','ausAtestado','ausAfastado','ausAtraso',
-  'atrasoDuplicado','duplicidadeApurada'];
+  'atrasoDuplicado','duplicidadeApurada','pontos','colaboradoresTotal'];
 
 /* ── TRADUÇÃO DE CABEÇALHO ──
    Quase toda coluna da planilha já usa o nome do campo (producaoReal,
@@ -6204,12 +6213,35 @@ window.DashUtils = (function() {
     return { h50:h50, h100:h100, hEquiv:hEquiv, valor:(custoHora > 0 ? hEquiv * custoHora : null) };
   }
 
+  /* ── PONTOS POR COLABORADOR ──────────────────────────────────────────────
+     pontos (HISTORICO, lançado pelo PPCP) ÷ colaboradores do mês, em duas
+     bases: diretos (colaboradores, a mesma do resto do painel) e o quadro
+     inteiro (colaboradoresTotal: diretos + indiretos do extrato do ponto).
+     No período, Σ pontos ÷ Σ colaboradores dos meses que têm os dois: média
+     por mês ponderada pelo quadro, não média de razões. Cada base tem o seu
+     conjunto de meses (2025 não tem o total), por isso os pontos de cada uma
+     vêm separados. Mês fechado sem pontos fica fora e vai para semPontos,
+     para a tela dizer que faltou o lançamento em vez de mostrar zero. */
+  function pontosColab(regs) {
+    var o = { pontosDir:0, colabDir:0, mesesDir:0, porDireto:null,
+              pontosTot:0, colabTot:0, mesesTot:0, porTotal:null, semPontos:[] };
+    (regs || []).forEach(function (r) {
+      if (!r) return;
+      if (!(r.pontos > 0)) { if (r.producaoReal > 0) o.semPontos.push(r.mes); return; }
+      if (r.colaboradores > 0)      { o.pontosDir += r.pontos; o.colabDir += r.colaboradores;      o.mesesDir++; }
+      if (r.colaboradoresTotal > 0) { o.pontosTot += r.pontos; o.colabTot += r.colaboradoresTotal; o.mesesTot++; }
+    });
+    if (o.colabDir > 0) o.porDireto = o.pontosDir / o.colabDir;
+    if (o.colabTot > 0) o.porTotal  = o.pontosTot / o.colabTot;
+    return o;
+  }
+
   return { getDias:getDias, getFat:getFat, getProd:getProd,
            periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
            integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar, duplicidadeCompleta:duplicidadeCompleta,
            cienteLer:cienteLer, cienteTexto:cienteTexto,
-           absMotivos:absMotivos, absComparar:absComparar, custoHE:custoHE,
+           absMotivos:absMotivos, absComparar:absComparar, custoHE:custoHE, pontosColab:pontosColab,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
 
@@ -22181,6 +22213,8 @@ window.CompAnos = (function () {
    Os sete: aderência ao plano (c/HE e s/HE), produção entregue (normal + HE),
    ritmo demonstrado vs exigido, carteira em dias úteis de produção,
    dependência de hora extra, absenteísmo e ações críticas em aberto.
+   Depois vieram o custo da hora extra e os pontos por colaborador (diretos
+   e quadro total), na faixa da entrega.
 
    Plano de ação: regra da reunião — nenhum indicador vermelho sem causa,
    ação, responsável e prazo. Fica na aba ACOES da planilha (fonte), com
@@ -22901,6 +22935,50 @@ window.CompAnos = (function () {
                 +(ader!==null?('<br>'+fd(ader,1)+'% do plano com hora extra'):'')
                 +(anoTodo?'':(' · ano '+fi(Y.prod)+' pç')),
                 '#F5A623', true, 'producao');
+    /* Pontos por colaborador (DashUtils.pontosColab): pontos da HISTORICO ÷
+       diretos e ÷ quadro inteiro. Sem meta, sem veredito: cor da marca, como
+       a produção. Compara com os MESMOS meses do ano anterior (os que têm
+       pontos no período), para o ano em curso não ser medido contra um ano
+       inteiro. Ano sem nenhum ponto lançado: os dois cards não aparecem. */
+    if(fechados.some(function(r){ return r.pontos>0; })){
+      var regsPC = anoTodo?fechados:[rMes];
+      var PC = DashUtils.pontosColab(regsPC);
+      var mesesPC = regsPC.filter(function(r){ return r.pontos>0; }).map(function(r){ return r.mes; });
+      var PCant = DashUtils.pontosColab(todos.filter(function(r){ return r.ano===ano-1 && mesesPC.indexOf(r.mes)>=0; }));
+      var PCano = DashUtils.pontosColab(ateAqui);
+      var rotPCant = anoTodo ? (mesesPC.length===12?String(ano-1):('mesmos '+mesesPC.length+' meses de '+(ano-1))) : (mes+'/'+String(ano-1).slice(2));
+      var vsAnt = function(v, ant){ return (v!==null&&ant!==null&&ant>0) ? (rotPCant+': '+fi(ant)+' ('+pct((v/ant-1)*100)+')') : ''; };
+      var semPC = anoTodo
+        ? (PC.semPontos.length?(' · sem pontos: '+PC.semPontos.join(', ')):'')
+        : '';
+      var baseDir = anoTodo
+        ? (fi(PC.pontosDir)+' pontos em '+PC.mesesDir+' meses ÷ '+fi(PC.colabDir/PC.mesesDir)+' diretos (média)')
+        : (fi(PC.pontosDir)+' pontos ÷ '+fi(PC.colabDir)+' diretos');
+      /* Mês sem pontos: o card diz o que falta e mostra o ano até o último
+         mês lançado, para a reunião ainda ter o número. */
+      var ultPC = ateAqui.filter(function(r){ return r.pontos>0; }).map(function(r){ return r.mes; }).pop();
+      var anoAte = function(v){ return v!==null ? ('<br>ano '+fi(v)+' até '+ultPC) : ''; };
+      var comp2Dir = vsAnt(PC.porDireto, PCant.porDireto);
+      if(!anoTodo&&PCano.porDireto!==null) comp2Dir += (comp2Dir?' · ':'')+'ano '+fi(PCano.porDireto);
+      b3+=card('Pontos por colaborador direto'+(anoTodo?' · média/mês':''),
+               PC.porDireto!==null ? fi(PC.porDireto) : '—',
+               PC.porDireto!==null
+                 ? (baseDir+semPC+(comp2Dir?'<br>'+comp2Dir:''))
+                 : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'+anoAte(PCano.porDireto)),
+               '#F5A623', false);
+      var baseTot = anoTodo
+        ? (fi(PC.pontosTot)+' pontos em '+PC.mesesTot+' meses ÷ '+fi(PC.colabTot/(PC.mesesTot||1))+' no quadro (média)')
+        : (fi(PC.pontosTot)+' pontos ÷ '+fi(PC.colabTot)+' no quadro');
+      var partDir = (PC.mesesTot===PC.mesesDir && PC.colabTot>0) ? (' · diretos '+fd(PC.colabDir/PC.colabTot*100,0)+'%') : '';
+      b3+=card('Pontos por colaborador · quadro total'+(anoTodo?' · média/mês':''),
+               PC.porTotal!==null ? fi(PC.porTotal) : '—',
+               PC.porTotal!==null
+                 ? (baseTot+partDir+'<br>'+(vsAnt(PC.porTotal, PCant.porTotal)||'diretos + indiretos do ponto'))
+                 : (PC.porDireto!==null
+                    ? ('sem o total de colaboradores em '+rotPer+'<br>HISTORICO, coluna colaboradoresTotal')
+                    : ('pontos de '+mes+' não lançados'+anoAte(PCano.porTotal))),
+               '#F5A623', false);
+    }
     var CT = DashUtils.carteira(todos, ano, mes);
     var diasCart=null;
     if(CT.meses > 0){
@@ -24774,9 +24852,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.69';
-var APP_DATA   = '16/10/2026';
+var APP_VERSAO = 'b96.70';
+var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.70', data:'21/10/2026', itens:[
+    'Reuniao do Mes, faixa 2, ganha dois cards: Pontos por colaborador direto (pontos do mes / colaboradores) e Pontos por colaborador do quadro total (pontos / diretos + indiretos). No ano, soma dos pontos / soma dos colaboradores dos meses que tem os dois: media por mes. Cada card compara com os mesmos meses do ano anterior. Sem meta, sem veredito: cor da marca, como a producao. Mes fechado sem pontos aparece como nao lancado, nunca zero.',
+    'HISTORICO ganha as colunas pontos (o PPCP digita; JAN/25 a AGO/26 ja lancados) e colaboradoresTotal (PontoRH.gs grava do extrato do ponto, diretos + indiretos que estao na FUNCIONARIOS, a mesma soma da PONTO_SETOR; JAN a SET/26 preenchidos, 2025 vazio porque nao ha extrato processado). O painel so le as duas: nao manda no sync e o Code.gs nao deixa gravar por cima, para uma copia aberta antes do lancamento nao apagar o que foi digitado.'
+  ]},
   { v:'b96.69', data:'16/10/2026', itens:[
     'Apresentacao para lideres sem o Apoio: as tabelas e analises de detalhe saem da apresentacao e do Baixar PDF. O botao novo Apoio (PDF) imprime so o Apoio, com capa propria, para o PPCP consultar se alguem perguntar.'
   ]},

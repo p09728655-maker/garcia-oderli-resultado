@@ -97,6 +97,8 @@ var DICIONARIO_LINHAS = [
   ['campo', 'tipo', 'origem', 'regra'],
   ['mes / ano', 'entrada', 'PPCP', 'Competência do fechamento.'],
   ['colaboradores', 'entrada', 'RH', 'Colaboradores diretos no mês.'],
+  ['colaboradoresTotal', 'automático', 'ponto', 'Quadro inteiro no mês: diretos + indiretos do extrato do ponto que estão na FUNCIONARIOS (a soma de pessoas da PONTO_SETOR). PontoRH.gs grava junto com as colunas brutas. JAN a SET/26 preenchidos a partir da PONTO_SETOR em 21/10/2026; 2025 vazio (não há extrato processado). Base de "pontos por colaborador (total)". O painel não grava esta coluna.'],
+  ['pontos', 'entrada', 'PPCP', 'Pontos do mês (tabela PONTOS do PPCP), digitados na HISTORICO; JAN/25 a AGO/26 lançados em 21/10/2026. O painel não grava esta coluna, só lê. Reunião do Mês: pontos ÷ colaboradores (diretos) e pontos ÷ colaboradoresTotal; no período, soma dos pontos ÷ soma dos colaboradores dos meses que têm os dois (média por mês).'],
   ['horasCarga', 'automático', 'ponto', 'Carga do extrato, somada para os diretos: horas escaladas no mês (8,8 h × dias úteis, líquida de dias de férias e afastamento). Conferido em AGO/26.'],
   ['horasNormais', 'automático', 'ponto', 'Normais do extrato = Carga − Faltas − Atrasos: horas trabalhadas na jornada normal. Base do absenteísmo e das peças por hora. Conferido em AGO/26.'],
   ['naoTrabalhadas', 'automático', 'ponto', 'PontoRH.gs: soma, por direto, de jornada cheia do mês (carga mais frequente entre os diretos) − Normais. Quem foi admitido ou desligado dentro do mês entra com a própria Carga no lugar da jornada cheia: os dias fora da casa não são ausência. Tudo que não foi trabalhado, férias e afastamento incluídos. Com o controle de faltas lançado é só conferência (integridade: ponto × controle).'],
@@ -191,8 +193,11 @@ var SECRET = 'TROQUE_ESTA_SENHA_2026';
    PLANO MESTRE; se o app pudesse escrevê-la, um dado local desatualizado
    apagaria o plano. atrasoDuplicado e duplicidadeApurada são do PontoRH.gs
    (apuração pessoa a pessoa): um navegador com cópia de antes da apuração
-   gravaria 0 por cima. */
-var COLUNAS_PROTEGIDAS = ['previsaoproducao', 'previsao', 'previsaovolumes', 'atrasoduplicado', 'duplicidadeapurada'];
+   gravaria 0 por cima. pontos é digitado pelo PPCP na própria HISTORICO e
+   colaboradoresTotal vem do PontoRH.gs: o painel só lê os dois, e uma cópia
+   aberta antes do lançamento apagaria o que foi digitado. */
+var COLUNAS_PROTEGIDAS = ['previsaoproducao', 'previsao', 'previsaovolumes', 'atrasoduplicado', 'duplicidadeapurada',
+  'pontos', 'colaboradorestotal'];
 
 /* Colunas de TEXTO da HISTORICO (o resto é número). integridadeCiente: aviso
    de integridade conferido no painel, com motivo ("ponto | 1749 | 2119 |
