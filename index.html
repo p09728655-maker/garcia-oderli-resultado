@@ -22678,7 +22678,7 @@ window.CompAnos = (function () {
         +'<td>'+esc(a.causa||'—')+'</td>'
         +'<td>'+esc(a.acao||'—')
           +(a.realizado?'<div style="color:'+(a.status==='Concluída'?'#4CAF50':'var(--t2)')+';margin-top:3px"><strong>Realizado:</strong> '+esc(a.realizado)+'</div>':'')+'</td>'
-        +'<td>'+esc(a.responsavel||'—')+'</td>'
+        +'<td>'+esc(a.responsavel||'—').replace(/\//g,'/<wbr>')+'</td>'
         +'<td style="white-space:nowrap;'+(venc?'color:#F44336!important;font-weight:700':'')+'">'+fData(a.prazo)+(venc?'<div style="font-size:.62rem">vencido</div>':'')+'</td>'
         +'<td style="white-space:nowrap">'+esc(a.status||'Aberta')
           +(a.status==='Concluída'&&a.concluidoEm?'<div style="color:var(--t3);font-size:.62rem">em '+fData(a.concluidoEm)+'</div>':'')
@@ -23289,9 +23289,32 @@ window.CompAnos = (function () {
          cor do tema; as tabelas de detalhe saem abertas. */
       +'.reu-qs{gap:0!important}'
       +'.reu-pares{display:block!important}'
+      /* O quadro da pergunta pode quebrar entre páginas: com break-inside:avoid
+         a pergunta 2 (quase uma folha) pulava inteira e deixava 60% da página 1
+         em branco. Quem não quebra são as peças dentro dele: card, decisão,
+         bloco de tabela e linha; o título não fica sozinho no pé da página. */
       +'.reu-q{background:#fff!important;border:1px solid #D3D8DE!important;border-top-width:1px!important;'
-        +'border-radius:5px!important;padding:8px 10px!important;margin-top:8px;break-inside:avoid;page-break-inside:avoid}'
-      +'.reu-q .reu-sec{margin:0 0 6px!important}'
+        +'border-radius:5px!important;padding:8px 10px!important;margin-top:8px}'
+      +'.reu-q .reu-sec{margin:0 0 6px!important;break-after:avoid;page-break-after:avoid}'
+      +'.reu-card,.reu-decisao{break-inside:avoid;page-break-inside:avoid}'
+      +'.reu-set-h,.reu-set-p{break-after:avoid;page-break-after:avoid}'
+      +'.reu-tab thead{display:table-header-group}.reu-tab tr{break-inside:avoid;page-break-inside:avoid}'
+      /* Plano de ação: na tela a tabela rola na horizontal; no papel a rolagem
+         saía impressa e a coluna Status cortada. Largura fixa por coluna, texto
+         quebra, alinhado à esquerda (o printBase alinha td à direita, que é
+         para número). Seletor com #reu-acoes e tbody/thead para vencer o
+         <style> do blocoAcoes, que vem depois no documento. */
+      +'.bd #reu-acoes>div{overflow:visible!important}'
+      +'.bd #reu-acoes table.reu-tab{table-layout:fixed;width:100%!important}'
+      +'.bd #reu-acoes .reu-tab thead th{color:#fff!important;text-align:left!important;white-space:normal!important}'
+      +'.bd #reu-acoes .reu-tab tbody td{text-align:left!important;white-space:normal!important;min-width:0!important}'
+      /* Responsável vem como "Ricardo/Marcelinho/Adriano", sem espaço: quebra
+         depois da barra (<wbr> no blocoAcoes) ou, em último caso, no meio. */
+      +'.bd #reu-acoes .reu-tab tbody td:nth-child(6){overflow-wrap:anywhere}'
+      +'.bd #reu-acoes .reu-tab thead th:nth-child(1){width:11%}.bd #reu-acoes .reu-tab thead th:nth-child(2){width:6%}'
+      +'.bd #reu-acoes .reu-tab thead th:nth-child(3){width:17%}.bd #reu-acoes .reu-tab thead th:nth-child(4){width:13%}'
+      +'.bd #reu-acoes .reu-tab thead th:nth-child(5){width:22%}.bd #reu-acoes .reu-tab thead th:nth-child(6){width:12%}'
+      +'.bd #reu-acoes .reu-tab thead th:nth-child(7){width:9%}.bd #reu-acoes .reu-tab thead th:nth-child(8){width:10%}'
       +'.reu-rit-trilho{background:#EDF2F7!important}'
       +'.reu-rit-m{border-left-color:#1F2933!important}'
       +'.reu-rit-ml{color:#52606D!important}'
@@ -23312,9 +23335,11 @@ window.CompAnos = (function () {
       +'.reu-sub{font-size:7pt!important;color:#52606D!important}'
       +'.reu-manchete{font-size:14pt!important}'
       +'.reu-frase{color:#2d3748!important;font-size:9pt!important}'
-      +'.reu-rot{margin-top:12px;border-top:1.5px solid #edf2f7;padding-top:6px;page-break-inside:avoid}'
-      +'.reu-rot h2{font-size:10pt;color:#1F2933;margin-bottom:4px}'
-      +'.reu-rot ol{padding-left:16px}.reu-rot li{font-size:8pt;color:#1F2933;margin:2px 0;line-height:1.35}'
+      /* O roteiro segue no espaço que sobra: inteiro, ia sozinho para uma
+         folha nova. Quebra entre itens, nunca no meio de um. */
+      +'.reu-rot{margin-top:12px;border-top:1.5px solid #edf2f7;padding-top:6px}'
+      +'.reu-rot h2{font-size:10pt;color:#1F2933;margin-bottom:4px;break-after:avoid;page-break-after:avoid}'
+      +'.reu-rot ol{padding-left:16px}.reu-rot li{font-size:8pt;color:#1F2933;margin:2px 0;line-height:1.35;break-inside:avoid;page-break-inside:avoid}'
       +'.reu-rot li b{color:#1F2933}.reu-rot .rt-aba{color:#52606D;font-size:7pt}'
       +'.ft{display:flex;justify-content:space-between;font-size:7pt;color:#a0aec0;'
         +'padding:8px 22px;border-top:1px solid #edf2f7;margin-top:10px}'
@@ -25012,9 +25037,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.76';
+var APP_VERSAO = 'b96.77';
 var APP_DATA   = '21/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.77', data:'21/10/2026', itens:[
+    'Relatorio da Reuniao do Mes (PDF): as perguntas podem quebrar entre paginas. Antes cada pergunta ia inteira para a pagina seguinte quando nao cabia, e a pergunta 2 deixava 60% da primeira folha em branco (SET/26 saia em 4 paginas, agora 3). Continuam inteiros: card, decisao, cada tabela de detalhe e cada linha; o titulo nao fica sozinho no pe da pagina. O roteiro segue no espaco que sobra em vez de abrir folha nova.',
+    'Relatorio da Reuniao do Mes, plano de acao: a tabela cabe na folha. Saia com a barra de rolagem impressa e a coluna Status cortada; agora cada coluna tem largura fixa, o texto quebra e fica alinhado a esquerda, e o cabecalho fica legivel. Responsavel com varios nomes (Ricardo/Marcelinho/Adriano) quebra depois da barra.'
+  ]},
   { v:'b96.76', data:'21/10/2026', itens:[
     'Reuniao do Mes: os cards de pontos por pessoa (mes e ano) mostram o ticket medio do periodo, o mesmo da aba Producao (receita / pecas faturadas). Pontos = faturado x ticket: com o ticket ao lado, queda de preco nao e lida como queda de produtividade. SET/26: R$ 229,64. So exibe um numero que o painel ja calcula.'
   ]},
