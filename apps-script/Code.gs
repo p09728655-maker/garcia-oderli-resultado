@@ -104,6 +104,7 @@ var DICIONARIO_LINHAS = [
   ['horasNormais', 'automático', 'ponto', 'Normais do extrato = Carga − Faltas − Atrasos: horas trabalhadas na jornada normal. Base do absenteísmo e das peças por hora. Conferido em AGO/26.'],
   ['naoTrabalhadas', 'automático', 'ponto', 'PontoRH.gs: soma, por direto, de jornada cheia do mês (carga mais frequente entre os diretos) − Normais. Quem foi admitido ou desligado dentro do mês entra com a própria Carga no lugar da jornada cheia: os dias fora da casa não são ausência. Tudo que não foi trabalhado, férias e afastamento incluídos. Com o controle de faltas lançado é só conferência (integridade: ponto × controle).'],
   ['faltasPonto / atrasosPonto', 'automático', 'ponto', 'Colunas Faltas e Atras. do extrato, somadas para os diretos. O ponto só conta falta sem justificativa; atestado, afastamento e licença reduzem a Carga.'],
+  ['(aba FUNCIONARIOS → quadro por setor)', 'automático', 'DP', 'O Web App conta a FUNCIONARIOS por setor e mês desde JAN/25 (lerQuadroSetor): quem esteve na folha em algum dia do mês pela admissão e demissão, admitidos e desligados. Só a contagem, sem nomes. Aba Pessoas do painel, seção Quadro por setor. O setor é o atual da pessoa.'],
   ['(aba PONTO_SETOR)', 'automático', 'ponto + controle', 'Uma linha por mês/ano/setor, diretos e indiretos: pessoas, horasCarga, horasNormais, faltasPonto, atrasosPonto, extra50, extra100, totalExtras, hePctHoras (totalExtras ÷ horasNormais do setor), as ausências do controle e atrasoDuplicado do setor. Hora por setor, não peça por setor; setor = o atual da pessoa na FUNCIONARIOS. Não digitar: o script regrava.'],
   ['(abas PONTO_PESSOA / AUSENCIAS_PESSOA)', 'automático', 'ponto / controle de faltas', 'Uma linha por direto e mês. PONTO_PESSOA (do extrato): cod, carga, faltas, atrasos, normais, jornada. AUSENCIAS_PESSOA (do controle): cod, falta, atestado, afastado, atraso, férias. Servem só para achar o atraso contado duas vezes. Têm o código do funcionário: não compartilhar. Não digitar: o script regrava.'],
   ['atrasoDuplicado', 'automático', 'ponto × controle', 'PontoRH.gs, por pessoa: o RH lança atraso e saída antecipada como FALTA no controle, e a mesma hora estava também no atraso do ponto. sobra = (falta + atestado + afastado + férias do controle) − ((jornada − carga) + faltas do ponto); duplicado = sobra entre 0 e os atrasos do ponto. ABR/26: 201,7 h; SET/26: 80,6 h. Gravado na HISTORICO (total) e na PONTO_SETOR (por setor).'],
@@ -232,6 +233,8 @@ function doGet() {
               cadastro: lerCadastroProdutos(ss),
               /* PONTO_SETOR: horas, hora extra e ausências por setor (PontoRH.gs). */
               setores: (typeof prLerSetores === 'function') ? prLerSetores(ss) : [],
+              /* FUNCIONARIOS contada por setor e mês, sem nomes (aba Pessoas). */
+              quadroSetor: lerQuadroSetor(ss),
               acoes: lerAcoes(ss),
               metas: lerMetas(ss),
               /* Mês em curso: cortes parciais e feriados (bloco do Plano Mestre). */
@@ -817,6 +820,64 @@ function criarAbaFeriados() {
   aba.getRange(1, 1, 1, 2).setFontWeight('bold');
   aba.setColumnWidth(2, 260);
   try { SpreadsheetApp.getUi().alert('Aba ' + ABA_FERIADOS + ' criada com os feriados nacionais de 2026. Acrescente recesso coletivo e feriado municipal (uma data por linha, AAAA-MM-DD). O painel usa no próximo sync.'); } catch (e) {}
+}
+
+/* ══ QUADRO POR SETOR ══
+   Pessoas por setor e mês a partir da FUNCIONARIOS (lista do DP que o
+   PontoRH.gs regrava do controle de faltas): quem esteve na folha em algum
+   dia do mês (admissão até o fim do mês e sem demissão antes do início), a
+   regra do quadro total da Reunião; mais admitidos e desligados no mês.
+   Só a contagem: nome e código não saem da planilha. De JAN/QUADRO_DESDE
+   (a lista cobre desde JAN/25) até o mês corrente; o painel mostra os meses
+   fechados. Uma linha por mês e setor que teve alguém em algum mês. Aba
+   ausente ou sem as colunas setor e admissao → []. */
+var QUADRO_DESDE = 2025;
+function lerQuadroSetor(ss) {
+  try {
+    var aba = ss.getSheetByName('FUNCIONARIOS');
+    if (!aba || aba.getLastRow() < 2) return [];
+    var v = aba.getDataRange().getValues();
+    var cab = v[0].map(function (c) { return normaliza(c); });
+    var iS = cab.indexOf('setor'), iD = cab.indexOf('direto'), iA = cab.indexOf('admissao'), iX = cab.indexOf('demissao');
+    if (iS < 0 || iA < 0) return [];
+    var dois = function (n) { return (n < 10 ? '0' : '') + n; };
+    /* Date da célula, "dd/mm/aaaa" ou "aaaa-mm-dd" → "aaaa-mm-dd"; senão null */
+    var dia = function (x) {
+      if (Object.prototype.toString.call(x) === '[object Date]') return isNaN(x.getTime()) ? null : x.getFullYear() + '-' + dois(x.getMonth() + 1) + '-' + dois(x.getDate());
+      var t = txt(x), m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m) return m[3] + '-' + dois(+m[2]) + '-' + dois(+m[1]);
+      m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? m[1] + '-' + m[2] + '-' + m[3] : null;
+    };
+    var pessoas = [];
+    for (var r = 1; r < v.length; r++) {
+      var setor = txt(v[r][iS]);
+      if (!setor) continue;
+      pessoas.push({ setor: setor, direto: iD >= 0 && /^s/i.test(txt(v[r][iD])), adm: dia(v[r][iA]), dem: iX >= 0 ? dia(v[r][iX]) : null });
+    }
+    var hoje = new Date(), fimA = hoje.getFullYear(), fimM = hoje.getMonth() + 1;
+    var porSetor = {};
+    pessoas.forEach(function (p) { (porSetor[p.setor] = porSetor[p.setor] || []).push(p); });
+    var out = [];
+    Object.keys(porSetor).sort().forEach(function (setor) {
+      var ps = porSetor[setor], direto = ps.some(function (p) { return p.direto; }), linhas = [], alguem = false;
+      for (var a = QUADRO_DESDE, m = 1; a < fimA || (a === fimA && m <= fimM); ) {
+        var ini = a + '-' + dois(m) + '-01', fim = a + '-' + dois(m) + '-' + dois(new Date(a, m, 0).getDate());
+        var n = 0, adm = 0, dem = 0;
+        ps.forEach(function (p) {
+          if (p.adm && p.adm <= fim && (!p.dem || p.dem >= ini)) n++;
+          if (p.adm && p.adm >= ini && p.adm <= fim) adm++;
+          if (p.dem && p.dem >= ini && p.dem <= fim) dem++;
+        });
+        if (n) alguem = true;
+        linhas.push({ ano: a, mes: MESES[m - 1], setor: setor, direto: direto ? 'S' : 'N', pessoas: n, admitidos: adm, desligados: dem });
+        m++;
+        if (m > 12) { m = 1; a++; }
+      }
+      if (alguem) out = out.concat(linhas);
+    });
+    return out;
+  } catch (e) { return []; }
 }
 
 /* ══ METAS ══
