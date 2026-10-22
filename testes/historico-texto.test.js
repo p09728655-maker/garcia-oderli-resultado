@@ -19,6 +19,8 @@ const path = require('path');
 function aba(v) {
   const garante = (r, c) => { while (v.length < r) v.push([]); while (v[r - 1].length < c) v[r - 1].push(''); };
   return {
+    getMaxColumns: () => v.reduce((m, l) => Math.max(m, l.length), 0),
+    insertColumnsAfter() {},
     getDataRange: () => ({ getValues: () => { const w = v.reduce((m, l) => Math.max(m, l.length), 0); return v.map(l => { const o = l.slice(); while (o.length < w) o.push(''); return o; }); } }),
     getLastRow: () => { for (let i = v.length; i > 0; i--) if (v[i - 1].some(x => String(x) !== '')) return i; return 0; },
     getRange(r, c) {
