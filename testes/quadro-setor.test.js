@@ -160,6 +160,16 @@ sec('QuadroSetor.resumo: contra dezembro do ano anterior');
   afirma('sem dados: null (a seção diz o que falta)', Q.resumo([], {}) === null);
 }
 
+sec('QuadroSetor.nome: grafia do cadastro do DP corrigida só na tela');
+{
+  afirma('"26-RECURSOS HUMANO" vira "Recursos humanos"', Q.nome('26-RECURSOS HUMANO') === 'Recursos humanos');
+  afirma('"38-LOGISTICA" e "13-GERENCIA ADMINISTRATIVA" ganham acento', Q.nome('38-LOGISTICA') === 'Logística' && Q.nome('13-GERENCIA ADMINISTRATIVA') === 'Gerência administrativa');
+  afirma('PPCP e SENAI seguem em maiúsculas', Q.nome('22-PPCP') === 'PPCP' && Q.nome('36-SENAI') === 'SENAI');
+  const linhas = [L(2025, 9, '26-RECURSOS HUMANO', 'N', 2), L(2026, 9, '26-RECURSOS HUMANOS', 'N', 3)];
+  const R = Q.resumo(linhas, { hoje: new Date(2026, 9, 22) });
+  afirma('cadastro corrigido no DP cai na mesma linha (série não se parte)', R.setores.length === 1 && R.setores[0].setor === 'Recursos humanos' && R.setores[0].delta === 1);
+}
+
 sec('Painel: leitura do Web App e atalho da Reunião');
 {
   afirma('as duas leituras da planilha guardam quadroSetor', (HTML.match(/json\.quadroSetor\) \{ try \{ localStorage\.setItem\(QuadroSetor\.SK/g) || []).length === 2);

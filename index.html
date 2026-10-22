@@ -4274,9 +4274,11 @@ body.lid-on{overflow:hidden}
 .lid-box p{margin:0 0 .6em}
 .lid-k2{font-weight:800;font-size:.85em;margin-bottom:.5em;color:#F5A623}
 .lid-tab{width:100%;border-collapse:collapse;font-size:.8em}
-/* b96.82–b96.85: Quadro por setor (aba Pessoas). --qs-mais é quem
-   cresceu, --qs-menos quem caiu, --qs-dir/--qs-ind as barras de diretos e
-   indiretos, sólidas: laranja translúcido sobre o azul-marinho vira marrom.
+/* b96.82–b96.86: Quadro por setor (aba Pessoas). --qs-mais é quem
+   cresceu (amarelo), --qs-menos quem caiu (azul): na seção as duas cores só
+   dizem isso. Diretos e indiretos do gráfico em tons neutros (os mesmos do
+   peso da peça nos slides, .lid-peso): até a b96.85 eram amarelo e azul e a
+   mesma cor dizia "diretos" e "aumentou".
    Cinco tamanhos de letra na seção (b96.85): 1,6rem o número do cartão;
    ,84rem a frase e os títulos; ,76rem o corpo e as tabelas; ,68rem rótulos,
    cabeçalhos e explicações; ,62rem notas e eixo do gráfico.
@@ -4285,7 +4287,7 @@ body.lid-on{overflow:hidden}
    de outra cor. O tema (§ 7 TABELAS) fixa padding, tamanho e cor de th e
    td com !important: sem !important aqui a linha ficava com 36 px e o
    cabeçalho em ,58rem azul, como antes da b96.85. */
-#ps-quadro{--qs-mais:var(--cyan);--qs-menos:#7FA3C7;--qs-dir:var(--cyan);--qs-ind:#3F5D7D;--qs-fundo:#0E1A29}
+#ps-quadro{--qs-mais:var(--cyan);--qs-menos:#7FA3C7;--qs-dir:#C9D6E3;--qs-ind:#4F6680;--qs-fundo:#0E1A29}
 #ps-quadro .cHdr{flex-wrap:wrap;gap:10px}
 #ps-quadro .qs-ctl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:.76rem;color:var(--t2)}
 #ps-quadro .qs-ctl label{display:flex;gap:6px;align-items:center;white-space:nowrap}
@@ -4336,7 +4338,9 @@ body.lid-on{overflow:hidden}
 #ps-quadro .qs-col-b span{display:block;width:100%}
 #ps-quadro .qs-col-i{background:var(--qs-ind);border-radius:2px 2px 0 0}
 #ps-quadro .qs-col-d{background:var(--qs-dir)}
-#ps-quadro .qs-col.qs-dest .qs-col-b span{box-shadow:0 0 0 1px var(--t1)}
+/* os dois meses comparados em cor cheia, os outros esmaecidos: o contorno
+   branco sumia na barra clara dos diretos */
+#ps-quadro .qs-col:not(.qs-dest) .qs-col-b{opacity:.5}
 #ps-quadro .qs-col-l{font-size:.62rem;color:var(--t3);text-align:center;height:19px;line-height:14px;padding-top:5px;border-top:1px solid var(--b2);white-space:nowrap;overflow:visible}
 #ps-quadro .qs-col.qs-dest .qs-col-l{color:var(--t1);font-weight:700}
 /* width:0 + min-width:100%: no celular o .layout vira coluna e a aba fica da
@@ -5359,8 +5363,13 @@ window.QuadroSetor = (function(){
   var MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   function n(v){ var x = typeof v === 'number' ? v : parseFloat(String(v === null || v === undefined ? '' : v).replace(',', '.')); return isFinite(x) ? x : 0; }
   function carregar(){ try{ var a = JSON.parse(localStorage.getItem(SK)); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+  /* b96.86: grafia do cadastro do DP corrigida só na tela. A chave da série
+     é este nome: se o DP corrigir o cadastro ("26-RECURSOS HUMANOS"), o
+     nome novo cai na mesma linha e a série não se parte em duas. */
+  var GRAFIA = { 'recursos humano': 'Recursos humanos', 'logistica': 'Logística', 'gerencia administrativa': 'Gerência administrativa' };
   function nome(s){
     var t = String(s).replace(/^\d+\s*-\s*/, '').trim().toLowerCase();
+    if (GRAFIA[t]) return GRAFIA[t];
     return (t.charAt(0).toUpperCase() + t.slice(1)).replace(/\bppcp\b/i, 'PPCP').replace(/\bsenai\b/i, 'SENAI');
   }
   function chave(ano, mes){ var i = MESES.indexOf(String(mes || '').trim().toUpperCase().slice(0, 3)); return (i < 0 || !(ano > 2000)) ? 0 : ano * 100 + i + 1; }
@@ -5766,10 +5775,10 @@ function _qsTabelaPassos(R, papel){
     + '</tbody></table>';
 }
 
-/* Quadro mês a mês: diretos (amarelo) e indiretos (azul) empilhados, cor
+/* Quadro mês a mês: diretos (claro) e indiretos (escuro) empilhados, cor
    sólida, com o total escrito em cima de cada coluna: sem eixo, as 21
    colunas (164 a 189) pareciam iguais. Os dois meses comparados ficam em
-   negrito e com contorno. Linha de base contínua sob as colunas. */
+   negrito e em cor cheia; os outros, esmaecidos. Linha de base contínua. */
 function _qsColunas(R){
   var rot = QuadroSetor.rot;
   var maxP = Math.max.apply(null, R.serie.map(function(s){ return s.pessoas; }).concat([1]));
@@ -23970,16 +23979,17 @@ window.CompAnos = (function () {
     if (el) return el;
     el = document.createElement('div');
     el.id = 'reu-voltar';
+    /* fundo sólido (o amarelo a 16% sobre o azul-marinho, sem transparência):
+       translúcida, a tabela aparecia por baixo do texto */
     el.style.cssText =
-      'position:fixed;left:50%;transform:translateX(-50%);bottom:20px;z-index:9000;'
-      + 'display:none;align-items:center;gap:10px;padding:10px 18px;border-radius:26px;'
-      + 'background:rgba(245,166,35,.16);border:1px solid #F5A623;color:#F5A623;'
-      + 'font-family:var(--mono);font-size:.78rem;font-weight:700;letter-spacing:.04em;'
-      + 'cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.5);white-space:nowrap;'
-      + 'backdrop-filter:blur(6px)';
-    el.innerHTML = '<span style="font-size:1rem;line-height:1">←</span>'
-      + '<span>Voltar para a Reunião</span>'
-      + '<span style="font-size:.64rem;opacity:.7;border:1px solid rgba(245,166,35,.5);'
+      'position:fixed;bottom:16px;z-index:9000;box-sizing:border-box;'
+      + 'display:none;align-items:center;justify-content:center;gap:8px;padding:9px 12px;border-radius:22px;'
+      + 'background:#332F28;border:1px solid #F5A623;color:#F5A623;'
+      + 'font-family:var(--sans);font-size:.74rem;font-weight:700;'
+      + 'cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.45);white-space:nowrap';
+    el.innerHTML = '<span style="font-size:.95rem;line-height:1">←</span>'
+      + '<span class="rv-txt">Voltar à Reunião</span>'
+      + '<span class="rv-esc" style="font-size:.6rem;opacity:.75;border:1px solid rgba(245,166,35,.5);'
       + 'border-radius:4px;padding:1px 5px">ESC</span>';
     el.title = 'Voltar para a Reunião do Mês (ESC)';
     el.onclick = _voltar;
@@ -23987,11 +23997,32 @@ window.CompAnos = (function () {
     return el;
   }
 
+  /* b96.86: no meio do rodapé a pílula cobria a tabela da aba de destino
+     (nome do setor, números). No computador ela fica no pé da coluna de
+     filtros (a lateral fixa), da largura dela; sem lateral fixa (celular,
+     TV), compacta no canto direito. */
+  function _posPilula(el){
+    var s = document.querySelector('aside.sidebar');
+    var r = (s && s.offsetParent !== null) ? s.getBoundingClientRect() : null;
+    var lado = !!(r && r.width >= 160 && getComputedStyle(s).position === 'sticky');
+    el.style.transform = 'none';
+    el.style.left = lado ? Math.round(r.left) + 'px' : 'auto';
+    el.style.width = lado ? Math.round(r.width) + 'px' : 'auto';
+    el.style.right = lado ? 'auto' : '12px';
+    el.querySelector('.rv-txt').textContent = lado ? 'Voltar à Reunião' : 'Reunião';
+    el.querySelector('.rv-esc').style.display = lado ? '' : 'none';
+  }
+
   function _mostrarPilula(ligado){
     var el = _pilula();
     if (ligado && _trilhaOn) ligado = false;   /* a barra da trilha já é o caminho de volta */
     el.style.display = ligado ? 'inline-flex' : 'none';
+    if (ligado) _posPilula(el);
   }
+  window.addEventListener('resize', function(){
+    var el = document.getElementById('reu-voltar');
+    if (el && el.style.display !== 'none') _posPilula(el);
+  });
 
   function _voltar(){
     _descendo = true;
@@ -25640,9 +25671,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.85';
+var APP_VERSAO = 'b96.86';
 var APP_DATA   = '22/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.86', data:'22/10/2026', itens:[
+    'Quadro por setor: no grafico mes a mes, diretos e indiretos em tons neutros (claro e escuro); amarelo e azul ficam so para aumento e queda. Ate aqui a mesma cor dizia diretos e aumentou. Os dois meses comparados em cor cheia, os outros esmaecidos.',
+    'Pilula Voltar para a Reuniao: saiu do meio do rodape, onde cobria a tabela. No computador fica no pe da coluna de filtros, da largura dela; no celular, compacta no canto direito. Fundo solido.',
+    'Nomes de setor do cadastro do DP corrigidos na tela: Recursos humanos, Logistica com acento, Gerencia administrativa com acento. Se o DP corrigir o cadastro, o nome novo cai na mesma linha e a serie nao se parte.'
+  ]},
   { v:'b96.85', data:'22/10/2026', itens:[
     'Quadro por setor (aba Pessoas), so visual: frase de abertura so com a conclusao (o antes e depois e o giro ja estao nos cartoes); cinco tamanhos de letra na secao; titulos de secao em frase curta, sem caixa-alta; cartoes com o numero maior e a comparacao discreta; Entradas e saidas com rotulo em cada numero.',
     'Grafico do quadro mes a mes com o total escrito em todas as colunas (no celular so nos dois meses comparados), base continua e os dois meses comparados com contorno. Mes a mes por setor com o tipo (direto/indireto) ao lado do nome.',
