@@ -4519,6 +4519,11 @@ body.lid-on{overflow:hidden}
         <input type="number" id="fColabs" min="0" step="1" placeholder="Ex: 97">
       </div>
       <div class="fg">
+        <label class="lbl">Motoristas (não batem ponto)</label>
+        <input type="number" id="fMotoristas" min="0" step="1" placeholder="Ex: 8">
+        <div style="font-size:.62rem;color:var(--t3);margin-top:3px;line-height:1.35">Somam ao quadro do ponto no "pontos por pessoa" da Reunião.</div>
+      </div>
+      <div class="fg">
         <label class="lbl">Horas Carga (h)</label>
         <input type="number" id="fCarga" min="0" step="0.1" placeholder="Ex: 14900">
       </div>
@@ -5313,7 +5318,7 @@ var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFal
   'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao','horasFerias',
   'produtosReportados','volumesProduzidos','quilosProduzidos','planoNaHistorico',
   'naoTrabalhadas','faltasPonto','atrasosPonto','ausFalta','ausAtestado','ausAfastado','ausAtraso',
-  'atrasoDuplicado','duplicidadeApurada','pontos','colaboradoresTotal'];
+  'atrasoDuplicado','duplicidadeApurada','pontos','colaboradoresTotal','motoristas'];
 
 /* ── TRADUÇÃO DE CABEÇALHO ──
    Quase toda coluna da planilha já usa o nome do campo (producaoReal,
@@ -6234,15 +6239,25 @@ window.DashUtils = (function() {
      sobe e desce com dias úteis, hora extra e falta; por hora, não: em SET/26
      o por colaborador dava +4,3% contra SET/25 e o por hora, +13,7% (21 dias
      contra 22 e 1.130 h extras contra 1.865). */
+  /* Motoristas não batem ponto: colaboradoresTotal (extrato do ponto) não os
+     tem. O PPCP digita no mês (Dados › Editar, ou o lápis da Reunião) e vira
+     ponto + motoristas. Só soma onde há colaboradoresTotal: motorista sozinho
+     não é quadro. Mês do quadro sem motoristas vai para semMotoristas, para a
+     tela dizer que falta em vez de dar o quadro do ponto como inteiro. */
   function pontosColab(regs) {
     var o = { pontosDir:0, colabDir:0, mesesDir:0, porDireto:null,
-              pontosTot:0, colabTot:0, mesesTot:0, porTotal:null,
+              pontosTot:0, colabTot:0, mesesTot:0, porTotal:null, colabPonto:0, motoristas:0, semMotoristas:[],
               pontosHora:0, horas:0, mesesHora:0, porHora:null, semPontos:[] };
     (regs || []).forEach(function (r) {
       if (!r) return;
       if (!(r.pontos > 0)) { if (r.producaoReal > 0) o.semPontos.push(r.mes); return; }
       if (r.colaboradores > 0)      { o.pontosDir += r.pontos; o.colabDir += r.colaboradores;      o.mesesDir++; }
-      if (r.colaboradoresTotal > 0) { o.pontosTot += r.pontos; o.colabTot += r.colaboradoresTotal; o.mesesTot++; }
+      if (r.colaboradoresTotal > 0) {
+        var mot = r.motoristas > 0 ? r.motoristas : 0;
+        if (!mot) o.semMotoristas.push(r.mes);
+        o.pontosTot += r.pontos; o.colabPonto += r.colaboradoresTotal; o.motoristas += mot;
+        o.colabTot += r.colaboradoresTotal + mot; o.mesesTot++;
+      }
       var h = (r.horasNormais || 0) + (r.totalExtras || 0);
       if (h > 0)                    { o.pontosHora += r.pontos; o.horas += h;                     o.mesesHora++; }
     });
@@ -7308,13 +7323,16 @@ function abrirNovo(){
   document.getElementById('modForm').classList.add('on')
 }
 
-function editarReg(id){
+/* foco: id do campo que recebe o cursor (a Reunião abre direto em
+   fMotoristas). */
+function editarReg(id, foco){
   var r=load().find(function(x){return x.id===id}); if(!r)return;
   editMode=true; editId=id;
   document.getElementById('modTtl').textContent='Editar Mês';
   document.getElementById('fMes').value   =r.mes;
   document.getElementById('fAno').value   =r.ano;
   document.getElementById('fColabs').value=r.colaboradores||'';
+  document.getElementById('fMotoristas').value=r.motoristas||'';
   document.getElementById('fCarga').value =r.horasCarga||'';
   document.getElementById('fHN').value    =r.horasNormais||'';
   document.getElementById('fFaltas').value=r.faltas||'';
@@ -7328,13 +7346,14 @@ function editarReg(id){
   document.getElementById('fVend').value  =r.qtdeVendida||'';
   document.getElementById('fFat').value   =r.qtdeFaturado||'';
   calcPrev();
-  document.getElementById('modForm').classList.add('on')
+  document.getElementById('modForm').classList.add('on');
+  var fc=foco&&document.getElementById(foco); if(fc){ fc.focus(); fc.select(); }
 }
 
 function fecharModal(){document.getElementById('modForm').classList.remove('on')}
 
 function limparForm(){
-  ['fMes','fAno','fColabs','fCarga','fHN','fFaltas','fAtraso','fE50','fE100','fFerias','fDias','fProd','fTkt','fVend','fFat']
+  ['fMes','fAno','fColabs','fMotoristas','fCarga','fHN','fFaltas','fAtraso','fE50','fE100','fFerias','fDias','fProd','fTkt','fVend','fFat']
     .forEach(function(id){document.getElementById(id).value=''});
   var h0=document.getElementById('fProdHint'); if(h0) h0.textContent='';
   var h1=document.getElementById('fFaltasHint'); if(h1) h1.textContent='';
@@ -7353,7 +7372,7 @@ function _formRegistro(){
   rec.id=editId||rec.id||uid();
   rec.mes=document.getElementById('fMes').value.trim();
   rec.ano=parseInt(document.getElementById('fAno').value,10)||0;
-  rec.colaboradores=g('fColabs',true); rec.horasCarga=g('fCarga'); rec.horasNormais=g('fHN');
+  rec.colaboradores=g('fColabs',true); rec.motoristas=g('fMotoristas',true); rec.horasCarga=g('fCarga'); rec.horasNormais=g('fHN');
   rec.faltas=g('fFaltas'); rec.atraso=g('fAtraso'); rec.extra50=g('fE50'); rec.extra100=g('fE100');
   rec.horasFerias=g('fFerias'); rec.diasTrabalhados=g('fDias',true); rec.producaoReal=g('fProd',true);
   rec.ticketMedio=g('fTkt'); rec.qtdeVendida=g('fVend',true); rec.qtdeFaturado=g('fFat',true);
@@ -22998,13 +23017,26 @@ window.CompAnos = (function () {
          pessoa. Pontos é faturamento, então não é ritmo de produção. Mesma
          comparação: mesmos meses do ano anterior. */
       var comp2Hora = vsAnt(PC.porHora, PCant.porHora);
+      /* b96.80: motoristas não batem ponto. A linha do quadro diz quanto veio
+         do ponto e quanto dos motoristas digitados no mês, ou que faltam. O
+         lápis abre o mês (Dados › Editar) direto no campo; fora do papel. */
+      var motTxt = function(P, media){
+        if(!P.semMotoristas.length) return media ? ' · motoristas incluídos' : (' ('+fi(P.colabPonto)+' do ponto + '+fi(P.motoristas)+' motoristas)');
+        if(P.motoristas>0) return ' · sem motoristas em '+P.semMotoristas.join(', ');
+        return ' · sem motoristas (não batem ponto)';
+      };
+      var motEdit = (!anoTodo && rMes.colaboradoresTotal>0)
+        ? (' <button type="button" class="reu-noprint" onclick="editarReg(\''+rMes.id+'\',\'fMotoristas\')" title="Motoristas de '+mes+': não batem ponto e entram no quadro total" '
+           +'style="background:none;border:none;padding:0;color:#F5A623;cursor:pointer;font:inherit;text-decoration:underline">'
+           +(rMes.motoristas>0?'✎ motoristas':'✎ lançar motoristas')+'</button>')
+        : '';
       var baseTot = anoTodo
-        ? (fi(PC.pontosTot)+' pontos em '+PC.mesesTot+' meses ÷ '+fi(PC.colabTot/(PC.mesesTot||1))+' no quadro (média)')
-        : (fi(PC.pontosTot)+' pontos ÷ '+fi(PC.colabTot)+' no quadro');
+        ? (fi(PC.pontosTot)+' pontos em '+PC.mesesTot+' meses ÷ '+fi(PC.colabTot/(PC.mesesTot||1))+' no quadro (média)'+motTxt(PC, true))
+        : (fi(PC.pontosTot)+' pontos ÷ '+fi(PC.colabTot)+' no quadro'+motTxt(PC, false));
       var partDir = (PC.mesesTot===PC.mesesDir && PC.colabTot>0) ? (' · diretos '+fd(PC.colabDir/PC.colabTot*100,0)+'%') : '';
       var vsAntTot = vsAnt(PC.porTotal, PCant.porTotal);
       var linhaTot = PC.porTotal!==null
-        ? qtDest(fi(PC.porTotal), baseTot+partDir+(vsAntTot?(' · '+vsAntTot):''))
+        ? qtDest(fi(PC.porTotal), baseTot+partDir+(vsAntTot?(' · '+vsAntTot):'')+motEdit)
         : (PC.porDireto!==null
            ? ('<div style="margin-top:6px;font-size:.74rem;color:var(--t2)">quadro total: sem o total de colaboradores em '+rotPer+' (HISTORICO, coluna colaboradoresTotal)</div>')
            : '');
@@ -23043,7 +23075,7 @@ window.CompAnos = (function () {
                  ? (fi(PCano.pontosDir)+' pontos em '+PCano.mesesDir+' meses ÷ '+fi(PCano.colabDir/PCano.mesesDir)+' diretos (média por mês)'
                     +cmpDest(cmpDirAno)
                     +tktLinha(Y.tktMed)
-                    +(PCano.porTotal!==null?qtDest(fi(PCano.porTotal), fi(PCano.colabTot/PCano.mesesTot)+' no quadro (média por mês)'):''))
+                    +(PCano.porTotal!==null?qtDest(fi(PCano.porTotal), fi(PCano.colabTot/PCano.mesesTot)+' no quadro (média por mês)'+motTxt(PCano, true)):''))
                  : 'sem diretos nos meses com pontos',
                '#F5A623', false)
           +card('Pontos por hora · ano até '+ultPC,
@@ -25027,9 +25059,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.79';
-var APP_DATA   = '21/10/2026';
+var APP_VERSAO = 'b96.80';
+var APP_DATA   = '22/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.80', data:'22/10/2026', itens:[
+    'Reuniao do Mes, quadro total dos pontos por pessoa: motoristas entram. Eles nao batem ponto e o quadro vinha so do extrato do ponto (SET/26: 147). Novo campo Motoristas no mes, digitado no app: Dados > editar o mes, ou "lancar motoristas" na linha do quadro total da Reuniao, que abre o mes direto no campo. Quadro = ponto + motoristas (SET/26 com 8: 155). A linha diz quanto veio de cada um; mes sem motoristas aparece como "sem motoristas", nunca completado sozinho. Na planilha a coluna motoristas da HISTORICO e criada na primeira gravacao com valor (Code.gs).'
+  ]},
   { v:'b96.79', data:'21/10/2026', itens:[
     'Reuniao do Mes, cards de pontos: a comparacao com o ano anterior le na ordem certa. Era "SET/25: 87.129 +4,3%", com o percentual colado no numero de 2025, como se 2025 tivesse subido 4,3%. Agora: "+4,3% vs SET/25 (87.129)", a variacao do numero atual primeiro e a base entre parenteses. Vale para os quatro cards (mes e ano) e para a linha do quadro total. So texto.'
   ]},
