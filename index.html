@@ -4365,7 +4365,6 @@ body.lid-on{overflow:hidden}
 #ps-quadro .qs-t td.qs-tx{color:var(--t2)!important}
 #ps-quadro .qs-t td.qs-var{font-weight:700}
 #ps-quadro .qs-t td.qs-zero{color:var(--t3)!important}
-#ps-quadro .qs-tipo{font-size:.62rem;color:var(--t3);margin-left:4px;font-family:var(--sans)}
 #ps-quadro .qs-t .qs-totc{border-right:1px solid var(--b2);padding-left:12px!important;padding-right:14px!important}
 #ps-quadro .qs-t tr.qs-tot td{border-top:1px solid var(--b2);border-bottom:0;font-weight:700}
 #ps-quadro .qs-t th button{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-transform:inherit;letter-spacing:inherit;white-space:nowrap}
@@ -4374,7 +4373,9 @@ body.lid-on{overflow:hidden}
 #ps-quadro .qs-ord{margin-left:4px;color:var(--t3);font-size:.62rem}
 #ps-quadro .qs-t th[aria-sort=ascending],#ps-quadro .qs-t th[aria-sort=descending]{color:var(--t1)!important}
 #ps-quadro .qs-t th[aria-sort=ascending] .qs-ord,#ps-quadro .qs-t th[aria-sort=descending] .qs-ord{color:var(--cyan)}
-#ps-quadro .qs-mb{display:inline-block;position:relative;width:64px;height:8px;margin-right:10px;vertical-align:0}
+/* b96.88: barra da variação com 140 × 10 px (era 64 × 8: o ±1 virava um
+   ponto de 8 px); no celular 80 px para a coluna não empurrar os meses */
+#ps-quadro .qs-mb{display:inline-block;position:relative;width:140px;height:10px;margin-right:12px;vertical-align:-1px}
 #ps-quadro .qs-mb::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;border-left:1px solid var(--b2)}
 #ps-quadro .qs-mb i{position:absolute;top:0;height:100%;border-radius:2px}
 /* histórico mensal: número apagado onde nada mudou; negrito na cor da
@@ -4409,6 +4410,7 @@ body.lid-on{overflow:hidden}
   #ps-quadro .qs-kpi{padding:10px 12px}
   /* meio cartão não cabe "82 entradas | 77 saídas": o separador vira quebra de linha */
   #ps-quadro .qs-kpi-sep{flex-basis:100%;height:2px;margin:0;background:none}
+  #ps-quadro .qs-mb{width:80px}
   /* 21 colunas em 390 px: só os dois meses comparados mostram o total */
   #ps-quadro .qs-col:not(.qs-dest) .qs-col-v{visibility:hidden}
   #ps-quadro .qs-det-a{margin-left:0}
@@ -5766,12 +5768,14 @@ function _qsTabelaPassos(R, papel){
     return '<td class="qs-totc ' + _qsCls(d) + '">' + bar + '<b>' + (d ? _qsSg(d) : '0') + '</b></td>';
   };
   /* o total vem logo depois do setor: é o ranking de onde mais mudou e fica
-     sempre à vista; os meses são o detalhe (no notebook a tabela rola) */
-  return '<table class="qs-t qs-passos"><thead><tr><th>Setor</th>'
+     sempre à vista; os meses são o detalhe (no notebook a tabela rola).
+     b96.88: Tipo em coluna própria, como na Comparação por setor; colado no
+     nome, "direto/indireto" começava cada um num ponto da linha. */
+  return '<table class="qs-t qs-passos"><thead><tr><th>Setor</th><th class="qs-tx">Tipo</th>'
     + '<th class="qs-totc">' + rot(R.base) + ' → ' + rot(R.mes) + '</th>'
     + P.meses.map(function(k){ return '<th class="qs-c">' + rot(k) + '</th>'; }).join('') + '</tr></thead><tbody>'
-    + P.linhas.map(function(x){ return '<tr><td>' + _qsEsc(x.setor) + ' <span class="qs-tipo">' + (x.tipo === 'Direto' ? 'direto' : 'indireto') + '</span></td>' + tot(x.total, true) + x.deltas.map(cel).join('') + '</tr>'; }).join('')
-    + '<tr class="qs-tot"><td>Quadro</td>' + tot(R.total.delta, false) + P.totais.map(cel).join('') + '</tr>'
+    + P.linhas.map(function(x){ return '<tr><td>' + _qsEsc(x.setor) + '</td><td class="qs-tx">' + x.tipo + '</td>' + tot(x.total, true) + x.deltas.map(cel).join('') + '</tr>'; }).join('')
+    + '<tr class="qs-tot"><td>Quadro</td><td class="qs-tx"></td>' + tot(R.total.delta, false) + P.totais.map(cel).join('') + '</tr>'
     + '</tbody></table>';
 }
 
@@ -5952,7 +5956,7 @@ function imprimirQuadroSetor(){
     + '.qs-c{text-align:center!important;font-variant-numeric:tabular-nums;white-space:nowrap}'
     + '.qs-heat td:first-child,.qs-todos td:first-child,.qs-passos td:first-child{white-space:nowrap}'
     + '.qs-passos .qs-z{color:#B0B8C1}'
-    + '.qs-tipo{font-size:6.5pt;color:#52606D;margin-left:2px}'
+    + '.qs-passos .qs-tx{text-align:left!important;color:#52606D}'
     + '.qs-totc{border-right:1.5px solid #9AA5B1;text-align:right!important;padding-right:6px!important}'
     + '.qs-n{text-align:right;font-variant-numeric:tabular-nums}'
     + '.qs-tot td,.lid-tot td{font-weight:700;border-top:1.5px solid #9AA5B1}'
@@ -25677,9 +25681,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.87';
+var APP_VERSAO = 'b96.88';
 var APP_DATA   = '22/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.88', data:'22/10/2026', itens:[
+    'Quadro por setor, Variacao por setor mes a mes: direto/indireto em coluna propria (Tipo), alinhada, como na Comparacao por setor. Colado no nome, cada um comecava num ponto da linha. Igual no Relatorio.',
+    'Barra da variacao no periodo maior: 140 x 10 px (era 64 x 8, o +1 virava um ponto); no celular 80 px.'
+  ]},
   { v:'b96.87', data:'22/10/2026', itens:[
     'Reuniao do Mes, pergunta 3: botao Ver o quadro por setor (Operacao > Pessoas), abaixo dos cards de pontos, abre o Quadro por setor no mes da Reuniao (no ano todo, o ultimo mes fechado). O link ver por setor da linha do quadro total continua. A pilula Voltar traz de volta.',
     'PontoRH.gs (processamento do ponto): avisa quando ha desligados do mes fora do Extrato de Totais (SET/26: os 6 desligados, 5 diretos; as horas deles nao entram e o quadro do ponto fica menor que o da folha) e quando ha inativo na DP sem data de demissao (o quadro conta como ativo ate hoje). So aviso: nada do que e lancado muda.'
