@@ -105,6 +105,31 @@ sec('QuadroSetor.resumo: mês contra o mesmo mês do ano anterior');
   afirma('mapa marca a mudança do mês (MAR/26 +4)', celula.mudou === 4);
 }
 
+sec('QuadroSetor.resumo: mês a mês dentro da comparação');
+{
+  const linhas = [];
+  const emb = [21, 22, 20, 22, 25, 24, 25, 25, 23, 24, 21, 21, 21, 21, 21, 21, 23, 23, 25, 26, 27, 28];
+  const cor = [7, 8, 9, 9, 8, 8, 8, 8, 8, 8, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 5];
+  emb.forEach((v, i) => {
+    const a = 2025 + Math.floor(i / 12), m = i % 12 + 1;
+    linhas.push(L(a, m, '2-EMBALAGEM', 'S', v));
+    linhas.push(L(a, m, '29-CORTE', 'S', cor[i]));
+    linhas.push(L(a, m, '22-PPCP', 'N', 3));
+  });
+  const R = Q.resumo(linhas, { hoje: new Date(2026, 9, 22) });
+  const P = R.passos;
+  afirma('12 meses de OUT/25 a SET/26', P.meses.length === 12 && Q.rot(P.meses[0]) === 'OUT/25' && Q.rot(P.meses[11]) === 'SET/26');
+  const e = P.linhas.find(x => x.setor === 'Embalagem');
+  afirma('Embalagem mês a mês: OUT/25 +1, NOV/25 −3, MAI/26 +2', e.deltas[0] === 1 && e.deltas[1] === -3 && e.deltas[7] === 2);
+  afirma('a linha soma a variação do setor (23 → 27 = +4)', e.deltas.reduce((t, d) => t + d, 0) === e.total && e.total === 4);
+  afirma('todas as linhas somam o próprio total', P.linhas.every(x => x.deltas.reduce((t, d) => t + d, 0) === x.total));
+  afirma('cada mês do quadro é a soma dos setores', P.totais.every((t, i) => t === P.linhas.reduce((s, x) => s + x.deltas[i], 0)));
+  afirma('os meses somam a variação do quadro', P.totais.reduce((t, d) => t + d, 0) === R.total.delta);
+  afirma('setor sem mudança (PPCP) fica fora; maior alta primeiro', !P.linhas.some(x => x.setor === 'PPCP') && P.linhas[0].setor === 'Embalagem');
+  const D = Q.resumo(linhas, { hoje: new Date(2026, 9, 22), cmp: 'dez' });
+  afirma('contra DEZ/25: JAN a SET/26', D.passos.meses.length === 9 && Q.rot(D.passos.meses[0]) === 'JAN/26');
+}
+
 sec('QuadroSetor.resumo: contra dezembro do ano anterior');
 {
   const linhas = [L(2025, 12, '1-USINAGEM', 'S', 17), L(2026, 1, '1-USINAGEM', 'S', 17, 2, 2), L(2026, 9, '1-USINAGEM', 'S', 19, 1, 0)];
@@ -119,6 +144,10 @@ sec('Painel: leitura do Web App e atalho da Reunião');
   afirma('as duas leituras da planilha guardam quadroSetor', (HTML.match(/json\.quadroSetor\) \{ try \{ localStorage\.setItem\(QuadroSetor\.SK/g) || []).length === 2);
   afirma('Code.gs manda quadroSetor no doGet', /quadroSetor: lerQuadroSetor\(ss\)/.test(src));
   afirma('aba Pessoas tem a seção', HTML.includes('id="ps-quadro"'));
+  afirma('seção tem o botão Relatório', HTML.includes('id="qs-imp"') && HTML.includes('function imprimirQuadroSetor()'));
+  afirma('relatório em A4 deitado com a régua de impressão do painel', /function imprimirQuadroSetor\(\)[\s\S]*?size:A4 landscape[\s\S]*?printBase\(\)/.test(HTML));
+  const pl = new Function(HTML.match(/function _qsPl\([^)]*\)\{[^\n]*\}/)[0] + '\nreturn _qsPl;')();
+  afirma('balão no singular com 1 ("1 desligado") e no plural com 2', pl(1, 'desligado', 'desligados') === '1 desligado' && pl(2, 'admitido', 'admitidos') === '2 admitidos');
   afirma('Reunião tem o atalho para a seção, fora da impressão', /class="reu-noprint" onclick="reuIrQuadro\(/.test(HTML) && HTML.includes('window.reuIrQuadro=function'));
 }
 
