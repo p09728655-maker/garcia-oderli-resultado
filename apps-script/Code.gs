@@ -97,9 +97,8 @@ var DICIONARIO_LINHAS = [
   ['campo', 'tipo', 'origem', 'regra'],
   ['mes / ano', 'entrada', 'PPCP', 'Competência do fechamento.'],
   ['colaboradores', 'entrada', 'RH', 'Colaboradores diretos no mês.'],
-  ['colaboradoresTotal', 'automático', 'ponto', 'Quadro inteiro no mês: diretos + indiretos do extrato do ponto que estão na FUNCIONARIOS (a soma de pessoas da PONTO_SETOR). PontoRH.gs grava junto com as colunas brutas. JAN a SET/26 preenchidos a partir da PONTO_SETOR em 21/10/2026; 2025 vazio (não há extrato processado). Sem quem não bate ponto (colunas motoristas e outrosForaPonto). Base de "pontos por colaborador (total)" junto com essas duas. O painel não grava esta coluna.'],
-  ['motoristas', 'entrada', 'PPCP', 'Motoristas no mês. Não batem ponto: o extrato (colaboradoresTotal) não os tem. Digitados no painel (Dados › Editar o mês, ou "lançar motoristas" no card de pontos da Reunião); a coluna é criada na primeira gravação com valor. Quadro total da Reunião = colaboradoresTotal + motoristas + outrosForaPonto. Mês com colaboradoresTotal e sem motoristas aparece como "sem motoristas", nunca é completado sozinho.'],
-  ['outrosForaPonto', 'entrada', 'PPCP', 'Quem está na folha e não bate ponto, sem os motoristas: setores que nunca aparecem no extrato (13-GERÊNCIA ADMINISTRATIVA, 36-SENAI, 37-COMERCIAL EXTERNO, 39-INDUSTRIAL; JAN a JUN/26 = 13, JUL a SET/26 = 14, contados na FUNCIONARIOS em 22/10/2026). Digitado no painel como motoristas; soma ao quadro total da Reunião.'],
+  ['colaboradoresTotal', 'automático', 'ponto', 'Quadro inteiro no mês: diretos + indiretos do extrato do ponto que estão na FUNCIONARIOS (a soma de pessoas da PONTO_SETOR). PontoRH.gs grava junto com as colunas brutas. JAN a SET/26 preenchidos a partir da PONTO_SETOR em 21/10/2026; 2025 vazio (não há extrato processado). Sem quem não bate ponto (coluna foraDoPonto). Base de "pontos por colaborador (total)" junto com foraDoPonto. O painel não grava esta coluna.'],
+  ['foraDoPonto', 'entrada', 'PPCP', 'Quem está na folha no mês e não bate ponto: motoristas, cargos de confiança, SENAI, comercial externo, gerência, industrial. O extrato (colaboradoresTotal) não os tem. Digitado no painel (Dados › Editar o mês, ou "lançar fora do ponto" no card de pontos da Reunião); a coluna é criada na primeira gravação com valor. JAN a SET/26 lançados em 22/10/2026 como ativos na FUNCIONARIOS (admissão e demissão) menos colaboradoresTotal. Quadro total da Reunião = colaboradoresTotal + foraDoPonto. Mês com colaboradoresTotal e sem foraDoPonto aparece como "sem os que não batem ponto", nunca é completado sozinho.'],
   ['pontos', 'entrada', 'PPCP', 'Pontos do mês (tabela PONTOS do PPCP), digitados na HISTORICO; JAN/25 a AGO/26 lançados em 21/10/2026. O painel não grava esta coluna, só lê. Reunião do Mês: pontos ÷ colaboradores (diretos), pontos ÷ colaboradoresTotal e pontos ÷ (horasNormais + totalExtras), o por hora trabalhada; no período, soma dos pontos ÷ soma dos colaboradores dos meses que têm os dois (média por mês).'],
   ['horasCarga', 'automático', 'ponto', 'Carga do extrato, somada para os diretos: horas escaladas no mês (8,8 h × dias úteis, líquida de dias de férias e afastamento). Conferido em AGO/26.'],
   ['horasNormais', 'automático', 'ponto', 'Normais do extrato = Carga − Faltas − Atrasos: horas trabalhadas na jornada normal. Base do absenteísmo e das peças por hora. Conferido em AGO/26.'],
@@ -211,11 +210,11 @@ var COLUNAS_PROTEGIDAS = ['previsaoproducao', 'previsao', 'previsaovolumes', 'at
 var HISTORICO_TEXTO = ['integridadeCiente'];
 /* Colunas de NÚMERO que a gravação cria na primeira vez que o painel mandar
    valor > 0 (zero não cria: toda cópia do painel manda 0 nos campos vazios).
-   motoristas: digitado no painel (Dados › Editar, ou o lápis da Reunião).
-   Motorista não bate ponto, então o colaboradoresTotal do extrato não o tem;
-   o quadro total da Reunião é colaboradoresTotal + motoristas. Idem
-   outrosForaPonto (SENAI, comercial externo, gerência, industrial). */
-var HISTORICO_CRIAR_NUM = ['motoristas', 'outrosForaPonto'];
+   foraDoPonto: digitado no painel (Dados › Editar, ou o lápis da Reunião).
+   Quem está na folha e não bate ponto (motoristas, cargos de confiança,
+   SENAI, comercial externo) não está no colaboradoresTotal do extrato; o
+   quadro total da Reunião é colaboradoresTotal + foraDoPonto. */
+var HISTORICO_CRIAR_NUM = ['foraDoPonto'];
 
 function doGet() {
   var saida;
