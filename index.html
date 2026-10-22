@@ -4524,6 +4524,11 @@ body.lid-on{overflow:hidden}
         <div style="font-size:.62rem;color:var(--t3);margin-top:3px;line-height:1.35">Somam ao quadro do ponto no "pontos por pessoa" da Reunião.</div>
       </div>
       <div class="fg">
+        <label class="lbl">Outros fora do ponto</label>
+        <input type="number" id="fOutrosForaPonto" min="0" step="1" placeholder="Ex: 14">
+        <div style="font-size:.62rem;color:var(--t3);margin-top:3px;line-height:1.35">Quem está na folha e não bate ponto, sem os motoristas: SENAI, comercial externo, gerência, industrial.</div>
+      </div>
+      <div class="fg">
         <label class="lbl">Horas Carga (h)</label>
         <input type="number" id="fCarga" min="0" step="0.1" placeholder="Ex: 14900">
       </div>
@@ -5318,7 +5323,7 @@ var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFal
   'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao','horasFerias',
   'produtosReportados','volumesProduzidos','quilosProduzidos','planoNaHistorico',
   'naoTrabalhadas','faltasPonto','atrasosPonto','ausFalta','ausAtestado','ausAfastado','ausAtraso',
-  'atrasoDuplicado','duplicidadeApurada','pontos','colaboradoresTotal','motoristas'];
+  'atrasoDuplicado','duplicidadeApurada','pontos','colaboradoresTotal','motoristas','outrosForaPonto'];
 
 /* ── TRADUÇÃO DE CABEÇALHO ──
    Quase toda coluna da planilha já usa o nome do campo (producaoReal,
@@ -6239,24 +6244,27 @@ window.DashUtils = (function() {
      sobe e desce com dias úteis, hora extra e falta; por hora, não: em SET/26
      o por colaborador dava +4,3% contra SET/25 e o por hora, +13,7% (21 dias
      contra 22 e 1.130 h extras contra 1.865). */
-  /* Motoristas não batem ponto: colaboradoresTotal (extrato do ponto) não os
-     tem. O PPCP digita no mês (Dados › Editar, ou o lápis da Reunião) e vira
-     ponto + motoristas. Só soma onde há colaboradoresTotal: motorista sozinho
-     não é quadro. Mês do quadro sem motoristas vai para semMotoristas, para a
-     tela dizer que falta em vez de dar o quadro do ponto como inteiro. */
+  /* Quem não bate ponto não está no colaboradoresTotal (extrato do ponto):
+     motoristas e, desde b96.81, outrosForaPonto (SENAI, comercial externo,
+     gerência, industrial). O PPCP digita no mês (Dados › Editar, ou o lápis
+     da Reunião) e o quadro vira ponto + motoristas + outros. Só soma onde há
+     colaboradoresTotal: fora do ponto sozinho não é quadro. Mês do quadro sem
+     um dos dois vai para semMotoristas / semOutros, para a tela dizer que
+     falta em vez de dar o quadro do ponto como inteiro. */
   function pontosColab(regs) {
     var o = { pontosDir:0, colabDir:0, mesesDir:0, porDireto:null,
-              pontosTot:0, colabTot:0, mesesTot:0, porTotal:null, colabPonto:0, motoristas:0, semMotoristas:[],
+              pontosTot:0, colabTot:0, mesesTot:0, porTotal:null, colabPonto:0, motoristas:0, semMotoristas:[], outros:0, semOutros:[],
               pontosHora:0, horas:0, mesesHora:0, porHora:null, semPontos:[] };
     (regs || []).forEach(function (r) {
       if (!r) return;
       if (!(r.pontos > 0)) { if (r.producaoReal > 0) o.semPontos.push(r.mes); return; }
       if (r.colaboradores > 0)      { o.pontosDir += r.pontos; o.colabDir += r.colaboradores;      o.mesesDir++; }
       if (r.colaboradoresTotal > 0) {
-        var mot = r.motoristas > 0 ? r.motoristas : 0;
+        var mot = r.motoristas > 0 ? r.motoristas : 0, out = r.outrosForaPonto > 0 ? r.outrosForaPonto : 0;
         if (!mot) o.semMotoristas.push(r.mes);
-        o.pontosTot += r.pontos; o.colabPonto += r.colaboradoresTotal; o.motoristas += mot;
-        o.colabTot += r.colaboradoresTotal + mot; o.mesesTot++;
+        if (!out) o.semOutros.push(r.mes);
+        o.pontosTot += r.pontos; o.colabPonto += r.colaboradoresTotal; o.motoristas += mot; o.outros += out;
+        o.colabTot += r.colaboradoresTotal + mot + out; o.mesesTot++;
       }
       var h = (r.horasNormais || 0) + (r.totalExtras || 0);
       if (h > 0)                    { o.pontosHora += r.pontos; o.horas += h;                     o.mesesHora++; }
@@ -7333,6 +7341,7 @@ function editarReg(id, foco){
   document.getElementById('fAno').value   =r.ano;
   document.getElementById('fColabs').value=r.colaboradores||'';
   document.getElementById('fMotoristas').value=r.motoristas||'';
+  document.getElementById('fOutrosForaPonto').value=r.outrosForaPonto||'';
   document.getElementById('fCarga').value =r.horasCarga||'';
   document.getElementById('fHN').value    =r.horasNormais||'';
   document.getElementById('fFaltas').value=r.faltas||'';
@@ -7353,7 +7362,7 @@ function editarReg(id, foco){
 function fecharModal(){document.getElementById('modForm').classList.remove('on')}
 
 function limparForm(){
-  ['fMes','fAno','fColabs','fMotoristas','fCarga','fHN','fFaltas','fAtraso','fE50','fE100','fFerias','fDias','fProd','fTkt','fVend','fFat']
+  ['fMes','fAno','fColabs','fMotoristas','fOutrosForaPonto','fCarga','fHN','fFaltas','fAtraso','fE50','fE100','fFerias','fDias','fProd','fTkt','fVend','fFat']
     .forEach(function(id){document.getElementById(id).value=''});
   var h0=document.getElementById('fProdHint'); if(h0) h0.textContent='';
   var h1=document.getElementById('fFaltasHint'); if(h1) h1.textContent='';
@@ -7372,7 +7381,7 @@ function _formRegistro(){
   rec.id=editId||rec.id||uid();
   rec.mes=document.getElementById('fMes').value.trim();
   rec.ano=parseInt(document.getElementById('fAno').value,10)||0;
-  rec.colaboradores=g('fColabs',true); rec.motoristas=g('fMotoristas',true); rec.horasCarga=g('fCarga'); rec.horasNormais=g('fHN');
+  rec.colaboradores=g('fColabs',true); rec.motoristas=g('fMotoristas',true); rec.outrosForaPonto=g('fOutrosForaPonto',true); rec.horasCarga=g('fCarga'); rec.horasNormais=g('fHN');
   rec.faltas=g('fFaltas'); rec.atraso=g('fAtraso'); rec.extra50=g('fE50'); rec.extra100=g('fE100');
   rec.horasFerias=g('fFerias'); rec.diasTrabalhados=g('fDias',true); rec.producaoReal=g('fProd',true);
   rec.ticketMedio=g('fTkt'); rec.qtdeVendida=g('fVend',true); rec.qtdeFaturado=g('fFat',true);
@@ -23017,18 +23026,25 @@ window.CompAnos = (function () {
          pessoa. Pontos é faturamento, então não é ritmo de produção. Mesma
          comparação: mesmos meses do ano anterior. */
       var comp2Hora = vsAnt(PC.porHora, PCant.porHora);
-      /* b96.80: motoristas não batem ponto. A linha do quadro diz quanto veio
-         do ponto e quanto dos motoristas digitados no mês, ou que faltam. O
-         lápis abre o mês (Dados › Editar) direto no campo; fora do papel. */
+      /* b96.80/b96.81: quem não bate ponto (motoristas e outros: SENAI,
+         comercial externo, gerência, industrial). A linha do quadro diz quanto
+         veio do ponto e quanto foi digitado no mês, ou o que falta. O lápis
+         abre o mês (Dados › Editar) no primeiro campo vazio; fora do papel. */
       var motTxt = function(P, media){
-        if(!P.semMotoristas.length) return media ? ' · motoristas incluídos' : (' ('+fi(P.colabPonto)+' do ponto + '+fi(P.motoristas)+' motoristas)');
-        if(P.motoristas>0) return ' · sem motoristas em '+P.semMotoristas.join(', ');
-        return ' · sem motoristas (não batem ponto)';
+        var falta = [];
+        if(P.semMotoristas.length) falta.push('motoristas'+(media && P.motoristas>0 ? ' em '+P.semMotoristas.join(', ') : ''));
+        if(P.semOutros.length) falta.push('outros fora do ponto'+(media && P.outros>0 ? ' em '+P.semOutros.join(', ') : ''));
+        if(media) return falta.length ? (' · sem '+falta.join(' · sem ')) : ' · fora do ponto incluídos';
+        var comp = (P.motoristas>0 || P.outros>0)
+          ? (' ('+fi(P.colabPonto)+' do ponto'+(P.motoristas>0?(' + '+fi(P.motoristas)+' motoristas'):'')+(P.outros>0?(' + '+fi(P.outros)+' outros fora do ponto'):'')+')')
+          : '';
+        return comp+(falta.length ? (' · sem '+falta.join(' e ')) : '');
       };
+      var motFoco = !(rMes.motoristas>0) ? 'fMotoristas' : (!(rMes.outrosForaPonto>0) ? 'fOutrosForaPonto' : 'fMotoristas');
       var motEdit = (!anoTodo && rMes.colaboradoresTotal>0)
-        ? (' <button type="button" class="reu-noprint" onclick="editarReg(\''+rMes.id+'\',\'fMotoristas\')" title="Motoristas de '+mes+': não batem ponto e entram no quadro total" '
+        ? (' <button type="button" class="reu-noprint" onclick="editarReg(\''+rMes.id+'\',\''+motFoco+'\')" title="Quem não bate ponto em '+mes+' (motoristas e outros): entra no quadro total" '
            +'style="background:none;border:none;padding:0;color:#F5A623;cursor:pointer;font:inherit;text-decoration:underline">'
-           +(rMes.motoristas>0?'✎ motoristas':'✎ lançar motoristas')+'</button>')
+           +((rMes.motoristas>0 && rMes.outrosForaPonto>0)?'✎ fora do ponto':'✎ lançar fora do ponto')+'</button>')
         : '';
       var baseTot = anoTodo
         ? (fi(PC.pontosTot)+' pontos em '+PC.mesesTot+' meses ÷ '+fi(PC.colabTot/(PC.mesesTot||1))+' no quadro (média)'+motTxt(PC, true))
@@ -25059,9 +25075,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.80';
+var APP_VERSAO = 'b96.81';
 var APP_DATA   = '22/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.81', data:'22/10/2026', itens:[
+    'Reuniao do Mes, quadro total dos pontos por pessoa: alem dos motoristas, entram os outros que nao batem ponto (SENAI, comercial externo, gerencia, industrial: setores que nunca aparecem no extrato). Novo campo Outros fora do ponto no mes, digitado no app como o de motoristas. Quadro = ponto + motoristas + outros (SET/26: 147 + 8 + 14 = 169). A linha diz quanto veio de cada um; o que faltar aparece como "sem ...", nunca completado sozinho. O lapis da Reuniao vira "lancar fora do ponto" e abre no primeiro campo vazio.'
+  ]},
   { v:'b96.80', data:'22/10/2026', itens:[
     'Reuniao do Mes, quadro total dos pontos por pessoa: motoristas entram. Eles nao batem ponto e o quadro vinha so do extrato do ponto (SET/26: 147). Novo campo Motoristas no mes, digitado no app: Dados > editar o mes, ou "lancar motoristas" na linha do quadro total da Reuniao, que abre o mes direto no campo. Quadro = ponto + motoristas (SET/26 com 8: 155). A linha diz quanto veio de cada um; mes sem motoristas aparece como "sem motoristas", nunca completado sozinho. Na planilha a coluna motoristas da HISTORICO e criada na primeira gravacao com valor (Code.gs).'
   ]},

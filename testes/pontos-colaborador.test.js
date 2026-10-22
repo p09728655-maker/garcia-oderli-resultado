@@ -116,6 +116,23 @@ sec('pontosColab: motoristas (não batem ponto) somam ao quadro do ponto');
   afirma('AGO sem motoristas fica avisado', per.semMotoristas.length === 1 && per.semMotoristas[0] === 'AGO');
 }
 
+sec('pontosColab: outros fora do ponto (SENAI, comercial externo, gerência, industrial)');
+{
+  /* SET/26 na FUNCIONARIOS em 22/10/2026: 13-GERÊNCIA 1, 36-SENAI 9,
+     37-COMERCIAL EXTERNO 3, 39-INDUSTRIAL 1 — nenhum no extrato do ponto. */
+  const set = Object.assign(reg('SET', 2026, 8450122, 93, 147), { motoristas: 8, outrosForaPonto: 14 });
+  const P = U.pontosColab([set]);
+  ok('SET/26 por quadro = 8.450.122 ÷ (147 + 8 + 14)', P.porTotal, 8450122 / 169);
+  afirma('ponto 147, motoristas 8, outros 14, quadro 169', P.colabPonto === 147 && P.motoristas === 8 && P.outros === 14 && P.colabTot === 169);
+  afirma('nada faltando', P.semMotoristas.length === 0 && P.semOutros.length === 0);
+  const soMot = U.pontosColab([Object.assign(reg('SET', 2026, 8450122, 93, 147), { motoristas: 8 })]);
+  ok('só motoristas: ÷ 155', soMot.porTotal, 8450122 / 155);
+  afirma('e o mês fica em semOutros', soMot.semOutros.length === 1 && soMot.semOutros[0] === 'SET' && soMot.semMotoristas.length === 0);
+  const ano = U.pontosColab([Object.assign(reg('JUN', 2026, 8330909, 95, 147), { motoristas: 8, outrosForaPonto: 13 }), set]);
+  ok('período: Σ pontos ÷ Σ (ponto + motoristas + outros)', ano.porTotal, (8330909 + 8450122) / (168 + 169));
+  ok('por direto continua sem os de fora do ponto', ano.porDireto, (8330909 + 8450122) / (95 + 93));
+}
+
 sec('Sync do painel: pontos e colaboradoresTotal não saem');
 {
   const ini = HTML.indexOf("var _SO_PLANILHA");
@@ -132,8 +149,8 @@ sec('Sync do painel: pontos e colaboradoresTotal não saem');
   afirma('colaboradoresTotal fora do envio', !('colaboradoresTotal' in d));
   afirma('integridadeCiente continua fora do envio em massa', !('integridadeCiente' in d));
   afirma('o resto vai (colaboradores, horasNormais)', d.colaboradores === 93 && d.horasNormais === 15000);
-  sync([Object.assign({}, r, { motoristas: 8 })]);
-  afirma('motoristas vão (digitados no painel)', enviados[1].dados[0].motoristas === 8);
+  sync([Object.assign({}, r, { motoristas: 8, outrosForaPonto: 14 })]);
+  afirma('motoristas e outros fora do ponto vão (digitados no painel)', enviados[1].dados[0].motoristas === 8 && enviados[1].dados[0].outrosForaPonto === 14);
   enviados.splice(1, 1);
   sync([r], true);
   const d2 = enviados[1].dados[0];
@@ -207,6 +224,11 @@ sec('gravarHistorico (Code.gs): coluna motoristas criada na primeira gravação 
   const set = G.lerHistorico(ss).filter(r => r.mes === 'SET')[0];
   afirma('lerHistorico devolve motoristas como número', set.motoristas === 8);
   afirma('o painel lê motoristas como número (CAMPOS_NUM)', /var CAMPOS_NUM = \[[^\]]*'motoristas'/.test(HTML));
+  G.gravarHistorico(ss, [{ mes: 'SET', ano: 2026, colaboradores: 93, horasNormais: 15188, motoristas: 8, outrosForaPonto: 14 }]);
+  const co = dados.HISTORICO[0].indexOf('outrosForaPonto');
+  afirma('coluna outrosForaPonto criada depois de motoristas', co === c + 1);
+  afirma('SET grava 14 e mantém 8 motoristas', dados.HISTORICO[2][co] === 14 && dados.HISTORICO[2][c] === 8);
+  afirma('o painel lê outrosForaPonto como número (CAMPOS_NUM)', /var CAMPOS_NUM = \[[^\]]*'outrosForaPonto'/.test(HTML));
 }
 
 sec('PontoRH.gs: prAgregar conta o quadro inteiro com o filtro da PONTO_SETOR');
