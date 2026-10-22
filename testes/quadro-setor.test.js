@@ -105,6 +105,27 @@ sec('QuadroSetor.resumo: mês contra o mesmo mês do ano anterior');
   afirma('mapa marca a mudança do mês (MAR/26 +4)', celula.mudou === 4);
 }
 
+sec('QuadroSetor.resumo: de onde veio a variação (ponte)');
+{
+  const linhas = [];
+  const mk = (setor, direto, antes, agora) => { linhas.push(L(2025, 9, setor, direto, antes)); linhas.push(L(2026, 9, setor, direto, agora)); };
+  /* SET/25 → SET/26 da planilha em 22/10/2026, setores que mudaram */
+  mk('2-EMBALAGEM', 'S', 23, 27); mk('1-USINAGEM', 'S', 16, 19); mk('17-FURAÇÃO', 'S', 11, 12);
+  mk('29-CORTE', 'S', 8, 5); mk('3-ACABAMENTO', 'S', 10, 8); mk('16-COLAGEM DE BORDA', 'S', 14, 12); mk('7-LINHA DE PINTURA', 'S', 11, 9);
+  mk('4-EXPEDIÇÃO', 'N', 9, 11); mk('20-FINANÇAS', 'N', 3, 5); mk('15-RECEPÇÃO / ATENDIMENTO', 'N', 1, 3);
+  mk('14-ALMOXARIFADO / ESTOQUE', 'N', 9, 10); mk('18-COMERCIAL', 'N', 3, 4); mk('39-INDUSTRIAL', 'N', 0, 1); mk('38-LOGISTICA', 'N', 0, 1); mk('31-TRANSPORTE', 'N', 7, 8);
+  mk('9-FATURAMENTO', 'N', 4, 3); mk('22-PPCP', 'N', 4, 3); mk('26-RECURSOS HUMANO', 'N', 3, 2); mk('23-SEGURANÇA DO TRABALHO', 'N', 2, 1);
+  mk('36-SENAI', 'N', 9, 9);
+  const R = Q.resumo(linhas, { hoje: new Date(2026, 9, 22) });
+  const G = R.ponte;
+  afirma('quatro partes na ordem: diretos +, diretos −, indiretos +, indiretos −', G.map(g => g.rotulo).join('|') === 'Diretos que cresceram|Diretos que caíram|Indiretos que cresceram|Indiretos que caíram');
+  afirma('diretos +8 e −9 (saldo −1)', G[0].total === 8 && G[1].total === -9 && G[0].total + G[1].total === R.total.deltaDiretos);
+  afirma('indiretos +11 e −4 (saldo +7)', G[2].total === 11 && G[3].total === -4 && G[2].total + G[3].total === R.total.deltaIndiretos);
+  afirma('as quatro somam o saldo do quadro (+6)', G.reduce((t, g) => t + g.total, 0) === R.total.delta && R.total.delta === 6);
+  afirma('maior primeiro: Embalagem +4 nos diretos, Corte −3 nas quedas', G[0].setores[0].setor === 'Embalagem' && G[1].setores[0].setor === 'Corte');
+  afirma('setor sem mudança (SENAI) fica fora das partes', !G.some(g => g.setores.some(x => x.setor === 'SENAI')));
+}
+
 sec('QuadroSetor.resumo: mês a mês dentro da comparação');
 {
   const linhas = [];
@@ -144,6 +165,7 @@ sec('Painel: leitura do Web App e atalho da Reunião');
   afirma('as duas leituras da planilha guardam quadroSetor', (HTML.match(/json\.quadroSetor\) \{ try \{ localStorage\.setItem\(QuadroSetor\.SK/g) || []).length === 2);
   afirma('Code.gs manda quadroSetor no doGet', /quadroSetor: lerQuadroSetor\(ss\)/.test(src));
   afirma('aba Pessoas tem a seção', HTML.includes('id="ps-quadro"'));
+  afirma('bloco De onde veio a variação na tela e no Relatório', (HTML.match(/_qsPonte\(R, (true|false)\)/g) || []).length === 2);
   afirma('seção tem o botão Relatório', HTML.includes('id="qs-imp"') && HTML.includes('function imprimirQuadroSetor()'));
   afirma('relatório em A4 deitado com a régua de impressão do painel', /function imprimirQuadroSetor\(\)[\s\S]*?size:A4 landscape[\s\S]*?printBase\(\)/.test(HTML));
   const pl = new Function(HTML.match(/function _qsPl\([^)]*\)\{[^\n]*\}/)[0] + '\nreturn _qsPl;')();
