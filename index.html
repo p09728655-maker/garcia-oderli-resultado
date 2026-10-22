@@ -23830,9 +23830,15 @@ window.CompAnos = (function () {
       +detalhesF1+custoFalta);
 
     /* ── 3 · O que entregamos e o que falta faturar? ── */
+    /* b96.87: botão para o Quadro por setor (Operação › Pessoas), no mês da
+       Reunião (no ano todo, o último mês fechado). O "ver por setor ›" da
+       linha do quadro total era um link pequeno e passava despercebido. */
+    var irPessoas = '<div class="reu-noprint" style="margin-top:8px"><button type="button" class="btn btn-g btn-sm" onclick="reuIrQuadro('+(ano*100+ORDEM_M.indexOf(mes)+1)+')" '
+      +'title="Onde o quadro cresceu ou caiu, setor a setor, em '+mes+'/'+String(ano).slice(2)+'">Ver o quadro por setor (Operação › Pessoas) ›</button></div>';
     var q3 = bloco('3','O que entregamos e o que falta faturar?', r2, c2,
       '<div class="reu-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">'+b3+'</div>'
-      +(bPontos?('<div class="reu-grid reu-pts" style="display:grid;gap:8px;margin-top:8px">'+bPontos+'</div>'):''));
+      +(bPontos?('<div class="reu-grid reu-pts" style="display:grid;gap:8px;margin-top:8px">'+bPontos+'</div>'):'')
+      +irPessoas);
 
     /* ── 4 · O que vamos fazer sobre o vermelho? ── o plano na largura toda.
        O card "Ações críticas" repetia a resposta da pergunta; saiu. */
@@ -25671,9 +25677,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.86';
+var APP_VERSAO = 'b96.87';
 var APP_DATA   = '22/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.87', data:'22/10/2026', itens:[
+    'Reuniao do Mes, pergunta 3: botao Ver o quadro por setor (Operacao > Pessoas), abaixo dos cards de pontos, abre o Quadro por setor no mes da Reuniao (no ano todo, o ultimo mes fechado). O link ver por setor da linha do quadro total continua. A pilula Voltar traz de volta.',
+    'PontoRH.gs (processamento do ponto): avisa quando ha desligados do mes fora do Extrato de Totais (SET/26: os 6 desligados, 5 diretos; as horas deles nao entram e o quadro do ponto fica menor que o da folha) e quando ha inativo na DP sem data de demissao (o quadro conta como ativo ate hoje). So aviso: nada do que e lancado muda.'
+  ]},
   { v:'b96.86', data:'22/10/2026', itens:[
     'Quadro por setor: no grafico mes a mes, diretos e indiretos em tons neutros (claro e escuro); amarelo e azul ficam so para aumento e queda. Ate aqui a mesma cor dizia diretos e aumentou. Os dois meses comparados em cor cheia, os outros esmaecidos.',
     'Pilula Voltar para a Reuniao: saiu do meio do rodape, onde cobria a tabela. No computador fica no pe da coluna de filtros, da largura dela; no celular, compacta no canto direito. Fundo solido.',
