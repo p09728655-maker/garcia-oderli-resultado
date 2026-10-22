@@ -137,6 +137,32 @@ console.log('prAgregar: quem entra ou sai no mês não vira hora não trabalhada
   afirma('jornada cheia continua a moda (184,8)', a.jornada === 184.8);
   afirma('férias contam, admissão e desligamento não (4,8 + 17,6 = 22,4 h)', Math.abs(a.naoTrabalhadas - 22.4) < 1e-9);
   afirma('admitido no dia 1º é mês cheio', a.n === 6);
+  afirma('desligado que está no extrato não é avisado', a.desligadosFora.length === 0);
+})();
+
+console.log('prAgregar e prInativosSemDemissao: avisos de cadastro (SET/26)');
+(function () {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'PontoRH.gs'), 'utf8');
+  const PR = new Function('SpreadsheetApp', 'Logger', src + '\nreturn { prAgregar, prInativosSemDemissao };')({}, { log() {} });
+  const dt = (d, m) => new Date(2026, m - 1, d);
+  const pessoa = (codigo) => ({ codigo, nome: '', carga: 184.8, normais: 184.8, faltas: 0, atrasos: 0, e50: 0, e100: 0 });
+  /* o extrato de SET/26 não trazia nenhum dos desligados do mês */
+  const ext = { mes: 'SET', ano: 2026, fim: dt(30, 9), pessoas: [pessoa('1'), pessoa('2')] };
+  const func = { mapa: {
+    1: { direto: true }, 2: { direto: false },
+    3: { direto: true, demissao: dt(11, 9) },                       /* desligado em 11/09, fora do extrato */
+    4: { direto: false, demissao: dt(24, 9) },                      /* indireto, idem */
+    5: { direto: true, demissao: dt(20, 8) },                       /* saiu em agosto: não é deste mês */
+    6: { direto: true, admissao: dt(5, 10), demissao: dt(20, 10) },  /* nem tinha entrado */
+    7: { direto: true, inativo: true, setor: '2-EMBALAGEM' },         /* inativo na DP, sem data */
+    8: { direto: true, inativo: true, demissao: dt(2, 4), setor: '25-MONTAGEM' } } };
+  const a = PR.prAgregar(ext, func);
+  afirma('dois desligados de SET fora do extrato, um direto', a.desligadosFora.length === 2 && a.desligadosForaDiretos === 1);
+  afirma('quem saiu em outro mês não entra no aviso', !a.desligadosFora.some(t => /^(5|6) /.test(t)));
+  afirma('o lançado continua sendo o do extrato (1 direto)', a.n === 1);
+  const sem = PR.prInativosSemDemissao(func);
+  afirma('inativo na DP sem demissão é avisado; com data, não', sem.length === 1 && /^7 .*2-EMBALAGEM/.test(sem[0]));
+  afirma('sem FUNCIONARIOS: lista vazia', PR.prInativosSemDemissao(null).length === 0);
 })();
 
 console.log(`\n${total - falhas}/${total} ok`);

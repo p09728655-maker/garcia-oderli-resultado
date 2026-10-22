@@ -135,7 +135,8 @@ function prLerFuncionarios(ss) {
     var direto = /^s/i.test(String(v[i][col.direto] || '').trim());
     mapa[cod] = { nome: String(v[i][col.nome] || ''), setor: String(v[i][col.setor] || ''), direto: direto,
                   admissao: col.admissao !== undefined ? prData(v[i][col.admissao]) : null,
-                  demissao: col.demissao !== undefined ? prData(v[i][col.demissao]) : null };
+                  demissao: col.demissao !== undefined ? prData(v[i][col.demissao]) : null,
+                  inativo: col.observacao !== undefined && /inativo/i.test(String(v[i][col.observacao] || '')) };
     if (direto) diretos++;
   }
   return { mapa: mapa, diretos: diretos };
@@ -257,6 +258,22 @@ function prAgregar(ext, func) {
     return { cod: p.codigo, carga: p.carga, faltas: p.faltas, atrasos: p.atrasos, normais: p.normais, jornada: parcial ? p.carga : jornada };
   });
   a.naoTrabalhadas = Math.max(0, a.porPessoa.reduce(function (t, p) { return t + p.jornada - p.normais; }, 0));
+  /* Desligado no mês que não está no extrato: exportado sem os demitidos do
+     período, o Extrato de Totais deixa de fora as horas desses dias e o
+     quadro do ponto fica menor que o da folha. SET/26: os 6 desligados do
+     mês (5 diretos) fora do arquivo; colaboradores 93 contra 98 que
+     trabalharam. Só aviso: o lançado continua sendo o do extrato. */
+  var noExtrato = {};
+  ext.pessoas.forEach(function (p) { noExtrato[p.codigo] = true; });
+  a.desligadosFora = [];
+  a.desligadosForaDiretos = 0;
+  if (inicio && ext.fim) Object.keys(func.mapa).forEach(function (cod) {
+    var f = func.mapa[cod];
+    if (noExtrato[cod] || !f.demissao || f.demissao < inicio || f.demissao > ext.fim) return;
+    if (f.admissao && f.admissao > ext.fim) return;
+    a.desligadosFora.push(cod + ' ' + (f.nome || '') + (f.direto ? ' (direto)' : ''));
+    if (f.direto) a.desligadosForaDiretos++;
+  });
   a.pendentes = pend;
   a.admitidosDepois = depois;   /* cadastrados no ponto antes de começar: ficam para o mês da admissão */
   return a;
@@ -357,6 +374,16 @@ function prLerHistoricoMes(ss, mes, ano) {
                colaboradoresTotal: num(linhas[r], 'colaboradoresTotal') };
   }
   return null;
+}
+
+/* Inativo na DP sem data de demissão: lerQuadroSetor (Code.gs) conta a
+   pessoa como ativa até hoje, e o quadro e o fora do ponto do mês sobem
+   junto. SET/26: 1 na Embalagem, fora do extrato desde JUL/26. Só aviso:
+   a data é do DP. */
+function prInativosSemDemissao(func) {
+  if (!func) return [];
+  return Object.keys(func.mapa).filter(function (c) { var f = func.mapa[c]; return f.inativo && !f.demissao; })
+    .map(function (c) { var f = func.mapa[c]; return c + ' ' + (f.nome || '') + ' (' + f.setor + ')'; });
 }
 
 function prLog(ss, arquivo, ext, a, criou) {
@@ -541,6 +568,10 @@ function processarPontoDrive() {
                                        : '. Para aceitar o ponto: PR_PROTEGER_FECHADOS = false e reprocessar este arquivo.')
                          : ''));
         if (!r.a.e50 && !r.a.e100) feitos.push('   ATENÇÃO: extrato sem hora extra (colunas Ex50%/Ex100% ausentes ou zeradas). Exporte de novo com as colunas de extras.');
+        if (r.a.desligadosFora.length) feitos.push('   ATENÇÃO: ' + r.a.desligadosFora.length + ' desligado(s) em ' + r.ext.mes + '/' + r.ext.ano
+          + ' fora do extrato (' + r.a.desligadosForaDiretos + ' direto(s)): as horas deles não entram e o quadro do ponto fica menor que o da folha. '
+          + 'Exporte o Extrato de Totais com os demitidos do período e processe de novo (mês fechado: aceitarPontoNaHistorico); '
+          + 'depois tire-os do "fora do ponto" do mês no painel, senão contam duas vezes no quadro. ' + r.a.desligadosFora.join(', '));
         if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
         if (r.a.admitidosDepois.length) feitos.push('   admitidos depois de ' + r.ext.mes + '/' + r.ext.ano + ', não contam neste mês: ' + r.a.admitidosDepois.join(', '));
         feitos.push(r.extratoDiferente
@@ -555,8 +586,10 @@ function processarPontoDrive() {
       falhas.push(arq.getName() + ': ' + (e && e.message || e));
     }
   });
+  var semDem = prInativosSemDemissao(prLerFuncionarios(ss));
   prAvisar((feitos.length ? 'Lançado na ' + PR_ABA_HISTORICO + ':\n' + feitos.join('\n') : 'Nenhum extrato novo na pasta "' + PR_PASTA + '".')
     + (pend.length ? '\n\nFORA da FUNCIONARIOS (não somados — cadastre e rode de novo se forem diretos):\n' + pend.join('\n') : '')
+    + (semDem.length ? '\n\nINATIVO(S) NA DP SEM DATA DE DEMISSÃO (o quadro conta como ativos até hoje — peça a data ao DP):\n' + semDem.join('\n') : '')
     + (falhas.length ? '\n\nFalhas:\n' + falhas.join('\n') : '')
     + '\n\nO painel deriva faltas e atraso das ausências do controle (ou, sem elas, do ponto). O dashboard pega no próximo sync.');
 }
