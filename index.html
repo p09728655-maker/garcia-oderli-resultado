@@ -4274,54 +4274,93 @@ body.lid-on{overflow:hidden}
 .lid-box p{margin:0 0 .6em}
 .lid-k2{font-weight:800;font-size:.85em;margin-bottom:.5em;color:#F5A623}
 .lid-tab{width:100%;border-collapse:collapse;font-size:.8em}
-/* b96.82: quadro por setor (aba Pessoas) */
-/* No celular o .layout vira coluna e cada aba fica da largura do conteúdo:
-   o mapa mês a mês (21 colunas) levava a seção a 1.600 px. width:0 com
-   min-width:100% faz a área de rolagem ocupar o cartão sem empurrar a
-   largura dele; a tabela rola por dentro. */
-#ps-quadro .qs-dois>div{min-width:0}
-#ps-quadro .cHdr{flex-wrap:wrap;gap:8px}
-#ps-quadro .qs-ctl{display:flex;flex-wrap:wrap;gap:12px;font-size:.72rem;color:var(--t2)}
-#ps-quadro .qs-ctl label{display:flex;gap:6px;align-items:center}
-#ps-quadro .qs-ctl select{background:var(--input);color:var(--t1);border:1px solid var(--b);border-radius:var(--r);padding:3px 6px;font:inherit}
-#ps-quadro .qs-take{font-size:.86rem;line-height:1.55;color:var(--t1);margin:6px 0 12px;max-width:110ch}
-#ps-quadro .qs-take b{font-family:var(--mono);color:var(--cyan)}
-#ps-quadro .qs-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
-#ps-quadro .qs-kpi{background:var(--card);border:1px solid var(--b);border-radius:var(--r);padding:10px 12px}
+/* b96.82–b96.84: Quadro por setor (aba Pessoas). --qs-mais é quem
+   cresceu, --qs-menos quem caiu, --qs-dir/--qs-ind as barras de diretos e
+   indiretos, sólidas: laranja translúcido sobre o azul-marinho vira marrom.
+   O cartão (.cBox) é um gradiente escuro; as tabelas ficam num painel de
+   fundo --qs-fundo, o mesmo da coluna fixa do setor, para não sobrar faixa
+   de outra cor. Padding próprio: o td global (10px 12px) dobrava a altura. */
+#ps-quadro{--qs-mais:var(--cyan);--qs-menos:#7FA3C7;--qs-dir:var(--cyan);--qs-ind:#3F5D7D;--qs-fundo:#0E1A29}
+#ps-quadro .cHdr{flex-wrap:wrap;gap:10px}
+#ps-quadro .qs-ctl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:.72rem;color:var(--t2)}
+#ps-quadro .qs-ctl label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+#ps-quadro .qs-ctl select{background:var(--input);color:var(--t1);border:1px solid var(--b);border-radius:var(--r);padding:4px 8px;font:inherit}
+#ps-quadro .qs-ctl .btn{padding:4px 12px}
+#ps-quadro .qs-take{font-size:.88rem;line-height:1.65;color:var(--t1);margin:0 0 14px;max-width:125ch}
+#ps-quadro .qs-take b{font-family:var(--mono);color:var(--cyan);font-weight:700}
+#ps-quadro .qs-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:20px}
+#ps-quadro .qs-kpi{background:var(--card);border:1px solid var(--b);border-radius:var(--r);padding:10px 14px}
 #ps-quadro .qs-kpi-l{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t2)}
-#ps-quadro .qs-kpi-v{font-family:var(--mono);font-size:1.5rem;font-weight:800;color:var(--cyan);margin-top:2px}
-#ps-quadro .qs-kpi-s{font-size:.7rem;color:var(--t2);margin-top:2px;font-family:var(--mono)}
-#ps-quadro .qs-dois{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:18px;margin-bottom:14px}
-#ps-quadro .qs-sub{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);margin:12px 0 8px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-#ps-quadro .qs-lg{text-transform:none;letter-spacing:0;display:inline-flex;gap:6px;align-items:center}
-#ps-quadro .qs-lg i{display:inline-block;width:10px;height:10px;border-radius:2px}
-#ps-quadro .qs-div{display:grid;grid-template-columns:minmax(7rem,max-content) minmax(5rem,1fr) max-content;column-gap:10px;row-gap:6px;align-items:center;font-size:.74rem}
-#ps-quadro .qs-div-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1)}
-#ps-quadro .qs-div-b{position:relative;height:12px}
-#ps-quadro .qs-div-b::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;border-left:1px solid var(--b2)}
-#ps-quadro .qs-div-b span{position:absolute;top:0;height:100%;border-radius:3px}
-#ps-quadro .qs-div-v{font-family:var(--mono);color:var(--t2);white-space:nowrap}
-#ps-quadro .qs-div-v b{color:var(--t1)}
-#ps-quadro .qs-cols{display:flex;align-items:flex-end;gap:3px;height:190px}
-#ps-quadro .qs-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:stretch;height:100%;opacity:.5}
-#ps-quadro .qs-col.qs-dest{opacity:1}
-#ps-quadro .qs-col-v{font-family:var(--mono);font-size:.62rem;color:var(--t1);text-align:center;height:14px;white-space:nowrap}
+#ps-quadro .qs-kpi-v{font-family:var(--mono);font-size:1.5rem;font-weight:800;color:var(--cyan);margin-top:2px;line-height:1.2}
+#ps-quadro .qs-kpi-s{font-size:.7rem;color:var(--t2);margin-top:3px;font-family:var(--mono)}
+#ps-quadro .qs-dois{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:28px;margin-bottom:22px;align-items:start}
+#ps-quadro .qs-dois>section{min-width:0}
+#ps-quadro .qs-bloco{margin-bottom:16px}
+#ps-quadro .qs-sub{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);margin:0 0 12px;font-weight:600;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+#ps-quadro .qs-sub>span{letter-spacing:0;text-transform:none;font-weight:400;color:var(--t3);font-size:.7rem}
+#ps-quadro .qs-mais{color:var(--qs-mais)!important}
+#ps-quadro .qs-menos{color:var(--qs-menos)!important}
+#ps-quadro .qs-vazio{color:var(--t3);font-size:.72rem}
+#ps-quadro .qs-pt{display:grid;grid-template-columns:max-content minmax(3rem,5.5rem) 2.4rem minmax(0,1fr);column-gap:12px;row-gap:9px;align-items:start;font-size:.78rem}
+#ps-quadro .qs-pt-r{display:contents}
+#ps-quadro .qs-pt-n{color:var(--t1);white-space:nowrap;line-height:22px}
+#ps-quadro .qs-pt-b{position:relative;height:10px;margin-top:6px}
+#ps-quadro .qs-pt-b::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;border-left:1px solid var(--b2)}
+#ps-quadro .qs-pt-b span{position:absolute;top:0;height:100%;border-radius:3px}
+#ps-quadro .qs-pt-v{font-family:var(--mono);font-weight:700;text-align:right;line-height:22px;color:var(--t1)}
+#ps-quadro .qs-pt-s{display:flex;flex-wrap:wrap;gap:5px;min-width:0;align-items:center;min-height:22px}
+#ps-quadro .qs-pt-sep{grid-column:1/-1;border-top:1px solid var(--b2);margin:2px 0 0}
+#ps-quadro .qs-chip{display:inline-flex;gap:6px;align-items:baseline;background:var(--card);border:1px solid var(--b);border-radius:11px;padding:2px 9px;font-size:.72rem;color:var(--t1);white-space:nowrap;line-height:16px}
+#ps-quadro .qs-chip b{font-family:var(--mono);font-weight:700}
+#ps-quadro .qs-lg{display:inline-flex;gap:12px;align-items:center}
+#ps-quadro .qs-lg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+#ps-quadro .qs-cols{display:flex;align-items:flex-end;gap:4px;height:196px}
+#ps-quadro .qs-col{flex:1;min-width:0;display:flex;flex-direction:column;height:100%}
+#ps-quadro .qs-col-v{font-family:var(--mono);font-size:.68rem;font-weight:700;color:var(--t1);text-align:center;height:16px;white-space:nowrap}
 #ps-quadro .qs-col-b{flex:1;display:flex;flex-direction:column;justify-content:flex-end}
 #ps-quadro .qs-col-b span{display:block;width:100%}
 #ps-quadro .qs-col-b span:first-child{border-radius:3px 3px 0 0}
-#ps-quadro .qs-col-l{font-size:.58rem;color:var(--t2);text-align:center;height:14px;margin-top:3px;white-space:nowrap;overflow:visible}
-#ps-quadro .qs-scroll{overflow:auto;max-height:520px;margin-bottom:6px;width:0;min-width:100%}
-#ps-quadro .qs-tab th button{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-transform:inherit;letter-spacing:inherit}
-#ps-quadro .lid-tab th{position:sticky;top:0;background:var(--panel);z-index:1}
-#ps-quadro td.qs-n,#ps-quadro th.qs-n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-#ps-quadro .qs-heat td.qs-c,#ps-quadro .qs-heat th.qs-c{text-align:center;font-family:var(--mono);min-width:2.6rem;white-space:nowrap}
-#ps-quadro .qs-heat td:first-child,#ps-quadro .qs-heat th:first-child{position:sticky;left:0;background:var(--panel);z-index:1;white-space:nowrap}
-#ps-quadro .qs-heat thead th:first-child{z-index:2}
-#ps-quadro .qs-heat tr.qs-sep td{border-top:2px solid var(--b2)}
-#ps-quadro .qs-fonte{font-size:.62rem;color:var(--t3);margin-top:8px;line-height:1.5}
-#ps-quadro .qs-passos td.qs-c{font-weight:600}
-#ps-quadro .qs-passos td:last-child,#ps-quadro .qs-passos th:last-child{border-left:2px solid var(--b2)}
-#ps-quadro .qs-ctl .btn{padding:3px 10px}
+#ps-quadro .qs-col.qs-dest .qs-col-b span{box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}
+#ps-quadro .qs-col-l{font-size:.6rem;color:var(--t3);text-align:center;height:14px;margin-top:5px;white-space:nowrap;overflow:visible}
+#ps-quadro .qs-col.qs-dest .qs-col-l{color:var(--t1);font-weight:700}
+/* width:0 + min-width:100%: no celular o .layout vira coluna e a aba fica da
+   largura do conteúdo; a tabela larga rola aqui dentro sem esticar o cartão */
+#ps-quadro .qs-x{overflow-x:auto;width:0;min-width:100%;background:var(--qs-fundo);border:1px solid var(--b);border-radius:var(--r)}
+#ps-quadro table.qs-t{width:100%;border-collapse:separate;border-spacing:0;font-size:.76rem;font-variant-numeric:tabular-nums}
+#ps-quadro .qs-t th{padding:8px 8px 6px;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);font-weight:600;text-align:right;border-bottom:1px solid var(--b2);white-space:nowrap;background:var(--qs-fundo)}
+#ps-quadro .qs-t td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.045);text-align:right;font-family:var(--mono);white-space:nowrap;color:var(--t1)}
+#ps-quadro .qs-t th:first-child,#ps-quadro .qs-t td:first-child{text-align:left;font-family:var(--sans);position:sticky;left:0;background:var(--qs-fundo);z-index:1;padding-left:12px}
+/* zebra do tema também na coluna fixa (ela tem fundo próprio e ficava de fora) */
+#ps-quadro .qs-t tbody tr:nth-child(even) td{background:#111D2C}
+#ps-quadro .qs-t tbody tr:hover td{background:#16263A}
+#ps-quadro .qs-t td.qs-c,#ps-quadro .qs-t th.qs-c{text-align:center}
+#ps-quadro .qs-t td.qs-c{min-width:2.4rem}
+#ps-quadro .qs-t .qs-totc{border-right:1px solid var(--b2);padding-left:12px;padding-right:14px}
+#ps-quadro .qs-t tr.qs-tot td{border-top:1px solid var(--b2);border-bottom:0;font-weight:700}
+#ps-quadro .qs-t tr.qs-zero td{opacity:.5}
+#ps-quadro .qs-t tr.qs-sep td{border-top:1px solid var(--b2)}
+#ps-quadro .qs-t th button{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-transform:inherit;letter-spacing:inherit}
+#ps-quadro .qs-t th button:hover{color:var(--t1)}
+#ps-quadro .qs-mb{display:inline-block;position:relative;width:64px;height:8px;margin-right:10px;vertical-align:0}
+#ps-quadro .qs-mb::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;border-left:1px solid var(--b2)}
+#ps-quadro .qs-mb i{position:absolute;top:0;height:100%;border-radius:2px}
+#ps-quadro .qs-heat td.qs-chg-mais{background:rgba(245,166,35,.09);font-weight:700}
+#ps-quadro .qs-heat td.qs-chg-menos{background:rgba(127,163,199,.10);font-weight:700}
+#ps-quadro details.qs-det{border-top:1px solid var(--b);padding-top:6px;margin-top:10px}
+#ps-quadro details.qs-det>summary{cursor:pointer;list-style:none;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);font-weight:600;padding:8px 0}
+#ps-quadro details.qs-det>summary::-webkit-details-marker{display:none}
+#ps-quadro details.qs-det>summary::before{content:"▸ ";color:var(--cyan)}
+#ps-quadro details.qs-det[open]>summary::before{content:"▾ "}
+#ps-quadro details.qs-det>summary:hover{color:var(--t1)}
+#ps-quadro details.qs-det>summary>span{letter-spacing:0;text-transform:none;font-weight:400;color:var(--t3);font-size:.7rem;margin-left:6px}
+#ps-quadro details.qs-det[open]>.qs-x{margin-bottom:8px}
+#ps-quadro .qs-fonte{font-size:.64rem;color:var(--t3);margin-top:12px;line-height:1.5}
+@media (max-width:700px){
+  #ps-quadro .qs-pt{grid-template-columns:minmax(0,1fr) max-content;row-gap:4px}
+  #ps-quadro .qs-pt-b{display:none}
+  #ps-quadro .qs-pt-n{white-space:normal}
+  #ps-quadro .qs-pt-s{grid-column:1/-1;margin-bottom:8px}
+}
 .lid-tab th{text-align:left;font-size:.7em;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:.25em .4em;border-bottom:1px solid #223550}
 .lid-tab td{padding:.25em .4em;border-top:1px solid #223550}
 .lid-tab td:nth-child(n+2){font-family:var(--mono);text-align:right}
@@ -5323,6 +5362,16 @@ window.QuadroSetor = (function(){
     total.delta = total.agora - total.antes;
     total.deltaDiretos = total.diretos - total.diretosAntes;
     total.deltaIndiretos = total.indiretos - total.indiretosAntes;
+    /* de onde veio a variação: o saldo aberto em quatro partes. Em SET/26 o
+       +6 era +8 −9 nos diretos (troca de lugar) e +11 −4 nos indiretos. */
+    var grupo = function(direto, sinal, rotulo){
+      var ss = lista.filter(function(x){ return (x.tipo === 'Direto') === direto && x.delta * sinal > 0; })
+        .sort(function(a, b){ return (b.delta - a.delta) * sinal || a.setor.localeCompare(b.setor); })
+        .map(function(x){ return { setor: x.setor, delta: x.delta }; });
+      return { rotulo: rotulo, tipo: direto ? 'Direto' : 'Indireto', sinal: sinal, total: ss.reduce(function(t, x){ return t + x.delta; }, 0), setores: ss };
+    };
+    var ponte = [grupo(true, 1, 'Diretos que cresceram'), grupo(true, -1, 'Diretos que caíram'),
+                 grupo(false, 1, 'Indiretos que cresceram'), grupo(false, -1, 'Indiretos que caíram')];
     var nomes = Object.keys(setores);
     var serie = meses.map(function(k){
       var t = { k: k, pessoas: 0, diretos: 0, admitidos: 0, desligados: 0 };
@@ -5355,7 +5404,7 @@ window.QuadroSetor = (function(){
     var porK = {}; serie.forEach(function(t){ porK[t.k] = t; });
     var passos = { meses: periodo, linhas: passoLinhas,
       totais: periodo.map(function(k){ return (porK[k] ? porK[k].pessoas : 0) - (porK[antes(k, 1)] ? porK[antes(k, 1)].pessoas : 0); }) };
-    return { cmp: cmp, mes: mes, base: base, janela: jan, meses: meses, validos: validos, setores: lista, total: total, serie: serie, mapa: mapa, passos: passos };
+    return { cmp: cmp, mes: mes, base: base, janela: jan, meses: meses, validos: validos, setores: lista, total: total, serie: serie, mapa: mapa, passos: passos, ponte: ponte };
   }
   return { SK: SK, carregar: carregar, resumo: resumo, rot: rot, nome: nome };
 })();
@@ -5582,36 +5631,113 @@ function _lerRespostaWebApp(txt, status){
   throw e2;
 }
 
-/* Quadro por setor na aba Pessoas (QuadroSetor.resumo): onde o quadro
-   cresceu ou caiu entre dois meses fechados, quem entrou e saiu, e o mapa
-   mês a mês. Mês e comparação são da própria seção, não da lateral: a lista
-   do DP é contada mês a mês desde JAN/25, à parte dos meses da HISTORICO. */
-var _qsSel = { mes: null, cmp: '12m', ordem: 'delta', dir: -1 };
+var _qsSel = { mes: null, cmp: '12m', ordem: 'delta', dir: -1, todos: false, mapa: false };
 var _qsUltimo = null;   /* o último resumo desenhado: o Relatório imprime o que está na tela */
 /* "1 admitido", "2 admitidos" */
 function _qsPl(n, um, varios){ return Math.round(n).toLocaleString('pt-BR') + ' ' + (Math.abs(n) === 1 ? um : varios); }
+function _qsEsc(v){ return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+function _qsFi(v){ return Math.round(v).toLocaleString('pt-BR'); }
+function _qsSg(v){ return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(Math.round(v)).toLocaleString('pt-BR'); }
+function _qsCls(v){ return v > 0 ? 'qs-mais' : v < 0 ? 'qs-menos' : ''; }
+
+/* Frase de abertura: o saldo, de onde ele veio (diretos × indiretos), quem
+   mais cresceu e caiu, e o giro do período. Vai igual para o Relatório. */
+function _qsFrase(R){
+  var rot = QuadroSetor.rot, T = R.total, b = function(v){ return '<b>' + v + '</b>'; };
+  var top = function(sinal){
+    return R.setores.filter(function(x){ return x.delta * sinal > 0; })
+      .sort(function(a, c){ return (c.delta - a.delta) * sinal || a.setor.localeCompare(c.setor); }).slice(0, 2);
+  };
+  var lista = function(arr){ return arr.map(function(x){ return _qsEsc(x.setor) + ' ' + b(_qsSg(x.delta)); }).join(' e '); };
+  var dD = b(_qsSg(T.deltaDiretos)), dI = b(_qsSg(T.deltaIndiretos)), origem;
+  if (T.delta > 0) origem = T.deltaDiretos <= 0 ? 'O aumento veio dos indiretos (' + dI + '); nos diretos o saldo foi ' + dD + '.'
+    : (T.deltaIndiretos <= 0 ? 'O aumento veio dos diretos (' + dD + '); nos indiretos o saldo foi ' + dI + '.' : 'Cresceram os diretos (' + dD + ') e os indiretos (' + dI + ').');
+  else if (T.delta < 0) origem = T.deltaDiretos >= 0 ? 'A queda veio dos indiretos (' + dI + '); nos diretos o saldo foi ' + dD + '.'
+    : (T.deltaIndiretos >= 0 ? 'A queda veio dos diretos (' + dD + '); nos indiretos o saldo foi ' + dI + '.' : 'Caíram os diretos (' + dD + ') e os indiretos (' + dI + ').');
+  else origem = 'Diretos ' + dD + ', indiretos ' + dI + '.';
+  var up = top(1), dn = top(-1);
+  return 'De ' + rot(R.base) + ' a ' + rot(R.mes) + ' o quadro foi de ' + b(_qsFi(T.antes)) + ' para ' + b(_qsFi(T.agora)) + ' pessoas (' + b(_qsSg(T.delta)) + '). '
+    + origem + (up.length ? ' Mais cresceu: ' + lista(up) + '.' : '') + (dn.length ? ' Mais caiu: ' + lista(dn) + '.' : '')
+    + ' Entraram ' + b(_qsFi(T.admitidos)) + ' e saíram ' + b(_qsFi(T.desligados)) + ' de ' + rot(R.janela.de) + ' a ' + rot(R.janela.ate) + '.';
+}
+
+/* De onde veio a variação (QuadroSetor.resumo → ponte): o saldo aberto em
+   diretos e indiretos que cresceram e que caíram, cada parte com os seus
+   setores. Mesmo bloco na tela e no Relatório. */
+function _qsPonte(R, papel){
+  var rot = QuadroSetor.rot, T = R.total, G = R.ponte;
+  var maxAbs = Math.max.apply(null, G.map(function(g){ return Math.abs(g.total); }).concat([Math.abs(T.delta), 1]));
+  var cor = function(v){ return papel ? (v > 0 ? '#3E4C59' : '#9AA5B1') : (v > 0 ? 'var(--qs-mais)' : 'var(--qs-menos)'); };
+  var linha = function(rotulo, v, conteudo, tot){
+    var pct = Math.abs(v) / maxAbs * 50;
+    return '<div class="qs-pt-r' + (tot ? ' qs-pt-tot' : '') + '"><div class="qs-pt-n">' + rotulo + '</div>'
+      + '<div class="qs-pt-b">' + (v ? '<span style="width:' + pct + '%;left:' + (v > 0 ? 50 : 50 - pct) + '%;background:' + cor(v) + '"></span>' : '') + '</div>'
+      + '<div class="qs-pt-v ' + _qsCls(v) + '">' + (v ? _qsSg(v) : '0') + '</div><div class="qs-pt-s">' + conteudo + '</div></div>';
+  };
+  var chips = function(g){
+    return g.setores.length ? g.setores.map(function(x){ return '<span class="qs-chip">' + _qsEsc(x.setor) + ' <b class="' + _qsCls(x.delta) + '">' + _qsSg(x.delta) + '</b></span>'; }).join('')
+      : '<span class="qs-vazio">nenhum setor</span>';
+  };
+  return '<div class="qs-pt">'
+    + G.map(function(g){ return linha(g.rotulo, g.total, chips(g)); }).join('')
+    + '<div class="qs-pt-sep"></div>'
+    + linha('Saldo do quadro', T.delta, '<span class="qs-vazio">' + rot(R.base) + ' ' + _qsFi(T.antes) + ' → ' + rot(R.mes) + ' ' + _qsFi(T.agora) + '</span>', true)
+    + '</div>';
+}
+
 /* Mês a mês dentro da comparação (QuadroSetor.resumo → passos): uma linha
    por setor que mudou, o ganho ou a perda de cada mês e o total, que é a
-   variação do setor. Mesma tabela na tela e no Relatório. */
+   variação do setor; na tela o total ganha uma barra na mesma escala para
+   mostrar onde pegou mais. Mesma tabela na tela e no Relatório. */
 function _qsTabelaPassos(R, papel){
   var rot = QuadroSetor.rot, P = R.passos;
-  var esc = function(v){ return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); };
-  var sg = function(v){ return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(Math.round(v)).toLocaleString('pt-BR'); };
-  var cel = function(d, forte){
-    if(!d) return '<td class="qs-c qs-z">' + (papel ? '·' : '') + '</td>';
-    var cor = papel ? '' : ' style="color:' + (d > 0 ? 'var(--cyan)' : 'var(--purple)') + '!important"';
-    return '<td class="qs-c"' + cor + '>' + (forte ? '<b>' + sg(d) + '</b>' : sg(d)) + '</td>';
+  if (!P.linhas.length) return '<div class="qs-vazio">Nenhum setor mudou de ' + rot(R.base) + ' a ' + rot(R.mes) + '.</div>';
+  var maxAbs = Math.max.apply(null, P.linhas.map(function(x){ return Math.abs(x.total); }).concat([1]));
+  var cel = function(d){
+    if (!d) return '<td class="qs-c qs-z">' + (papel ? '·' : '') + '</td>';
+    return '<td class="qs-c ' + _qsCls(d) + '">' + _qsSg(d) + '</td>';
   };
-  if(!P.linhas.length) return '<div style="color:' + (papel ? '#52606D' : 'var(--t3)') + '">Nenhum setor mudou de ' + rot(R.base) + ' a ' + rot(R.mes) + '.</div>';
-  return '<table class="lid-tab qs-heat qs-passos"><thead><tr><th>Setor</th>'
-    + P.meses.map(function(k){ return '<th class="qs-c">' + rot(k) + '</th>'; }).join('')
-    + '<th class="qs-c">' + rot(R.base) + ' → ' + rot(R.mes) + '</th></tr></thead><tbody>'
-    + P.linhas.map(function(x){
-      return '<tr><td class="lid-tx" title="' + x.tipo + '">' + esc(x.setor) + '</td>' + x.deltas.map(function(d){ return cel(d); }).join('') + cel(x.total, true) + '</tr>';
-    }).join('')
-    + '<tr class="lid-tot qs-sep"><td class="lid-tx">Quadro</td>' + P.totais.map(function(d){ return cel(d, true); }).join('') + cel(R.total.delta, true) + '</tr>'
+  var tot = function(d, barra){
+    var bar = '';
+    if (barra && !papel) {
+      var pct = Math.abs(d) / maxAbs * 50;
+      bar = '<span class="qs-mb">' + (d ? '<i style="width:' + pct + '%;left:' + (d > 0 ? 50 : 50 - pct) + '%;background:' + (d > 0 ? 'var(--qs-mais)' : 'var(--qs-menos)') + '"></i>' : '') + '</span>';
+    }
+    return '<td class="qs-totc ' + _qsCls(d) + '">' + bar + '<b>' + (d ? _qsSg(d) : '0') + '</b></td>';
+  };
+  /* o total vem logo depois do setor: é o ranking de onde mais mudou e fica
+     sempre à vista; os meses são o detalhe (no notebook a tabela rola) */
+  return '<table class="qs-t qs-passos"><thead><tr><th>Setor</th>'
+    + '<th class="qs-totc">' + rot(R.base) + ' → ' + rot(R.mes) + '</th>'
+    + P.meses.map(function(k){ return '<th class="qs-c">' + rot(k) + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + P.linhas.map(function(x){ return '<tr><td title="' + x.tipo + '">' + _qsEsc(x.setor) + '</td>' + tot(x.total, true) + x.deltas.map(cel).join('') + '</tr>'; }).join('')
+    + '<tr class="qs-tot"><td>Quadro</td>' + tot(R.total.delta, false) + P.totais.map(cel).join('') + '</tr>'
     + '</tbody></table>';
 }
+
+/* Quadro mês a mês: diretos e indiretos empilhados, cor sólida. Os dois
+   meses comparados ganham o valor em cima e o contorno. */
+function _qsColunas(R){
+  var rot = QuadroSetor.rot;
+  var maxP = Math.max.apply(null, R.serie.map(function(s){ return s.pessoas; }).concat([1]));
+  var passo = Math.max(1, Math.ceil(R.serie.length / 7));
+  var fixos = R.serie.map(function(s, i){ return (s.k === R.mes || s.k === R.base) ? i : -1; }).filter(function(i){ return i >= 0; });
+  return R.serie.map(function(s, i){
+    var dest = s.k === R.mes || s.k === R.base;
+    var mostra = dest || (i % passo === 0 && fixos.every(function(f){ return Math.abs(f - i) >= passo; }));
+    var tit = rot(s.k) + ': ' + _qsFi(s.pessoas) + ' pessoas (' + _qsFi(s.diretos) + ' diretos, ' + _qsFi(s.indiretos) + ' indiretos) · ' + _qsPl(s.admitidos, 'admitido', 'admitidos') + ', ' + _qsPl(s.desligados, 'desligado', 'desligados');
+    return '<div class="qs-col' + (dest ? ' qs-dest' : '') + '" title="' + _qsEsc(tit) + '">'
+      + '<div class="qs-col-v">' + (dest ? _qsFi(s.pessoas) : '') + '</div>'
+      + '<div class="qs-col-b"><span style="height:' + (s.indiretos / maxP * 100) + '%;background:var(--qs-ind)"></span><span style="height:' + (s.diretos / maxP * 100) + '%;background:var(--qs-dir)"></span></div>'
+      + '<div class="qs-col-l">' + (mostra ? rot(s.k) : '') + '</div></div>';
+  }).join('');
+}
+
+/* Quadro por setor na aba Pessoas (QuadroSetor.resumo). Ordem da tela: a
+   frase com a resposta, os quatro números, de onde veio a variação ao lado
+   do quadro mês a mês, o mês a mês por setor; todos os setores e o mapa de
+   pessoas ficam recolhidos. Mês e comparação são da própria seção, não da
+   lateral: a lista do DP é contada desde JAN/25, à parte da HISTORICO. */
 function renderQuadroSetor(){
   var box = document.getElementById('ps-quadro');
   if(!box || !window.QuadroSetor) return;
@@ -5623,112 +5749,75 @@ function renderQuadroSetor(){
   }
   _qsSel.mes = R.mes;
   _qsUltimo = R;
-  var rot = QuadroSetor.rot;
-  var esc = function(v){ return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); };
-  var fi = function(v){ return Math.round(v).toLocaleString('pt-BR'); };
-  var sg = function(v){ return (v > 0 ? '+' : v < 0 ? '−' : '') + fi(Math.abs(v)); };
-  var T = R.total, jan = rot(R.janela.de) + ' a ' + rot(R.janela.ate);
-  var MAIS = 'var(--cyan)', MENOS = 'var(--purple)';
+  var rot = QuadroSetor.rot, T = R.total, jan = rot(R.janela.de) + ' a ' + rot(R.janela.ate);
 
-  /* frase */
-  var porDelta = function(sinal){
-    return R.setores.filter(function(x){ return x.delta * sinal > 0; })
-      .sort(function(a, b){ return (b.delta - a.delta) * sinal || a.setor.localeCompare(b.setor); }).slice(0, 3);
-  };
-  var lista = function(arr){ return arr.map(function(x){ return esc(x.setor) + ' <b>' + sg(x.delta) + '</b>'; }).join(', ').replace(/, ([^,]*)$/, ' e $1'); };
-  var sobe = porDelta(1), desce = porDelta(-1);
-  var frase = 'Em ' + rot(R.mes) + ' o quadro tinha <b>' + fi(T.agora) + '</b> pessoas contra <b>' + fi(T.antes) + '</b> em ' + rot(R.base)
-    + ' (<b>' + sg(T.delta) + '</b>): diretos <b>' + sg(T.deltaDiretos) + '</b>, indiretos <b>' + sg(T.deltaIndiretos) + '</b>.'
-    + ' Entraram <b>' + fi(T.admitidos) + '</b> e saíram <b>' + fi(T.desligados) + '</b> de ' + jan + '.'
-    + (sobe.length ? ' Cresceu em ' + lista(sobe) + '.' : '') + (desce.length ? ' Caiu em ' + lista(desce) + '.' : '');
-
-  /* números */
   var kpi = function(rotulo, valor, sub){ return '<div class="qs-kpi"><div class="qs-kpi-l">' + rotulo + '</div><div class="qs-kpi-v">' + valor + '</div><div class="qs-kpi-s">' + sub + '</div></div>'; };
-  var vs = function(d, b){ return sg(d) + ' vs ' + rot(R.base) + ' (' + fi(b) + ')'; };
-  var kpis = kpi('Quadro no mês', fi(T.agora), vs(T.delta, T.antes))
-    + kpi('Diretos', fi(T.diretos), vs(T.deltaDiretos, T.diretosAntes))
-    + kpi('Indiretos', fi(T.indiretos), vs(T.deltaIndiretos, T.indiretosAntes))
-    + kpi('Entraram · saíram', fi(T.admitidos) + ' · ' + fi(T.desligados), jan);
+  var vs = function(d, b){ return '<span class="' + _qsCls(d) + '">' + _qsSg(d) + '</span> vs ' + rot(R.base) + ' (' + _qsFi(b) + ')'; };
 
-  /* onde mudou */
-  var mud = R.setores.filter(function(x){ return x.delta; }).sort(function(a, b){ return b.delta - a.delta || a.setor.localeCompare(b.setor); });
-  var maxAbs = Math.max.apply(null, mud.map(function(x){ return Math.abs(x.delta); }).concat([1]));
-  var div = mud.length ? mud.map(function(x){
-    var pct = Math.abs(x.delta) / maxAbs * 50;
-    return '<div class="qs-div-n" title="' + esc(x.setor + ' (' + x.tipo.toLowerCase() + ')') + '">' + esc(x.setor) + '</div>'
-      + '<div class="qs-div-b"><span style="width:' + pct + '%;left:' + (x.delta > 0 ? 50 : 50 - pct) + '%;background:' + (x.delta > 0 ? MAIS : MENOS) + '"></span></div>'
-      + '<div class="qs-div-v"><b>' + sg(x.delta) + '</b> ' + fi(x.antes) + ' → ' + fi(x.agora) + '</div>';
-  }).join('') : '<div style="grid-column:1/-1;color:var(--t3)">Nenhum setor mudou entre os dois meses.</div>';
-
-  /* mês a mês: colunas diretos + indiretos, os dois meses comparados em destaque */
-  var maxP = Math.max.apply(null, R.serie.map(function(s){ return s.pessoas; }).concat([1]));
-  var passo = Math.max(1, Math.ceil(R.serie.length / 8));
-  var fixos = R.serie.map(function(s, i){ return (s.k === R.mes || s.k === R.base) ? i : -1; }).filter(function(i){ return i >= 0; });
-  var colunas = R.serie.map(function(s, i){
-    var dest = s.k === R.mes || s.k === R.base;
-    var mostra = dest || (i % passo === 0 && fixos.every(function(f){ return Math.abs(f - i) >= passo; }));
-    var tit = rot(s.k) + ': ' + fi(s.pessoas) + ' pessoas (' + fi(s.diretos) + ' diretos, ' + fi(s.indiretos) + ' indiretos) · ' + _qsPl(s.admitidos, 'admitido', 'admitidos') + ', ' + _qsPl(s.desligados, 'desligado', 'desligados');
-    return '<div class="qs-col' + (dest ? ' qs-dest' : '') + '" title="' + esc(tit) + '">'
-      + '<div class="qs-col-v">' + (dest ? fi(s.pessoas) : '') + '</div>'
-      + '<div class="qs-col-b"><span style="height:' + (s.indiretos / maxP * 100) + '%;background:var(--t2)"></span><span style="height:' + (s.diretos / maxP * 100) + '%;background:var(--cyan)"></span></div>'
-      + '<div class="qs-col-l">' + (mostra ? rot(s.k) : '') + '</div></div>';
-  }).join('');
-
-  /* todos os setores */
+  /* todos os setores, ordenável */
   var COLS = [['setor', 'Setor'], ['tipo', 'Tipo'], ['antes', rot(R.base)], ['agora', rot(R.mes)], ['delta', 'Variação'], ['admitidos', 'Admitidos'], ['desligados', 'Desligados']];
   var ord = R.setores.slice().sort(function(a, b){
     var va = a[_qsSel.ordem], vb = b[_qsSel.ordem];
     var c = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
     return c * _qsSel.dir || a.setor.localeCompare(b.setor);
   });
-  var nC = ' class="qs-n"';
-  var tabela = '<table class="lid-tab qs-tab"><thead><tr>' + COLS.map(function(c, i){
+  var todos = '<table class="qs-t qs-todos"><thead><tr>' + COLS.map(function(c, i){
       var s = c[0] === _qsSel.ordem ? (_qsSel.dir > 0 ? 'ascending' : 'descending') : 'none';
-      return '<th' + (i > 1 ? nC : '') + ' aria-sort="' + s + '"><button type="button" data-qs-ord="' + c[0] + '">' + c[1] + (s === 'none' ? '' : (_qsSel.dir > 0 ? ' ▴' : ' ▾')) + '</button></th>';
+      return '<th' + (i === 1 ? ' style="text-align:left"' : '') + ' aria-sort="' + s + '"><button type="button" data-qs-ord="' + c[0] + '">' + c[1] + (s === 'none' ? '' : (_qsSel.dir > 0 ? ' ▴' : ' ▾')) + '</button></th>';
     }).join('') + '</tr></thead><tbody>'
     + ord.map(function(x){
-      return '<tr><td class="lid-tx">' + esc(x.setor) + '</td><td class="lid-tx">' + x.tipo + '</td><td' + nC + '>' + fi(x.antes) + '</td><td' + nC + '>' + fi(x.agora) + '</td>'
-        + '<td' + nC + ' style="color:' + (x.delta > 0 ? MAIS : x.delta < 0 ? MENOS : 'var(--t3)') + '!important;font-weight:700">' + sg(x.delta) + '</td>'
-        + '<td' + nC + '>' + fi(x.admitidos) + '</td><td' + nC + '>' + fi(x.desligados) + '</td></tr>';
+      return '<tr' + (x.delta ? '' : ' class="qs-zero"') + '><td>' + _qsEsc(x.setor) + '</td><td style="text-align:left;font-family:var(--sans)">' + x.tipo + '</td><td>' + _qsFi(x.antes) + '</td><td>' + _qsFi(x.agora) + '</td>'
+        + '<td class="' + _qsCls(x.delta) + '"><b>' + _qsSg(x.delta) + '</b></td><td>' + _qsFi(x.admitidos) + '</td><td>' + _qsFi(x.desligados) + '</td></tr>';
     }).join('')
-    + '<tr class="lid-tot"><td class="lid-tx">Quadro</td><td class="lid-tx"></td><td' + nC + '>' + fi(T.antes) + '</td><td' + nC + '>' + fi(T.agora) + '</td><td' + nC + ' style="font-weight:700">' + sg(T.delta) + '</td><td' + nC + '>' + fi(T.admitidos) + '</td><td' + nC + '>' + fi(T.desligados) + '</td></tr>'
+    + '<tr class="qs-tot"><td>Quadro</td><td></td><td>' + _qsFi(T.antes) + '</td><td>' + _qsFi(T.agora) + '</td><td class="' + _qsCls(T.delta) + '">' + _qsSg(T.delta) + '</td><td>' + _qsFi(T.admitidos) + '</td><td>' + _qsFi(T.desligados) + '</td></tr>'
     + '</tbody></table>';
 
-  /* mapa mês a mês */
+  /* mapa de pessoas: número em cada mês; o mês em que o setor mudou fica
+     em negrito, na cor de quem ganhou ou perdeu gente */
   var tipoAnt = null;
-  var mapa = '<table class="lid-tab qs-heat"><thead><tr><th>Setor</th>' + R.meses.map(function(k){
+  var mapa = '<table class="qs-t qs-heat"><thead><tr><th>Setor</th>' + R.meses.map(function(k){
       return '<th class="qs-c"' + ((k === R.mes || k === R.base) ? ' style="color:var(--t1)"' : '') + '>' + rot(k) + '</th>';
     }).join('') + '</tr></thead><tbody>'
     + R.mapa.map(function(x){
       var sep = tipoAnt !== null && x.tipo !== tipoAnt; tipoAnt = x.tipo;
-      return '<tr' + (sep ? ' class="qs-sep"' : '') + '><td class="lid-tx" title="' + x.tipo + '">' + esc(x.setor) + '</td>' + x.meses.map(function(c){
-        var cor = c.mudou ? 'background:color-mix(in srgb, ' + (c.mudou > 0 ? MAIS : MENOS) + ' ' + Math.min(70, 22 + 16 * Math.abs(c.mudou)) + '%, transparent)' : '';
-        var tit = (c.admitidos || c.desligados) ? ' title="' + esc(x.setor + ', ' + rot(c.k) + ': ' + _qsPl(c.admitidos, 'admitido', 'admitidos') + ', ' + _qsPl(c.desligados, 'desligado', 'desligados')) + '"' : '';
-        return '<td class="qs-c"' + tit + (cor ? ' style="' + cor + '"' : '') + '>' + (c.pessoas ? fi(c.pessoas) : '') + '</td>';
+      return '<tr' + (sep ? ' class="qs-sep"' : '') + '><td title="' + x.tipo + '">' + _qsEsc(x.setor) + '</td>' + x.meses.map(function(c){
+        var cls = c.mudou > 0 ? ' qs-chg-mais qs-mais' : c.mudou < 0 ? ' qs-chg-menos qs-menos' : '';
+        var tit = (c.admitidos || c.desligados) ? ' title="' + _qsEsc(x.setor + ', ' + rot(c.k) + ': ' + _qsPl(c.admitidos, 'admitido', 'admitidos') + ', ' + _qsPl(c.desligados, 'desligado', 'desligados')) + '"' : '';
+        return '<td class="qs-c' + cls + '"' + tit + '>' + (c.pessoas ? _qsFi(c.pessoas) : '') + '</td>';
       }).join('') + '</tr>';
-    }).join('') + '</tbody></table>';
+    }).join('')
+    + '<tr class="qs-tot"><td>Quadro</td>' + R.serie.map(function(t){ return '<td class="qs-c">' + _qsFi(t.pessoas) + '</td>'; }).join('') + '</tr>'
+    + '</tbody></table>';
 
   var opcMes = R.validos.slice().reverse().map(function(k){ return '<option value="' + k + '"' + (k === R.mes ? ' selected' : '') + '>' + rot(k) + '</option>'; }).join('');
   box.innerHTML = '<div class="cHdr"><span class="cTtl">▸ Quadro por setor · ' + rot(R.mes) + ' contra ' + rot(R.base) + '</span>'
       + '<div class="qs-ctl"><label>Mês <select id="qs-mes">' + opcMes + '</select></label>'
       + '<label>Comparar com <select id="qs-cmp"><option value="12m"' + (R.cmp === '12m' ? ' selected' : '') + '>o mesmo mês do ano anterior</option><option value="dez"' + (R.cmp === 'dez' ? ' selected' : '') + '>dezembro do ano anterior</option></select></label>'
       + '<button type="button" class="btn btn-g btn-sm" id="qs-imp" title="Versão para imprimir ou salvar em PDF do mês e da comparação escolhidos">Relatório</button></div></div>'
-    + '<p class="qs-take">' + frase + '</p>'
-    + '<div class="qs-kpis">' + kpis + '</div>'
-    + '<div class="qs-dois">'
-      + '<div><div class="qs-sub">Onde o quadro mudou · ' + rot(R.base) + ' → ' + rot(R.mes) + '</div><div class="qs-div">' + div + '</div></div>'
-      + '<div><div class="qs-sub">Quadro mês a mês <span class="qs-lg"><i style="background:var(--cyan)"></i>diretos <i style="background:var(--t2)"></i>indiretos</span></div><div class="qs-cols">' + colunas + '</div></div>'
+    + '<p class="qs-take">' + _qsFrase(R) + '</p>'
+    + '<div class="qs-kpis">'
+      + kpi('Quadro no mês', _qsFi(T.agora), vs(T.delta, T.antes))
+      + kpi('Diretos', _qsFi(T.diretos), vs(T.deltaDiretos, T.diretosAntes))
+      + kpi('Indiretos', _qsFi(T.indiretos), vs(T.deltaIndiretos, T.indiretosAntes))
+      + kpi('Entraram · saíram', _qsFi(T.admitidos) + ' · ' + _qsFi(T.desligados), jan)
     + '</div>'
-    + '<div class="qs-sub">Mês a mês · quanto cada setor ganhou ou perdeu em cada mês, ' + rot(R.base) + ' → ' + rot(R.mes) + '</div><div class="qs-scroll">' + _qsTabelaPassos(R, false) + '</div>'
-    + '<div class="qs-fonte" style="margin:0 0 6px">Cada célula é a diferença contra o mês anterior. A última coluna soma a linha: é a variação do setor no período. Setores sem mudança não aparecem.</div>'
-    + '<div class="qs-sub">Todos os setores · admitidos e desligados de ' + jan + '</div><div class="qs-scroll">' + tabela + '</div>'
-    + '<div class="qs-sub">Pessoas por setor, mês a mês · a cor marca o mês em que o setor ganhou (laranja) ou perdeu (cinza) gente</div><div class="qs-scroll">' + mapa + '</div>'
+    + '<div class="qs-dois">'
+      + '<section><h3 class="qs-sub">De onde veio a variação <span>' + rot(R.base) + ' → ' + rot(R.mes) + '</span></h3>' + _qsPonte(R, false) + '</section>'
+      + '<section><h3 class="qs-sub">Quadro mês a mês <span class="qs-lg"><span><i style="background:var(--qs-dir)"></i>diretos</span><span><i style="background:var(--qs-ind)"></i>indiretos</span></span></h3><div class="qs-cols">' + _qsColunas(R) + '</div></section>'
+    + '</div>'
+    + '<section class="qs-bloco"><h3 class="qs-sub">Mês a mês por setor <span>a primeira coluna é a variação do setor no período, a soma dos meses ao lado; maior alta em cima</span></h3>'
+      + '<div class="qs-x">' + _qsTabelaPassos(R, false) + '</div></section>'
+    + '<details class="qs-det" id="qs-det-todos"' + (_qsSel.todos ? ' open' : '') + '><summary>Todos os setores <span>' + rot(R.base) + ' e ' + rot(R.mes) + ', admitidos e desligados de ' + jan + '</span></summary><div class="qs-x">' + todos + '</div></details>'
+    + '<details class="qs-det" id="qs-det-mapa"' + (_qsSel.mapa ? ' open' : '') + '><summary>Pessoas por setor, mês a mês <span>' + rot(R.meses[0]) + ' a ' + rot(R.meses[R.meses.length - 1]) + '; em cor, o mês em que o setor ganhou ou perdeu gente</span></summary><div class="qs-x">' + mapa + '</div></details>'
     + '<div class="qs-fonte">Fonte: aba FUNCIONARIOS (lista do DP regravada pelo controle de faltas), contada pelo Web App sem nomes. Conta quem esteve na folha em algum dia do mês, a regra do quadro total da Reunião; por isso os diretos daqui passam dos da HISTORICO quando alguém sai no meio do mês. O setor é o atual de cada pessoa: uma transferência aparece no setor novo desde a admissão. Desde JAN/25; o mês corrente fica de fora.</div>';
 
   var sm = document.getElementById('qs-mes'), sc = document.getElementById('qs-cmp'), si = document.getElementById('qs-imp');
   if(si) si.addEventListener('click', imprimirQuadroSetor);
   if(sm) sm.addEventListener('change', function(){ _qsSel.mes = +sm.value; renderQuadroSetor(); });
   if(sc) sc.addEventListener('change', function(){ _qsSel.cmp = sc.value; renderQuadroSetor(); });
+  var dt = document.getElementById('qs-det-todos'), dm = document.getElementById('qs-det-mapa');
+  if(dt) dt.addEventListener('toggle', function(){ _qsSel.todos = dt.open; });
+  if(dm) dm.addEventListener('toggle', function(){ _qsSel.mapa = dm.open; });
   box.querySelectorAll('[data-qs-ord]').forEach(function(b){
     b.addEventListener('click', function(){
       var k = b.getAttribute('data-qs-ord');
@@ -5750,8 +5839,7 @@ function imprimirQuadroSetor(){
   var esc = function(v){ return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); };
   var fi = function(v){ return Math.round(v).toLocaleString('pt-BR'); };
   var sg = function(v){ return (v > 0 ? '+' : v < 0 ? '−' : '') + fi(Math.abs(v)); };
-  var tela = document.querySelector('#ps-quadro .qs-take');
-  var frase = tela ? tela.innerHTML : '';
+  var frase = _qsFrase(R);
   var card = function(l, v, sub){ return '<div class="pb-card"><div class="pb-l">' + l + '</div><div class="pb-v">' + v + '</div><div class="pb-s">' + sub + '</div></div>'; };
   var vs = function(d, b){ return sg(d) + ' vs ' + rot(R.base) + ' (' + fi(b) + ')'; };
   var nC = ' class="qs-n"';
@@ -5784,15 +5872,27 @@ function imprimirQuadroSetor(){
     + '.pb-card{break-inside:avoid}'
     + 'table{font-size:7.5pt}'
     + '.qs-heat td,.qs-heat th{padding:2px 3px!important}'
-    + '.qs-heat .qs-c,.qs-heat th.qs-c{text-align:center!important;font-variant-numeric:tabular-nums;white-space:nowrap}'
-    + '.qs-heat td:first-child,.qs-todos td:first-child{white-space:nowrap}'
+    + '.qs-passos{font-size:7pt}.qs-passos td,.qs-passos th{padding:1px 3px!important}'
+    + '.qs-c{text-align:center!important;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.qs-heat td:first-child,.qs-todos td:first-child,.qs-passos td:first-child{white-space:nowrap}'
     + '.qs-passos .qs-z{color:#B0B8C1}'
-    + '.qs-passos td:last-child,.qs-passos th:last-child{border-left:1.5px solid #9AA5B1}'
+    + '.qs-totc{border-right:1.5px solid #9AA5B1;text-align:right!important;padding-right:6px!important}'
     + '.qs-n{text-align:right;font-variant-numeric:tabular-nums}'
     + '.qs-tot td,.lid-tot td{font-weight:700;border-top:1.5px solid #9AA5B1}'
     + '.qs-nota{font-size:7.5pt;color:#52606D;margin-top:4px;line-height:1.4}'
     + 'thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}'
     + '.qs-quebra{break-before:page;page-break-before:always}'
+    + '.qs-pt{display:grid;grid-template-columns:max-content 38mm 12mm 1fr;column-gap:10px;row-gap:6px;align-items:start;font-size:8.5pt}'
+    + '.qs-pt-r{display:contents}'
+    + '.qs-pt-n,.qs-pt-v{line-height:16px}'
+    + '.qs-pt-b{position:relative;height:9px;margin-top:4px}'
+    + '.qs-pt-b::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;border-left:1px solid #9AA5B1}'
+    + '.qs-pt-b span{position:absolute;bottom:0;height:9px;border-radius:2px}'
+    + '.qs-pt-v{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}'
+    + '.qs-pt-s{display:flex;flex-wrap:wrap;gap:3px}'
+    + '.qs-chip{display:inline-block;border:1px solid #D3D8DE;border-radius:8px;padding:0 6px;font-size:7.5pt;line-height:14px;white-space:nowrap}'
+    + '.qs-vazio{color:#52606D}'
+    + '.qs-pt-sep{grid-column:1/-1;border-top:1px solid #9AA5B1}'
     + '</style></head><body>'
     + '<div class="pb-hd"><div class="hdrow">' + (typeof logoImprimir === 'function' ? logoImprimir(30) : '') + '<div>'
     + '<div class="pb-lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis · Quadro de pessoal</div>'
@@ -5803,9 +5903,10 @@ function imprimirQuadroSetor(){
     + '<p class="qs-frase">' + frase + '</p>'
     + '<div class="qs-k">' + card('Quadro no mês', fi(T.agora), vs(T.delta, T.antes)) + card('Diretos', fi(T.diretos), vs(T.deltaDiretos, T.diretosAntes))
       + card('Indiretos', fi(T.indiretos), vs(T.deltaIndiretos, T.indiretosAntes)) + card('Entraram · saíram', fi(T.admitidos) + ' · ' + fi(T.desligados), jan) + '</div>'
-    + '<div class="pb-sec">Mês a mês · quanto cada setor ganhou ou perdeu em cada mês</div>'
+    + '<div class="pb-sec">De onde veio a variação · ' + rot(R.base) + ' → ' + rot(R.mes) + '</div>'
+    + _qsPonte(R, true)
+    + '<div class="pb-sec">Mês a mês · quanto cada setor ganhou ou perdeu em cada mês (contra o mês anterior); a primeira coluna soma os meses: é a variação do setor</div>'
     + _qsTabelaPassos(R, true)
-    + '<div class="qs-nota">Cada célula é a diferença contra o mês anterior; a última coluna soma a linha e é a variação do setor de ' + rot(R.base) + ' a ' + rot(R.mes) + '. Setores sem mudança no período não aparecem.</div>'
     + '<div class="pb-sec qs-quebra">Todos os setores · ' + rot(R.base) + ' e ' + rot(R.mes) + ', admitidos e desligados de ' + jan + '</div>'
     + todos
     + '<div class="pb-sec qs-quebra">Pessoas por setor, mês a mês · ' + rot(R.meses[0]) + ' a ' + rot(R.meses[R.meses.length - 1]) + ' (em negrito, os meses comparados)</div>'
@@ -25471,9 +25572,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.83';
+var APP_VERSAO = 'b96.84';
 var APP_DATA   = '22/10/2026';
 var APP_HISTORICO = [
+  { v:'b96.84', data:'22/10/2026', itens:[
+    'Quadro por setor (aba Pessoas): novo bloco De onde veio a variacao, o saldo aberto em diretos e indiretos que cresceram e que cairam, com os setores de cada parte em etiquetas. SET/26 contra SET/25: diretos +8 e -9 (saldo -1), indiretos +11 e -4 (saldo +7); a frase de abertura diz que o aumento veio dos indiretos e quem mais cresceu e caiu.',
+    'Tela refeita: a coluna do setor nao tem mais faixa de outra cor (zebra do tema tambem nela), linhas compactas (o td global de 10px dobrava a altura), barras do mes a mes em cor solida (o laranja translucido virava marrom), mapa com celulas neutras e so o numero colorido no mes em que mudou, sem rolagem dentro da rolagem. No Mes a mes por setor a variacao do periodo vem na primeira coluna, com barra, para o ranking ficar a vista no notebook. Todos os setores e o mapa ficam recolhidos. A secao caiu de 2.600 para 1.600 px de altura.',
+    'Relatorio em 3 paginas: resumo, de onde veio a variacao e o mes a mes; todos os setores; o mapa.'
+  ]},
   { v:'b96.83', data:'22/10/2026', itens:[
     'Quadro por setor (aba Pessoas): nova tabela Mes a mes com quanto cada setor ganhou ou perdeu em cada mes do periodo comparado (OUT/25 a SET/26 contra SET/25, ou JAN a SET contra DEZ); a ultima coluna soma a linha e e a variacao do setor, a ultima linha e a do quadro. Botao Relatorio: versao para imprimir ou salvar em PDF (A4 deitado) com resumo, os quatro numeros, o mes a mes, todos os setores e o mapa de pessoas desde JAN/25. Balao do mapa no singular quando e 1 ("1 desligado").'
   ]},
