@@ -141,24 +141,30 @@ sec('Sync do painel: pontos e colaboradoresTotal não saem');
   afirma('o registro local não é alterado', r.pontos === 0 && r.integridadeCiente === 'x');
 }
 
-/* ── planilha em memória: o que Code.gs e PontoRH.gs usam ── */
-function aba(v) {
+/* ── planilha em memória: o que Code.gs e PontoRH.gs usam ──
+   grade: nº de colunas da aba. Com grade, escrever além dela dá o erro do
+   Apps Script (a HISTORICO real acabava em AO); sem grade, a aba cresce. */
+function aba(v, grade) {
   const garante = (r, c) => { while (v.length < r) v.push([]); while (v[r - 1].length < c) v[r - 1].push(''); };
+  let max = grade || Infinity;
+  const fora = c => { if (c > max) throw new Error('The coordinates of the range are outside the dimensions of the sheet.'); };
   return {
+    getMaxColumns: () => (max === Infinity ? v.reduce((m, l) => Math.max(m, l.length), 0) : max),
+    insertColumnsAfter(depois, n) { max += n; },
     getDataRange: () => ({ getValues: () => { const w = v.reduce((m, l) => Math.max(m, l.length), 0); return v.map(l => { const o = l.slice(); while (o.length < w) o.push(''); return o; }); } }),
     getLastRow: () => { for (let i = v.length; i > 0; i--) if (v[i - 1].some(x => String(x) !== '')) return i; return 0; },
     getRange(r, c) {
       const g = {
-        setValue(x) { garante(r, c); v[r - 1][c - 1] = x; return g; },
-        setValues(a) { a.forEach((l, i) => l.forEach((x, j) => { garante(r + i, c + j); v[r + i - 1][c + j - 1] = x; })); return g; },
+        setValue(x) { fora(c); garante(r, c); v[r - 1][c - 1] = x; return g; },
+        setValues(a) { fora(c + ((a[0] || []).length || 1) - 1); a.forEach((l, i) => l.forEach((x, j) => { garante(r + i, c + j); v[r + i - 1][c + j - 1] = x; })); return g; },
         setNumberFormat() { return g; }
       };
       return g;
     }
   };
 }
-function planilha(dados) {
-  const abas = {}; Object.keys(dados).forEach(n => { abas[n] = aba(dados[n]); });
+function planilha(dados, grades) {
+  const abas = {}; Object.keys(dados).forEach(n => { abas[n] = aba(dados[n], (grades || {})[n]); });
   return { getSheetByName: n => abas[n] || null, insertSheet: n => (abas[n] = aba(dados[n] = [])) };
 }
 
@@ -182,7 +188,11 @@ sec('gravarHistorico (Code.gs): coluna motoristas criada na primeira gravação 
 {
   const CAB = ['mes', 'ano', 'colaboradores', 'horasNormais', 'pontos', 'colaboradoresTotal', 'integridadeCiente'];
   const dados = { HISTORICO: [CAB.slice(), ['AGO', 2026, 93, 15000, 8156190, 148, ''], ['SET', 2026, 93, 15188, 8450122, 147, '']] };
-  const ss = planilha(dados);
+  /* grade cheia, como a HISTORICO real em 22/10/2026 */
+  const ss = planilha(dados, { HISTORICO: CAB.length });
+  let estourou = false;
+  try { ss.getSheetByName('HISTORICO').getRange(1, CAB.length + 1).setValue('x'); } catch (e) { estourou = true; }
+  afirma('a grade da aba de teste é cheia (escrever fora dela dá erro)', estourou);
   const env = { SpreadsheetApp: { getActiveSpreadsheet: () => ss }, Logger: { log() {} }, ContentService: {}, MailApp: {}, Session: {}, Utilities: {} };
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8');
   const G = new Function(...Object.keys(env), src + '\nreturn { gravarHistorico, lerHistorico };')(...Object.values(env));
@@ -191,7 +201,7 @@ sec('gravarHistorico (Code.gs): coluna motoristas criada na primeira gravação 
   G.gravarHistorico(ss, [{ mes: 'AGO', ano: 2026, colaboradores: 93, horasNormais: 15000, motoristas: 0 },
                          { mes: 'SET', ano: 2026, colaboradores: 93, horasNormais: 15188, motoristas: 8 }]);
   const c = dados.HISTORICO[0].indexOf('motoristas');
-  afirma('coluna criada depois das existentes', c === CAB.length);
+  afirma('coluna criada depois das existentes, com a grade cheia', c === CAB.length);
   afirma('SET grava 8', dados.HISTORICO[2][c] === 8);
   afirma('pontos e colaboradoresTotal intactos', dados.HISTORICO[2][4] === 8450122 && dados.HISTORICO[2][5] === 147);
   const set = G.lerHistorico(ss).filter(r => r.mes === 'SET')[0];

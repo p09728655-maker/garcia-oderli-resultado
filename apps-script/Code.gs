@@ -344,6 +344,11 @@ function gravarHistorico(ss, recebidos) {
     if (!recebidos.some(function (r) { var v = r && r[nome]; return texto ? (v !== undefined && v !== null && v !== '') : num(v) > 0; })) return;
     var fim = cab.length;
     while (fim > 0 && !txt(cab[fim - 1])) fim--;
+    /* A HISTORICO não tem coluna sobrando (em 22/10/2026 a grade acabava em
+       AO, a última com cabeçalho): escrever fora da grade derruba a gravação
+       inteira. Acrescenta a coluna antes. */
+    var max = aba.getMaxColumns();
+    if (fim + 1 > max) aba.insertColumnsAfter(max, fim + 1 - max);
     aba.getRange(iCab + 1, fim + 1).setValue(nome);
     cab[fim] = nome; col[n] = fim;
   });
