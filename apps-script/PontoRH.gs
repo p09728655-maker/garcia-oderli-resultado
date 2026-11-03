@@ -1309,7 +1309,7 @@ function prConferirMes(ss, func, mes, ano) {
     if (!c) {
       if (foraAtraso <= 0.005 && atrasos <= 0.005) return;      /* trabalhou o mês todo: nada a conferir */
       linhas.push([mes, ano, cod, f.nome || '', f.setor || '', 'fora do controle', nt, foraAtraso, atrasos, 0, sobra, 0, dif,
-        prPistaForaDoControle(f, carga, jornada)]);
+        prPistaForaDoControle(f, carga, jornada, mes, ano)]);
       return;
     }
     if (Math.abs(dif) < 0.05) return;                            /* fecha: fora do relatório */
@@ -1344,16 +1344,26 @@ function prConferirMes(ss, func, mes, ano) {
 
 /* Mês inteiro sem carga e sem nada no controle é o caso que mais pesa: em
    JAN/26 uma pessoa só respondia por 149,6 h das 93,9 h de diferença. */
-function prPistaForaDoControle(f, carga, jornada) {
+function prPistaForaDoControle(f, carga, jornada, mes, ano) {
   if (carga <= 0.005)
     return 'mês inteiro fora e nenhuma linha no CONTROLE FALTAS: afastamento, licença ou férias não lançados pelo DP';
-  if (f.demissao) return 'desligado em ' + prDataBr(f.demissao) + ': conferir se o controle cobre os dias trabalhados';
+  /* a demissão só explica a linha se for DESTE mês (saiu no meio e o
+     controle pode não cobrir os dias trabalhados). Demissão posterior não
+     diz nada sobre um mês em que a pessoa trabalhou inteiro: em JAN/26 o
+     954, desligado em 02/04/2026, saiu com a pista de desligamento e mandava
+     conferir um controle que estava certo. */
+  if (prDemissaoNoMes(f, mes, ano))
+    return 'desligado em ' + prDataBr(f.demissao) + ' (neste mês): conferir se o controle cobre os dias trabalhados';
   return 'faltou no ponto e o CONTROLE FALTAS não tem linha: pedir o lançamento ao DP';
 }
 
+/* Demissão dentro do mês conferido. */
+function prDemissaoNoMes(f, mes, ano) {
+  return !!(f && f.demissao && f.demissao.getFullYear() === ano && f.demissao.getMonth() === PR_MESES.indexOf(mes));
+}
+
 function prPistaForaDoExtrato(f, mes, ano) {
-  var m = PR_MESES.indexOf(mes);
-  if (f.demissao && f.demissao.getFullYear() === ano && f.demissao.getMonth() === m)
+  if (prDemissaoNoMes(f, mes, ano))
     return 'desligado em ' + prDataBr(f.demissao) + ': reexportar o Extrato de Totais COM os demitidos do período';
   if (f.demissao) return 'desligado em ' + prDataBr(f.demissao) + ', fora do extrato: lançamento do controle em pessoa já desligada';
   if (f.inativo) return 'inativo na DP sem data de demissão: pedir a data ao DP';
