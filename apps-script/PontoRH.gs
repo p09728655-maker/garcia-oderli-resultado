@@ -1188,3 +1188,221 @@ function testePonto() {
 function prNormaliza(v) { return String(v === null || v === undefined ? '' : v).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 function prAvisar(msg) { try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); } }
 function prErro(msg) { Logger.log('ERRO: ' + msg); prAvisar(msg); }
+
+/* ══ 11 · CONFERÊNCIA PONTO × CONTROLE, PESSOA A PESSOA ═════════════════
+   Responde ao aviso "Ponto e controle de faltas não fecham" do painel.
+   O aviso diz o tamanho da diferença do mês; aqui sai de quem ela é.
+
+   O painel compara, no mês:
+     não trabalhadas no ponto   = Σ (jornada − horas normais)
+     controle                   = faltas + atrasos (líquidos) + férias
+   As duas somas vêm de arquivos diferentes (Extrato de Totais × CONTROLE
+   FALTAS) e nunca batem por acaso. Aqui, por pessoa:
+     não trabalhadas  = jornada − normais     (inclui o atraso do ponto)
+     ponto fora atraso= max(0, jornada − carga) + faltas do ponto
+     controle         = falta + atestado + afastado + férias
+     sobra            = controle − ponto fora atraso
+     dupla            = min(max(sobra,0), atraso do ponto)   ← prDuplicidade
+     diferença        = dupla − sobra
+   diferença > 0: o ponto mostra ausência que o controle não justifica.
+   diferença < 0: o controle lança mais do que o ponto mostra.
+   A soma das diferenças, mais quem está fora de uma das duas fontes,
+   fecha com o gap do mês. Conferido em JAN/26 (+93,9 h, 149,6 delas de
+   uma pessoa só) e ABR/26 (−370,2 h, 225,6 delas de 5 pessoas fora do
+   extrato). Nada é gravado na HISTORICO: só a aba de conferência.
+
+   A regra do `parcial` é a mesma de prDuplicidade: quem entrou ou saiu no
+   meio do mês tem jornada = a própria carga, então a carga reduzida por
+   atestado ou férias não aparece e só a falta pode ser comparada. Mudar
+   uma sem mudar a outra faz a conferência discordar do próprio painel. */
+var PR_ABA_CONF = 'CONFERENCIA_PONTO';
+var PR_CAB_CONF = ['mes', 'ano', 'cod', 'nome', 'setor', 'caso', 'naoTrabalhadas', 'pontoForaAtraso',
+                   'atrasoPonto', 'controle', 'sobra', 'atrasoDuplicado', 'diferenca', 'pista'];
+
+function conferirPontoControle() {
+  var ui = null, resp = '';
+  try {
+    ui = SpreadsheetApp.getUi();
+    var r = ui.prompt('Conferir ponto × controle, pessoa a pessoa',
+      'Mês (ABR/26), vários (JAN/26, ABR/26) ou o ano inteiro (2026). Em branco = ano corrente.', ui.ButtonSet.OK_CANCEL);
+    if (r.getSelectedButton() !== ui.Button.OK) return;
+    resp = r.getResponseText();
+  } catch (e) { resp = ''; }                       /* sem UI (Executar no editor): ano corrente */
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var pedidos = prMesesPedidos(ss, resp);
+  if (!pedidos.length) return prErro('nenhum mês com ponto e controle por pessoa em "' + (resp || 'ano corrente') + '".');
+  var func = prLerFuncionarios(ss);
+  if (!func) return prErro('aba ' + PR_ABA_FUNC + ' ausente: processe o CONTROLE FALTAS antes.');
+  var linhas = [], resumo = [];
+  pedidos.forEach(function (p) {
+    var c = prConferirMes(ss, func, p.mes, p.ano);
+    if (!c) { resumo.push(p.mes + '/' + p.ano + ': sem ponto ou sem controle por pessoa'); return; }
+    linhas = linhas.concat(c.linhas);
+    resumo.push(c.texto);
+  });
+  prGravarConferencia(ss, pedidos, linhas);
+  prAvisar(resumo.join('\n\n') + '\n\nDetalhe por pessoa na aba ' + PR_ABA_CONF +
+           '.\nNada foi gravado na HISTORICO.');
+}
+
+/* Meses que têm as DUAS abas por pessoa. Aceita ABR/26, ABR/2026, 2026 e
+   listas; em branco, o ano corrente. Mês sem as duas abas não entra — a
+   conferência sem uma das fontes não diria nada. */
+function prMesesPedidos(ss, resp) {
+  resp = String(resp || '').trim();
+  if (!resp) resp = String(new Date().getFullYear());
+  var pedidos = [], anos = [];
+  resp.toUpperCase().split(/[,;]+/).forEach(function (x) {
+    x = x.trim(); if (!x) return;
+    var so = x.match(/^(\d{2}|\d{4})$/);
+    if (so) { var y = parseInt(so[1], 10); anos.push(y < 100 ? 2000 + y : y); return; }
+    var m = x.match(/^([A-Z]{3})\s*[\/\-]?\s*(\d{2}|\d{4})$/);
+    if (!m || PR_MESES.indexOf(m[1]) < 0) return;
+    var a = parseInt(m[2], 10);
+    pedidos.push({ mes: m[1], ano: a < 100 ? 2000 + a : a });
+  });
+  anos.forEach(function (ano) {
+    PR_MESES.forEach(function (m) { pedidos.push({ mes: m, ano: ano }); });
+  });
+  return pedidos.filter(function (p) {
+    return prLerPessoas(ss, PR_ABA_PONTO_PESSOA, p.mes, p.ano).length &&
+           prLerPessoas(ss, PR_ABA_AUS_PESSOA, p.mes, p.ano).length;
+  });
+}
+
+function prConferirMes(ss, func, mes, ano) {
+  var ponto = prLerPessoas(ss, PR_ABA_PONTO_PESSOA, mes, ano);
+  var aus   = prLerPessoas(ss, PR_ABA_AUS_PESSOA, mes, ano);
+  if (!ponto.length || !aus.length) return null;
+  var num = function (x) { var f = parseFloat(String(x).replace(',', '.')); return isFinite(f) ? f : 0; };
+  var A = {};
+  aus.forEach(function (l) {
+    A[String(l[0]).trim()] = { falta: num(l[3]), atestado: num(l[4]), afastado: num(l[5]), atraso: num(l[6]), ferias: num(l[7]) };
+  });
+  /* jornada cheia = a mais frequente do mês, como em prApurarDuplicidade */
+  var freq = {}, cheia = 0, maxf = 0;
+  ponto.forEach(function (l) { var j = Math.round(num(l[7]) * 100) / 100; freq[j] = (freq[j] || 0) + 1; if (freq[j] > maxf) { maxf = freq[j]; cheia = j; } });
+
+  var linhas = [], vistos = {}, somaNT = 0;
+  ponto.forEach(function (l) {
+    var cod = String(l[0]).trim(); vistos[cod] = true;
+    var carga = num(l[3]), faltas = num(l[4]), atrasos = num(l[5]), normais = num(l[6]), jornada = num(l[7]);
+    var f = func.mapa[cod] || {};
+    var nt = jornada - normais; somaNT += nt;
+    var foraAtraso = Math.max(0, jornada - carga) + faltas;
+    var c = A[cod], parcial = Math.abs(jornada - cheia) > 0.01;
+    var ctrl = c ? c.falta + c.atestado + c.afastado + c.ferias : 0;
+    var sobra = c ? (parcial ? c.falta - faltas : ctrl - foraAtraso) : -foraAtraso;
+    var dupla = c ? Math.min(Math.max(sobra, 0), atrasos) : 0;
+    var dif = dupla - sobra;
+    /* normais acima da carga: o extrato trouxe mais hora trabalhada do que
+       a carga do mês, e "não trabalhadas" fica negativo. Não é ausência de
+       ninguém, é erro do arquivo — entra como caso próprio. */
+    if (nt < -0.005) {
+      /* a hora negativa derruba as não trabalhadas do mês, então entra na
+         diferença: sem isso a soma dos casos não fecha com o gap da
+         HISTORICO (ABR/26 dava −367,8 contra −370,2 do painel). */
+      linhas.push([mes, ano, cod, f.nome || '', f.setor || '', 'horas negativas', nt, foraAtraso, atrasos, ctrl, sobra, dupla, dif + nt,
+        'normais (' + prH(normais) + ') acima da carga (' + prH(carga) + ') no Extrato de Totais: conferir o arquivo do mês']);
+      return;
+    }
+    if (!c) {
+      if (foraAtraso <= 0.005 && atrasos <= 0.005) return;      /* trabalhou o mês todo: nada a conferir */
+      linhas.push([mes, ano, cod, f.nome || '', f.setor || '', 'fora do controle', nt, foraAtraso, atrasos, 0, sobra, 0, dif,
+        prPistaForaDoControle(f, carga, jornada)]);
+      return;
+    }
+    if (Math.abs(dif) < 0.05) return;                            /* fecha: fora do relatório */
+    linhas.push([mes, ano, cod, f.nome || '', f.setor || '',
+      dif > 0 ? 'ponto a mais' : 'controle a mais', nt, foraAtraso, atrasos, ctrl, sobra, dupla, dif,
+      dif > 0 ? 'o ponto mostra ausência que o controle não justifica: falta sem lançamento no CONTROLE FALTAS'
+              : 'o controle lança mais do que o ponto mostra: ausência que o ponto não registra, ou atraso lançado como falta acima do atraso do ponto'
+                + (parcial ? ' (entrou ou saiu no meio do mês: só a falta é comparável)' : '')]);
+  });
+  /* quem o controle tem e o extrato não: some inteiro da conta do ponto */
+  Object.keys(A).sort().forEach(function (cod) {
+    if (vistos[cod]) return;
+    var c = A[cod], f = func.mapa[cod] || {};
+    var ctrl = c.falta + c.atestado + c.afastado + c.ferias;
+    if (ctrl <= 0.005) return;
+    linhas.push([mes, ano, cod, f.nome || '', f.setor || '', 'fora do extrato', 0, 0, 0, ctrl, ctrl, 0, -ctrl,
+      prPistaForaDoExtrato(f, mes, ano)]);
+  });
+
+  var h = prHistoricoConf(ss, mes, ano);
+  var fecha = h ? h.faltas + Math.max(0, h.atrasosPonto - h.atrasoDuplicado) + h.horasFerias : 0;
+  var gap = h ? h.naoTrabalhadas - fecha : 0;
+  linhas.sort(function (a, b) { return Math.abs(b[12]) - Math.abs(a[12]); });
+  var porCaso = {};
+  linhas.forEach(function (l) { porCaso[l[5]] = (porCaso[l[5]] || 0) + l[12]; });
+  var texto = mes + '/' + ano + ': não trabalhadas no ponto ' + prH(h ? h.naoTrabalhadas : somaNT)
+    + ' × controle ' + prH(fecha) + '  →  diferença ' + prH(gap) + '\n'
+    + Object.keys(porCaso).sort().map(function (k) { return '  · ' + k + ': ' + prH(porCaso[k]); }).join('\n')
+    + '\n  ' + linhas.length + ' pessoa(s) no relatório, de ' + ponto.length + ' no extrato e ' + aus.length + ' no controle';
+  return { linhas: linhas, texto: texto, gap: gap };
+}
+
+/* Mês inteiro sem carga e sem nada no controle é o caso que mais pesa: em
+   JAN/26 uma pessoa só respondia por 149,6 h das 93,9 h de diferença. */
+function prPistaForaDoControle(f, carga, jornada) {
+  if (carga <= 0.005)
+    return 'mês inteiro fora e nenhuma linha no CONTROLE FALTAS: afastamento, licença ou férias não lançados pelo DP';
+  if (f.demissao) return 'desligado em ' + prDataBr(f.demissao) + ': conferir se o controle cobre os dias trabalhados';
+  return 'faltou no ponto e o CONTROLE FALTAS não tem linha: pedir o lançamento ao DP';
+}
+
+function prPistaForaDoExtrato(f, mes, ano) {
+  var m = PR_MESES.indexOf(mes);
+  if (f.demissao && f.demissao.getFullYear() === ano && f.demissao.getMonth() === m)
+    return 'desligado em ' + prDataBr(f.demissao) + ': reexportar o Extrato de Totais COM os demitidos do período';
+  if (f.demissao) return 'desligado em ' + prDataBr(f.demissao) + ', fora do extrato: lançamento do controle em pessoa já desligada';
+  if (f.inativo) return 'inativo na DP sem data de demissão: pedir a data ao DP';
+  return 'ativo e fora do extrato do ponto: se não bate ponto, entra no "fora do ponto" do painel e não deveria contar como direto no controle';
+}
+
+/* As colunas do mês que o aviso usa. Lida à parte de prLerHistoricoMes
+   para não mexer no que o processamento do ponto já usa. */
+function prHistoricoConf(ss, mes, ano) {
+  var aba = ss.getSheetByName(PR_ABA_HISTORICO); if (!aba) return null;
+  var v = aba.getDataRange().getValues(), iCab = -1, col = {};
+  for (var i = 0; i < Math.min(v.length, 20) && iCab < 0; i++) {
+    var norm = v[i].map(prNormaliza);
+    if (norm.indexOf('mes') >= 0 && norm.indexOf('ano') >= 0) { iCab = i; norm.forEach(function (n, c) { if (col[n] === undefined) col[n] = c; }); }
+  }
+  if (iCab < 0) return null;
+  var num = function (l, nome) { var c = col[prNormaliza(nome)]; if (c === undefined) return 0; var x = parseFloat(String(l[c]).replace(',', '.')); return isFinite(x) ? x : 0; };
+  for (var r = iCab + 1; r < v.length; r++) {
+    if (String(v[r][col.mes] || '').trim().toUpperCase().slice(0, 3) !== mes || parseInt(v[r][col.ano], 10) !== ano) continue;
+    return { naoTrabalhadas: num(v[r], 'naoTrabalhadas'), horasFerias: num(v[r], 'horasFerias'),
+             atrasosPonto: num(v[r], 'atrasosPonto'), atrasoDuplicado: num(v[r], 'atrasoDuplicado'),
+             faltas: num(v[r], 'ausFalta') + num(v[r], 'ausAtestado') + num(v[r], 'ausAfastado') };
+  }
+  return null;
+}
+
+/* Regrava só os meses conferidos; o resto da aba fica. */
+function prGravarConferencia(ss, pedidos, linhas) {
+  var aba = ss.getSheetByName(PR_ABA_CONF) || ss.insertSheet(PR_ABA_CONF);
+  var alvo = {}; pedidos.forEach(function (p) { alvo[p.mes + '/' + p.ano] = true; });
+  var v = aba.getLastRow() > 0 ? aba.getDataRange().getValues() : [];
+  var ficam = v.slice(1).filter(function (l) {
+    return String(l[0]).trim() !== '' && !alvo[String(l[0]).trim().toUpperCase() + '/' + parseInt(l[1], 10)];
+  });
+  var todas = [PR_CAB_CONF].concat(ficam, linhas).map(function (l) {
+    var o = l.slice(0, PR_CAB_CONF.length);
+    while (o.length < PR_CAB_CONF.length) o.push('');
+    return o;
+  });
+  aba.clearContents();
+  aba.getRange(1, 1, todas.length, PR_CAB_CONF.length).setValues(todas);
+  aba.getRange(1, 1, 1, PR_CAB_CONF.length).setFontWeight('bold');
+  aba.setFrozenRows(1);
+  aba.setColumnWidth(4, 260); aba.setColumnWidth(5, 190); aba.setColumnWidth(6, 125); aba.setColumnWidth(14, 560);
+}
+
+function prH(x) { return (Math.round((x || 0) * 10) / 10).toString().replace('.', ',') + ' h'; }
+function prDataBr(d) {
+  if (!d) return '';
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+}

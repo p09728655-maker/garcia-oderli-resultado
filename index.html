@@ -25681,9 +25681,16 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.88';
-var APP_DATA   = '22/10/2026';
+var APP_VERSAO = 'b96.89';
+var APP_DATA   = '03/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.89', data:'03/11/2026', itens:[
+    'Apps Script, menu Ponto > Conferir ponto x controle, pessoa a pessoa: responde ao aviso "Ponto e controle de faltas nao fecham". O aviso dava o tamanho da diferenca do mes; agora sai de quem ela e. Grava a aba CONFERENCIA_PONTO com uma linha por pessoa em que as duas fontes discordam, o caso, a diferenca em horas e a pista do que fazer. Nada e gravado na HISTORICO.',
+    'Cinco casos: fora do controle (faltou no ponto e o CONTROLE FALTAS nao tem linha), fora do extrato (o controle lancou e a pessoa nao veio no Extrato de Totais), ponto a mais, controle a mais e horas negativas (normais acima da carga no extrato). A soma das diferencas fecha com o gap do mes na HISTORICO.',
+    'A regra do calculo e a mesma de prDuplicidade, inclusive o tratamento de quem entrou ou saiu no meio do mes. Separar as duas faria a conferencia discordar do proprio painel.',
+    'Conferido contra JAN/26 e ABR/26. JAN: diferenca de +93,9 h, 149,6 delas de uma pessoa so - mes inteiro sem carga no ponto e sem nenhuma linha no controle, padrao de afastamento nao lancado pelo DP. ABR: -370,2 h, 225,6 delas de 5 pessoas que o controle tem e o extrato nao.',
+    'A aba tem nome e codigo de funcionario, como PONTO_PESSOA e AUSENCIAS_PESSOA: entrou no DICIONARIO com o mesmo aviso de nao compartilhar.'
+  ]},
   { v:'b96.88', data:'22/10/2026', itens:[
     'Quadro por setor, Variacao por setor mes a mes: direto/indireto em coluna propria (Tipo), alinhada, como na Comparacao por setor. Colado no nome, cada um comecava num ponto da linha. Igual no Relatorio.',
     'Barra da variacao no periodo maior: 140 x 10 px (era 64 x 8, o +1 virava um ponto); no celular 80 px.'
