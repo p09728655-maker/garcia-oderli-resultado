@@ -198,8 +198,12 @@ sec('Painel: leitura do Web App e atalho da Reunião');
   afirma('as duas leituras da planilha guardam quadroSetor', (HTML.match(/json\.quadroSetor\) \{ try \{ localStorage\.setItem\(QuadroSetor\.SK/g) || []).length === 2);
   afirma('Code.gs manda quadroSetor no doGet', /quadroSetor: lerQuadroSetor\(ss\)/.test(src));
   afirma('aba Pessoas tem a seção', HTML.includes('id="ps-quadro"'));
-  afirma('De onde veio a variação: Relatório com _qsPonte, tela com _qsVariacoes (os dois de R.ponte)',
-    (HTML.match(/_qsPonte\(R, true\)/g) || []).length === 1 && HTML.includes('_qsVariacoes(R)') && /function _qsVariacoes\(R\)\{[\s\S]{0,200}R\.ponte/.test(HTML));
+  afirma('Relatório usa os mesmos blocos da tela (cartões, onde mudou, evolução, destaques, comparativo, histórico)', (() => {
+    const i = HTML.indexOf('function imprimirQuadroSetor(){'), b = HTML.slice(i, HTML.indexOf('\n}\n', i));
+    return ['_qsKpis(R)', '_qsVariacoes(R)', '_qsLinhas(R', '_qsDestaques(R)', '_qsTabelaSetores(R, true)', '_qsMapa(R)'].every(t => b.includes(t));
+  })());
+  afirma('onde mudou lê R.ponte; funções do Relatório antigo removidas', /function _qsVariacoes\(R\)\{[\s\S]{0,200}R\.ponte/.test(HTML)
+    && !HTML.includes('function _qsPonte(') && !HTML.includes('function _qsTabelaPassos(') && !HTML.includes('function _qsFrase('));
   afirma('tela na ordem pedida: números, onde mudou, evolução, comparativo, histórico, destaques', (() => {
     const i = HTML.indexOf('function renderQuadroSetor(){'), f = HTML.indexOf('/* Relatório do Quadro por setor', i), b = HTML.slice(i, f);
     const ord = ['qs-kpis', '_qsVariacoes(R)', '_qsLinhas(R)', '_qsTabelaSetores(R)', 'qs-det-mapa', '_qsDestaques(R)'].map(t => b.indexOf(t));

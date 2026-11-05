@@ -5841,86 +5841,6 @@ function _qsFi(v){ return Math.round(v).toLocaleString('pt-BR'); }
 function _qsSg(v){ return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(Math.round(v)).toLocaleString('pt-BR'); }
 function _qsCls(v){ return v > 0 ? 'qs-mais' : v < 0 ? 'qs-menos' : ''; }
 
-/* Frase de abertura: a conclusão. Quanto o quadro mudou, de onde veio
-   (diretos × indiretos) e quem mais cresceu e caiu. Antes, inicial e
-   final e o giro ficam nos cartões logo abaixo, sem repetir aqui. Só a
-   variação leva cor (sinal + amarelo, sinal − azul). Vai igual no Relatório. */
-function _qsFrase(R){
-  var rot = QuadroSetor.rot, T = R.total;
-  var v = function(x){ return '<b class="' + _qsCls(x) + '">' + _qsSg(x) + '</b>'; };
-  var top = function(sinal){
-    return R.setores.filter(function(x){ return x.delta * sinal > 0; })
-      .sort(function(a, c){ return (c.delta - a.delta) * sinal || a.setor.localeCompare(c.setor); }).slice(0, 2);
-  };
-  var lista = function(arr){ return arr.map(function(x){ return _qsEsc(x.setor) + ' ' + v(x.delta); }).join(' e '); };
-  var dD = v(T.deltaDiretos), dI = v(T.deltaIndiretos), origem;
-  if (T.delta > 0) origem = T.deltaDiretos <= 0 ? 'O aumento veio dos indiretos (' + dI + '); nos diretos o saldo foi ' + dD + '.'
-    : (T.deltaIndiretos <= 0 ? 'O aumento veio dos diretos (' + dD + '); nos indiretos o saldo foi ' + dI + '.' : 'Cresceram os diretos (' + dD + ') e os indiretos (' + dI + ').');
-  else if (T.delta < 0) origem = T.deltaDiretos >= 0 ? 'A queda veio dos indiretos (' + dI + '); nos diretos o saldo foi ' + dD + '.'
-    : (T.deltaIndiretos >= 0 ? 'A queda veio dos diretos (' + dD + '); nos indiretos o saldo foi ' + dI + '.' : 'Caíram os diretos (' + dD + ') e os indiretos (' + dI + ').');
-  else origem = 'Diretos ' + dD + ', indiretos ' + dI + '.';
-  var up = top(1), dn = top(-1);
-  var abre = T.delta > 0 ? 'cresceu ' + v(T.delta) + (Math.abs(T.delta) === 1 ? ' pessoa' : ' pessoas') : (T.delta < 0 ? 'caiu ' + v(T.delta) + (Math.abs(T.delta) === 1 ? ' pessoa' : ' pessoas') : 'ficou igual');
-  return 'De ' + rot(R.base) + ' a ' + rot(R.mes) + ' o quadro ' + abre + '. ' + origem
-    + (up.length ? ' Mais cresceu: ' + lista(up) + '.' : '') + (dn.length ? ' Mais caiu: ' + lista(dn) + '.' : '');
-}
-
-/* De onde veio a variação (QuadroSetor.resumo → ponte): o saldo aberto em
-   diretos e indiretos que cresceram e que caíram, cada parte com os seus
-   setores. Mesmo bloco na tela e no Relatório. */
-function _qsPonte(R, papel){
-  var rot = QuadroSetor.rot, T = R.total, G = R.ponte;
-  var maxAbs = Math.max.apply(null, G.map(function(g){ return Math.abs(g.total); }).concat([Math.abs(T.delta), 1]));
-  var cor = function(v){ return papel ? (v > 0 ? '#3E4C59' : '#9AA5B1') : (v > 0 ? 'var(--qs-mais)' : 'var(--qs-menos)'); };
-  var linha = function(rotulo, v, conteudo, tot){
-    var pct = Math.abs(v) / maxAbs * 50;
-    return '<div class="qs-pt-r' + (tot ? ' qs-pt-tot' : '') + '"><div class="qs-pt-n">' + rotulo + '</div>'
-      + '<div class="qs-pt-b">' + (v ? '<span style="width:' + pct + '%;left:' + (v > 0 ? 50 : 50 - pct) + '%;background:' + cor(v) + '"></span>' : '') + '</div>'
-      + '<div class="qs-pt-v ' + _qsCls(v) + '">' + (v ? _qsSg(v) : '0') + '</div><div class="qs-pt-s">' + conteudo + '</div></div>';
-  };
-  var chips = function(g){
-    return g.setores.length ? g.setores.map(function(x){ return '<span class="qs-chip">' + _qsEsc(x.setor) + ' <b class="' + _qsCls(x.delta) + '">' + _qsSg(x.delta) + '</b></span>'; }).join('')
-      : '<span class="qs-vazio">nenhum setor</span>';
-  };
-  return '<div class="qs-pt">'
-    + G.map(function(g){ return linha(g.rotulo, g.total, chips(g)); }).join('')
-    + '<div class="qs-pt-sep"></div>'
-    + linha('Saldo do quadro', T.delta, '<span class="qs-vazio">' + rot(R.base) + ' ' + _qsFi(T.antes) + ' → ' + rot(R.mes) + ' ' + _qsFi(T.agora) + '</span>', true)
-    + '</div>';
-}
-
-/* Mês a mês dentro da comparação (QuadroSetor.resumo → passos): uma linha
-   por setor que mudou, o ganho ou a perda de cada mês e o total, que é a
-   variação do setor; na tela o total ganha uma barra na mesma escala para
-   mostrar onde pegou mais. Mesma tabela na tela e no Relatório. */
-function _qsTabelaPassos(R, papel){
-  var rot = QuadroSetor.rot, P = R.passos;
-  if (!P.linhas.length) return '<div class="qs-vazio">Nenhum setor mudou de ' + rot(R.base) + ' a ' + rot(R.mes) + '.</div>';
-  var maxAbs = Math.max.apply(null, P.linhas.map(function(x){ return Math.abs(x.total); }).concat([1]));
-  var cel = function(d){
-    if (!d) return '<td class="qs-c qs-z">' + (papel ? '·' : '') + '</td>';
-    return '<td class="qs-c ' + _qsCls(d) + '">' + _qsSg(d) + '</td>';
-  };
-  var tot = function(d, barra){
-    var bar = '';
-    if (barra && !papel) {
-      var pct = Math.abs(d) / maxAbs * 50;
-      bar = '<span class="qs-mb">' + (d ? '<i style="width:' + pct + '%;left:' + (d > 0 ? 50 : 50 - pct) + '%;background:' + (d > 0 ? 'var(--qs-mais)' : 'var(--qs-menos)') + '"></i>' : '') + '</span>';
-    }
-    return '<td class="qs-totc ' + _qsCls(d) + '">' + bar + '<b>' + (d ? _qsSg(d) : '0') + '</b></td>';
-  };
-  /* o total vem logo depois do setor: é o ranking de onde mais mudou e fica
-     sempre à vista; os meses são o detalhe (no notebook a tabela rola).
-     b96.88: Tipo em coluna própria, como na Comparação por setor; colado no
-     nome, "direto/indireto" começava cada um num ponto da linha. */
-  return '<table class="qs-t qs-passos"><thead><tr><th>Setor</th><th class="qs-tx">Tipo</th>'
-    + '<th class="qs-totc">' + rot(R.base) + ' → ' + rot(R.mes) + '</th>'
-    + P.meses.map(function(k){ return '<th class="qs-c">' + rot(k) + '</th>'; }).join('') + '</tr></thead><tbody>'
-    + P.linhas.map(function(x){ return '<tr><td>' + _qsEsc(x.setor) + '</td><td class="qs-tx">' + x.tipo + '</td>' + tot(x.total, true) + x.deltas.map(cel).join('') + '</tr>'; }).join('')
-    + '<tr class="qs-tot"><td>Quadro</td><td class="qs-tx"></td>' + tot(R.total.delta, false) + P.totais.map(cel).join('') + '</tr>'
-    + '</tbody></table>';
-}
-
 /* Quadro por setor na aba Pessoas (QuadroSetor.resumo). A ordem da tela está
    em renderQuadroSetor (b96.90). Mês e comparação são da própria seção, não
    da lateral: a lista do DP é contada desde JAN/25, à parte da HISTORICO. */
@@ -5930,6 +5850,22 @@ function _qsMapaNoFim(){
   var x = document.querySelector('#ps-quadro .qs-x-mapa');
   if(x) x.scrollLeft = x.scrollWidth;
 }
+/* Os quatro números, iguais na tela e no Relatório. b96.91: ícone à esquerda, na
+   cor da série do gráfico (no papel, grafite). Diretos = capacete (chão de
+   fábrica), indiretos = maleta. */
+function _qsKpis(R){
+  var rot = QuadroSetor.rot, T = R.total;
+  var vs = function(d, b){ return _qsDelta(d) + ' <span>vs ' + rot(R.base) + ' (' + _qsFi(b) + ')</span>'; };
+  var kpi = function(ico, rotulo, valor, sub, nota, cls){ return '<div class="qs-kpi qs-kpi-' + ico + (cls ? ' ' + cls : '') + '"' + (nota ? ' title="' + _qsEsc(nota) + '"' : '') + '>'
+    + '<span class="qs-ico" aria-hidden="true">' + _QS_ICO[ico] + '</span><div class="qs-kpi-c"><div class="qs-kpi-l">' + rotulo + '</div><div class="qs-kpi-v">' + valor + '</div><div class="qs-kpi-s">' + sub + '</div></div></div>'; };
+  var notaMov = 'Entradas: admitidos de ' + rot(R.janela.de) + ' a ' + rot(R.janela.ate) + '. Saídas: quem deixou o quadro de ' + rot(R.base) + ' até o mês anterior; quem sai conta no mês da saída, então os desligados de ' + rot(R.mes) + ' ainda estão nos ' + _qsFi(T.agora) + '. Desligamentos com data de ' + rot(R.janela.de) + ' a ' + rot(R.janela.ate) + ': ' + _qsFi(T.desligados) + '.';
+  return kpi('tot', 'Quadro no mês', _qsFi(T.agora), vs(T.delta, T.antes), '', 'qs-kpi-1')
+    + kpi('dir', 'Diretos', _qsFi(T.diretos), vs(T.deltaDiretos, T.diretosAntes))
+    + kpi('ind', 'Indiretos', _qsFi(T.indiretos), vs(T.deltaIndiretos, T.indiretosAntes))
+    + kpi('mov', 'Movimentação', _qsFi(T.admitidos) + '<small>entradas</small><i class="qs-kpi-sep"></i>' + _qsFi(T.saidas) + '<small>saídas</small>',
+          '<span>' + _qsFi(T.antes) + ' + ' + _qsFi(T.admitidos) + ' − ' + _qsFi(T.saidas) + ' = ' + _qsFi(T.agora) + ' · ' + rot(R.base) + ' → ' + rot(R.mes) + '</span>', notaMov);
+}
+
 /* Histórico mensal por setor (recolhido): pessoas em cada mês. O mês em que
    o setor mudou leva o número em negrito na cor da variação, sem fundo. "–"
    é setor sem ninguém no mês. Diretos e indiretos com linha de título; as
@@ -6012,10 +5948,10 @@ function _qsVariacoes(R){
    detalhe de cada mês no passar do mouse. Cores validadas no fundo escuro
    (dataviz: brilho, croma, daltonismo e contraste): total âmbar, diretos
    azul, indiretos magenta. */
-function _qsLinhas(R){
+function _qsLinhas(R, alto){
   var rot = QuadroSetor.rot, S = R.serie, n = S.length;
   if (!n) return '';
-  var W = 960, H = 380, pl = 40, pr = 84, pt = 16, pb = 28;
+  var W = 960, H = alto || 380, pl = 40, pr = 84, pt = 16, pb = 28;   /* alto: o Relatório usa mais altura */
   var SER = [{ k: 'pessoas', nome: 'Total', cls: 'qs-l-tot' }, { k: 'diretos', nome: 'Diretos', cls: 'qs-l-dir' }, { k: 'indiretos', nome: 'Indiretos', cls: 'qs-l-ind' }];
   var vals = []; S.forEach(function(s){ SER.forEach(function(z){ vals.push(s[z.k]); }); });
   var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
@@ -6068,12 +6004,12 @@ function _qsLinhas(R){
    saídas = agora); os meses ficam depois, menores. Começa pelo maior
    impacto, de alta ou de queda; clicar no título reordena. Setor sem
    mudança nenhuma no período vai numa linha só no fim. */
-function _qsTabelaSetores(R){
+function _qsTabelaSetores(R, papel){
   var rot = QuadroSetor.rot, T = R.total, P = R.passos;
   var porSetor = {}; P.linhas.forEach(function(x){ porSetor[x.setor] = x.deltas; });
   var mexeu = function(x){ return x.delta || (porSetor[x.setor] || []).some(function(d){ return d; }); };
   var ativos = R.setores.filter(mexeu), parados = R.setores.filter(function(x){ return !mexeu(x); });
-  var ord = _qsSel.ordem, dir = _qsSel.dir;
+  var ord = papel ? 'impacto' : _qsSel.ordem, dir = papel ? -1 : _qsSel.dir;   /* no papel, sempre maior impacto primeiro */
   ativos.sort(function(a, b){
     if (ord === 'impacto') return Math.abs(b.delta) - Math.abs(a.delta) || b.delta - a.delta || a.setor.localeCompare(b.setor);
     var va = a[ord], vb = b[ord];
@@ -6087,6 +6023,7 @@ function _qsTabelaSetores(R){
   var th = COLS.map(function(c){
     var on = c[0] === ord || (ord === 'impacto' && c[0] === 'delta');
     var s = on ? (ord === 'impacto' || dir < 0 ? 'descending' : 'ascending') : 'none';
+    if (papel) return '<th class="' + c[2] + '">' + c[1] + '</th>';
     return '<th class="' + c[2] + '" aria-sort="' + s + '"' + (c[3] ? ' title="' + _qsEsc(c[3]) + '"' : '') + '><button type="button" data-qs-ord="' + c[0] + '">' + c[1]
       + '<span class="qs-ord">' + (on ? (s === 'ascending' ? '▲' : '▼') : '↕') + '</span></button></th>';
   }).join('') + P.meses.map(function(k){ return '<th class="qs-m' + (k === R.mes ? ' qs-cmpcol' : '') + '">' + rot(k) + '</th>'; }).join('');
@@ -6152,24 +6089,12 @@ function renderQuadroSetor(){
   _qsSel.mes = R.mes;
   _qsUltimo = R;
   var rot = QuadroSetor.rot, T = R.total;
-  var vs = function(d, b){ return _qsDelta(d) + ' <span>vs ' + rot(R.base) + ' (' + _qsFi(b) + ')</span>'; };
-  /* b96.91: ícone à esquerda, na cor da série do gráfico (total âmbar, diretos azul,
-     indiretos magenta). Diretos = capacete (chão de fábrica), indiretos = maleta. */
-  var kpi = function(ico, rotulo, valor, sub, nota, cls){ return '<div class="qs-kpi qs-kpi-' + ico + (cls ? ' ' + cls : '') + '"' + (nota ? ' title="' + _qsEsc(nota) + '"' : '') + '>'
-    + '<span class="qs-ico" aria-hidden="true">' + _QS_ICO[ico] + '</span><div class="qs-kpi-c"><div class="qs-kpi-l">' + rotulo + '</div><div class="qs-kpi-v">' + valor + '</div><div class="qs-kpi-s">' + sub + '</div></div></div>'; };
-  var notaMov = 'Entradas: admitidos de ' + rot(R.janela.de) + ' a ' + rot(R.janela.ate) + '. Saídas: quem deixou o quadro de ' + rot(R.base) + ' até o mês anterior; quem sai conta no mês da saída, então os desligados de ' + rot(R.mes) + ' ainda estão nos ' + _qsFi(T.agora) + '. Desligamentos com data de ' + rot(R.janela.de) + ' a ' + rot(R.janela.ate) + ': ' + _qsFi(T.desligados) + '.';
   var opcMes = R.validos.slice().reverse().map(function(k){ return '<option value="' + k + '"' + (k === R.mes ? ' selected' : '') + '>' + rot(k) + '</option>'; }).join('');
   box.innerHTML = '<div class="cHdr"><span class="cTtl">▸ Quadro por setor · ' + rot(R.mes) + ' contra ' + rot(R.base) + '</span>'
       + '<div class="qs-ctl"><label>Mês <select id="qs-mes">' + opcMes + '</select></label>'
       + '<label>Comparar com <select id="qs-cmp"><option value="12m"' + (R.cmp === '12m' ? ' selected' : '') + '>o mesmo mês do ano anterior</option><option value="dez"' + (R.cmp === 'dez' ? ' selected' : '') + '>dezembro do ano anterior</option></select></label>'
       + '<button type="button" class="btn btn-g btn-sm" id="qs-imp" title="Versão para imprimir ou salvar em PDF do mês e da comparação escolhidos">Relatório</button></div></div>'
-    + '<div class="qs-kpis">'
-      + kpi('tot', 'Quadro no mês', _qsFi(T.agora), vs(T.delta, T.antes), '', 'qs-kpi-1')
-      + kpi('dir', 'Diretos', _qsFi(T.diretos), vs(T.deltaDiretos, T.diretosAntes))
-      + kpi('ind', 'Indiretos', _qsFi(T.indiretos), vs(T.deltaIndiretos, T.indiretosAntes))
-      + kpi('mov', 'Movimentação', _qsFi(T.admitidos) + '<small>entradas</small><i class="qs-kpi-sep"></i>' + _qsFi(T.saidas) + '<small>saídas</small>',
-            '<span>' + _qsFi(T.antes) + ' + ' + _qsFi(T.admitidos) + ' − ' + _qsFi(T.saidas) + ' = ' + _qsFi(T.agora) + ' · ' + rot(R.base) + ' → ' + rot(R.mes) + '</span>', notaMov)
-    + '</div>'
+    + '<div class="qs-kpis">' + _qsKpis(R) + '</div>'
     + '<div class="qs-dois">'
       + '<section><h3 class="qs-sub">Onde o quadro mudou <span>' + rot(R.base) + ' → ' + rot(R.mes) + ' · barras na mesma escala</span></h3>' + _qsVariacoes(R) + '</section>'
       + '<section><h3 class="qs-sub">Evolução do quadro <span class="qs-lg"><span><i class="qs-l-tot-bg"></i>total</span><span><i class="qs-l-dir-bg"></i>diretos</span><span><i class="qs-l-ind-bg"></i>indiretos</span><span>faixa: os meses comparados</span></span></h3>' + _qsLinhas(R) + '</section>'
@@ -6199,91 +6124,114 @@ function renderQuadroSetor(){
   });
 }
 
-/* Relatório do Quadro por setor (botão da seção): o mês e a comparação que
-   estão na tela, em A4 deitado. Resumo, os quatro números, o mês a mês por
-   setor, todos os setores e o mapa de pessoas desde JAN/25. Papel na régua
-   de printBase(): número em tinta, sem cor; o sinal diz se subiu ou caiu. */
+/* Relatório do Quadro por setor (botão da seção), b96.92: o papel igual à tela,
+   em A4 deitado. Pág. 1, o resumo para a diretoria: os quatro números, onde o
+   quadro mudou ao lado da evolução, e os destaques. Pág. 2, o comparativo por
+   setor (maior impacto primeiro). Pág. 3, o histórico mensal. Os blocos são as
+   mesmas funções da tela, então papel e tela não divergem. Régua de
+   printBase(): cor só no sinal da variação (verde/vermelho, com sinal e seta);
+   gráfico em grafite com total grosso, diretos cheio e indiretos tracejado, e o
+   nome de cada série no fim da linha, para sair em preto e branco. */
 function imprimirQuadroSetor(){
   var R = _qsUltimo;
   if(!R || !window.QuadroSetor){ if(typeof toast === 'function') toast('Abra a aba Pessoas e aguarde o quadro por setor carregar.', 'wn'); return; }
   var rot = QuadroSetor.rot, T = R.total, jan = rot(R.janela.de) + ' a ' + rot(R.janela.ate);
   var esc = function(v){ return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); };
-  var fi = function(v){ return Math.round(v).toLocaleString('pt-BR'); };
-  var sg = function(v){ return (v > 0 ? '+' : v < 0 ? '−' : '') + fi(Math.abs(v)); };
-  var frase = _qsFrase(R);
-  var card = function(l, v, sub){ return '<div class="pb-card"><div class="pb-l">' + l + '</div><div class="pb-v">' + v + '</div><div class="pb-s">' + sub + '</div></div>'; };
-  var vs = function(d, b){ return sg(d) + ' vs ' + rot(R.base) + ' (' + fi(b) + ')'; };
-  var nC = ' class="qs-n"';
-  var todos = '<table class="qs-todos"><thead><tr><th>Setor</th><th style="text-align:left">Tipo</th><th>' + rot(R.base) + '</th><th>' + rot(R.mes) + '</th><th>Variação</th><th>Entradas</th><th>Saídas</th></tr></thead><tbody>'
-    + R.setores.slice().sort(function(a, b){ return b.delta - a.delta || a.setor.localeCompare(b.setor); }).map(function(x){
-      return '<tr><td>' + esc(x.setor) + '</td><td style="text-align:left;font-weight:400">' + x.tipo + '</td><td' + nC + '>' + fi(x.antes) + '</td><td' + nC + '>' + fi(x.agora) + '</td><td' + nC + '><b>' + sg(x.delta) + '</b></td><td' + nC + '>' + fi(x.admitidos) + '</td><td' + nC + '>' + fi(x.saidas) + '</td></tr>';
-    }).join('')
-    + '<tr class="qs-tot"><td>Quadro</td><td></td><td' + nC + '>' + fi(T.antes) + '</td><td' + nC + '>' + fi(T.agora) + '</td><td' + nC + '><b>' + sg(T.delta) + '</b></td><td' + nC + '>' + fi(T.admitidos) + '</td><td' + nC + '>' + fi(T.saidas) + '</td></tr></tbody></table>';
-  var mapa = '<table class="qs-heat"><thead><tr><th>Setor</th>' + R.meses.map(function(k){ return '<th class="qs-c">' + rot(k) + '</th>'; }).join('') + '</tr></thead><tbody>'
-    + R.mapa.map(function(x){
-      return '<tr><td>' + esc(x.setor) + '</td>' + x.meses.map(function(c){
-        var dest = c.k === R.mes || c.k === R.base;
-        return '<td class="qs-c">' + (c.pessoas ? (dest ? '<b>' + fi(c.pessoas) + '</b>' : fi(c.pessoas)) : '') + '</td>';
-      }).join('') + '</tr>';
-    }).join('')
-    + '<tr class="qs-tot"><td>Quadro</td>' + R.serie.map(function(t){ return '<td class="qs-c"><b>' + fi(t.pessoas) + '</b></td>'; }).join('') + '</tr></tbody></table>';
   var agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
   var titulo = 'Quadro por setor · ' + rot(R.mes) + ' contra ' + rot(R.base);
+  var traco = function(cls){ return '<svg class="qs-lgs" viewBox="0 0 22 8"><line class="qs-l-ln ' + cls + '" x1="1" y1="4" x2="21" y2="4"/></svg>'; };
+  var legenda = '<span class="qs-lgp">' + traco('qs-l-tot') + 'total ' + traco('qs-l-dir') + 'diretos ' + traco('qs-l-ind') + 'indiretos · faixa: meses comparados</span>';
+  var cab = function(){ return '<div class="pb-hd"><div class="hdrow">' + (typeof logoImprimir === 'function' ? logoImprimir(30) : '') + '<div>'
+    + '<div class="pb-lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis · Quadro de pessoal</div>'
+    + '<h1>' + esc(titulo) + '</h1>'
+    + '<div class="pb-sb">Pessoas na folha em algum dia do mês · entradas: admitidos de ' + jan + ' · saídas: deixaram o quadro de ' + rot(R.base) + ' ao mês anterior</div>'
+    + '</div></div></div>'; };
   var w = window.open('', '_blank', 'width=1100,height=900');
   if(!w){ if(typeof toast === 'function') toast('O navegador bloqueou a janela de impressão. Libere pop-ups para este site.', 'wn'); return; }
   w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>' + esc(titulo) + '</title><style>'
-    + '@page{size:A4 landscape;margin:9mm 11mm 10mm}'
+    + '@page{size:A4 landscape;margin:8mm 10mm 9mm}'
     + printBase()
-    + 'body{font-size:8.5pt}'
+    + 'body{font-size:9pt}'
     + '.hdrow{display:flex;align-items:center;gap:14px}'
     + '.bd{padding:10px 2px 0}'
-    + '.qs-frase{font-size:9.5pt;line-height:1.5;margin:2px 0 8px;max-width:250mm}'
-    + '.qs-frase b{font-weight:700}'
-    + '.qs-k{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:4px}'
-    + '.pb-card{break-inside:avoid}'
-    + 'table{font-size:7.5pt}'
-    + '.qs-heat td,.qs-heat th{padding:2px 3px!important}'
-    + '.qs-passos{font-size:7pt}.qs-passos td,.qs-passos th{padding:1px 3px!important}'
-    + '.qs-c{text-align:center!important;font-variant-numeric:tabular-nums;white-space:nowrap}'
-    + '.qs-heat td:first-child,.qs-todos td:first-child,.qs-passos td:first-child{white-space:nowrap}'
-    + '.qs-passos .qs-z{color:#B0B8C1}'
-    + '.qs-passos .qs-tx{text-align:left!important;color:#52606D}'
-    + '.qs-totc{border-right:1.5px solid #9AA5B1;text-align:right!important;padding-right:6px!important}'
-    + '.qs-n{text-align:right;font-variant-numeric:tabular-nums}'
-    + '.qs-tot td,.lid-tot td{font-weight:700;border-top:1.5px solid #9AA5B1}'
-    + '.qs-nota{font-size:7.5pt;color:#52606D;margin-top:4px;line-height:1.4}'
+    + '.qs-pag{break-before:page;page-break-before:always}'
+    + '.qs-mais{color:#1E6C3A}.qs-menos{color:#A32222}.qs-igual{color:#7B8794}'
+    + '.qs-mais-bg{background:#1E6C3A}.qs-menos-bg{background:#A32222}'
+    + '.qs-dl{font-weight:700;font-variant-numeric:tabular-nums}'
+    /* cartões */
+    + '.qs-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:2px 0 8px}'
+    + '.qs-kpi{display:flex;gap:10px;align-items:flex-start;border:1px solid #D3D8DE;border-radius:5px;padding:10px 12px;break-inside:avoid}'
+    + '.qs-ico{flex:0 0 36px;height:36px;border-radius:7px;background:#EEF1F4;color:#3E4C59;display:flex;align-items:center;justify-content:center}'
+    + '.qs-ico svg{width:21px;height:21px;fill:currentColor;fill-opacity:.15;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}'
+    + '.qs-kpi-c{min-width:0;flex:1}'
+    + '.qs-kpi-l{font-size:7.5px;letter-spacing:.6px;text-transform:uppercase;color:#52606D;font-weight:700}'
+    + '.qs-kpi-v{font-size:25px;font-weight:700;line-height:1.15;color:#1F2933;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;font-variant-numeric:tabular-nums}'
+    + '.qs-kpi-v small{font-size:7.5px;font-weight:400;color:#52606D}'
+    + '.qs-kpi-sep{display:inline-block;width:1px;height:15px;background:#D3D8DE;margin:0 5px;align-self:center}'
+    + '.qs-kpi-s{font-size:8px;color:#52606D;margin-top:2px;display:flex;flex-wrap:wrap;gap:0 5px;align-items:baseline}'
+    + '.qs-kpi-s .qs-dl{font-size:10.5px}'
+    /* onde mudou | evolução */
+    + '.qs-dois{display:grid;grid-template-columns:1fr 1fr;gap:9mm;align-items:start}'
+    + '.qs-v4{display:grid;grid-template-columns:1fr 1fr;gap:6mm}'
+    + '.qs-vc-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 6px;border-bottom:1px solid #D3D8DE;padding-bottom:3px;margin-bottom:4px}'
+    + '.qs-vc-h>span{font-weight:700;font-size:10pt}.qs-vc-h small{flex-basis:100%;font-size:7.5pt;color:#52606D}'
+    + '.qs-vg{margin-bottom:7px}'
+    + '.qs-vg-h{font-size:7pt;letter-spacing:.5px;text-transform:uppercase;color:#52606D;font-weight:700;margin-bottom:2px}'
+    + '.qs-vg-h b{margin-left:3px}'
+    + '.qs-vr{display:grid;grid-template-columns:38mm 1fr 8mm;gap:5px;align-items:center;font-size:8.6pt;line-height:16px}'
+    + '.qs-vr-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#3E4C59}'
+    + '.qs-vr-top .qs-vr-n{font-weight:700;color:#1F2933}'
+    + '.qs-vr-b{position:relative;height:8px}.qs-vr-b i{position:absolute;left:0;top:0;height:100%;border-radius:0 2px 2px 0}'
+    + '.qs-vr-v{text-align:right;font-variant-numeric:tabular-nums}'
+    + '.qs-saldo{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;border-top:1px solid #9AA5B1;margin-top:4px;padding-top:5px;font-size:9pt}'
+    + '.qs-saldo>span:first-child{font-weight:700}.qs-saldo-c{color:#52606D}.qs-saldo .qs-dl{margin-left:auto;font-size:11pt}'
+    + '.qs-vazio{color:#7B8794;font-size:7pt}'
+    + '.qs-lgp{font-size:7pt;color:#52606D;font-weight:400;letter-spacing:0;text-transform:none;margin-left:6px}'
+    + '.qs-lgs{width:20px;height:8px;vertical-align:middle;margin:0 3px 0 6px}'
+    + '.qs-svg{width:100%;height:auto;display:block;font-family:"Segoe UI",Arial,sans-serif;overflow:visible}'
+    + '.qs-l-grid{stroke:#E4E7EB;stroke-width:1}.qs-l-ax,.qs-l-x{fill:#7B8794;font-size:11px}.qs-l-xd{fill:#1F2933;font-weight:700}'
+    + '.qs-l-band{fill:#EEF1F4}.qs-l-hit{fill:none}'
+    + '.qs-l-ln{fill:none;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}'
+    + '.qs-l-ln.qs-l-tot{stroke:#1F2933;stroke-width:3.2}.qs-l-ln.qs-l-dir{stroke:#616E7C}.qs-l-ln.qs-l-ind{stroke:#9AA5B1;stroke-dasharray:7 4}'
+    + '.qs-l-pt{stroke:#fff;stroke-width:2}.qs-l-pt.qs-l-tot{fill:#1F2933}.qs-l-pt.qs-l-dir{fill:#616E7C}.qs-l-pt.qs-l-ind{fill:#9AA5B1}'
+    + '.qs-l-v{fill:#3E4C59;font-size:12px;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:4px}.qs-l-vt{fill:#1F2933;font-size:13px}'
+    + '.qs-l-nm{fill:#3E4C59;font-size:12px;font-weight:600}.qs-l-nv{fill:#1F2933;font-weight:700}'
+    /* destaques */
+    + '.qs-dstp{border:1px solid #D3D8DE;border-left:3px solid #1F2933;border-radius:4px;padding:9px 14px;margin-top:12px;break-inside:avoid}'
+    + '.qs-dst{margin:0;padding-left:15px;display:grid;gap:3px;font-size:9.6pt;line-height:1.45}'
+    + '.qs-dst .qs-tp{color:#7B8794;font-size:7.5pt}.qs-dst-n{margin-top:5px;font-size:7.5pt;color:#52606D}'
+    /* comparativo */
+    + '.qs-cmp{font-size:8.6pt}.qs-cmp th,.qs-cmp td{padding:3.5px 5px!important}'
+    + '.qs-cmp td:first-child,.qs-cmp td.qs-tx{white-space:nowrap}.qs-cmp th.qs-l,.qs-cmp td.qs-l{text-align:left!important}.qs-cmp td.qs-tx{color:#52606D;font-weight:400}'
+    + '.qs-cmp .qs-vcol{text-align:left!important;white-space:nowrap;border-left:1px solid #D3D8DE;border-right:1px solid #D3D8DE}'
+    + '.qs-cmp td.qs-vcol b{display:inline-block;min-width:7mm;text-align:right}'
+    + '.qs-vb{display:inline-block;position:relative;width:24mm;height:8px;margin-right:4px;vertical-align:-1px}.qs-vb i{position:absolute;left:0;top:0;height:100%;border-radius:0 2px 2px 0}'
+    + '.qs-cmp td.qs-sec{color:#52606D}.qs-cmp .qs-sep{border-right:1px solid #D3D8DE}'
+    + '.qs-cmp th.qs-m,.qs-cmp td.qs-m{text-align:center!important;font-size:7.8pt}.qs-cmp td.qs-z{color:#C4CAD1}'
+    + '.qs-cmp th.qs-cmpcol{text-decoration:underline}'
+    + '.qs-cmp tr.qs-parados td{text-align:left!important;font-weight:400!important;color:#52606D;white-space:normal;font-size:7.8pt;line-height:1.5}'
+    + '.qs-tot td{font-weight:700;border-top:1.5px solid #9AA5B1}'
+    /* histórico */
+    + '.qs-heat{font-size:7pt}.qs-heat th,.qs-heat td{padding:1.5px 3px!important}'
+    + '.qs-heat .qs-c{text-align:center!important;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.qs-heat td.qs-c:not(.qs-mudou){color:#52606D}.qs-heat td.qs-mudou{font-weight:700}'
+    + '.qs-heat .qs-cmpcol{background:#EEF1F4}.qs-heat th.qs-cmpcol{background:#3E4C59}'
+    + '.qs-heat tr.qs-grp td{background:#E4E7EB!important;color:#3E4C59;font-size:6.5pt;letter-spacing:.6px;text-transform:uppercase;text-align:left!important;font-weight:700}'
+    + '.qs-nada{color:#C4CAD1}'
+    + '.qs-nota{font-size:7pt;color:#52606D;margin-top:5px;line-height:1.4}'
     + 'thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}'
-    + '.qs-quebra{break-before:page;page-break-before:always}'
-    + '.qs-pt{display:grid;grid-template-columns:max-content 38mm 12mm 1fr;column-gap:10px;row-gap:6px;align-items:start;font-size:8.5pt}'
-    + '.qs-pt-r{display:contents}'
-    + '.qs-pt-n,.qs-pt-v{line-height:16px}'
-    + '.qs-pt-b{position:relative;height:9px;margin-top:4px}'
-    + '.qs-pt-b::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;border-left:1px solid #9AA5B1}'
-    + '.qs-pt-b span{position:absolute;bottom:0;height:9px;border-radius:2px}'
-    + '.qs-pt-v{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}'
-    + '.qs-pt-s{display:flex;flex-wrap:wrap;gap:3px}'
-    + '.qs-chip{display:inline-block;border:1px solid #D3D8DE;border-radius:8px;padding:0 6px;font-size:7.5pt;line-height:14px;white-space:nowrap}'
-    + '.qs-vazio{color:#52606D}'
-    + '.qs-pt-sep{grid-column:1/-1;border-top:1px solid #9AA5B1}'
     + '</style></head><body>'
-    + '<div class="pb-hd"><div class="hdrow">' + (typeof logoImprimir === 'function' ? logoImprimir(30) : '') + '<div>'
-    + '<div class="pb-lb">RitmoPatrimar Resultado · PPCP — Patrimar Móveis · Quadro de pessoal</div>'
-    + '<h1>' + esc(titulo) + '</h1>'
-    + '<div class="pb-sb">Pessoas na folha em algum dia do mês · admitidos e desligados de ' + jan + '</div>'
-    + '</div></div></div>'
+    + cab()
     + '<div class="bd">'
-    + '<p class="qs-frase">' + frase + '</p>'
-    + '<div class="qs-k">' + card('Quadro no mês', fi(T.agora), vs(T.delta, T.antes)) + card('Diretos', fi(T.diretos), vs(T.deltaDiretos, T.diretosAntes))
-      + card('Indiretos', fi(T.indiretos), vs(T.deltaIndiretos, T.indiretosAntes)) + card('Entraram · saíram', fi(T.admitidos) + ' · ' + fi(T.saidas), fi(T.antes) + ' + ' + fi(T.admitidos) + ' − ' + fi(T.saidas) + ' = ' + fi(T.agora)) + '</div>'
-    + '<div class="pb-sec">De onde veio a variação · ' + rot(R.base) + ' → ' + rot(R.mes) + '</div>'
-    + _qsPonte(R, true)
-    + '<div class="pb-sec">Mês a mês · quanto cada setor ganhou ou perdeu em cada mês (contra o mês anterior); a primeira coluna soma os meses: é a variação do setor</div>'
-    + _qsTabelaPassos(R, true)
-    + '<div class="pb-sec qs-quebra">Todos os setores · ' + rot(R.base) + ' e ' + rot(R.mes) + ' · entradas: admitidos de ' + jan + ' · saídas: deixaram o quadro de ' + rot(R.base) + ' ao mês anterior (quem sai conta no mês da saída)</div>'
-    + todos
-    + '<div class="pb-sec qs-quebra">Pessoas por setor, mês a mês · ' + rot(R.meses[0]) + ' a ' + rot(R.meses[R.meses.length - 1]) + ' (em negrito, os meses comparados)</div>'
-    + mapa
-    + '<div class="qs-nota">Fonte: aba FUNCIONARIOS (lista do DP regravada pelo controle de faltas), contada sem nomes. Conta quem esteve na folha em algum dia do mês, a regra do quadro total da Reunião. O setor é o atual de cada pessoa: uma transferência aparece no setor novo desde a admissão.</div>'
+    + '<div class="qs-kpis">' + _qsKpis(R) + '</div>'
+    + '<div class="qs-dois">'
+      + '<section><div class="pb-sec">Onde o quadro mudou · ' + rot(R.base) + ' → ' + rot(R.mes) + ' · barras na mesma escala</div>' + _qsVariacoes(R) + '</section>'
+      + '<section><div class="pb-sec">Evolução do quadro' + legenda + '</div>' + _qsLinhas(R, 470) + '</section>'
+    + '</div>'
+    + '<div class="qs-dstp"><div class="pb-sec" style="margin-top:0">Destaques · ' + rot(R.mes) + ' contra ' + rot(R.base) + '</div>' + _qsDestaques(R) + '</div>'
+    + '<div class="qs-pag"><div class="pb-sec">Comparativo por setor · maior impacto primeiro · meses: quanto o setor ganhou ou perdeu no mês</div>' + _qsTabelaSetores(R, true) + '</div>'
+    + '<div class="qs-pag"><div class="pb-sec">Histórico mensal por setor · pessoas em cada mês, ' + rot(R.meses[0]) + ' a ' + rot(R.meses[R.meses.length - 1]) + ' · negrito: o mês em que o setor mudou · faixa: meses comparados</div>' + _qsMapa(R)
+    + '<div class="qs-nota">Fonte: aba FUNCIONARIOS (lista do DP regravada pelo controle de faltas), contada sem nomes. Conta quem esteve na folha em algum dia do mês, a regra do quadro total da Reunião. O setor é o atual de cada pessoa: uma transferência aparece no setor novo desde a admissão.</div></div>'
     + '</div>'
     + '<div class="pb-ft"><span>Patrimar Móveis · PPCP · fonte: FUNCIONARIOS (DP)</span><span>Emitido em ' + agora + '</span></div>'
     + '</body></html>');
@@ -26239,9 +26187,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.91';
+var APP_VERSAO = 'b96.92';
 var APP_DATA   = '05/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.92', data:'05/11/2026', itens:[
+    'Relatorio do Quadro por setor igual a tela, em 3 paginas A4 deitadas. Pag. 1, resumo para a diretoria: os quatro numeros com icone, seta e variacao; onde o quadro mudou ao lado da evolucao do quadro; destaques. Pag. 2, comparativo por setor com o maior impacto primeiro. Pag. 3, historico mensal. Os blocos sao as mesmas funcoes da tela: papel e tela nao divergem.',
+    'No papel, cor so no sinal da variacao (verde e vermelho, sempre com sinal e seta); grafico em grafite com total grosso, diretos cheio e indiretos tracejado e o nome de cada serie no fim da linha, para sair em preto e branco. Saiu a tabela de 34 setores com 11 linhas so de zeros.'
+  ]},
   { v:'b96.91', data:'05/11/2026', itens:[
     'Quadro por setor: cartoes com icone na cor da serie do grafico. Quadro (pessoas, ambar), diretos (capacete, azul: chao de fabrica), indiretos (maleta, magenta: apoio e administrativo), movimentacao (setas de entrada e saida). No notebook o icone encolhe e entradas e saidas ficam em duas linhas.'
   ]},
