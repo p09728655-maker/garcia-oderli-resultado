@@ -74,6 +74,29 @@ const Q = carregarQS();
 const MES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 const L = (ano, m, setor, direto, pessoas, admitidos = 0, desligados = 0) => ({ ano, mes: MES[m - 1], setor, direto, pessoas, admitidos, desligados });
 
+sec('Entradas e saídas fecham com o quadro: antes + entradas − saídas = agora');
+{
+  /* Regra real: quem sai conta no mês da saída. 10 de OUT/25 em diante, como
+     em 05/11/2026 (187 + 76 − 78 = 185 e não 76 − 74). */
+  const CAB = ['codigo', 'nome', 'setor', 'direto', 'admissao', 'demissao', 'observacao'];
+  const v = [CAB,
+    ['1', '', '2-EMBALAGEM', 'S', '01/01/2020', '', ''],
+    ['2', '', '2-EMBALAGEM', 'S', '01/01/2020', '15/10/2025', ''],      /* sai no mês da base: está em "antes" */
+    ['3', '', '2-EMBALAGEM', 'S', '01/01/2020', '20/10/2026', ''],      /* sai no próprio mês: ainda está em "agora" */
+    ['4', '', '2-EMBALAGEM', 'S', '05/03/2026', '', ''],                /* entra no período */
+    ['5', '', '3-ACABAMENTO', 'S', '01/01/2020', '10/06/2026', ''],     /* sai no meio do período */
+    ['6', '', '3-ACABAMENTO', 'S', '01/02/2026', '10/04/2026', ''],     /* entra e sai no período */
+    ['7', '', '4-EXPEDIÇÃO', 'N', '01/01/2020', '', ''],
+    ['8', '', '4-EXPEDIÇÃO', 'N', '01/09/2026', '', '']];
+  const { ss, G } = carregarGs({ FUNCIONARIOS: abaFunc(v) });
+  const Rf = Q.resumo(G.lerQuadroSetor(ss), { hoje: new Date(2026, 10, 5), mes: 202610 });
+  const T = Rf.total;
+  afirma('total: antes + entradas − saídas = agora (' + T.antes + ' + ' + T.admitidos + ' − ' + T.saidas + ' = ' + T.agora + ')', T.antes + T.admitidos - T.saidas === T.agora);
+  afirma('por setor também fecha', Rf.setores.every(x => x.antes + x.admitidos - x.saidas === x.agora));
+  afirma('saídas = desligados da base ao mês anterior (2, 5 e 6), não os da janela', T.saidas === 3);
+  afirma('desligados da janela continua o que era (5, 6 e 3): só a tela troca', T.desligados === 3 && Rf.setores.find(x => x.setor === 'Embalagem').desligados === 1 && Rf.setores.find(x => x.setor === 'Embalagem').saidas === 1);
+}
+
 sec('QuadroSetor.resumo: mês contra o mesmo mês do ano anterior');
 {
   const linhas = [];
@@ -175,7 +198,13 @@ sec('Painel: leitura do Web App e atalho da Reunião');
   afirma('as duas leituras da planilha guardam quadroSetor', (HTML.match(/json\.quadroSetor\) \{ try \{ localStorage\.setItem\(QuadroSetor\.SK/g) || []).length === 2);
   afirma('Code.gs manda quadroSetor no doGet', /quadroSetor: lerQuadroSetor\(ss\)/.test(src));
   afirma('aba Pessoas tem a seção', HTML.includes('id="ps-quadro"'));
-  afirma('bloco De onde veio a variação na tela e no Relatório', (HTML.match(/_qsPonte\(R, (true|false)\)/g) || []).length === 2);
+  afirma('De onde veio a variação: Relatório com _qsPonte, tela com _qsVariacoes (os dois de R.ponte)',
+    (HTML.match(/_qsPonte\(R, true\)/g) || []).length === 1 && HTML.includes('_qsVariacoes(R)') && /function _qsVariacoes\(R\)\{[\s\S]{0,200}R\.ponte/.test(HTML));
+  afirma('tela na ordem pedida: números, onde mudou, evolução, comparativo, histórico, destaques', (() => {
+    const i = HTML.indexOf('function renderQuadroSetor(){'), f = HTML.indexOf('/* Relatório do Quadro por setor', i), b = HTML.slice(i, f);
+    const ord = ['qs-kpis', '_qsVariacoes(R)', '_qsLinhas(R)', '_qsTabelaSetores(R)', 'qs-det-mapa', '_qsDestaques(R)'].map(t => b.indexOf(t));
+    return ord.every(x => x > 0) && ord.every((x, k) => !k || x > ord[k - 1]);
+  })());
   afirma('seção tem o botão Relatório', HTML.includes('id="qs-imp"') && HTML.includes('function imprimirQuadroSetor()'));
   afirma('relatório em A4 deitado com a régua de impressão do painel', /function imprimirQuadroSetor\(\)[\s\S]*?size:A4 landscape[\s\S]*?printBase\(\)/.test(HTML));
   const pl = new Function(HTML.match(/function _qsPl\([^)]*\)\{[^\n]*\}/)[0] + '\nreturn _qsPl;')();
