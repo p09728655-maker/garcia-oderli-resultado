@@ -41,7 +41,9 @@
  *   (Cód, Nome, Setor, STATUS, DT. ADMISSÃO, DT. DEMISSÃO). Salva na mesma
  *   pasta, o script:
  *     • atualiza a aba FUNCIONARIOS a partir da DP (direto = setor está em
- *       PR_SETORES_DIRETOS), para ninguém manter lista na mão;
+ *       PR_SETORES_DIRETOS, comparado sem espaço, sem acento e sem caixa:
+ *       "3- ACABAMENTO" é "3-ACABAMENTO" — prSetorCanonico), para ninguém
+ *       manter lista na mão;
  *     • soma, mês a mês e só para os diretos, as horas por status e grava na
  *       HISTORICO: ausFalta, ausAtestado, ausAfastado, ausAtraso e
  *       horasFerias. O painel deriva faltas = ausFalta + ausAtestado +
@@ -110,6 +112,26 @@ var PR_MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV
 var PR_SETORES_DIRETOS = ['1-USINAGEM','2-EMBALAGEM','3-ACABAMENTO','6-PINTURA DE BORDA','7-LINHA DE PINTURA',
   '16-COLAGEM DE BORDA','17-FURAÇÃO','21-GERAL','29-CORTE','25-MONTAGEM','35-CONTROLE DE PRODUÇÃO'];
 
+/* Setor direto digitado de outro jeito na DP vira o nome da lista acima.
+   Compara sem espaço, sem acento e sem caixa: "3- ACABAMENTO", "3-Acabamento"
+   e "17-FURACAO" são diretos. Em OUT/26 uma admissão de 26/10 veio da DP como
+   "3- ACABAMENTO": a comparação exata a deixou fora da lista, ela entrou como
+   indireto (44 h em outubro, o mês inteiro dali em diante) e a PONTO_SETOR
+   ganhou um setor a mais, sem aviso. Setor que não é direto volta só aparado:
+   a lista de diretos é a única régua. */
+function prChaveSetor(s) { return prNormaliza(s).replace(/\s+/g, ''); }
+function prSetorCanonico(setor) {
+  var s = String(setor === null || setor === undefined ? '' : setor).trim(), k = prChaveSetor(s);
+  if (!k) return s;
+  for (var i = 0; i < PR_SETORES_DIRETOS.length; i++) if (prChaveSetor(PR_SETORES_DIRETOS[i]) === k) return PR_SETORES_DIRETOS[i];
+  return s;
+}
+/* true quando o texto é um setor direto escrito diferente da lista */
+function prSetorVariante(setor) {
+  var s = String(setor === null || setor === undefined ? '' : setor).trim(), c = prSetorCanonico(s);
+  return c !== s && PR_SETORES_DIRETOS.indexOf(c) >= 0;
+}
+
 /* ══ 1 · FUNCIONARIOS ══ */
 function criarAbaFuncionarios() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -132,8 +154,12 @@ function prLerFuncionarios(ss) {
   for (var i = 1; i < v.length; i++) {
     var cod = String(v[i][col.codigo] || '').trim().replace(/\.0$/, '');
     if (!cod) continue;
-    var direto = /^s/i.test(String(v[i][col.direto] || '').trim());
-    mapa[cod] = { nome: String(v[i][col.nome] || ''), setor: String(v[i][col.setor] || ''), direto: direto,
+    /* FUNCIONARIOS gravada antes da correção de setor (prSetorCanonico) ainda
+       pode ter a variante com N: vale o setor da lista e direto. Setor com o
+       nome exato e N digitado à mão continua N. */
+    var setorTxt = String(v[i][col.setor] || ''), variante = prSetorVariante(setorTxt);
+    var direto = /^s/i.test(String(v[i][col.direto] || '').trim()) || variante;
+    mapa[cod] = { nome: String(v[i][col.nome] || ''), setor: variante ? prSetorCanonico(setorTxt) : setorTxt, direto: direto,
                   admissao: col.admissao !== undefined ? prData(v[i][col.admissao]) : null,
                   demissao: col.demissao !== undefined ? prData(v[i][col.demissao]) : null,
                   inativo: col.observacao !== undefined && /inativo/i.test(String(v[i][col.observacao] || '')) };
@@ -448,6 +474,25 @@ function prGravarSetores(ss, mes, ano, linhas) {
   for (var r = 1; r < v.length; r++) {
     var m = String(v[r][col.mes] || '').trim().toUpperCase().slice(0, 3);
     if (m === mes && parseInt(v[r][col.ano], 10) === ano) idx[prNormaliza(v[r][col.setor])] = r;
+  }
+  /* Linha do mês com um setor direto escrito de outro jeito ("3- ACABAMENTO")
+     é resíduo do cadastro antes de prSetorCanonico: quem estava nela agora
+     soma no setor da lista. Sai quando esta gravação traz o setor da lista,
+     senão a pessoa contaria duas vezes (uma como indireto). */
+  var vindo = {};
+  linhas.forEach(function (l) { vindo[prNormaliza(l.setor)] = true; });
+  var residuo = {};
+  Object.keys(idx).forEach(function (k) {
+    var txt = v[idx[k]][col.setor];
+    if (prSetorVariante(txt) && vindo[prNormaliza(prSetorCanonico(txt))]) { residuo[idx[k]] = true; delete idx[k]; }
+  });
+  if (Object.keys(residuo).length) {
+    v = v.filter(function (row, i) { return !residuo[i]; });
+    idx = {};
+    for (var r2 = 1; r2 < v.length; r2++) {
+      var m2 = String(v[r2][col.mes] || '').trim().toUpperCase().slice(0, 3);
+      if (m2 === mes && parseInt(v[r2][col.ano], 10) === ano) idx[prNormaliza(v[r2][col.setor])] = r2;
+    }
   }
   var criadas = 0, agora = new Date();
   linhas.forEach(function (l) {
@@ -868,12 +913,16 @@ function prAtualizarFuncionarios(ss, dp) {
   for (var r = iCab + 1; r < v.length; r++) {
     var cod = String(v[r][col.cod] || '').trim().replace(/\.0$/, '');
     if (!/^\d+$/.test(cod)) continue;
-    var setor = String(v[r][col.setor] || '').trim();
+    var setorDP = String(v[r][col.setor] || '').trim();
+    var setor = prSetorCanonico(setorDP);   /* "3- ACABAMENTO" → "3-ACABAMENTO" */
     var inativo = /inativo/i.test(String(col.status !== undefined ? v[r][col.status] : ''));
     var direto = PR_SETORES_DIRETOS.indexOf(setor) >= 0;
     var fmt = function (x) { var d = prData(x); return d ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd/MM/yyyy') : ''; };
+    /* a observação guarda o texto da DP, para o RH corrigir na origem */
+    var obs = [inativo ? 'inativo na DP' : '', setor !== setorDP ? 'setor na DP: "' + setorDP + '"' : ''].filter(Boolean).join('; ');
+    if (setor !== setorDP) Logger.log('FUNCIONARIOS: ' + cod + ' setor "' + setorDP + '" lido como "' + setor + '"');
     linhas.push([cod, String(v[r][col.nome] || '').trim(), setor, direto ? 'S' : 'N',
-                 col.adm !== undefined ? fmt(v[r][col.adm]) : '', col.dem !== undefined ? fmt(v[r][col.dem]) : '', inativo ? 'inativo na DP' : '']);
+                 col.adm !== undefined ? fmt(v[r][col.adm]) : '', col.dem !== undefined ? fmt(v[r][col.dem]) : '', obs]);
   }
   if (!linhas.length) return 0;
   var aba = ss.getSheetByName(PR_ABA_FUNC) || ss.insertSheet(PR_ABA_FUNC);

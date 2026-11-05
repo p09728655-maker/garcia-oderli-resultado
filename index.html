@@ -415,6 +415,36 @@ select option{background:var(--card)}
 #zoomTabelaBody{overflow:auto;flex:1;padding:0}
 #zoomTabelaBody table{width:100%;border-collapse:collapse}
 #zoomTabelaBody th{position:sticky;top:0;background:#0d1525;z-index:2}
+/* ─── FALTA LANÇAR (página Dados) ─── */
+#falta-lancar{margin:0 0 14px}
+.fl-box{background:var(--panel);border:1px solid var(--b);border-radius:var(--r);padding:12px 14px}
+.fl-hdr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:8px}
+.fl-ttl{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);font-weight:700}
+.fl-res{font-size:.78rem;color:var(--t2)}
+.fl-res b{font-family:var(--mono)}
+.fl-meses{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
+.fl-mes{background:transparent;border:1px solid var(--b2);border-radius:4px;color:var(--t2);font-family:var(--mono);font-size:.7rem;padding:3px 7px;cursor:pointer}
+.fl-mes.on{border-color:var(--cyan);color:var(--t1)}
+.fl-mes b{margin-left:4px}
+.fl-tab{width:100%;border-collapse:collapse;font-size:.78rem;table-layout:fixed}
+.fl-tab td{padding:6px 8px;border-top:1px solid var(--b);vertical-align:top;text-align:left;white-space:normal}
+.fl-tab td.st{width:84px;white-space:nowrap;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.fl-tab td.it{width:260px;color:var(--t1);font-weight:600}
+.fl-tab td.bt{width:84px;white-space:nowrap;text-align:right}
+.fl-tab .gr,.fl-tab .fo{display:block;font-size:.7rem;color:var(--t3);font-weight:400}
+.fl-tab .vl{color:var(--t1);font-weight:600}
+.fl-btn{background:transparent;border:1px solid var(--amber);border-radius:4px;color:var(--amber);font-size:.7rem;padding:3px 9px;cursor:pointer}
+.fl-btn:hover{background:rgba(255,152,0,.1)}
+/* o tema declara td{color:var(--t1)!important}: a cor do status e o texto
+   secundário da célula precisam do !important para valer (mesmo padrão do #ps-quadro) */
+.fl-falta{color:var(--red)} .fl-atencao{color:var(--amber)} .fl-ok{color:var(--green)}
+#falta-lancar td.fl-falta{color:var(--red)!important} #falta-lancar td.fl-atencao{color:var(--amber)!important} #falta-lancar td.fl-ok{color:var(--green)!important}
+#falta-lancar td.cm{color:var(--t2)!important}
+.fl-sub{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);font-weight:700;margin:12px 0 2px}
+.fl-box details summary{cursor:pointer;font-size:.7rem;color:var(--t3);margin-top:10px}
+.fl-vazio{font-size:.78rem;color:var(--t2);padding:4px 0}
+@media (max-width:700px){ .fl-tab td.it{width:150px} .fl-tab td.st{width:70px} .fl-meses{margin-left:0} }
+@media print{ #falta-lancar{display:none!important} }
 /* Tooltip nas células */
 td[title]{cursor:help}
 td[title]:hover{background:rgba(255,255,255,.04)!important}
@@ -2842,6 +2872,8 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
       Tela Cheia
     </button>
   </div>
+  <!-- b96.89: Falta lançar — o que ainda não entrou no mês fechado (FaltaLancar) -->
+  <div id="falta-lancar"></div>
   <div class="tabRow">
     <span class="secTtl">▸ Registros Mensais</span>
     <div class="anoTabs" id="anoTabs"></div>
@@ -7902,7 +7934,14 @@ function abrirNovo(){
 /* foco: id do campo que recebe o cursor (a Reunião abre direto em
    fForaDoPonto). */
 function editarReg(id, foco){
-  var r=load().find(function(x){return x.id===id}); if(!r)return;
+  var r=load().find(function(x){return x.id===id});
+  /* Antes saía calado: o lápis "não fazia nada" e ninguém sabia por quê. */
+  if(!r){ toast('Mês não encontrado nos dados deste navegador: recarregue a página (F5).','wn'); return; }
+  /* b96.89: na Tela Cheia o formulário abria ATRÁS dela (z-index 8500 da
+     cópia da tabela contra 1000 do formulário): o clique funcionava e nada
+     aparecia. A cópia é estática e ficaria com o valor antigo depois de
+     salvar; fecha antes de abrir. */
+  if(typeof fecharZoomTabela==='function') fecharZoomTabela();
   editMode=true; editId=id;
   document.getElementById('modTtl').textContent='Editar Mês';
   document.getElementById('fMes').value   =r.mes;
@@ -8011,6 +8050,8 @@ function salvarForm(){
 function excluirReg(id){
   var r=load().find(function(x){return x.id===id});
   if(!r||!confirm('Excluir '+r.mes+'/'+r.ano+'?'))return;
+  /* b96.89: a Tela Cheia é uma cópia estática; aberta, seguiria mostrando o mês excluído */
+  if(typeof fecharZoomTabela==='function') fecharZoomTabela();
   save(load().filter(function(x){return x.id!==id}));
   render(); toast(r.mes+'/'+r.ano+' excluído.','wn')
 }
@@ -8590,6 +8631,264 @@ document.getElementById('zoomTabelaModal').addEventListener('click',function(e){
 window.addEventListener('keydown',function(e){
   if(e.key==='Escape'){fecharZoom();fecharZoomTabela();}
 });
+
+/* ══ FALTA LANÇAR ════════════════════════════════════════════════════════
+   O que ainda não entrou no mês fechado, item por item: o valor, de onde
+   vem e onde se lança. Nasceu em 05/11/2026: OUT/26 estava sem qtde vendida
+   e sem peso, e um admitido de 26/10 estava no cadastro da DP como
+   "3- ACABAMENTO" (com espaço), fora de PR_SETORES_DIRETOS do PontoRH.gs,
+   que compara o nome exato: contado como indireto, sem aviso em lugar
+   nenhum. A conferência era de memória.
+
+   Só lê o que o painel já tem (HISTORICO, PONTO_SETOR, ACOES, FERIADOS e a
+   integridade); não grava nada.
+     falta   = sem este número o mês não fecha (vermelho)
+     atencao = há número, mas algo não confere (laranja)
+     ok      = lançado
+   Começa em JAN/26 (DESDE): 2025 não tem ponto, controle de faltas nem
+   pontos processados; cobrar isso lá seria vermelho eterno em mês que não
+   se refaz. */
+window.FaltaLancar = (function(){
+  var MESES=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  var DESDE=2026;
+  var PONTO='👥 Ponto › Processar extratos da pasta do Drive (arquivos na pasta PONTO RH)';
+  var VOLUMES='📦 Volumes › Processar PDFs da pasta do Drive (PDF na pasta REPORTES DE VOLUMES)';
+  var EDITAR='Dados › Editar o mês';
+  /* número em texto pt-BR ("2745,6", "1.234,5") ou número */
+  function n(v){
+    if(typeof v==='number') return isFinite(v)?v:0;
+    var s=String(v===null||v===undefined?'':v).trim(); if(!s) return 0;
+    if(s.indexOf(',')>=0) s=s.replace(/\./g,'').replace(',','.');
+    var x=parseFloat(s); return isFinite(x)?x:0;
+  }
+  function rot(mes, ano){ return mes+'/'+String(ano).slice(-2); }
+  function semAcento(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,''); }
+  function normSetor(s){ return semAcento(s).toUpperCase().replace(/\s+/g,''); }
+  function ehDireto(s){ return /^s/i.test(String(s&&s.direto||'').trim()); }
+  /* até dec casas, sem zero à toa: 44 h, 1.322,7 h */
+  function fmt(v, dec){ return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0, maximumFractionDigits:dec||0}); }
+  function dataBR(iso){ var p=String(iso||'').split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0].slice(2):String(iso||''); }
+
+  /* Último mês fechado = o anterior ao de hoje (hoje = 'AAAA-MM-DD'). */
+  function mesFechado(hoje){
+    var a=+String(hoje).slice(0,4), m=+String(hoje).slice(5,7);
+    return m===1 ? { mes:'DEZ', ano:a-1 } : { mes:MESES[m-2], ano:a };
+  }
+
+  /* Setor que no mês saiu como indireto, mas cujo nome sem espaço e sem
+     acento é o de um setor direto em algum mês: mesmo setor digitado de
+     outro jeito no cadastro da DP. OUT/26: "3- ACABAMENTO", 1 pessoa, 44 h. */
+  function setoresSuspeitos(setores, mes, ano){
+    var diretos={};
+    (setores||[]).forEach(function(s){ if(ehDireto(s)) diretos[normSetor(s.setor)]=String(s.setor).trim(); });
+    return (setores||[]).filter(function(s){
+      var nome=String(s.setor||'').trim(), certo=diretos[normSetor(nome)];
+      return String(s.mes||'').trim().toUpperCase()===mes && n(s.ano)===ano && !ehDireto(s) && certo && certo!==nome;
+    }).map(function(s){
+      return { setor:String(s.setor).trim(), correto:diretos[normSetor(s.setor)], pessoas:n(s.pessoas), horasCarga:n(s.horasCarga), totalExtras:n(s.totalExtras) };
+    });
+  }
+
+  /* Primeiro mês com ação (qualquer status) como ano*100+índice; null sem ações. */
+  function inicioAcoes(acoes){
+    var ini=null;
+    (Array.isArray(acoes)?acoes:[]).forEach(function(a){
+      var m=/^([A-Z]{3})\/(\d{2})$/.exec(String(a&&a.mesRef||'').trim()); if(!m||MESES.indexOf(m[1])<0) return;
+      var k=(2000+(+m[2]))*100+MESES.indexOf(m[1]); if(ini===null||k<ini) ini=k;
+    });
+    return ini;
+  }
+
+  /* Checklist de um mês fechado. r = registro bruto da HISTORICO (ou null).
+     ctx: { mes, ano, setores:[PONTO_SETOR], acoes:[ACOES] (opcional),
+            integ:[itens da integridade do mês] (opcional), erpDesde } */
+  function apurar(r, ctx){
+    ctx=ctx||{};
+    var mes=ctx.mes||(r&&r.mes), ano=ctx.ano||(r&&n(r.ano)), R=rot(mes,ano), itens=[];
+    function add(grupo, nivel, titulo, valor, como, fonte, campo){
+      itens.push({ grupo:grupo, nivel:nivel, titulo:titulo, valor:valor||'', como:como||'', fonte:fonte||'', campo:campo||'' });
+    }
+    function v(c){ return r ? n(r[c]) : 0; }
+    function campo(grupo, c, titulo, un, como, fonte, form, nivelSemValor){
+      var x=v(c);
+      if(x>0) add(grupo,'ok',titulo,fmt(x)+(un?' '+un:''),'','',form);
+      else add(grupo,nivelSemValor||'falta',titulo,'',como,fonte,form);
+    }
+    if(!r){
+      add('Mês','falta','Mês não está na HISTORICO','','Processar o extrato do ponto do mês cria a linha ('+PONTO+'); ou Novo Mês nesta página','PPCP');
+      return fechar();
+    }
+
+    /* ── Ponto e RH ── */
+    var G='Ponto e RH';
+    var temPonto=v('horasNormais')>0&&v('horasCarga')>0;
+    var pontoBruto=v('naoTrabalhadas')>0||v('faltasPonto')>0||v('atrasosPonto')>0;
+    if(!temPonto) add(G,'falta','Horas do mês (carga e normais)','',PONTO,'Extrato de Totais do ponto (RH)');
+    else if(!pontoBruto) add(G,'atencao','Horas do mês (carga e normais)',fmt(v('horasNormais'))+' h normais','Horas digitadas, mas o extrato do ponto não foi processado: '+PONTO,'Extrato de Totais do ponto (RH)');
+    else add(G,'ok','Horas do mês (carga e normais)',fmt(v('horasNormais'))+' h normais');
+    var aus=v('ausFalta')+v('ausAtestado')+v('ausAfastado')+v('ausAtraso');
+    if(aus>0) add(G,'ok','Controle de faltas do RH',fmt(aus,1)+' h');
+    else add(G,'falta','Controle de faltas do RH','','Salvar o CONTROLE_FALTAS do ano na pasta PONTO RH e '+PONTO,'Controle de faltas (RH)');
+    if(temPonto&&pontoBruto&&aus>0){
+      if(v('duplicidadeApurada')>0) add(G,'ok','Atraso contado duas vezes (ponto × controle)','apurado');
+      else add(G,'atencao','Atraso contado duas vezes (ponto × controle)','','Não apurado neste mês: processar de novo o extrato do mês ('+PONTO+')','PontoRH.gs');
+    }
+    campo(G,'colaboradores','Colaboradores diretos','',PONTO,'Extrato do ponto (RH)','fColabs');
+    campo(G,'colaboradoresTotal','Quadro do ponto (diretos + indiretos)','',PONTO,'Extrato do ponto (RH)');
+    campo(G,'foraDoPonto','Fora do ponto (na folha, não batem ponto)','',EDITAR+': motoristas, cargos de confiança, SENAI, comercial externo','Folha (DP)','fForaDoPonto');
+    if(v('extra50')+v('extra100')>0) add(G,'ok','Hora extra (50% + 100%)',fmt(v('extra50')+v('extra100'),1)+' h');
+    else if(temPonto) add(G,'atencao','Hora extra (50% + 100%)','0 h','Mês sem hora extra: confirmar no extrato do ponto','Extrato do ponto (RH)','fE50');
+    campo(G,'diasTrabalhados','Dias trabalhados','',EDITAR,'PPCP','fDias');
+    var sets=(ctx.setores||[]).filter(function(s){ return String(s.mes||'').trim().toUpperCase()===mes && n(s.ano)===ano; });
+    var susp=setoresSuspeitos(ctx.setores, mes, ano);
+    susp.forEach(function(s){
+      add(G,'atencao','Setor com nome diferente no cadastro',
+        '"'+s.setor+'": '+fmt(s.pessoas)+(s.pessoas===1?' pessoa, ':' pessoas, ')+fmt(s.horasCarga,1)+' h',
+        'Conta como indireto. Corrigir para "'+s.correto+'" na aba DP do CONTROLE_FALTAS e processar o mês de novo (mês fechado só regrava com PR_PROTEGER_FECHADOS = false no PontoRH.gs)',
+        'Cadastro da DP');
+    });
+    if(!susp.length){
+      if(sets.length) add(G,'ok','Horas por setor (PONTO_SETOR)',fmt(sets.length)+' setores');
+      else if(temPonto&&pontoBruto) add(G,'atencao','Horas por setor (PONTO_SETOR)','','O mês não tem linha na aba PONTO_SETOR: processar de novo o extrato ('+PONTO+')','PontoRH.gs');
+    }
+
+    /* ── Produção e plano ── */
+    G='Produção e plano';
+    if(ano>=(ctx.erpDesde||2025)) campo(G,'produtosReportados','Reporte do ERP (produtos acabados)','pç',VOLUMES,'ERP: 3 - REPORTE');
+    campo(G,'volumesProduzidos','Volumes produzidos','vol',VOLUMES,'ERP: 3 - REPORTE');
+    campo(G,'quilosProduzidos','Peso produzido','kg','Digitar na HISTORICO, coluna quilosProduzidos: só as linhas de produto do 3 - REPORTE (a linha Geral soma produtos e volumes)','ERP: 3 - REPORTE');
+    campo(G,'previsaoProducao','Plano do mês','pç','Aba PLANO MESTRE, linha TOTAL GERAL, coluna do mês','Plano Mestre (PPCP)');
+
+    /* ── Comercial ── */
+    G='Comercial';
+    campo(G,'qtdeVendida','Qtde vendida','pç',EDITAR,'Comercial','fVend');
+    campo(G,'qtdeFaturado','Qtde faturada','pç',EDITAR,'Comercial','fFat');
+    if(v('ticketMedio')>0) add(G,'ok','Ticket médio','R$ '+v('ticketMedio').toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),'','','fTkt');
+    else add(G,'falta','Ticket médio','',EDITAR,'Comercial','fTkt');
+
+    /* ── Reunião do Mês ── */
+    G='Reunião do Mês';
+    campo(G,'pontos','Pontos do mês','','Digitar na HISTORICO, coluna pontos (tabela PONTOS do PPCP)','PPCP');
+    if(Array.isArray(ctx.integ)){
+      var er=ctx.integ.filter(function(i){ return i.nivel==='erro'; }).length;
+      var at=ctx.integ.filter(function(i){ return i.nivel==='atencao'; }).length;
+      if(er) add(G,'falta','Integridade',fmt(er)+(er===1?' erro':' erros'),'Reunião do Mês › Integridade: o painel não tem como consertar sozinho','Integridade');
+      else if(at) add(G,'atencao','Integridade',fmt(at)+(at===1?' aviso sem Ciente':' avisos sem Ciente'),'Reunião do Mês › Integridade: conferir e dar Ciente com o motivo, ou corrigir a planilha','Integridade');
+      else add(G,'ok','Integridade','sem aviso aberto');
+    }
+    /* Só cobra a partir do primeiro mês que tem ação registrada (o plano de
+       ação começou em AGO/26): antes disso "nenhuma ação" é falso alarme. */
+    var ini=inicioAcoes(ctx.acoes);
+    if(ini!==null&&ano*100+MESES.indexOf(mes)>=ini){
+      var doMes=ctx.acoes.filter(function(a){ return a&&a.mesRef===R&&a.status!=='Excluída'&&a.status!=='Cancelada'; }).length;
+      if(doMes) add(G,'ok','Plano de ação do mês',fmt(doMes)+(doMes===1?' ação':' ações'));
+      else add(G,'atencao','Plano de ação do mês','nenhuma ação','Reunião do Mês › Plano de ação: registrar o que a reunião decidiu sobre os vermelhos','Reunião do Mês');
+    }
+    return fechar();
+
+    function fechar(){
+      var c={falta:0,atencao:0,ok:0};
+      itens.forEach(function(i){ c[i.nivel]++; });
+      return { mes:mes, ano:ano, rotulo:R, existe:!!r, itens:itens, falta:c.falta, atencao:c.atencao, ok:c.ok };
+    }
+  }
+
+  /* Pendências que não são de um mês: ação com prazo vencido sem atualizar
+     e feriados do ano seguinte (o bloco Mês em curso conta feriado como dia
+     útil se a aba não tiver a data). */
+  function geral(ctx){
+    ctx=ctx||{}; var hoje=String(ctx.hoje||''), itens=[];
+    if(Array.isArray(ctx.acoes)){
+      var venc=ctx.acoes.filter(function(a){
+        return a&&(a.status==='Aberta'||a.status==='Em andamento')&&/^\d{4}-\d{2}-\d{2}/.test(String(a.prazo||''))&&String(a.prazo).slice(0,10)<hoje;
+      }).sort(function(x,y){ return String(x.prazo)<String(y.prazo)?-1:1; });
+      if(venc.length) itens.push({ grupo:'Geral', nivel:'atencao', titulo:'Ações com prazo vencido',
+        valor:fmt(venc.length)+(venc.length===1?' ação':' ações')+', a mais antiga de '+dataBR(String(venc[0].prazo).slice(0,10)),
+        como:'Reunião do Mês › Plano de ação: atualizar o status, o prazo ou o que foi feito', fonte:'Plano de ação', campo:'' });
+    }
+    if(Array.isArray(ctx.feriados)&&/^\d{4}-\d{2}/.test(hoje)){
+      var a=+hoje.slice(0,4), m=+hoje.slice(5,7);
+      var tem=function(ano){ return ctx.feriados.some(function(d){ return String(d).slice(0,4)===String(ano); }); };
+      if(!tem(a)) itens.push({ grupo:'Geral', nivel:'atencao', titulo:'Feriados de '+a, valor:'nenhum na aba', como:'Aba FERIADOS da planilha (data, descricao): sem ela feriado conta como dia útil no Mês em curso', fonte:'PPCP', campo:'' });
+      else if(m>=11&&!tem(a+1)) itens.push({ grupo:'Geral', nivel:'atencao', titulo:'Feriados de '+(a+1), valor:'nenhum na aba', como:'Aba FERIADOS da planilha (data, descricao), antes de janeiro', fonte:'PPCP', campo:'' });
+    }
+    return itens;
+  }
+
+  /* ── Tela (página Dados) ── */
+  var _sel=null, _t=null;
+  function esc(s){ return String(s===null||s===undefined?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function lerLocal(k){ try{ var x=JSON.parse(localStorage.getItem(k)); return Array.isArray(x)?x:null; }catch(e){ return null; } }
+  function hojeISO(){ var d=new Date(), m=d.getMonth()+1, dd=d.getDate(); return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(dd<10?'0':'')+dd; }
+  function rotNivel(nv){ return nv==='falta'?'Falta':nv==='atencao'?'Conferir':'Em dia'; }
+  function linha(i, regId){
+    var bt=(i.campo&&regId&&i.nivel!=='ok')
+      ? '<button type="button" class="fl-btn" onclick="editarReg(\''+esc(regId)+'\',\''+i.campo+'\')" title="Abre o mês no campo '+esc(i.titulo)+'">Lançar</button>' : '';
+    return '<tr><td class="st fl-'+i.nivel+'">'+rotNivel(i.nivel)+'</td>'
+      +'<td class="it">'+esc(i.titulo)+'<span class="gr">'+esc(i.grupo)+'</span></td>'
+      +'<td class="cm">'+(i.valor?'<span class="vl">'+esc(i.valor)+'</span>'+(i.como?' · ':''):'')+esc(i.como)
+      +(i.fonte?'<span class="fo">Fonte: '+esc(i.fonte)+'</span>':'')+'</td>'
+      +'<td class="bt">'+bt+'</td></tr>';
+  }
+  function render(){
+    var box=document.getElementById('falta-lancar'); if(!box) return;
+    try{
+      var bruto=(typeof loadBruto==='function')?loadBruto():[];
+      if(!bruto.length){ box.innerHTML=''; return; }
+      var hoje=hojeISO(), fech=mesFechado(hoje);
+      if(fech.ano<DESDE){ box.innerHTML=''; return; }
+      var sel=_sel||fech;
+      var setores=(window.SetorHE&&SetorHE.carregar)?SetorHE.carregar():[];
+      var acoes=(window.Acoes&&Acoes.lista)?Acoes.lista():null;
+      var feriados=lerLocal('dash_feriados_v1');
+      var erpDesde=(typeof PROD_ERP_DESDE!=='undefined')?PROD_ERP_DESDE:2025;
+      var integ=null;
+      try{
+        if(window.DashUtils&&DashUtils.integridade) integ=DashUtils.integridade(bruto,{erpDesde:erpDesde,
+          aplicarDuplicidade:(typeof duplicidadeAplicada==='function')?duplicidadeAplicada():undefined,
+          duplicidade:DashUtils.duplicidadeCompleta?DashUtils.duplicidadeCompleta(bruto):undefined}).itens;
+      }catch(e){ integ=null; }
+      function reg(mes, ano){ return bruto.filter(function(r){ return r&&r.mes===mes&&n(r.ano)===ano; })[0]||null; }
+      function ap(mes, ano){
+        return apurar(reg(mes,ano),{ mes:mes, ano:ano, setores:setores, acoes:acoes, erpDesde:erpDesde,
+          integ:integ?integ.filter(function(i){ return i.mes===mes&&n(i.ano)===ano; }):null });
+      }
+      /* uma pílula por mês fechado do ano do mês mais recente */
+      var chips='';
+      for(var k=0;k<=MESES.indexOf(fech.mes);k++){
+        var A=ap(MESES[k], fech.ano), on=(MESES[k]===sel.mes&&fech.ano===sel.ano);
+        var q=A.falta?'<b class="fl-falta">'+A.falta+'</b>':A.atencao?'<b class="fl-atencao">'+A.atencao+'</b>':'<b class="fl-ok">✓</b>';
+        chips+='<button type="button" class="fl-mes'+(on?' on':'')+'" onclick="FaltaLancar.ver(\''+MESES[k]+'\','+fech.ano+')" title="'
+          +A.rotulo+': '+A.falta+' a lançar, '+A.atencao+' a conferir">'+MESES[k]+q+'</button>';
+      }
+      var S=ap(sel.mes, sel.ano), r=reg(sel.mes, sel.ano);
+      var pend=S.itens.filter(function(i){ return i.nivel!=='ok'; }), oks=S.itens.filter(function(i){ return i.nivel==='ok'; });
+      var G=geral({ hoje:hoje, acoes:acoes, feriados:feriados });
+      var resumo=(S.falta||S.atencao)
+        ? '<b class="fl-falta">'+S.falta+'</b> a lançar · <b class="fl-atencao">'+S.atencao+'</b> a conferir · <b class="fl-ok">'+S.ok+'</b> em dia'
+        : '<b class="fl-ok">Tudo lançado</b> · '+S.ok+' itens em dia';
+      box.innerHTML='<div class="fl-box">'
+        +'<div class="fl-hdr"><span class="fl-ttl">▸ Falta lançar · '+S.rotulo+'</span><span class="fl-res">'+resumo+'</span>'
+        +'<span class="fl-meses">'+chips+'</span></div>'
+        +(pend.length?'<table class="fl-tab"><tbody>'+pend.map(function(i){ return linha(i, r&&r.id); }).join('')+'</tbody></table>'
+                     :'<div class="fl-vazio">Nada pendente em '+S.rotulo+'.</div>')
+        +(G.length?'<div class="fl-sub">Fora do mês</div><table class="fl-tab"><tbody>'+G.map(function(i){ return linha(i,null); }).join('')+'</tbody></table>':'')
+        +(oks.length?'<details><summary>'+oks.length+' itens em dia em '+S.rotulo+'</summary><table class="fl-tab"><tbody>'
+          +oks.map(function(i){ return linha(i,null); }).join('')+'</tbody></table></details>':'')
+        +'</div>';
+    }catch(e){
+      console.warn('Falta lançar:', e);
+      box.innerHTML='<div class="fl-box"><div class="fl-vazio">Falta lançar não pôde ser montado: '+esc(e&&e.message)+'</div></div>';
+    }
+  }
+  function agendar(){ clearTimeout(_t); _t=setTimeout(render, 60); }
+  function ver(mes, ano){ _sel={ mes:mes, ano:ano }; render(); }
+  if(window.DashBus){
+    DashBus.on('render:feito', agendar);
+    DashBus.on('acoes:mudou', agendar);
+  }
+  return { apurar:apurar, geral:geral, mesFechado:mesFechado, setoresSuspeitos:setoresSuspeitos, render:render, ver:ver };
+})();
 
 function fecharZoom(){
   document.getElementById('zoomModal').classList.remove('on');
@@ -25681,9 +25980,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.88';
-var APP_DATA   = '22/10/2026';
+var APP_VERSAO = 'b96.89';
+var APP_DATA   = '05/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.89', data:'05/11/2026', itens:[
+    'Dados ganha o bloco Falta lancar: o que ainda nao entrou no ultimo mes fechado, item por item, com o valor, a fonte e onde se lanca; vermelho e o que falta para o mes fechar, laranja o que tem numero mas nao confere. Uma pilula por mes do ano com quantos itens faltam. Campos do formulario tem o botao Lancar, que abre o mes direto no campo. So le o que o painel ja tem (HISTORICO, PONTO_SETOR, ACOES, FERIADOS e a integridade); nao grava nada. Comeca em JAN/26: 2025 nao tem ponto nem controle processados.',
+    'Falta lancar acusa setor do cadastro escrito de outro jeito: um setor que saiu como indireto mas, sem espaco e sem acento, e o nome de um setor direto. OUT/26: "3- ACABAMENTO" (1 pessoa, 44 h) contado como indireto porque o PontoRH.gs compara o nome exato. Fora do mes: acoes com prazo vencido sem atualizar e feriados do ano seguinte a partir de novembro.',
+    'PontoRH.gs: setor direto digitado de outro jeito na DP ("3- ACABAMENTO", "17-FURACAO") passa a contar como direto, comparado sem espaco, sem acento e sem caixa. A FUNCIONARIOS guarda o nome da lista e, na observacao, o texto da DP; a linha da variante sai da PONTO_SETOR quando o mes e processado de novo. Precisa colar o PontoRH.gs no editor do Apps Script.',
+    'Lapis da Tela Cheia (Registros Detalhados): o formulario Editar Mes abria atras da tela cheia e o clique parecia nao fazer nada. Agora a tela cheia fecha e o formulario aparece; o X tambem fecha a tela cheia, que seguiria mostrando o mes excluido. Mes nao encontrado avisa em vez de ficar calado.'
+  ]},
   { v:'b96.88', data:'22/10/2026', itens:[
     'Quadro por setor, Variacao por setor mes a mes: direto/indireto em coluna propria (Tipo), alinhada, como na Comparacao por setor. Colado no nome, cada um comecava num ponto da linha. Igual no Relatorio.',
     'Barra da variacao no periodo maior: 140 x 10 px (era 64 x 8, o +1 virava um ponto); no celular 80 px.'
