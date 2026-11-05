@@ -216,5 +216,116 @@ sec('Painel: leitura do Web App e atalho da Reunião');
   afirma('Reunião tem o atalho para a seção, fora da impressão', /class="reu-noprint" onclick="reuIrQuadro\(/.test(HTML) && HTML.includes('window.reuIrQuadro=function'));
 }
 
+sec('Ponto × folha (b96.93): os 91 diretos da Reunião e os 98 do Quadro por setor, OUT/26');
+{
+  /* O print de 05/11/2026: pontos por pessoa ÷ 91 diretos (extrato do ponto)
+     e o Quadro por setor com 98 diretos (folha), sem ligação na tela. A folha
+     tem 185 (98 + 87); o ponto, 146 (91 + 55); fora do ponto digitado, 40. */
+  const fol = [];
+  const F = (setor, direto, out26, desl = 0, set26 = out26) => { fol.push(L(2026, 9, setor, direto, set26)); fol.push(L(2026, 10, setor, direto, out26, 0, desl)); };
+  F('3-ACABAMENTO', 'S', 8, 2); F('29-CORTE', 'S', 5, 1); F('2-EMBALAGEM', 'S', 26); F('1-USINAGEM', 'S', 19);
+  F('17-FURAÇÃO', 'S', 12); F('16-COLAGEM DE BORDA', 'S', 11); F('25-MONTAGEM', 'S', 7); F('6-PINTURA DE BORDA', 'S', 10);
+  F('4-EXPEDIÇÃO', 'N', 12); F('20-FINANÇAS', 'N', 5); F('36-SENAI', 'N', 9); F('31-TRANSPORTE', 'N', 8); F('18-COMERCIAL', 'N', 4); F('99-OUTROS', 'N', 49);
+  fol.push(L(2026, 11, '2-EMBALAGEM', 'S', 27));   /* mês corrente: fora */
+  const hoje = new Date(2026, 10, 5);
+  const M = Q.doMes(fol, 202610, { hoje });
+  afirma('doMes: folha de OUT/26 = 185 (98 diretos + 87 indiretos)', M.pessoas === 185 && M.diretos === 98 && M.indiretos === 87);
+  afirma('doMes: 3 diretos desligados no mês', M.desligadosDir === 3);
+  afirma('doMes: mês corrente fica fora (null)', Q.doMes(fol, 202611, { hoje }) === null);
+  afirma('doMes: mês sem linha (null)', Q.doMes(fol, 202501, { hoje }) === null);
+  /* PONTO_SETOR de OUT/26: 91 diretos e 55 indiretos; um setor com a grafia
+     da DP ("3- ACABAMENTO") cai na mesma linha */
+  const pto = [['3- ACABAMENTO', 'S', 6], ['29-CORTE', 'S', 4], ['2-EMBALAGEM', 'S', 26], ['1-USINAGEM', 'S', 19], ['17-FURAÇÃO', 'S', 12],
+    ['16-COLAGEM DE BORDA', 'S', 11], ['25-MONTAGEM', 'S', 3], ['6-PINTURA DE BORDA', 'S', 10],
+    ['4-EXPEDIÇÃO', 'N', 12], ['20-FINANÇAS', 'N', 5], ['99-OUTROS', 'N', 38]].map(([setor, d, p]) => ({ setor, direto: d === 'S', pessoas: p }));
+  const hist = { colaboradores: 91, colaboradoresTotal: 146, foraDoPonto: 40 };
+  const P = Q.pontoFolha(M, hist, pto);
+  afirma('diretos: 91 no ponto + 7 sem ponto = 98 na folha', P.dirPonto === 91 && P.dirSem === 7 && P.dirPonto + P.dirSem === P.dirFolha && P.dirFolha === 98);
+  afirma('indiretos: 55 no ponto + 32 sem ponto = 87', P.indPonto === 55 && P.indSem === 32 && P.indFolha === 87);
+  afirma('quadro: 146 no ponto + 39 sem ponto = 185; fora do ponto digitado 40', P.totPonto === 146 && P.totSem === 39 && P.totFolha === 185 && P.fora === 40);
+  const sd = P.setores.filter(l => l.tipo === 'Direto');
+  afirma('onde: Montagem 4, Acabamento 2, Corte 1 (maior primeiro), somam os 7', sd.map(l => l.setor + l.sem).join('|') === 'Montagem4|Acabamento2|Corte1' && sd.reduce((t, l) => t + l.sem, 0) === 7);
+  afirma('setor igual nos dois fica fora; diretos antes dos indiretos', !P.setores.some(l => l.setor === 'Embalagem') && P.setores[P.setores.length - 1].tipo === 'Indireto');
+  afirma('sem extrato processado no mês (2025, colaboradoresTotal vazio): null', Q.pontoFolha(M, { colaboradores: 100 }, pto) === null && Q.pontoFolha(null, hist, pto) === null);
+  afirma('sem PONTO_SETOR: a ponte sai, sem os setores', (() => { const x = Q.pontoFolha(M, hist, []); return x.dirSem === 7 && x.setores.length === 0; })());
+
+  /* Funções da tela: cartões e texto da ponte */
+  const ini = HTML.indexOf('var _qsSel = {'), fim = HTML.indexOf('function renderQuadroSetor(){');
+  const T = new Function('window', 'QuadroSetor', 'load', HTML.slice(ini, fim) + '\nreturn { _qsKpis, _qsPontoFolhaNota, _qsFonte };')({ QuadroSetor: Q }, Q, () => []);
+  const nota = T._qsPontoFolhaNota(P);
+  afirma('nota: 91 diretos do ponto, 98 da folha, onde estão os 7', nota.includes('extrato do ponto: 91 diretos e 146 no total') && nota.includes('algum dia do mês: 98 diretos e 185 no total')
+    && nota.includes('Diretos: 7 sem ponto (Montagem 4, Acabamento 2 e Corte 1)') && nota.includes('indiretos: 32 sem ponto'));
+  afirma('nota: desligados do mês e o quadro da Reunião (146 + 40 = 186)', nota.includes('Diretos desligados no mês: 3') && nota.includes('146 do ponto + 40 fora do ponto digitados = 186'));
+  const R = Q.resumo(fol.concat(fol.filter(r => r.mes === 'OUT').map(r => Object.assign({}, r, { ano: 2025 }))), { hoje, mes: 202610 });
+  afirma('doMes e resumo contam igual (cartões: 185, 98 diretos, 87 indiretos)', R.total.agora === M.pessoas && R.total.diretos === M.diretos && R.total.indiretos === M.indiretos);
+  R.pontoFolha = P;
+  const kp = T._qsKpis(R);
+  afirma('cartões: "146 no ponto · 39 sem ponto", "91 no ponto · 7 sem ponto", "55 no ponto · 32 sem ponto"',
+    kp.includes('>146 no ponto · 39 sem ponto<') && kp.includes('>91 no ponto · 7 sem ponto<') && kp.includes('>55 no ponto · 32 sem ponto<'));
+  afirma('cartões: a ponte no título (tela e Relatório)', (kp.match(/title="Ponto × folha em OUT\/26/g) || []).length === 3);
+  R.pontoFolha = null;
+  const kp0 = T._qsKpis(R);
+  afirma('sem ponto no mês: cartões como antes', !kp0.includes('qs-kpi-p') && !kp0.includes('no ponto'));
+  afirma('rodapé com a ponte; sem a frase errada "a regra do quadro total da Reunião"', (() => {
+    const c = T._qsFonte(Object.assign({}, R, { pontoFolha: P })), s = T._qsFonte(R);
+    return c.includes('Ponto × folha em OUT/26') && !c.includes('regra do quadro total') && !s.includes('regra do quadro total') && s.includes('extrato do ponto');
+  })());
+  afirma('Reunião: card de pontos usa a mesma ponte e diz "no ponto" e "na folha"', /_qsPontoFolha\(ano\*100\+ORDEM_M\.indexOf\(mes\)\+1, rMes\)/.test(HTML)
+    && HTML.includes("diretos'+(PF?' no ponto':'')") && HTML.includes("+' na folha</span>'"));
+  afirma('Quadro por setor calcula a ponte do mês escolhido', HTML.includes('R.pontoFolha = _qsPontoFolha(R.mes);'));
+
+  /* Motivo pela DP (lerPontoFolha): fecha com a tela → entra; não fecha → fica fora */
+  const mot = { ano: 2026, mes: 'OUT', diretosFolha: 98, diretosPonto: 91, semPonto: 7, desligados: 5, inativos: 0, afastados: 2, admitidos: 0, outros: 0, soPonto: 0 };
+  const PM = Q.pontoFolha(M, hist, pto, mot);
+  afirma('motivo entra quando fecha com a tela (91 no ponto, 7 sem ponto)', PM.motivos && PM.motivos.desligados === 5 && PM.motivos.afastados === 2);
+  afirma('motivo que não fecha (FUNCIONARIOS regravada depois) fica fora', Q.pontoFolha(M, hist, pto, Object.assign({}, mot, { semPonto: 8 })).motivos === null
+    && Q.pontoFolha(M, hist, pto, Object.assign({}, mot, { diretosPonto: 90 })).motivos === null && P.motivos === null);
+  afirma('motivoDe acha a linha do mês', Q.motivoDe(202610, [mot]) === mot && Q.motivoDe(202609, [mot]) === null && Q.motivoDe(202610, null) === null);
+  const notaM = T._qsPontoFolhaNota(PM);
+  afirma('nota: "5 desligados no mês e 2 afastados" e o aviso das horas', notaM.includes('pessoa a pessoa pela DP: 5 desligados no mês e 2 afastados.')
+    && notaM.includes('as horas dos 5 desligados também não estão no ponto') && notaM.includes('aceitarPontoNaHistorico'));
+  const notaI = T._qsPontoFolhaNota(Q.pontoFolha(M, hist, pto, Object.assign({}, mot, { desligados: 0, inativos: 1, afastados: 2, outros: 4 })));
+  afirma('inativo sem data: pede a data na DP; sem desligado, sem aviso de horas', notaI.includes('1 inativo na DP sem data de demissão') && notaI.includes('precisa pôr a data') && !notaI.includes('O extrato saiu sem os demitidos'));
+  R.pontoFolha = PM;
+  afirma('cartão de diretos: "5 desligados · 2 afastados"', T._qsKpis(R).includes('qs-kpi-m">5 desligados · 2 afastados<'));
+  afirma('Reunião: "(5 desligados fora do extrato)" ao lado do 98 na folha', HTML.includes("_qsPl(PF.motivos.desligados,'desligado fora do extrato','desligados fora do extrato')"));
+  afirma('as duas leituras da planilha guardam pontoFolha', (HTML.match(/json\.pontoFolha\) \{ try \{ localStorage\.setItem\(QuadroSetor\.SK_PF/g) || []).length === 2);
+}
+
+sec('lerPontoFolha (Code.gs): diretos na folha × no ponto, com o motivo, sem nomes');
+{
+  const G2 = new Function('SpreadsheetApp', 'Logger', 'ContentService', 'MailApp', 'Session', 'Utilities', src + '\nreturn { lerPontoFolha, lerQuadroSetor };')({}, { log() {} }, {}, {}, {}, {});
+  const CAB = ['codigo', 'nome', 'setor', 'direto', 'admissao', 'demissao', 'observacao'];
+  const fu = [CAB,
+    ['10', 'A', '2-EMBALAGEM', 'S', '01/01/2020', '', ''],                       /* no ponto */
+    ['11', 'B', '2-EMBALAGEM', 'S', '01/01/2020', '07/10/2026', 'inativo na DP'], /* desligado no mês, fora do extrato */
+    ['12', 'C', '3-ACABAMENTO', 'S', '01/01/2020', '22/10/2026', 'inativo na DP'],/* desligado no mês, fora do extrato */
+    ['13', 'D', '2-EMBALAGEM', 'S', '26/05/2025', '', 'inativo na DP'],           /* inativo sem data */
+    ['14', 'E', '17-FURAÇÃO', 'S', '01/01/2020', '', ''],                         /* afastada, fora do extrato */
+    ['15', 'F', '3-ACABAMENTO', 'S', '26/10/2026', '', ''],                       /* admitida no mês, no extrato */
+    ['16', 'G', '3-ACABAMENTO', 'S', '28/10/2026', '', ''],                       /* admitida no mês, fora do extrato */
+    ['17', 'H', '25-MONTAGEM', 'S', '01/01/2020', '', ''],                        /* outro */
+    ['18', 'I', '2-EMBALAGEM', 'S', '01/01/2020', '24/07/2026', 'inativo na DP'], /* saiu antes: fora da folha de OUT */
+    ['19', 'J', '4-EXPEDIÇÃO', 'N', '01/01/2020', '', ''],                        /* indireto: fora da conta */
+    ['20', 'K', '2-EMBALAGEM', 'S', '01/01/2020', '', '']];                       /* no ponto */
+  const pp = [['cod', 'mes', 'ano'], ['10', 'OUT', 2026], ['15', 'OUT', 2026], [20, 'OUT', 2026], ['10', 'SET', 2026]];
+  const au = [['cod', 'mes', 'ano', 'falta', 'atestado', 'afastado'], ['14', 'OUT', 2026, 0, 0, 167.2], ['17', 'OUT', 2026, 8.8, 0, 0]];
+  const ss = { getSheetByName: n => ({ FUNCIONARIOS: abaFunc(fu), PONTO_PESSOA: abaFunc(pp), AUSENCIAS_PESSOA: abaFunc(au) })[n] || null };
+  const out = G2.lerPontoFolha(ss);
+  const o = out.find(x => x.ano === 2026 && x.mes === 'OUT');
+  afirma('um registro por mês que tem PONTO_PESSOA (SET e OUT)', out.length === 2 && out[0].mes === 'SET' && out[1].mes === 'OUT');
+  afirma('OUT: 9 diretos na folha, 3 no ponto, 6 sem ponto', o.diretosFolha === 9 && o.diretosPonto === 3 && o.semPonto === 6);
+  afirma('motivos: 2 desligados, 1 inativo sem data, 1 afastado, 1 admitido, 1 outro', o.desligados === 2 && o.inativos === 1 && o.afastados === 1 && o.admitidos === 1 && o.outros === 1);
+  afirma('motivos somam os sem ponto; código numérico no ponto também casa', o.desligados + o.inativos + o.afastados + o.admitidos + o.outros === o.semPonto && o.soPonto === 0);
+  afirma('nenhum nome ou código sai', !JSON.stringify(out).match(/"(A|B|C|D|E|F|G|H)"|"1[0-9]"/));
+  const sem = G2.lerPontoFolha({ getSheetByName: n => ({ FUNCIONARIOS: abaFunc(fu) })[n] || null });
+  afirma('sem PONTO_PESSOA: lista vazia', Array.isArray(sem) && sem.length === 0);
+  afirma('doGet manda pontoFolha', /pontoFolha: lerPontoFolha\(ss\)/.test(src));
+  /* com a data de 24/07/2026 na DP, a pessoa sai da folha de AGO em diante */
+  const q = G2.lerQuadroSetor({ getSheetByName: n => ({ FUNCIONARIOS: abaFunc(fu) })[n] || null });
+  const emb = (a, m) => q.find(r => r.ano === a && r.mes === m && r.setor === '2-EMBALAGEM').pessoas;
+  afirma('quadro: demitida em 24/07 conta em JUL e não em AGO (lerQuadroSetor segue igual com qsDia)', emb(2026, 'JUL') - emb(2026, 'AGO') === 1);
+}
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
