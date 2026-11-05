@@ -4457,6 +4457,14 @@ body.lid-on{overflow:hidden}
 #ps-quadro .qs-kpi-l{display:flex;align-items:center;gap:7px}
 #ps-quadro .qs-kpi-v{font-size:2.1rem;color:var(--t1);margin-top:6px}
 #ps-quadro .qs-kpi-1 .qs-kpi-v{color:var(--cyan)}
+#ps-quadro .qs-kpi{display:flex;gap:14px;align-items:flex-start}
+#ps-quadro .qs-kpi-c{min-width:0;flex:1}
+#ps-quadro .qs-ico{flex:0 0 54px;height:54px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-top:2px}
+#ps-quadro .qs-ico svg{width:32px;height:32px;fill:currentColor;fill-opacity:.22;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#ps-quadro .qs-kpi-tot .qs-ico{color:var(--cyan);background:rgba(245,166,35,.13)}
+#ps-quadro .qs-kpi-dir .qs-ico{color:var(--qs-c-dir);background:rgba(57,135,229,.15)}
+#ps-quadro .qs-kpi-ind .qs-ico{color:var(--qs-c-ind);background:rgba(213,81,129,.15)}
+#ps-quadro .qs-kpi-mov .qs-ico{color:var(--t2);background:rgba(143,160,181,.13)}
 #ps-quadro .qs-kpi-s{font-family:var(--sans);font-size:.76rem;margin-top:8px;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}
 #ps-quadro .qs-kpi-s span{color:var(--t2);font-family:var(--mono);font-size:.7rem}
 #ps-quadro .qs-dl{font-family:var(--mono);font-weight:700;font-size:.9rem}
@@ -4529,8 +4537,12 @@ body.lid-on{overflow:hidden}
 #ps-quadro .qs-dois{grid-template-columns:minmax(0,1fr)}
 @media (min-width:1500px){ #ps-quadro .qs-dois{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} }
 @media (max-width:1100px){ #ps-quadro .qs-kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+/* cartão estreito (notebook): ícone menor e "entradas" e "saídas" em duas linhas, sem a barrinha solta */
+@media (max-width:1500px){ #ps-quadro .qs-ico{flex-basis:44px;height:44px} #ps-quadro .qs-ico svg{width:26px;height:26px}
+  #ps-quadro .qs-kpi-mov .qs-kpi-sep{flex-basis:100%;height:2px;margin:0;background:none} }
 @media (max-width:700px){
   #ps-quadro .qs-v4{grid-template-columns:1fr}
+  #ps-quadro .qs-ico{flex-basis:34px;height:34px} #ps-quadro .qs-ico svg{width:20px;height:20px}
   #ps-quadro .qs-kpi-v{font-size:1.6rem}
   #ps-quadro .qs-vb{width:60px}
 }
@@ -5954,6 +5966,12 @@ function _qsMapa(R){
    ganhar ou perder gente não é bom nem ruim por si; se voltar, é só trocar
    as duas variáveis no CSS do #ps-quadro. O sinal (+/−) e a seta (▲/▼)
    seguem junto da cor: ela nunca carrega o sentido sozinha. */
+var _QS_ICO = {
+  tot: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c0-3.4 2.7-5.6 6-5.6s6 2.2 6 5.6"/><circle cx="17" cy="9" r="2.5"/><path d="M15.6 13.9c.5-.1.9-.2 1.4-.2 2.5 0 4.3 1.8 4.3 4.6"/></svg>',
+  dir: '<svg viewBox="0 0 24 24"><path d="M2.5 18.5h19"/><path d="M5 18.5V15a7 7 0 0 1 14 0v3.5"/><path d="M10 10.8V7.6h4v3.2"/></svg>',
+  ind: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12.5" rx="2"/><path d="M9 7V5.4A1.4 1.4 0 0 1 10.4 4h3.2A1.4 1.4 0 0 1 15 5.4V7"/><path d="M3 12.5h18"/></svg>',
+  mov: '<svg viewBox="0 0 24 24"><path d="M3.5 8.5h14"/><path d="M14 5l3.5 3.5L14 12"/><path d="M20.5 15.5h-14"/><path d="M10 12l-3.5 3.5L10 19"/></svg>'
+};
 function _qsSeta(d){ return d > 0 ? '▲' : d < 0 ? '▼' : '='; }
 function _qsDelta(d){ return '<b class="qs-dl ' + (_qsCls(d) || 'qs-igual') + '">' + _qsSeta(d) + ' ' + (d ? _qsSg(d) : '0') + '</b>'; }
 
@@ -6135,7 +6153,10 @@ function renderQuadroSetor(){
   _qsUltimo = R;
   var rot = QuadroSetor.rot, T = R.total;
   var vs = function(d, b){ return _qsDelta(d) + ' <span>vs ' + rot(R.base) + ' (' + _qsFi(b) + ')</span>'; };
-  var kpi = function(rotulo, valor, sub, nota, cls){ return '<div class="qs-kpi' + (cls ? ' ' + cls : '') + '"' + (nota ? ' title="' + _qsEsc(nota) + '"' : '') + '><div class="qs-kpi-l">' + rotulo + '</div><div class="qs-kpi-v">' + valor + '</div><div class="qs-kpi-s">' + sub + '</div></div>'; };
+  /* b96.91: ícone à esquerda, na cor da série do gráfico (total âmbar, diretos azul,
+     indiretos magenta). Diretos = capacete (chão de fábrica), indiretos = maleta. */
+  var kpi = function(ico, rotulo, valor, sub, nota, cls){ return '<div class="qs-kpi qs-kpi-' + ico + (cls ? ' ' + cls : '') + '"' + (nota ? ' title="' + _qsEsc(nota) + '"' : '') + '>'
+    + '<span class="qs-ico" aria-hidden="true">' + _QS_ICO[ico] + '</span><div class="qs-kpi-c"><div class="qs-kpi-l">' + rotulo + '</div><div class="qs-kpi-v">' + valor + '</div><div class="qs-kpi-s">' + sub + '</div></div></div>'; };
   var notaMov = 'Entradas: admitidos de ' + rot(R.janela.de) + ' a ' + rot(R.janela.ate) + '. Saídas: quem deixou o quadro de ' + rot(R.base) + ' até o mês anterior; quem sai conta no mês da saída, então os desligados de ' + rot(R.mes) + ' ainda estão nos ' + _qsFi(T.agora) + '. Desligamentos com data de ' + rot(R.janela.de) + ' a ' + rot(R.janela.ate) + ': ' + _qsFi(T.desligados) + '.';
   var opcMes = R.validos.slice().reverse().map(function(k){ return '<option value="' + k + '"' + (k === R.mes ? ' selected' : '') + '>' + rot(k) + '</option>'; }).join('');
   box.innerHTML = '<div class="cHdr"><span class="cTtl">▸ Quadro por setor · ' + rot(R.mes) + ' contra ' + rot(R.base) + '</span>'
@@ -6143,10 +6164,10 @@ function renderQuadroSetor(){
       + '<label>Comparar com <select id="qs-cmp"><option value="12m"' + (R.cmp === '12m' ? ' selected' : '') + '>o mesmo mês do ano anterior</option><option value="dez"' + (R.cmp === 'dez' ? ' selected' : '') + '>dezembro do ano anterior</option></select></label>'
       + '<button type="button" class="btn btn-g btn-sm" id="qs-imp" title="Versão para imprimir ou salvar em PDF do mês e da comparação escolhidos">Relatório</button></div></div>'
     + '<div class="qs-kpis">'
-      + kpi('Quadro no mês', _qsFi(T.agora), vs(T.delta, T.antes), '', 'qs-kpi-1')
-      + kpi('<i class="qs-dot qs-l-dir-bg"></i>Diretos', _qsFi(T.diretos), vs(T.deltaDiretos, T.diretosAntes))
-      + kpi('<i class="qs-dot qs-l-ind-bg"></i>Indiretos', _qsFi(T.indiretos), vs(T.deltaIndiretos, T.indiretosAntes))
-      + kpi('Movimentação', _qsFi(T.admitidos) + '<small>entradas</small><i class="qs-kpi-sep"></i>' + _qsFi(T.saidas) + '<small>saídas</small>',
+      + kpi('tot', 'Quadro no mês', _qsFi(T.agora), vs(T.delta, T.antes), '', 'qs-kpi-1')
+      + kpi('dir', 'Diretos', _qsFi(T.diretos), vs(T.deltaDiretos, T.diretosAntes))
+      + kpi('ind', 'Indiretos', _qsFi(T.indiretos), vs(T.deltaIndiretos, T.indiretosAntes))
+      + kpi('mov', 'Movimentação', _qsFi(T.admitidos) + '<small>entradas</small><i class="qs-kpi-sep"></i>' + _qsFi(T.saidas) + '<small>saídas</small>',
             '<span>' + _qsFi(T.antes) + ' + ' + _qsFi(T.admitidos) + ' − ' + _qsFi(T.saidas) + ' = ' + _qsFi(T.agora) + ' · ' + rot(R.base) + ' → ' + rot(R.mes) + '</span>', notaMov)
     + '</div>'
     + '<div class="qs-dois">'
@@ -26218,9 +26239,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.90';
+var APP_VERSAO = 'b96.91';
 var APP_DATA   = '05/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.91', data:'05/11/2026', itens:[
+    'Quadro por setor: cartoes com icone na cor da serie do grafico. Quadro (pessoas, ambar), diretos (capacete, azul: chao de fabrica), indiretos (maleta, magenta: apoio e administrativo), movimentacao (setas de entrada e saida). No notebook o icone encolhe e entradas e saidas ficam em duas linhas.'
+  ]},
   { v:'b96.90', data:'05/11/2026', itens:[
     'Quadro por setor (aba Pessoas) refeito para a diretoria, na ordem: os quatro numeros (quadro, diretos, indiretos, movimentacao) com seta e variacao; onde o quadro mudou, diretos e indiretos que cresceram e cairam em barras numa escala so, o maior de cada grupo em destaque e o saldo que fecha a conta; evolucao do quadro em linhas (total, diretos e indiretos) com valor so nos dois meses comparados; comparativo por setor com o maior impacto primeiro, antes, agora, variacao com barra, entradas, saidas e os meses; historico mensal recolhido; destaques calculados do mes escolhido. Mesmos dados e regras.',
     'Movimentacao fecha com o quadro: saidas passam a ser quem deixou o quadro entre os meses comparados (quem sai conta no mes da saida). OUT/26 x OUT/25: 187 + 76 entradas - 78 saidas = 185. Antes o cartao mostrava 76 e 74 (desligados de NOV/25 a OUT/26), saldo +2 com o quadro caindo -2. Os 74 seguem na nota do cartao; o Relatorio usa a mesma conta.',
