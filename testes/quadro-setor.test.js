@@ -216,5 +216,64 @@ sec('Painel: leitura do Web App e atalho da Reunião');
   afirma('Reunião tem o atalho para a seção, fora da impressão', /class="reu-noprint" onclick="reuIrQuadro\(/.test(HTML) && HTML.includes('window.reuIrQuadro=function'));
 }
 
+sec('Ponto × folha (b96.93): os 91 diretos da Reunião e os 98 do Quadro por setor, OUT/26');
+{
+  /* O print de 05/11/2026: pontos por pessoa ÷ 91 diretos (extrato do ponto)
+     e o Quadro por setor com 98 diretos (folha), sem ligação na tela. A folha
+     tem 185 (98 + 87); o ponto, 146 (91 + 55); fora do ponto digitado, 40. */
+  const fol = [];
+  const F = (setor, direto, out26, desl = 0, set26 = out26) => { fol.push(L(2026, 9, setor, direto, set26)); fol.push(L(2026, 10, setor, direto, out26, 0, desl)); };
+  F('3-ACABAMENTO', 'S', 8, 2); F('29-CORTE', 'S', 5, 1); F('2-EMBALAGEM', 'S', 26); F('1-USINAGEM', 'S', 19);
+  F('17-FURAÇÃO', 'S', 12); F('16-COLAGEM DE BORDA', 'S', 11); F('25-MONTAGEM', 'S', 7); F('6-PINTURA DE BORDA', 'S', 10);
+  F('4-EXPEDIÇÃO', 'N', 12); F('20-FINANÇAS', 'N', 5); F('36-SENAI', 'N', 9); F('31-TRANSPORTE', 'N', 8); F('18-COMERCIAL', 'N', 4); F('99-OUTROS', 'N', 49);
+  fol.push(L(2026, 11, '2-EMBALAGEM', 'S', 27));   /* mês corrente: fora */
+  const hoje = new Date(2026, 10, 5);
+  const M = Q.doMes(fol, 202610, { hoje });
+  afirma('doMes: folha de OUT/26 = 185 (98 diretos + 87 indiretos)', M.pessoas === 185 && M.diretos === 98 && M.indiretos === 87);
+  afirma('doMes: 3 diretos desligados no mês', M.desligadosDir === 3);
+  afirma('doMes: mês corrente fica fora (null)', Q.doMes(fol, 202611, { hoje }) === null);
+  afirma('doMes: mês sem linha (null)', Q.doMes(fol, 202501, { hoje }) === null);
+  /* PONTO_SETOR de OUT/26: 91 diretos e 55 indiretos; um setor com a grafia
+     da DP ("3- ACABAMENTO") cai na mesma linha */
+  const pto = [['3- ACABAMENTO', 'S', 6], ['29-CORTE', 'S', 4], ['2-EMBALAGEM', 'S', 26], ['1-USINAGEM', 'S', 19], ['17-FURAÇÃO', 'S', 12],
+    ['16-COLAGEM DE BORDA', 'S', 11], ['25-MONTAGEM', 'S', 3], ['6-PINTURA DE BORDA', 'S', 10],
+    ['4-EXPEDIÇÃO', 'N', 12], ['20-FINANÇAS', 'N', 5], ['99-OUTROS', 'N', 38]].map(([setor, d, p]) => ({ setor, direto: d === 'S', pessoas: p }));
+  const hist = { colaboradores: 91, colaboradoresTotal: 146, foraDoPonto: 40 };
+  const P = Q.pontoFolha(M, hist, pto);
+  afirma('diretos: 91 no ponto + 7 sem ponto = 98 na folha', P.dirPonto === 91 && P.dirSem === 7 && P.dirPonto + P.dirSem === P.dirFolha && P.dirFolha === 98);
+  afirma('indiretos: 55 no ponto + 32 sem ponto = 87', P.indPonto === 55 && P.indSem === 32 && P.indFolha === 87);
+  afirma('quadro: 146 no ponto + 39 sem ponto = 185; fora do ponto digitado 40', P.totPonto === 146 && P.totSem === 39 && P.totFolha === 185 && P.fora === 40);
+  const sd = P.setores.filter(l => l.tipo === 'Direto');
+  afirma('onde: Montagem 4, Acabamento 2, Corte 1 (maior primeiro), somam os 7', sd.map(l => l.setor + l.sem).join('|') === 'Montagem4|Acabamento2|Corte1' && sd.reduce((t, l) => t + l.sem, 0) === 7);
+  afirma('setor igual nos dois fica fora; diretos antes dos indiretos', !P.setores.some(l => l.setor === 'Embalagem') && P.setores[P.setores.length - 1].tipo === 'Indireto');
+  afirma('sem extrato processado no mês (2025, colaboradoresTotal vazio): null', Q.pontoFolha(M, { colaboradores: 100 }, pto) === null && Q.pontoFolha(null, hist, pto) === null);
+  afirma('sem PONTO_SETOR: a ponte sai, sem os setores', (() => { const x = Q.pontoFolha(M, hist, []); return x.dirSem === 7 && x.setores.length === 0; })());
+
+  /* Funções da tela: cartões e texto da ponte */
+  const ini = HTML.indexOf('var _qsSel = {'), fim = HTML.indexOf('function renderQuadroSetor(){');
+  const T = new Function('window', 'QuadroSetor', 'load', HTML.slice(ini, fim) + '\nreturn { _qsKpis, _qsPontoFolhaNota, _qsFonte };')({ QuadroSetor: Q }, Q, () => []);
+  const nota = T._qsPontoFolhaNota(P);
+  afirma('nota: 91 diretos do ponto, 98 da folha, onde estão os 7', nota.includes('extrato do ponto: 91 diretos e 146 no total') && nota.includes('algum dia do mês: 98 diretos e 185 no total')
+    && nota.includes('Diretos: 7 sem ponto (Montagem 4, Acabamento 2 e Corte 1)') && nota.includes('indiretos: 32 sem ponto'));
+  afirma('nota: desligados do mês e o quadro da Reunião (146 + 40 = 186)', nota.includes('Diretos desligados no mês: 3') && nota.includes('146 do ponto + 40 fora do ponto digitados = 186'));
+  const R = Q.resumo(fol.concat(fol.filter(r => r.mes === 'OUT').map(r => Object.assign({}, r, { ano: 2025 }))), { hoje, mes: 202610 });
+  afirma('doMes e resumo contam igual (cartões: 185, 98 diretos, 87 indiretos)', R.total.agora === M.pessoas && R.total.diretos === M.diretos && R.total.indiretos === M.indiretos);
+  R.pontoFolha = P;
+  const kp = T._qsKpis(R);
+  afirma('cartões: "146 no ponto · 39 sem ponto", "91 no ponto · 7 sem ponto", "55 no ponto · 32 sem ponto"',
+    kp.includes('>146 no ponto · 39 sem ponto<') && kp.includes('>91 no ponto · 7 sem ponto<') && kp.includes('>55 no ponto · 32 sem ponto<'));
+  afirma('cartões: a ponte no título (tela e Relatório)', (kp.match(/title="Ponto × folha em OUT\/26/g) || []).length === 3);
+  R.pontoFolha = null;
+  const kp0 = T._qsKpis(R);
+  afirma('sem ponto no mês: cartões como antes', !kp0.includes('qs-kpi-p') && !kp0.includes('no ponto'));
+  afirma('rodapé com a ponte; sem a frase errada "a regra do quadro total da Reunião"', (() => {
+    const c = T._qsFonte(Object.assign({}, R, { pontoFolha: P })), s = T._qsFonte(R);
+    return c.includes('Ponto × folha em OUT/26') && !c.includes('regra do quadro total') && !s.includes('regra do quadro total') && s.includes('extrato do ponto');
+  })());
+  afirma('Reunião: card de pontos usa a mesma ponte e diz "no ponto" e "na folha"', /_qsPontoFolha\(ano\*100\+ORDEM_M\.indexOf\(mes\)\+1, rMes\)/.test(HTML)
+    && HTML.includes("diretos'+(PF?' no ponto':'')") && HTML.includes("+' na folha</span>'"));
+  afirma('Quadro por setor calcula a ponte do mês escolhido', HTML.includes('R.pontoFolha = _qsPontoFolha(R.mes);'));
+}
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
