@@ -104,6 +104,7 @@ var DICIONARIO_LINHAS = [
   ['horasNormais', 'automático', 'ponto', 'Normais do extrato = Carga − Faltas − Atrasos: horas trabalhadas na jornada normal. Base do absenteísmo e das peças por hora. Conferido em AGO/26.'],
   ['naoTrabalhadas', 'automático', 'ponto', 'PontoRH.gs: soma, por direto, de jornada cheia do mês (carga mais frequente entre os diretos) − Normais. Quem foi admitido ou desligado dentro do mês entra com a própria Carga no lugar da jornada cheia: os dias fora da casa não são ausência. Tudo que não foi trabalhado, férias e afastamento incluídos. Com o controle de faltas lançado é só conferência (integridade: ponto × controle).'],
   ['faltasPonto / atrasosPonto', 'automático', 'ponto', 'Colunas Faltas e Atras. do extrato, somadas para os diretos. O ponto só conta falta sem justificativa; atestado, afastamento e licença reduzem a Carga.'],
+  ['(FUNCIONARIOS × PONTO_PESSOA → ponto × folha)', 'automático', 'DP + ponto', 'O Web App cruza por mês os diretos da folha (FUNCIONARIOS, na folha em algum dia do mês) com os do extrato do ponto (PONTO_PESSOA) e conta os que estão na folha e não no ponto, com o motivo: desligado no mês, inativo na DP sem data de demissão, afastado (AUSENCIAS_PESSOA), admitido no mês, outros (lerPontoFolha). Só a contagem, sem nomes. Explica no painel por que os diretos do Quadro por setor passam dos da Reunião. Desligado fora do extrato = as horas dele também faltam no ponto.'],
   ['(aba FUNCIONARIOS → quadro por setor)', 'automático', 'DP', 'O Web App conta a FUNCIONARIOS por setor e mês desde JAN/25 (lerQuadroSetor): quem esteve na folha em algum dia do mês pela admissão e demissão, admitidos e desligados. Só a contagem, sem nomes. Aba Pessoas do painel, seção Quadro por setor. O setor é o atual da pessoa.'],
   ['(aba PONTO_SETOR)', 'automático', 'ponto + controle', 'Uma linha por mês/ano/setor, diretos e indiretos: pessoas, horasCarga, horasNormais, faltasPonto, atrasosPonto, extra50, extra100, totalExtras, hePctHoras (totalExtras ÷ horasNormais do setor), as ausências do controle e atrasoDuplicado do setor. Hora por setor, não peça por setor; setor = o atual da pessoa na FUNCIONARIOS. Não digitar: o script regrava.'],
   ['(abas PONTO_PESSOA / AUSENCIAS_PESSOA)', 'automático', 'ponto / controle de faltas', 'Uma linha por direto e mês. PONTO_PESSOA (do extrato): cod, carga, faltas, atrasos, normais, jornada. AUSENCIAS_PESSOA (do controle): cod, falta, atestado, afastado, atraso, férias. Servem só para achar o atraso contado duas vezes. Têm o código do funcionário: não compartilhar. Não digitar: o script regrava.'],
@@ -235,6 +236,8 @@ function doGet() {
               setores: (typeof prLerSetores === 'function') ? prLerSetores(ss) : [],
               /* FUNCIONARIOS contada por setor e mês, sem nomes (aba Pessoas). */
               quadroSetor: lerQuadroSetor(ss),
+              /* Diretos na folha × no ponto por mês, com o motivo (sem nomes). */
+              pontoFolha: lerPontoFolha(ss),
               acoes: lerAcoes(ss),
               metas: lerMetas(ss),
               /* Mês em curso: cortes parciais e feriados (bloco do Plano Mestre). */
@@ -825,13 +828,23 @@ function criarAbaFeriados() {
 /* ══ QUADRO POR SETOR ══
    Pessoas por setor e mês a partir da FUNCIONARIOS (lista do DP que o
    PontoRH.gs regrava do controle de faltas): quem esteve na folha em algum
-   dia do mês (admissão até o fim do mês e sem demissão antes do início), a
-   regra do quadro total da Reunião; mais admitidos e desligados no mês.
+   dia do mês (admissão até o fim do mês e sem demissão antes do início);
+   mais admitidos e desligados no mês. Não é o quadro da Reunião, que é o
+   extrato do ponto + fora do ponto digitado (ponte em lerPontoFolha).
    Só a contagem: nome e código não saem da planilha. De JAN/QUADRO_DESDE
    (a lista cobre desde JAN/25) até o mês corrente; o painel mostra os meses
    fechados. Uma linha por mês e setor que teve alguém em algum mês. Aba
    ausente ou sem as colunas setor e admissao → []. */
 var QUADRO_DESDE = 2025;
+function qsDois(n) { return (n < 10 ? '0' : '') + n; }
+/* Date da célula, "dd/mm/aaaa" ou "aaaa-mm-dd" → "aaaa-mm-dd"; senão null */
+function qsDia(x) {
+  if (Object.prototype.toString.call(x) === '[object Date]') return isNaN(x.getTime()) ? null : x.getFullYear() + '-' + qsDois(x.getMonth() + 1) + '-' + qsDois(x.getDate());
+  var t = txt(x), m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + '-' + qsDois(+m[2]) + '-' + qsDois(+m[1]);
+  m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[1] + '-' + m[2] + '-' + m[3] : null;
+}
 function lerQuadroSetor(ss) {
   try {
     var aba = ss.getSheetByName('FUNCIONARIOS');
@@ -840,15 +853,7 @@ function lerQuadroSetor(ss) {
     var cab = v[0].map(function (c) { return normaliza(c); });
     var iS = cab.indexOf('setor'), iD = cab.indexOf('direto'), iA = cab.indexOf('admissao'), iX = cab.indexOf('demissao');
     if (iS < 0 || iA < 0) return [];
-    var dois = function (n) { return (n < 10 ? '0' : '') + n; };
-    /* Date da célula, "dd/mm/aaaa" ou "aaaa-mm-dd" → "aaaa-mm-dd"; senão null */
-    var dia = function (x) {
-      if (Object.prototype.toString.call(x) === '[object Date]') return isNaN(x.getTime()) ? null : x.getFullYear() + '-' + dois(x.getMonth() + 1) + '-' + dois(x.getDate());
-      var t = txt(x), m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (m) return m[3] + '-' + dois(+m[2]) + '-' + dois(+m[1]);
-      m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      return m ? m[1] + '-' + m[2] + '-' + m[3] : null;
-    };
+    var dois = qsDois, dia = qsDia;
     var pessoas = [];
     for (var r = 1; r < v.length; r++) {
       var setor = txt(v[r][iS]);
@@ -877,6 +882,73 @@ function lerQuadroSetor(ss) {
       if (alguem) out = out.concat(linhas);
     });
     return out;
+  } catch (e) { return []; }
+}
+
+/* ══ PONTO × FOLHA (b96.93) ══
+   Quem é o direto que está na folha e não está no ponto do mês. A folha é a
+   FUNCIONARIOS (regravada da aba DP do controle de faltas: setor, admissão,
+   demissão, "inativo na DP"), com a regra do Quadro por setor (na folha em
+   algum dia do mês); o ponto é a PONTO_PESSOA (os diretos do extrato do mês,
+   os mesmos do colaboradores da HISTORICO). Cada direto sem ponto cai em um
+   motivo, nesta ordem: desligado no mês (a DP tem a data; o extrato saiu sem
+   os demitidos, então as horas dele também não estão no ponto), inativo na
+   DP sem data de demissão (conta na folha todo mês até o DP pôr a data),
+   afastado no mês (AUSENCIAS_PESSOA), admitido no mês, outros. OUT/26, aba
+   DP do CONTROLE_FALTAS_2026: 5 desligados (07, 09, 22, 22 e 26/10), 2
+   afastadas o mês inteiro e 1 inativa na Embalagem sem data de demissão
+   (saiu em 24/07/2026; até a data entrar na DP ela conta na folha todo mês).
+   Só contagens por mês: nome e código não saem da planilha. Meses sem a
+   PONTO_PESSOA ficam fora. Sem a FUNCIONARIOS ou a PONTO_PESSOA → []. */
+function lerPontoFolha(ss) {
+  try {
+    var fu = ss.getSheetByName('FUNCIONARIOS'), pp = ss.getSheetByName('PONTO_PESSOA');
+    if (!fu || fu.getLastRow() < 2 || !pp || pp.getLastRow() < 2) return [];
+    var cod = function (v) { return txt(v).replace(/\.0$/, ''); };
+    var mk = function (mes, ano) { var i = MESES.indexOf(txt(mes).toUpperCase().slice(0, 3)); return (i < 0 || !(ano > 2000)) ? 0 : ano * 100 + i + 1; };
+    var v = fu.getDataRange().getValues(), cab = v[0].map(function (c) { return normaliza(c); });
+    var iC = cab.indexOf('codigo'), iD = cab.indexOf('direto'), iA = cab.indexOf('admissao'), iX = cab.indexOf('demissao'), iO = cab.indexOf('observacao');
+    if (iC < 0 || iD < 0 || iA < 0) return [];
+    var dir = [];
+    for (var r = 1; r < v.length; r++) {
+      if (!/^s/i.test(txt(v[r][iD]))) continue;
+      var c = cod(v[r][iC]);
+      if (!/^\d+$/.test(c)) continue;
+      dir.push({ cod: c, adm: qsDia(v[r][iA]), dem: iX >= 0 ? qsDia(v[r][iX]) : null, inativo: iO >= 0 && /inativo/i.test(txt(v[r][iO])) });
+    }
+    var noPonto = {};   /* AAAAMM → { cod: true } */
+    pp.getDataRange().getValues().slice(1).forEach(function (l) {
+      var k = mk(l[1], parseInt(l[2], 10)), c = cod(l[0]);
+      if (k && c) (noPonto[k] = noPonto[k] || {})[c] = true;
+    });
+    var afast = {};     /* AAAAMM → { cod: true } com horas de afastamento */
+    var au = ss.getSheetByName('AUSENCIAS_PESSOA');
+    if (au && au.getLastRow() > 1) au.getDataRange().getValues().slice(1).forEach(function (l) {
+      var k = mk(l[1], parseInt(l[2], 10)), c = cod(l[0]);
+      if (k && c && num(l[5]) > 0) (afast[k] = afast[k] || {})[c] = true;
+    });
+    return Object.keys(noPonto).map(Number).sort().map(function (k) {
+      var a = Math.floor(k / 100), m = k % 100;
+      var ini = a + '-' + qsDois(m) + '-01', fim = a + '-' + qsDois(m) + '-' + qsDois(new Date(a, m, 0).getDate());
+      var o = { ano: a, mes: MESES[m - 1], diretosFolha: 0, diretosPonto: 0, semPonto: 0,
+                desligados: 0, inativos: 0, afastados: 0, admitidos: 0, outros: 0, soPonto: 0 };
+      var naFolha = {};
+      dir.forEach(function (p) {
+        if (!p.adm || p.adm > fim || (p.dem && p.dem < ini)) return;
+        naFolha[p.cod] = true;
+        o.diretosFolha++;
+        if (noPonto[k][p.cod]) { o.diretosPonto++; return; }
+        o.semPonto++;
+        if (p.dem && p.dem <= fim) o.desligados++;
+        else if (p.inativo && !p.dem) o.inativos++;
+        else if (afast[k] && afast[k][p.cod]) o.afastados++;
+        else if (p.adm >= ini) o.admitidos++;
+        else o.outros++;
+      });
+      /* no extrato e fora da folha do mês (data errada na DP): deveria ser 0 */
+      Object.keys(noPonto[k]).forEach(function (c) { if (!naFolha[c]) o.soPonto++; });
+      return o;
+    });
   } catch (e) { return []; }
 }
 

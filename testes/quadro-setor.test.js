@@ -273,6 +273,58 @@ sec('Ponto × folha (b96.93): os 91 diretos da Reunião e os 98 do Quadro por se
   afirma('Reunião: card de pontos usa a mesma ponte e diz "no ponto" e "na folha"', /_qsPontoFolha\(ano\*100\+ORDEM_M\.indexOf\(mes\)\+1, rMes\)/.test(HTML)
     && HTML.includes("diretos'+(PF?' no ponto':'')") && HTML.includes("+' na folha</span>'"));
   afirma('Quadro por setor calcula a ponte do mês escolhido', HTML.includes('R.pontoFolha = _qsPontoFolha(R.mes);'));
+
+  /* Motivo pela DP (lerPontoFolha): fecha com a tela → entra; não fecha → fica fora */
+  const mot = { ano: 2026, mes: 'OUT', diretosFolha: 98, diretosPonto: 91, semPonto: 7, desligados: 5, inativos: 0, afastados: 2, admitidos: 0, outros: 0, soPonto: 0 };
+  const PM = Q.pontoFolha(M, hist, pto, mot);
+  afirma('motivo entra quando fecha com a tela (91 no ponto, 7 sem ponto)', PM.motivos && PM.motivos.desligados === 5 && PM.motivos.afastados === 2);
+  afirma('motivo que não fecha (FUNCIONARIOS regravada depois) fica fora', Q.pontoFolha(M, hist, pto, Object.assign({}, mot, { semPonto: 8 })).motivos === null
+    && Q.pontoFolha(M, hist, pto, Object.assign({}, mot, { diretosPonto: 90 })).motivos === null && P.motivos === null);
+  afirma('motivoDe acha a linha do mês', Q.motivoDe(202610, [mot]) === mot && Q.motivoDe(202609, [mot]) === null && Q.motivoDe(202610, null) === null);
+  const notaM = T._qsPontoFolhaNota(PM);
+  afirma('nota: "5 desligados no mês e 2 afastados" e o aviso das horas', notaM.includes('pessoa a pessoa pela DP: 5 desligados no mês e 2 afastados.')
+    && notaM.includes('as horas dos 5 desligados também não estão no ponto') && notaM.includes('aceitarPontoNaHistorico'));
+  const notaI = T._qsPontoFolhaNota(Q.pontoFolha(M, hist, pto, Object.assign({}, mot, { desligados: 0, inativos: 1, afastados: 2, outros: 4 })));
+  afirma('inativo sem data: pede a data na DP; sem desligado, sem aviso de horas', notaI.includes('1 inativo na DP sem data de demissão') && notaI.includes('precisa pôr a data') && !notaI.includes('O extrato saiu sem os demitidos'));
+  R.pontoFolha = PM;
+  afirma('cartão de diretos: "5 desligados · 2 afastados"', T._qsKpis(R).includes('qs-kpi-m">5 desligados · 2 afastados<'));
+  afirma('Reunião: "(5 desligados fora do extrato)" ao lado do 98 na folha', HTML.includes("_qsPl(PF.motivos.desligados,'desligado fora do extrato','desligados fora do extrato')"));
+  afirma('as duas leituras da planilha guardam pontoFolha', (HTML.match(/json\.pontoFolha\) \{ try \{ localStorage\.setItem\(QuadroSetor\.SK_PF/g) || []).length === 2);
+}
+
+sec('lerPontoFolha (Code.gs): diretos na folha × no ponto, com o motivo, sem nomes');
+{
+  const G2 = new Function('SpreadsheetApp', 'Logger', 'ContentService', 'MailApp', 'Session', 'Utilities', src + '\nreturn { lerPontoFolha, lerQuadroSetor };')({}, { log() {} }, {}, {}, {}, {});
+  const CAB = ['codigo', 'nome', 'setor', 'direto', 'admissao', 'demissao', 'observacao'];
+  const fu = [CAB,
+    ['10', 'A', '2-EMBALAGEM', 'S', '01/01/2020', '', ''],                       /* no ponto */
+    ['11', 'B', '2-EMBALAGEM', 'S', '01/01/2020', '07/10/2026', 'inativo na DP'], /* desligado no mês, fora do extrato */
+    ['12', 'C', '3-ACABAMENTO', 'S', '01/01/2020', '22/10/2026', 'inativo na DP'],/* desligado no mês, fora do extrato */
+    ['13', 'D', '2-EMBALAGEM', 'S', '26/05/2025', '', 'inativo na DP'],           /* inativo sem data */
+    ['14', 'E', '17-FURAÇÃO', 'S', '01/01/2020', '', ''],                         /* afastada, fora do extrato */
+    ['15', 'F', '3-ACABAMENTO', 'S', '26/10/2026', '', ''],                       /* admitida no mês, no extrato */
+    ['16', 'G', '3-ACABAMENTO', 'S', '28/10/2026', '', ''],                       /* admitida no mês, fora do extrato */
+    ['17', 'H', '25-MONTAGEM', 'S', '01/01/2020', '', ''],                        /* outro */
+    ['18', 'I', '2-EMBALAGEM', 'S', '01/01/2020', '24/07/2026', 'inativo na DP'], /* saiu antes: fora da folha de OUT */
+    ['19', 'J', '4-EXPEDIÇÃO', 'N', '01/01/2020', '', ''],                        /* indireto: fora da conta */
+    ['20', 'K', '2-EMBALAGEM', 'S', '01/01/2020', '', '']];                       /* no ponto */
+  const pp = [['cod', 'mes', 'ano'], ['10', 'OUT', 2026], ['15', 'OUT', 2026], [20, 'OUT', 2026], ['10', 'SET', 2026]];
+  const au = [['cod', 'mes', 'ano', 'falta', 'atestado', 'afastado'], ['14', 'OUT', 2026, 0, 0, 167.2], ['17', 'OUT', 2026, 8.8, 0, 0]];
+  const ss = { getSheetByName: n => ({ FUNCIONARIOS: abaFunc(fu), PONTO_PESSOA: abaFunc(pp), AUSENCIAS_PESSOA: abaFunc(au) })[n] || null };
+  const out = G2.lerPontoFolha(ss);
+  const o = out.find(x => x.ano === 2026 && x.mes === 'OUT');
+  afirma('um registro por mês que tem PONTO_PESSOA (SET e OUT)', out.length === 2 && out[0].mes === 'SET' && out[1].mes === 'OUT');
+  afirma('OUT: 9 diretos na folha, 3 no ponto, 6 sem ponto', o.diretosFolha === 9 && o.diretosPonto === 3 && o.semPonto === 6);
+  afirma('motivos: 2 desligados, 1 inativo sem data, 1 afastado, 1 admitido, 1 outro', o.desligados === 2 && o.inativos === 1 && o.afastados === 1 && o.admitidos === 1 && o.outros === 1);
+  afirma('motivos somam os sem ponto; código numérico no ponto também casa', o.desligados + o.inativos + o.afastados + o.admitidos + o.outros === o.semPonto && o.soPonto === 0);
+  afirma('nenhum nome ou código sai', !JSON.stringify(out).match(/"(A|B|C|D|E|F|G|H)"|"1[0-9]"/));
+  const sem = G2.lerPontoFolha({ getSheetByName: n => ({ FUNCIONARIOS: abaFunc(fu) })[n] || null });
+  afirma('sem PONTO_PESSOA: lista vazia', Array.isArray(sem) && sem.length === 0);
+  afirma('doGet manda pontoFolha', /pontoFolha: lerPontoFolha\(ss\)/.test(src));
+  /* com a data de 24/07/2026 na DP, a pessoa sai da folha de AGO em diante */
+  const q = G2.lerQuadroSetor({ getSheetByName: n => ({ FUNCIONARIOS: abaFunc(fu) })[n] || null });
+  const emb = (a, m) => q.find(r => r.ano === a && r.mes === m && r.setor === '2-EMBALAGEM').pessoas;
+  afirma('quadro: demitida em 24/07 conta em JUL e não em AGO (lerQuadroSetor segue igual com qsDia)', emb(2026, 'JUL') - emb(2026, 'AGO') === 1);
 }
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));

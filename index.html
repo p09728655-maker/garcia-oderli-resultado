@@ -4468,6 +4468,7 @@ body.lid-on{overflow:hidden}
 #ps-quadro .qs-kpi-s{font-family:var(--sans);font-size:.76rem;margin-top:8px;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}
 #ps-quadro .qs-kpi-s span{color:var(--t2);font-family:var(--mono);font-size:.7rem}
 #ps-quadro .qs-kpi-p{font-family:var(--mono);font-size:.7rem;color:var(--t2);margin-top:5px;cursor:help}
+#ps-quadro .qs-kpi-m{margin-top:2px;color:var(--t3)}
 #ps-quadro .qs-dl{font-family:var(--mono);font-weight:700;font-size:.9rem}
 #ps-quadro .qs-igual{color:var(--t3)!important}
 #ps-quadro .qs-dot{display:inline-block;width:9px;height:9px;border-radius:50%}
@@ -5494,9 +5495,17 @@ window.SetorHE = (function(){
    fica fora: ainda está mudando. O setor é o atual de cada pessoa. */
 window.QuadroSetor = (function(){
   var SK = 'dash_quadro_setor_v1';
+  var SK_PF = 'dash_ponto_folha_v1';   /* b96.93: lerPontoFolha (Code.gs), motivo de cada direto sem ponto */
   var MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   function n(v){ var x = typeof v === 'number' ? v : parseFloat(String(v === null || v === undefined ? '' : v).replace(',', '.')); return isFinite(x) ? x : 0; }
   function carregar(){ try{ var a = JSON.parse(localStorage.getItem(SK)); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+  /* linha do mês k (AAAAMM) da lerPontoFolha, ou null */
+  function motivoDe(k, linhas){
+    if (!linhas) { try{ linhas = JSON.parse(localStorage.getItem(SK_PF)); }catch(e){ linhas = null; } }
+    if (!Array.isArray(linhas)) return null;
+    for (var i = 0; i < linhas.length; i++) if (chave(n(linhas[i].ano), linhas[i].mes) === k) return linhas[i];
+    return null;
+  }
   /* b96.86: grafia do cadastro do DP corrigida só na tela. A chave da série
      é este nome: se o DP corrigir o cadastro ("26-RECURSOS HUMANOS"), o
      nome novo cai na mesma linha e a série não se parte em duas. */
@@ -5648,9 +5657,13 @@ window.QuadroSetor = (function(){
      sem linha no extrato: desligado exportado fora do extrato, afastado, quem
      não bate ponto. folha = doMes(); hist = linha da HISTORICO do mês;
      setoresPonto = linhas da PONTO_SETOR do mês (SetorHE.doMes), para dizer
-     em que setor está a diferença. Sem o extrato processado no mês
-     (colaboradoresTotal vazio, como em 2025): null. */
-  function pontoFolha(folha, hist, setoresPonto){
+     em que setor está a diferença; motivo = linha do mês da lerPontoFolha
+     (Code.gs: a DP pessoa a pessoa contra o extrato), para dizer por quê.
+     O motivo só entra quando fecha com os números da tela (mesmos diretos no
+     ponto e mesmos sem ponto): uma FUNCIONARIOS regravada depois do sync
+     daria outra conta, e a tela voltaria a não bater. Sem o extrato
+     processado no mês (colaboradoresTotal vazio, como em 2025): null. */
+  function pontoFolha(folha, hist, setoresPonto, motivo){
     if (!folha || !hist || !(n(hist.colaboradores) > 0) || !(n(hist.colaboradoresTotal) > 0)) return null;
     var dirP = n(hist.colaboradores), totP = n(hist.colaboradoresTotal), indP = totP - dirP;
     var o = { k: folha.k,
@@ -5668,9 +5681,13 @@ window.QuadroSetor = (function(){
         .filter(function(l){ return l.sem; })
         .sort(function(a, b){ return (a.tipo === b.tipo ? 0 : a.tipo === 'Direto' ? -1 : 1) || b.sem - a.sem || a.setor.localeCompare(b.setor); });
     }
+    o.motivos = null;
+    if (motivo && n(motivo.diretosPonto) === dirP && n(motivo.semPonto) === o.dirSem && o.dirSem > 0) {
+      o.motivos = { desligados: n(motivo.desligados), inativos: n(motivo.inativos), afastados: n(motivo.afastados), admitidos: n(motivo.admitidos), outros: n(motivo.outros) };
+    }
     return o;
   }
-  return { SK: SK, carregar: carregar, resumo: resumo, doMes: doMes, pontoFolha: pontoFolha, rot: rot, nome: nome };
+  return { SK: SK, SK_PF: SK_PF, carregar: carregar, motivoDe: motivoDe, resumo: resumo, doMes: doMes, pontoFolha: pontoFolha, rot: rot, nome: nome };
 })();
 /* Grava só no navegador, sem tocar na planilha. Existe porque save() sincroniza,
    e há dois caminhos que precisam popular a tela sem escrever na fonte: a carga
@@ -5913,7 +5930,7 @@ function _qsPontoFolha(k, hist){
   try{
     if(!hist && typeof load === 'function') hist = load().filter(function(r){ return parseInt(r.ano, 10) === ano && String(r.mes || '').trim().toUpperCase().slice(0, 3) === mes; })[0];
     var sp = (window.SetorHE && typeof SetorHE.doMes === 'function') ? SetorHE.doMes(mes, ano) : [];
-    return QuadroSetor.pontoFolha(QuadroSetor.doMes(QuadroSetor.carregar(), k), hist, sp);
+    return QuadroSetor.pontoFolha(QuadroSetor.doMes(QuadroSetor.carregar(), k), hist, sp, QuadroSetor.motivoDe(k));
   }catch(e){ return null; }
 }
 function _qsSemTxt(d){ return d > 0 ? _qsFi(d) + ' sem ponto' : d < 0 ? _qsFi(-d) + ' a mais no ponto' : 'igual ao ponto'; }
@@ -5922,6 +5939,18 @@ function _qsSemSetores(P, tipo){
   var v = (P.setores || []).filter(function(l){ return l.tipo === tipo; }).map(function(l){ return l.setor + ' ' + _qsSg(l.sem).replace(/^\+/, ''); });
   return v.join(', ').replace(/, ([^,]*)$/, ' e $1');
 }
+/* Motivo de cada direto sem ponto (lerPontoFolha, pela DP). curto: o rótulo
+   do cartão ("5 desligados · 1 inativo sem data · 1 afastado"). */
+function _qsMotivosTxt(M, curto){
+  if(!M) return '';
+  var p = [];
+  if(M.desligados) p.push(_qsPl(M.desligados, curto ? 'desligado' : 'desligado no mês', curto ? 'desligados' : 'desligados no mês'));
+  if(M.inativos) p.push(_qsPl(M.inativos, curto ? 'inativo sem data' : 'inativo na DP sem data de demissão', curto ? 'inativos sem data' : 'inativos na DP sem data de demissão'));
+  if(M.afastados) p.push(_qsPl(M.afastados, 'afastado', 'afastados'));
+  if(M.admitidos) p.push(_qsPl(M.admitidos, curto ? 'admitido' : 'admitido no mês', curto ? 'admitidos' : 'admitidos no mês'));
+  if(M.outros) p.push(_qsPl(M.outros, 'outro', 'outros'));
+  return curto ? p.join(' · ') : p.join(', ').replace(/, ([^,]*)$/, ' e $1');
+}
 /* A ponte em texto, sem HTML: título dos cartões, rodapé e nota da Reunião. */
 function _qsPontoFolhaNota(P){
   var ond = _qsSemSetores(P, 'Direto');
@@ -5929,8 +5958,12 @@ function _qsPontoFolhaNota(P){
     + _qsFi(P.dirPonto) + ' diretos e ' + _qsFi(P.totPonto) + ' no total (as horas do card por hora são dessas pessoas). '
     + 'O Quadro por setor conta a folha, quem esteve na FUNCIONARIOS em algum dia do mês: ' + _qsFi(P.dirFolha) + ' diretos e ' + _qsFi(P.totFolha) + ' no total. '
     + 'Diretos: ' + _qsSemTxt(P.dirSem) + (ond ? ' (' + ond + ')' : '') + '; indiretos: ' + _qsSemTxt(P.indSem) + '. '
-    + 'Sem ponto é quem está na folha e não tem linha no extrato: desligado exportado fora do extrato, afastado, quem não bate ponto. '
-    + (P.desligadosDir > 0 ? 'Diretos desligados no mês: ' + _qsFi(P.desligadosDir) + '; se ficaram fora do extrato, as horas deles também faltam no ponto (o processamento do ponto avisa). ' : '')
+    + (P.motivos
+       ? ('Os ' + _qsFi(P.dirSem) + ' diretos sem ponto, pessoa a pessoa pela DP: ' + _qsMotivosTxt(P.motivos) + '. '
+          + (P.motivos.desligados ? 'O extrato saiu sem os demitidos: as horas ' + (P.motivos.desligados === 1 ? 'do desligado' : 'dos ' + _qsFi(P.motivos.desligados) + ' desligados') + ' também não estão no ponto, e os pontos por direto e por hora do mês ficam acima do real. Para corrigir: exportar o Extrato de Totais com os demitidos do período e processar de novo (aceitarPontoNaHistorico). ' : '')
+          + (P.motivos.inativos ? 'Inativo sem data de demissão conta na folha todo mês: o DP precisa pôr a data na DP. ' : ''))
+       : ('Sem ponto é quem está na folha e não tem linha no extrato: desligado exportado fora do extrato, afastado, quem não bate ponto. '
+          + (P.desligadosDir > 0 ? 'Diretos desligados no mês: ' + _qsFi(P.desligadosDir) + '; se ficaram fora do extrato, as horas deles também faltam no ponto (o processamento do ponto avisa). ' : '')))
     + (P.fora > 0 ? 'O quadro total da Reunião é ' + _qsFi(P.totPonto) + ' do ponto + ' + _qsFi(P.fora) + ' fora do ponto digitados = ' + _qsFi(P.totPonto + P.fora) + '.' : '');
 }
 
@@ -5957,7 +5990,7 @@ function _qsKpis(R){
   var PF = R.pontoFolha, notaPF = PF ? _qsPontoFolhaNota(PF) : '';
   var pf = function(ponto, sem){ return PF ? '<div class="qs-kpi-p">' + _qsFi(ponto) + ' no ponto · ' + _qsSemTxt(sem) + '</div>' : ''; };
   return kpi('tot', 'Quadro no mês', _qsFi(T.agora), vs(T.delta, T.antes), notaPF, 'qs-kpi-1', PF ? pf(PF.totPonto, PF.totSem) : '')
-    + kpi('dir', 'Diretos', _qsFi(T.diretos), vs(T.deltaDiretos, T.diretosAntes), notaPF, '', PF ? pf(PF.dirPonto, PF.dirSem) : '')
+    + kpi('dir', 'Diretos', _qsFi(T.diretos), vs(T.deltaDiretos, T.diretosAntes), notaPF, '', PF ? (pf(PF.dirPonto, PF.dirSem) + (PF.motivos ? '<div class="qs-kpi-p qs-kpi-m">' + _qsMotivosTxt(PF.motivos, true) + '</div>' : '')) : '')
     + kpi('ind', 'Indiretos', _qsFi(T.indiretos), vs(T.deltaIndiretos, T.indiretosAntes), notaPF, '', PF ? pf(PF.indPonto, PF.indSem) : '')
     + kpi('mov', 'Movimentação', _qsFi(T.admitidos) + '<small>entradas</small><i class="qs-kpi-sep"></i>' + _qsFi(T.saidas) + '<small>saídas</small>',
           '<span>' + _qsFi(T.antes) + ' + ' + _qsFi(T.admitidos) + ' − ' + _qsFi(T.saidas) + ' = ' + _qsFi(T.agora) + ' · ' + rot(R.base) + ' → ' + rot(R.mes) + '</span>', notaMov);
@@ -6412,6 +6445,7 @@ function _recarregarDoSheets(){
       if (json.setores) { try { localStorage.setItem(SetorHE.SK, JSON.stringify(json.setores)); } catch (e) {} }
       /* Quadro por setor (FUNCIONARIOS contada pelo Code.gs, sem nomes): aba Pessoas. */
       if (json.quadroSetor) { try { localStorage.setItem(QuadroSetor.SK, JSON.stringify(json.quadroSetor)); } catch (e) {} }
+      if (json.pontoFolha) { try { localStorage.setItem(QuadroSetor.SK_PF, JSON.stringify(json.pontoFolha)); } catch (e) {} }
       /* Corte parcial do mês em curso (aba PARCIAL_MES) e feriados (aba FERIADOS):
          alimentam o bloco "Mês em curso" do Plano Mestre. Lista vazia também
          grava, para não sobrar corte de rodada antiga. Web App antigo não manda
@@ -6459,6 +6493,7 @@ function _carregarDoSheetsAoAbrir(){
       if (json.setores) { try { localStorage.setItem(SetorHE.SK, JSON.stringify(json.setores)); } catch (e) {} }
       /* Quadro por setor (FUNCIONARIOS contada pelo Code.gs, sem nomes): aba Pessoas. */
       if (json.quadroSetor) { try { localStorage.setItem(QuadroSetor.SK, JSON.stringify(json.quadroSetor)); } catch (e) {} }
+      if (json.pontoFolha) { try { localStorage.setItem(QuadroSetor.SK_PF, JSON.stringify(json.pontoFolha)); } catch (e) {} }
       /* Corte parcial do mês em curso (aba PARCIAL_MES) e feriados (aba FERIADOS):
          alimentam o bloco "Mês em curso" do Plano Mestre. Lista vazia também
          grava, para não sobrar corte de rodada antiga. Web App antigo não manda
@@ -24210,7 +24245,10 @@ window.CompAnos = (function () {
       };
       var baseDir = anoTodo
         ? (fi(PC.pontosDir)+' pontos em '+PC.mesesDir+' meses ÷ '+fi(PC.colabDir/PC.mesesDir)+' diretos (média)')
-        : (fi(PC.pontosDir)+' pontos ÷ '+fi(PC.colabDir)+' diretos'+(PF?' no ponto':'')+(PF?folhaTxt(PF.dirFolha, PC.colabDir):''));
+        : (fi(PC.pontosDir)+' pontos ÷ '+fi(PC.colabDir)+' diretos'+(PF?' no ponto':'')+(PF?folhaTxt(PF.dirFolha, PC.colabDir):'')
+           /* desligado fora do extrato: as horas dele faltam no ponto e o por
+              direto e o por hora ficam acima do real; a tela diz quantos */
+           +(PF&&PF.motivos&&PF.motivos.desligados?(' <span style="color:#FF9800;white-space:nowrap" title="'+_qsEsc(_qsPontoFolhaNota(PF))+'">('+_qsPl(PF.motivos.desligados,'desligado fora do extrato','desligados fora do extrato')+')</span>'):''));
       /* Mês sem pontos: o card diz o que falta; o ano até o último mês
          lançado fica nos cards do ano, logo abaixo. */
       var ultPC = ateAqui.filter(function(r){ return r.pontos>0; }).map(function(r){ return r.mes; }).pop();
@@ -26313,7 +26351,9 @@ var APP_HISTORICO = [
   { v:'b96.93', data:'05/11/2026', itens:[
     'Ponto x folha: o card de pontos da Reuniao dividia por 91 diretos e o Quadro por setor mostrava 98 em OUT/26, sem a tela dizer por que. Sao duas contagens: a Reuniao usa o extrato do ponto (HISTORICO, as mesmas pessoas das horas do card por hora); o Quadro por setor conta a folha, quem esteve na FUNCIONARIOS em algum dia do mes. Nenhum numero mudou.',
     'Quadro por setor: embaixo de quadro, diretos e indiretos, o ponto do mesmo mes (OUT/26: 146 no ponto + 39 sem ponto; 91 + 7; 55 + 32). O titulo do cartao e o rodape dizem em que setores esta a diferenca dos diretos, quantos diretos foram desligados no mes e o quadro da Reuniao (146 do ponto + 40 fora do ponto digitados = 186). Sem ponto e quem esta na folha sem linha no extrato: desligado exportado fora do extrato, afastado, quem nao bate ponto. O Relatorio sai igual.',
-    'Reuniao, card de pontos por pessoa: "91 diretos no ponto · 98 na folha" e "186 no quadro (...) · 185 na folha", com a ponte no titulo. Sai do rodape do Quadro por setor a frase "a regra do quadro total da Reuniao", que estava errada: la o quadro e ponto + fora do ponto digitado, nao a folha.'
+    'Reuniao, card de pontos por pessoa: "91 diretos no ponto · 98 na folha" e "186 no quadro (...) · 185 na folha", com a ponte no titulo. Sai do rodape do Quadro por setor a frase "a regra do quadro total da Reuniao", que estava errada: la o quadro e ponto + fora do ponto digitado, nao a folha.',
+    'O motivo de cada direto sem ponto, pessoa a pessoa pela DP (Code.gs lerPontoFolha: FUNCIONARIOS x PONTO_PESSOA x AUSENCIAS_PESSOA, so contagens, sem nomes): desligado no mes, inativo na DP sem data de demissao, afastado, admitido no mes, outros. OUT/26: 5 desligados e 2 afastadas. Cartao de diretos: "5 desligados · 2 afastados"; Reuniao: "(5 desligados fora do extrato)", porque as horas deles nao estao no ponto e o por direto e o por hora do mes ficam acima do real. O motivo so aparece quando fecha com os numeros da tela. Precisa do Code.gs atual publicado (nova versao do Web App).',
+    'DP: uma direta da Embalagem estava INATIVO sem data de demissao e contava na folha todo mes desde JUL/26. Saiu em 24/07/2026 (ultima linha na BASE: 23/07). Com a data na DP e o controle reprocessado, OUT/26 fica 185 na folha (98 diretos + 87 indiretos).'
   ]},
   { v:'b96.92', data:'05/11/2026', itens:[
     'Relatorio do Quadro por setor igual a tela, em 3 paginas A4 deitadas. Pag. 1, resumo para a diretoria: os quatro numeros com icone, seta e variacao; onde o quadro mudou ao lado da evolucao do quadro; destaques. Pag. 2, comparativo por setor com o maior impacto primeiro. Pag. 3, historico mensal. Os blocos sao as mesmas funcoes da tela: papel e tela nao divergem.',
