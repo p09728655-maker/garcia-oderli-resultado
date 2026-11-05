@@ -148,5 +148,35 @@ const linhaSetor = (mes, setor, direto, pessoas, carga) => { const l = C.map(() 
   afirma('gravação sem o setor certo não apaga a variante (a pessoa não some)', out.some(l => l[2] === '3- ACABAMENTO' && l[4] === 1));
 }
 
+/* O que aconteceu em 05/11/2026: o CONTROLE_FALTAS foi processado sozinho
+   (sem o extrato). A gravação do controle só traz direto e ausências; a
+   primeira versão apagou a variante e as horas do ponto dela sumiram. */
+sec('prGravarSetores: controle processado sem o extrato (OUT/26 real)');
+const comHoras = (setor, direto, pessoas, carga, normais, he, atest) => {
+  const l = linhaSetor('OUT', setor, direto, pessoas, carga);
+  l[6] = normais; l[11] = he; l[12] = Math.round(he / normais * 10000) / 100; l[14] = atest; return l;
+};
+{
+  const { PR, dados } = carregar({ PONTO_SETOR: [C.slice(),
+    comHoras('3- ACABAMENTO', 'N', 1, 44, 44, 6.35, 4.8),
+    comHoras('3-ACABAMENTO', 'S', 6, 1020.8, 1005.28, 82.53, 66.33)] });
+  PR.prGravarSetores({ getSheetByName: n => n === 'PONTO_SETOR' ? aba(dados.PONTO_SETOR) : null }, 'OUT', 2026,
+    [{ setor: '3-ACABAMENTO', valores: { direto: 'S', ausAtestado: 71.13 } }]);
+  const out = dados.PONTO_SETOR.filter(l => l[0] === 'OUT'), a = out.filter(l => l[2] === '3-ACABAMENTO')[0];
+  afirma('variante sai', !out.some(l => l[2] === '3- ACABAMENTO'));
+  afirma('horas do ponto dela somadas: 7 pessoas, 1.064,8 h de carga', a[4] === 7 && a[5] === 1064.8);
+  afirma('normais 1.049,28 h e HE 88,88 h somadas', a[6] === 1049.28 && a[11] === 88.88);
+  afirma('hePctHoras refeito: 88,88 ÷ 1.049,28 = 8,47%', a[12] === 8.47);
+  afirma('ausência que o controle regravou vale o novo (71,13, não 75,93)', a[14] === 71.13);
+}
+{
+  const { PR, dados } = carregar({ PONTO_SETOR: [C.slice(), comHoras('3- ACABAMENTO', 'N', 1, 44, 44, 6.35, 4.8)] });
+  PR.prGravarSetores({ getSheetByName: n => n === 'PONTO_SETOR' ? aba(dados.PONTO_SETOR) : null }, 'OUT', 2026,
+    [{ setor: '3-ACABAMENTO', valores: { direto: 'S', ausAtestado: 4.8 } }]);
+  const out = dados.PONTO_SETOR.filter(l => l[0] === 'OUT');
+  afirma('sem linha do setor certo: a variante só muda de nome', out.length === 1 && out[0][2] === '3-ACABAMENTO' && out[0][4] === 1 && out[0][5] === 44);
+  afirma('  e recebe o que a gravação trouxe (direto S)', out[0][3] === 'S');
+}
+
 console.log(`\n${total - falhas}/${total} ok` + (falhas ? ` — ${falhas} FALHA(S)` : ''));
 process.exit(falhas ? 1 : 0);

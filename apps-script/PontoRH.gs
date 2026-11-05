@@ -476,18 +476,50 @@ function prGravarSetores(ss, mes, ano, linhas) {
     if (m === mes && parseInt(v[r][col.ano], 10) === ano) idx[prNormaliza(v[r][col.setor])] = r;
   }
   /* Linha do mês com um setor direto escrito de outro jeito ("3- ACABAMENTO")
-     é resíduo do cadastro antes de prSetorCanonico: quem estava nela agora
-     soma no setor da lista. Sai quando esta gravação traz o setor da lista,
-     senão a pessoa contaria duas vezes (uma como indireto). */
-  var vindo = {};
-  linhas.forEach(function (l) { vindo[prNormaliza(l.setor)] = true; });
-  var residuo = {};
-  Object.keys(idx).forEach(function (k) {
-    var txt = v[idx[k]][col.setor];
-    if (prSetorVariante(txt) && vindo[prNormaliza(prSetorCanonico(txt))]) { residuo[idx[k]] = true; delete idx[k]; }
+     é resíduo do cadastro antes de prSetorCanonico. Quando esta gravação traz
+     o setor da lista, a variante deixa de existir: as colunas que esta
+     gravação regrava já contam a pessoa no setor certo; as outras (as da
+     outra fonte: horas do extrato ou ausências do controle) são SOMADAS na
+     linha do setor certo, e hePctHoras é refeito. Sem linha do setor certo no
+     mês, a variante só muda de nome. Em 05/11/2026 a primeira versão apagava
+     a linha: o controle foi processado sem o extrato e as 44 h do ponto da
+     pessoa sumiram da PONTO_SETOR. */
+  var vindo = {}, escritas = {};
+  linhas.forEach(function (l) {
+    vindo[prNormaliza(l.setor)] = true;
+    Object.keys(l.valores).forEach(function (k) { escritas[prNormaliza(k)] = true; });
   });
-  if (Object.keys(residuo).length) {
-    v = v.filter(function (row, i) { return !residuo[i]; });
+  var naoSoma = { mes: 1, ano: 1, setor: 1, direto: 1, atualizadoem: 1, hepcthoras: 1 };
+  var numSetor = function (x) {
+    if (typeof x === 'number') return isFinite(x) ? x : 0;
+    var t = String(x === null || x === undefined ? '' : x).trim();
+    if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+    var n = parseFloat(t); return isFinite(n) ? n : 0;
+  };
+  var apagar = {};
+  Object.keys(idx).forEach(function (k) {
+    var rv = idx[k], txt = v[rv][col.setor];
+    if (!prSetorVariante(txt)) return;
+    var certo = prSetorCanonico(txt), kc = prNormaliza(certo);
+    if (!vindo[kc]) return;   /* esta gravação não mexe no setor certo: deixa como está */
+    var rc = idx[kc];
+    delete idx[k];
+    if (rc === undefined) { v[rv][col.setor] = certo; idx[kc] = rv; return; }
+    var alvo = v[rc], vari = v[rv];
+    while (alvo.length < largura) alvo.push('');
+    Object.keys(col).forEach(function (nome) {
+      if (naoSoma[nome] || escritas[nome]) return;
+      var c = col[nome], b = numSetor(vari[c]);
+      if (b) alvo[c] = Math.round((numSetor(alvo[c]) + b) * 100) / 100;
+    });
+    if (!escritas.hepcthoras && col.hepcthoras !== undefined && col.horasnormais !== undefined && col.totalextras !== undefined) {
+      var hn = numSetor(alvo[col.horasnormais]), te = numSetor(alvo[col.totalextras]);
+      alvo[col.hepcthoras] = hn > 0 ? Math.round(te / hn * 10000) / 100 : 0;
+    }
+    apagar[rv] = true;
+  });
+  if (Object.keys(apagar).length) {
+    v = v.filter(function (row, i) { return !apagar[i]; });
     idx = {};
     for (var r2 = 1; r2 < v.length; r2++) {
       var m2 = String(v[r2][col.mes] || '').trim().toUpperCase().slice(0, 3);
