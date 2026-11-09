@@ -8156,10 +8156,25 @@ function drawAll(dados){
 /* ════════════════════════════════════════════════════════════
    MODAL / FORMULÁRIO
 ════════════════════════════════════════════════════════════ */
-var editMode=false, editId=null;
+var editMode=false, editId=null, editChave=null;
+
+/* b96.93: o id do mês nasce de novo a cada leitura da planilha (uid() no GET
+   e em _recarregarDoSheets). Relida com o formulário aberto (abertura da
+   página, Gravar cálculos), o editId deixava de existir: o Salvar via o
+   próprio mês como "já cadastrado" e não gravava (fora do ponto de OUT/26 em
+   09/11/2026), e o registro de base ficava vazio, sem as colunas que o
+   formulário não mostra. Acha de novo pelo mês/ano que foi aberto. */
+function _editIdAtual(dados){
+  if(!editMode || !editChave) return editId;
+  dados = dados || loadBruto();
+  if(dados.some(function(x){ return x.id===editId; })) return editId;
+  var r = dados.find(function(x){ return x.mes+'/'+x.ano===editChave; });
+  if(r) editId = r.id;
+  return editId;
+}
 
 function abrirNovo(){
-  editMode=false; editId=null;
+  editMode=false; editId=null; editChave=null;
   document.getElementById('modTtl').textContent='Novo Mês';
   limparForm();
   document.getElementById('fAno').value=new Date().getFullYear();
@@ -8177,7 +8192,7 @@ function editarReg(id, foco){
      aparecia. A cópia é estática e ficaria com o valor antigo depois de
      salvar; fecha antes de abrir. */
   if(typeof fecharZoomTabela==='function') fecharZoomTabela();
-  editMode=true; editId=id;
+  editMode=true; editId=id; editChave=r.mes+'/'+r.ano;
   document.getElementById('modTtl').textContent='Editar Mês';
   document.getElementById('fMes').value   =r.mes;
   document.getElementById('fAno').value   =r.ano;
@@ -8217,7 +8232,9 @@ function limparForm(){
    (produtosReportados, previsão, volumes). */
 function _formRegistro(){
   var g=function(id,inteiro){ var v=document.getElementById(id).value; var n=inteiro?parseInt(v,10):parseFloat(v); return isFinite(n)?n:0; };
-  var base=(editMode&&editId)?(loadBruto().find(function(x){ return x.id===editId; })||{}):{};
+  var bruto=editMode?loadBruto():null;
+  if(editMode) _editIdAtual(bruto);
+  var base=(editMode&&editId)?(bruto.find(function(x){ return x.id===editId; })||{}):{};
   var rec={}; for(var k in base) rec[k]=base[k];
   rec.id=editId||rec.id||uid();
   rec.mes=document.getElementById('fMes').value.trim();
@@ -8268,13 +8285,17 @@ function salvarForm(){
   if(rec.horasCarga<=0){toast('Horas Carga é obrigatório.','er');return}
   if(rec.faltas+rec.atraso>=rec.horasNormais){toast('Faltas + atrasos não podem ser maiores que as horas normais.','er');return}
   var dados=loadBruto();
+  _editIdAtual(dados);
   if(dados.find(function(r){return r.mes===rec.mes&&r.ano===rec.ano&&r.id!==editId})){
     toast(rec.mes+'/'+rec.ano+' já cadastrado.','wn'); return
   }
   /* As derivadas saem de normalizarRegistro() dentro de save(): não há
      segunda conta aqui. */
   if(editMode){
-    dados=dados.map(function(r){return r.id===editId?rec:r});
+    /* o mês aberto sumiu dos dados (excluído com o formulário aberto): entra
+       de novo em vez de o Salvar dizer "atualizado" sem gravar nada */
+    if(dados.some(function(r){return r.id===editId})) dados=dados.map(function(r){return r.id===editId?rec:r});
+    else dados.push(rec);
     toast(rec.mes+'/'+rec.ano+' atualizado.','ok')
   } else {
     dados.push(rec); toast(rec.mes+'/'+rec.ano+' adicionado.','ok')
@@ -26237,7 +26258,8 @@ var APP_HISTORICO = [
   { v:'b96.93', data:'09/11/2026', itens:[
     'Desligados do mes no extrato do ponto. O ponto so traz no Extrato de Totais quem saiu no mes se o RH exportar com os demitidos; JAN a SET/26 vieram sem (2, 1, 6, 5, 2, 5, 7, 4 e 5 diretos) e OUT/26, reexportado, com os 5. Com eles, OUT foi de 91 para 96 diretos, absenteismo de 8,86% para 8,66% e pontos por direto -5,2%, sem nada mudar na fabrica: mes com e mes sem nao se comparam.',
     'PontoRH.gs conta, so diretos, os desligados do mes dentro do extrato (desligadosPonto) e fora dele (desligadosForaPonto), pela PONTO_PESSOA x FUNCIONARIOS, e grava na HISTORICO a cada extrato e controle processados, ou pelo menu Ponto > Contar desligados do mes no extrato. So contagem; os nomes ficam no aviso de quem processa. Code.gs protege as duas colunas do sync do painel.',
-    'Reuniao, cards de pontos por pessoa e por hora: a linha da base diz "com os 5 desligados do mes" ou "sem os 5 desligados do mes (fora do extrato do ponto)"; no ano, "base mista: com os desligados do mes em OUT, sem em JAN, ...". Integridade: uma nota com os meses sem os desligados e quantos ficaram fora.'
+    'Reuniao, cards de pontos por pessoa e por hora: a linha da base diz "com os 5 desligados do mes" ou "sem os 5 desligados do mes (fora do extrato do ponto)"; no ano, "base mista: com os desligados do mes em OUT, sem em JAN, ...". Integridade: uma nota com os meses sem os desligados e quantos ficaram fora.',
+    'Editar o mes: com a planilha relida com o formulario aberto (abertura da pagina, Gravar calculos), o Salvar dizia "OUT/2026 ja cadastrado" e nao gravava (fora do ponto de OUT/26 em 09/11). O id do mes nasce de novo a cada leitura; o formulario agora acha o mes pelo mes/ano que abriu e grava, mantendo as colunas que nao aparecem nele.'
   ]},
   { v:'b96.92', data:'05/11/2026', itens:[
     'Relatorio do Quadro por setor igual a tela, em 3 paginas A4 deitadas. Pag. 1, resumo para a diretoria: os quatro numeros com icone, seta e variacao; onde o quadro mudou ao lado da evolucao do quadro; destaques. Pag. 2, comparativo por setor com o maior impacto primeiro. Pag. 3, historico mensal. Os blocos sao as mesmas funcoes da tela: papel e tela nao divergem.',
