@@ -6829,6 +6829,22 @@ window.DashUtils = (function() {
       if (r.planoNaHistorico > 0 && r.previsaoProducao > 0 && dif(r.planoNaHistorico, r.previsaoProducao, 0.5))
         add(r, 'info', 'plano', 'Previsão na HISTORICO (da época) difere do Plano Mestre em uso', r.planoNaHistorico, r.previsaoProducao);
     });
+    /* Desligados do mês fora do extrato (b96.93): uma nota só, com os meses e
+       quantos ficaram fora. Nota, não atenção: a fonte é o RH, e com o
+       extrato velho o mês não tem o que corrigir no painel. Base mista (mês
+       com e mês sem) vai junto: é ali que a comparação engana. */
+    var deslSem = [], deslCom = [], deslFora = 0;
+    (regs || []).forEach(function (r) {
+      if (!r || !(r.producaoReal > 0)) return;
+      var rot = r.mes + '/' + String(r.ano).slice(2), fo = +r.desligadosForaPonto > 0 ? +r.desligadosForaPonto : 0;
+      if (fo > 0) { deslSem.push(rot + ' (' + fo + ')'); deslFora += fo; }
+      else if (+r.desligadosPonto > 0) deslCom.push(rot);
+    });
+    if (deslSem.length)
+      itens.push({ mes:'—', ano:'', nivel:'info', tipo:'desligados',
+        msg:'Extrato do ponto sem os diretos desligados no mês: ' + deslSem.join(', ') + '. Horas e diretos desses meses estão sem eles, e as ausências deles seguem no controle de faltas. Pedir ao RH o Extrato de Totais com os demitidos e processar de novo (mês fechado: aceitarPontoNaHistorico).'
+          + (deslCom.length ? ' Base mista: ' + deslCom.join(', ') + ' com os desligados; pontos por direto, horas e absenteísmo não se comparam com os meses sem.' : ''),
+        encontrado:deslFora, esperado:0 });
     /* Uma base só: com algum mês já apurado e outro não, a correção sai de
        TODOS os meses e o absenteísmo volta à conta antiga (~1 p.p. a mais).
        Isso pede atenção, não nota — e o mês que segura pode ser de outro ano
@@ -7059,14 +7075,26 @@ window.DashUtils = (function() {
      fora do ponto sozinho não é quadro. Mês do quadro sem o lançamento vai
      para semForaPonto, para a tela dizer que falta em vez de dar o quadro do
      ponto como inteiro. */
+  /* Desligados do mês (b96.93): o extrato do ponto só traz quem saiu no mês
+     se o RH exportar com os demitidos. O PontoRH.gs conta, só diretos,
+     desligadosPonto (dentro do extrato) e desligadosForaPonto (fora). Mês com
+     e mês sem não se comparam: em OUT/26, com os 5, diretos 91 → 96 e pontos
+     por direto −5,2% sem nada mudar na fábrica. deslIncl/deslFora somam os
+     meses que entram no por direto; comDesl e semDesl dizem quais. Mês sem a
+     contagem (2025, ou antes do PontoRH.gs da b96.93) não entra em nenhum. */
   function pontosColab(regs) {
     var o = { pontosDir:0, colabDir:0, mesesDir:0, porDireto:null,
               pontosTot:0, colabTot:0, mesesTot:0, porTotal:null, colabPonto:0, foraPonto:0, semForaPonto:[],
-              pontosHora:0, horas:0, mesesHora:0, porHora:null, semPontos:[] };
+              pontosHora:0, horas:0, mesesHora:0, porHora:null, semPontos:[],
+              deslIncl:0, deslFora:0, comDesl:[], semDesl:[] };
     (regs || []).forEach(function (r) {
       if (!r) return;
       if (!(r.pontos > 0)) { if (r.producaoReal > 0) o.semPontos.push(r.mes); return; }
-      if (r.colaboradores > 0)      { o.pontosDir += r.pontos; o.colabDir += r.colaboradores;      o.mesesDir++; }
+      if (r.colaboradores > 0)      { o.pontosDir += r.pontos; o.colabDir += r.colaboradores;      o.mesesDir++;
+        var dIn = +r.desligadosPonto > 0 ? +r.desligadosPonto : 0, dFo = +r.desligadosForaPonto > 0 ? +r.desligadosForaPonto : 0;
+        o.deslIncl += dIn; o.deslFora += dFo;
+        if (dFo > 0) o.semDesl.push(r.mes); else if (dIn > 0) o.comDesl.push(r.mes);
+      }
       if (r.colaboradoresTotal > 0) {
         var fora = r.foraDoPonto > 0 ? r.foraDoPonto : 0;
         if (!fora) o.semForaPonto.push(r.mes);
@@ -24088,9 +24116,25 @@ window.CompAnos = (function () {
       var semPC = anoTodo
         ? (PC.semPontos.length?(' · sem pontos: '+PC.semPontos.join(', ')):'')
         : '';
-      var baseDir = anoTodo
+      /* b96.93: base dos desligados do mês. O extrato do ponto só traz quem
+         saiu no mês se o RH exportar com os demitidos; o PontoRH.gs conta os
+         diretos desligados dentro e fora (DashUtils.pontosColab). Mês com e
+         mês sem não se comparam: OUT/26 com os 5 deu 96 diretos em vez de 91
+         e pontos por direto −5,2%. Sem a contagem, nada aparece. */
+      var deslQt = function(n){ return n===1 ? 'o desligado' : ('os '+fi(n)+' desligados'); };
+      var deslTxt = function(P, media){
+        var t = '';
+        if(media){
+          if(P.comDesl.length && P.semDesl.length) t = 'base mista: com os desligados do mês em '+P.comDesl.join(', ')+', sem em '+P.semDesl.join(', ');
+          else if(P.semDesl.length) t = 'sem os desligados de cada mês';
+          else if(P.comDesl.length) t = 'com os desligados de cada mês';
+        } else if(P.deslFora>0) t = 'sem '+deslQt(P.deslFora)+' do mês (fora do extrato do ponto)';
+        else if(P.deslIncl>0) t = 'com '+deslQt(P.deslIncl)+' do mês';
+        return t ? (' · <span class="reu-pts-desl" title="Diretos desligados no mês: o extrato do ponto só os traz se o RH exportar com os demitidos. Mês com e mês sem não se comparam (diretos e horas mudam).">'+t+'</span>') : '';
+      };
+      var baseDir = (anoTodo
         ? (fi(PC.pontosDir)+' pontos em '+PC.mesesDir+' meses ÷ '+fi(PC.colabDir/PC.mesesDir)+' diretos (média)')
-        : (fi(PC.pontosDir)+' pontos ÷ '+fi(PC.colabDir)+' diretos');
+        : (fi(PC.pontosDir)+' pontos ÷ '+fi(PC.colabDir)+' diretos'))+deslTxt(PC, anoTodo);
       /* Mês sem pontos: o card diz o que falta; o ano até o último mês
          lançado fica nos cards do ano, logo abaixo. */
       var ultPC = ateAqui.filter(function(r){ return r.pontos>0; }).map(function(r){ return r.mes; }).pop();
@@ -24140,7 +24184,7 @@ window.CompAnos = (function () {
                PC.porHora!==null ? fi(PC.porHora) : '—',
                PC.porHora!==null
                  ? (fi(PC.pontosHora)+' pontos ÷ '+fi(PC.horas)+' h'+(anoTodo?(' em '+PC.mesesHora+' meses'):'')
-                    +'<br>horas normais + extras dos diretos'
+                    +'<br>horas normais + extras dos diretos'+deslTxt(PC, anoTodo)
                     +cmpDest(comp2Hora))
                  : ('pontos de '+mes+' não lançados'),
                '#F5A623', false);
@@ -24159,7 +24203,7 @@ window.CompAnos = (function () {
         bPontos+=card('Pontos por pessoa · ano até '+ultPC,
                PCano.porDireto!==null ? (fi(PCano.porDireto)+subRot) : '—',
                PCano.porDireto!==null
-                 ? (fi(PCano.pontosDir)+' pontos em '+PCano.mesesDir+' meses ÷ '+fi(PCano.colabDir/PCano.mesesDir)+' diretos (média por mês)'
+                 ? (fi(PCano.pontosDir)+' pontos em '+PCano.mesesDir+' meses ÷ '+fi(PCano.colabDir/PCano.mesesDir)+' diretos (média por mês)'+deslTxt(PCano, true)
                     +cmpDest(cmpDirAno)
                     +tktLinha(Y.tktMed)
                     +(PCano.porTotal!==null?qtDest(fi(PCano.porTotal), fi(PCano.colabTot/PCano.mesesTot)+' no quadro (média por mês)'+motTxt(PCano, true)):''))
@@ -24169,7 +24213,7 @@ window.CompAnos = (function () {
                PCano.porHora!==null ? fi(PCano.porHora) : '—',
                PCano.porHora!==null
                  ? (fi(PCano.pontosHora)+' pontos ÷ '+fi(PCano.horas)+' h em '+PCano.mesesHora+' meses'
-                    +'<br>horas normais + extras dos diretos'
+                    +'<br>horas normais + extras dos diretos'+deslTxt(PCano, true)
                     +cmpDest(cmpHoraAno))
                  : 'sem horas nos meses com pontos',
                '#F5A623', false);
@@ -26187,9 +26231,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.92';
-var APP_DATA   = '05/11/2026';
+var APP_VERSAO = 'b96.93';
+var APP_DATA   = '09/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.93', data:'09/11/2026', itens:[
+    'Desligados do mes no extrato do ponto. O ponto so traz no Extrato de Totais quem saiu no mes se o RH exportar com os demitidos; JAN a SET/26 vieram sem (2, 1, 6, 5, 2, 5, 7, 4 e 5 diretos) e OUT/26, reexportado, com os 5. Com eles, OUT foi de 91 para 96 diretos, absenteismo de 8,86% para 8,66% e pontos por direto -5,2%, sem nada mudar na fabrica: mes com e mes sem nao se comparam.',
+    'PontoRH.gs conta, so diretos, os desligados do mes dentro do extrato (desligadosPonto) e fora dele (desligadosForaPonto), pela PONTO_PESSOA x FUNCIONARIOS, e grava na HISTORICO a cada extrato e controle processados, ou pelo menu Ponto > Contar desligados do mes no extrato. So contagem; os nomes ficam no aviso de quem processa. Code.gs protege as duas colunas do sync do painel.',
+    'Reuniao, cards de pontos por pessoa e por hora: a linha da base diz "com os 5 desligados do mes" ou "sem os 5 desligados do mes (fora do extrato do ponto)"; no ano, "base mista: com os desligados do mes em OUT, sem em JAN, ...". Integridade: uma nota com os meses sem os desligados e quantos ficaram fora.'
+  ]},
   { v:'b96.92', data:'05/11/2026', itens:[
     'Relatorio do Quadro por setor igual a tela, em 3 paginas A4 deitadas. Pag. 1, resumo para a diretoria: os quatro numeros com icone, seta e variacao; onde o quadro mudou ao lado da evolucao do quadro; destaques. Pag. 2, comparativo por setor com o maior impacto primeiro. Pag. 3, historico mensal. Os blocos sao as mesmas funcoes da tela: papel e tela nao divergem.',
     'No papel, cor so no sinal da variacao (verde e vermelho, sempre com sinal e seta); grafico em grafite com total grosso, diretos cheio e indiretos tracejado e o nome de cada serie no fim da linha, para sair em preto e branco. Saiu a tabela de 34 setores com 11 linhas so de zeros.'

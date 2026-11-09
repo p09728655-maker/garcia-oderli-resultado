@@ -293,6 +293,7 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('👥 Ponto')
     .addItem('Processar extratos da pasta do Drive', 'processarPontoDrive')
     .addItem('Ensaio sem gravar (ver Registro)', 'testePonto')
+    .addItem('Contar desligados do mês no extrato', 'apurarDesligadosNoPonto')
     .addSeparator()
     .addItem('Criar aba FUNCIONARIOS', 'criarAbaFuncionarios')
     .addItem('Instalar processamento diário', 'instalarProcessamentoPonto')
