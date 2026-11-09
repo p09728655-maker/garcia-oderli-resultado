@@ -110,6 +110,7 @@ var DICIONARIO_LINHAS = [
   ['atrasoDuplicado', 'automático', 'ponto × controle', 'PontoRH.gs, por pessoa: o RH lança atraso e saída antecipada como FALTA no controle, e a mesma hora estava também no atraso do ponto. sobra = (falta + atestado + afastado + férias do controle) − ((jornada − carga) + faltas do ponto); duplicado = sobra entre 0 e os atrasos do ponto. ABR/26: 201,7 h; SET/26: 80,6 h. Gravado na HISTORICO (total) e na PONTO_SETOR (por setor).'],
   ['integridadeCiente', 'painel', 'Reunião › Integridade', 'Aviso de integridade conferido e explicado (botão Ciente): uma linha por aviso, "tipo | na planilha | esperado | data | motivo". O aviso vira nota e não pinta a barra; volta a ser atenção se os números mudarem mais de 1%. Não vale para erro. Texto: não digitar número aqui.'],
   ['duplicidadeApurada', 'automático', 'ponto × controle', '1 quando o mês tem o ponto e o controle por pessoa e a duplicidade foi apurada. Sem isso, com controle e ponto, a integridade dá uma nota: processar de novo o extrato do mês.'],
+  ['desligadosPonto / desligadosForaPonto', 'automático', 'ponto × FUNCIONARIOS', 'PontoRH.gs, só diretos: desligados no mês (demissão do dia 1 ao último dia, pela FUNCIONARIOS) que estão no extrato aceito (PONTO_PESSOA) e que ficaram fora dele. O ponto só traz quem saiu no mês se o RH exportar com os demitidos: em 09/11/2026, JAN a SET/26 sem (2, 1, 6, 5, 2, 5, 7, 4 e 5 diretos fora) e OUT/26 com os 5. Mês com e mês sem não se comparam (OUT: 91 → 96 diretos, absenteísmo 8,86% → 8,66%, pontos por direto −5,2%). Recontado a cada extrato e controle processados, ou em 👥 Ponto › Contar desligados do mês no extrato. O painel mostra a base de cada mês no card de pontos por pessoa e na integridade; não grava estas colunas.'],
   ['(aba PARCIAL_MES)', 'automático', 'ERP', 'Uma linha por corte parcial do mês em curso: o "3 - REPORTE" de 01/MM até a data do corte, salvo na pasta REPORTES PARCIAIS do Drive. produtos = produtos acabados até a data (com hora extra). Alimenta o bloco "Mês em curso" do Plano Mestre; NÃO entra em producaoReal — o mês segue aberto até o reporte fechado.'],
   ['(aba FERIADOS)', 'entrada', 'PPCP', 'Uma linha por feriado ou dia de recesso (data, descricao). Dias úteis decorridos do mês em curso = segunda a sexta menos estas datas. Sem a aba, feriado conta como dia útil e o painel avisa.'],
   ['(Embalagem — resumo diário)', 'automático', 'RitmoPatrimar Embalagem', 'Lido ao vivo da planilha MODELO_HORA_A_HORA (EMB_SHEET_ID), aba com DATA, REALIZADO, META, HE e HE CX: caixas por dia, horas e caixas de hora extra. Alimenta a linha de hora extra do bloco "Mês em curso": % de HE até o corte contra META_DEP_HE, dias apontados de fato, ritmo e projeção sem HE. Nada é gravado lá.'],
@@ -200,9 +201,11 @@ var SECRET = 'zYjhEkzRm3cc0lYiO4A7IUtmvgAkqrZC';
    (apuração pessoa a pessoa): um navegador com cópia de antes da apuração
    gravaria 0 por cima. pontos é digitado pelo PPCP na própria HISTORICO e
    colaboradoresTotal vem do PontoRH.gs: o painel só lê os dois, e uma cópia
-   aberta antes do lançamento apagaria o que foi digitado. */
+   aberta antes do lançamento apagaria o que foi digitado. desligadosPonto e
+   desligadosForaPonto são do PontoRH.gs (desligados do mês no extrato): uma
+   cópia de antes da contagem gravaria 0 por cima. */
 var COLUNAS_PROTEGIDAS = ['previsaoproducao', 'previsao', 'previsaovolumes', 'atrasoduplicado', 'duplicidadeapurada',
-  'pontos', 'colaboradorestotal'];
+  'pontos', 'colaboradorestotal', 'desligadosponto', 'desligadosforaponto'];
 
 /* Colunas de TEXTO da HISTORICO (o resto é número). integridadeCiente: aviso
    de integridade conferido no painel, com motivo ("ponto | 1749 | 2119 |

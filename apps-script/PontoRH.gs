@@ -69,6 +69,14 @@
  *   pessoa na FUNCIONARIOS, não o do mês; a série começa no primeiro
  *   extrato processado por este script.
  *
+ * DESLIGADOS DO MÊS (colunas desligadosPonto e desligadosForaPonto)
+ *   O ponto só põe no Extrato de Totais quem saiu no mês se o RH exportar
+ *   com os demitidos. Por mês, só diretos, o script conta os desligados do
+ *   mês dentro e fora do extrato (PONTO_PESSOA × FUNCIONARIOS) e grava na
+ *   HISTORICO, a cada extrato e a cada controle processado, ou pelo menu
+ *   👥 Ponto › Contar desligados do mês no extrato. O painel mostra a base
+ *   de cada mês: com e sem os desligados não se comparam (seção 6c).
+ *
  * Aba FUNCIONARIOS: codigo | nome | setor | direto (S/N) | admissao | obs.
  * Rode criarAbaFuncionarios() uma vez e cole a lista. Código do extrato
  * que não estiver na aba entra como pendência no aviso e NÃO é somado —
@@ -649,6 +657,8 @@ function processarPontoDrive() {
           + ' fora do extrato (' + r.a.desligadosForaDiretos + ' direto(s)): as horas deles não entram e o quadro do ponto fica menor que o da folha. '
           + 'Exporte o Extrato de Totais com os demitidos do período e processe de novo (mês fechado: aceitarPontoNaHistorico); '
           + 'depois tire-os do "fora do ponto" do mês no painel, senão contam duas vezes no quadro. ' + r.a.desligadosFora.join(', '));
+        if (r.desligados && r.desligados.noPonto) feitos.push('   desligados diretos de ' + r.ext.mes + '/' + r.ext.ano + ' dentro do extrato: ' + r.desligados.noPonto
+          + ' (entram em colaboradores e horas). Mês com e mês sem os desligados não se comparam: o painel marca a base de cada mês. Mês fechado com fora do ponto lançado: tire-os do fora do ponto.');
         if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
         if (r.a.admitidosDepois.length) feitos.push('   admitidos depois de ' + r.ext.mes + '/' + r.ext.ano + ', não contam neste mês: ' + r.a.admitidosDepois.join(', '));
         feitos.push(r.extratoDiferente
@@ -698,7 +708,7 @@ function prProcessarArquivo(ss, arq, func) {
       criou = prLancarHistorico(ss, ext.mes, ext.ano, a);
     }
     prLog(ss, arq.getName(), ext, a, criou);
-    var setores = prAgregarSetores(ext, func), duplicidade = null;
+    var setores = prAgregarSetores(ext, func), duplicidade = null, desligados = null;
     /* Mês fechado com OUTRO extrato (ex.: reexportado com os desligados): a
        HISTORICO continua com o antigo, então por pessoa, por setor e a
        duplicidade também ficam no antigo. Gravar o novo aqui tirava do
@@ -710,8 +720,11 @@ function prProcessarArquivo(ss, arq, func) {
         a.porPessoa.map(function (p) { return [p.cod, ext.mes, ext.ano, p.carga, p.faltas, p.atrasos, p.normais, p.jornada]; }));
       prGravarSetoresPonto(ss, ext, setores);
       duplicidade = prApurarDuplicidade(ss, ext.mes, ext.ano);
+      /* desligados do mês dentro e fora do extrato (6c), pela PONTO_PESSOA
+         que acabou de ser gravada */
+      prApurarDesligados(ss, func).forEach(function (d) { if (d.mes === ext.mes && d.ano === ext.ano) desligados = d; });
     }
-    return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido, brutas: brutas, duplicidade: duplicidade, extratoDiferente: !mesmo };
+    return { tipo: 'ponto', ext: ext, a: a, setores: setores, protegido: protegido, brutas: brutas, duplicidade: duplicidade, desligados: desligados, extratoDiferente: !mesmo };
   } finally {
     if (tmpId) { try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (ignore) {} }
   }
@@ -810,6 +823,9 @@ function prProcessarControle(ss, arq, doc, base) {
     var d = prApurarDuplicidade(ss, meses[k].mes, meses[k].ano);
     if (d) lancados.push(k + ': atraso do ponto já lançado como falta no controle ' + Math.round(d.horas * 10) / 10 + ' h (' + d.pessoas + ' pessoas), fora da conta');
   });
+  /* a DP pode ter trazido data de demissão nova: recontar os desligados de
+     todos os meses que têm o ponto por pessoa (6c) */
+  prApurarDesligados(ss, func);
   return { tipo: 'controle', meses: chaves.length, lancados: lancados, funcionarios: atualizou };
 }
 
@@ -921,6 +937,121 @@ function prGravarDuplicidadeSetor(ss, mes, ano, porCod) {
     v[r][c] = Math.round((por[prNormaliza(v[r][col.setor])] || 0) * 100) / 100; mudou = true;
   }
   if (mudou) prEscreverSetoresOrdenado(t.aba, v, col, t.largura);
+}
+
+/* ══ 6c · DESLIGADOS DO MÊS NO EXTRATO ══
+   O ponto exporta o Extrato de Totais sem os demitidos do período, a não ser
+   que o RH peça com eles. Sem eles, horas e colaboradores do mês ficam sem
+   quem saiu, e o controle de faltas continua com as ausências dessas pessoas:
+   o absenteísmo divide uma base pela outra. Em 09/11/2026, pela PONTO_PESSOA
+   × FUNCIONARIOS: JAN a SET/26 sem os desligados (2, 1, 6, 5, 2, 5, 7, 4 e 5
+   diretos); OUT/26, reexportado, com os 5. Com os 5, OUT foi de 91 para 96
+   diretos, absenteísmo de 8,86% para 8,66% e pontos por direto −5,2%: mês
+   com e mês sem não se comparam. Por mês, só diretos (a base da HISTORICO):
+     desligadosPonto     = desligados no mês que estão no extrato
+     desligadosForaPonto = desligados no mês fora do extrato
+   Desligado no mês = demissão entre o dia 1 e o último dia, pela FUNCIONARIOS
+   de agora (a DP completa a data depois: o controle de faltas recalcula).
+   No extrato = está na PONTO_PESSOA do mês, que é o extrato aceito na
+   HISTORICO (extrato diferente num mês fechado não regrava a PONTO_PESSOA).
+   Só contagem na HISTORICO; os nomes ficam no aviso de quem processa. */
+var PR_COLS_DESLIGADOS = ['desligadosPonto', 'desligadosForaPonto'];
+
+/* cods = diretos do extrato no mês (PONTO_PESSOA). Devolve
+   { noPonto, fora, foraLista: ['cod nome', ...] }. */
+function prDesligadosDoMes(cods, func, mes, ano) {
+  var mi = PR_MESES.indexOf(mes), r = { noPonto: 0, fora: 0, foraLista: [] };
+  if (mi < 0 || !func) return r;
+  var inicio = new Date(ano, mi, 1), fim = new Date(ano, mi + 1, 0), tem = {};
+  (cods || []).forEach(function (c) { tem[String(c).trim()] = true; });
+  Object.keys(func.mapa).forEach(function (cod) {
+    var f = func.mapa[cod];
+    if (!f.direto || !f.demissao || f.demissao < inicio || f.demissao > fim) return;
+    if (f.admissao && f.admissao > fim) return;
+    if (tem[cod]) r.noPonto++;
+    else { r.fora++; r.foraLista.push(cod + ' ' + (f.nome || '')); }
+  });
+  return r;
+}
+
+/* Conta todos os meses que têm PONTO_PESSOA e grava as duas colunas na
+   HISTORICO (cria as colunas no fim do cabeçalho na primeira vez). Mês sem
+   PONTO_PESSOA ou sem linha na HISTORICO não é tocado. Rodar de novo só
+   regrava. Devolve [{ mes, ano, noPonto, fora, foraLista }] em ordem. */
+function prApurarDesligados(ss, func) {
+  func = func || prLerFuncionarios(ss);
+  var ponto = ss.getSheetByName(PR_ABA_PONTO_PESSOA);
+  if (!func || !ponto || ponto.getLastRow() < 2) return [];
+  var porMes = {};
+  ponto.getDataRange().getValues().slice(1).forEach(function (l) {
+    var cod = String(l[0] === null || l[0] === undefined ? '' : l[0]).trim().replace(/\.0$/, '');
+    var mes = String(l[1] || '').trim().toUpperCase().slice(0, 3), ano = parseInt(l[2], 10);
+    if (!cod || PR_MESES.indexOf(mes) < 0 || !(ano > 2000)) return;
+    var k = mes + '/' + ano;
+    (porMes[k] || (porMes[k] = { mes: mes, ano: ano, cods: [] })).cods.push(cod);
+  });
+  var lista = Object.keys(porMes).map(function (k) {
+    var m = porMes[k], d = prDesligadosDoMes(m.cods, func, m.mes, m.ano);
+    d.mes = m.mes; d.ano = m.ano; return d;
+  }).sort(function (a, b) { return (a.ano - b.ano) || (PR_MESES.indexOf(a.mes) - PR_MESES.indexOf(b.mes)); });
+  prGravarDesligadosHistorico(ss, lista);
+  return lista;
+}
+
+/* Grava desligadosPonto e desligadosForaPonto nas linhas da HISTORICO dos
+   meses da lista; as outras linhas ficam como estão. Uma escrita por coluna. */
+function prGravarDesligadosHistorico(ss, lista) {
+  var aba = ss.getSheetByName(PR_ABA_HISTORICO);
+  if (!aba || !lista || !lista.length) return;
+  var linhas = aba.getDataRange().getValues(), iCab = -1, col = {};
+  for (var i = 0; i < Math.min(linhas.length, 20) && iCab < 0; i++) {
+    var norm = linhas[i].map(prNormaliza);
+    if (norm.indexOf('mes') >= 0 && norm.indexOf('ano') >= 0) { iCab = i; norm.forEach(function (n, c) { if (col[n] === undefined) col[n] = c; }); }
+  }
+  if (iCab < 0) return;
+  var largura = linhas[iCab].length;
+  PR_COLS_DESLIGADOS.forEach(function (nome) {
+    var n = prNormaliza(nome);
+    if (col[n] === undefined) {
+      while (largura > 0 && !String(linhas[iCab][largura - 1] || '').trim()) largura--;
+      aba.getRange(iCab + 1, largura + 1).setValue(nome);
+      linhas[iCab][largura] = nome;
+      col[n] = largura; largura++;
+    }
+  });
+  var porMes = {};
+  lista.forEach(function (d) { porMes[d.mes + '/' + d.ano] = d; });
+  var nLin = linhas.length - iCab - 1;
+  if (nLin < 1) return;
+  var cNo = col[prNormaliza('desligadosPonto')], cFora = col[prNormaliza('desligadosForaPonto')];
+  var vNo = [], vFora = [];
+  for (var r = iCab + 1; r < linhas.length; r++) {
+    var l = linhas[r], m = String(l[col.mes] || '').trim().toUpperCase().slice(0, 3);
+    var d = porMes[m + '/' + parseInt(l[col.ano], 10)];
+    var atualNo = l[cNo] === undefined ? '' : l[cNo], atualFora = l[cFora] === undefined ? '' : l[cFora];
+    vNo.push([d ? d.noPonto : atualNo]);
+    vFora.push([d ? d.fora : atualFora]);
+  }
+  aba.getRange(iCab + 2, cNo + 1, nLin, 1).setValues(vNo);
+  aba.getRange(iCab + 2, cFora + 1, nLin, 1).setValues(vFora);
+}
+
+/* Menu 👥 Ponto › Contar desligados do mês no extrato. Usa o que já está na
+   PONTO_PESSOA e na FUNCIONARIOS: não precisa reprocessar arquivo. */
+function apurarDesligadosNoPonto() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var lista = prApurarDesligados(ss);
+  if (!lista.length) return prErro('nada a contar: a ' + PR_ABA_PONTO_PESSOA + ' está vazia ou a ' + PR_ABA_FUNC + ' não foi encontrada.');
+  /* "com" = todos os desligados do mês dentro (a mesma regra do painel) */
+  var com = lista.filter(function (d) { return d.noPonto > 0 && !d.fora; }).map(function (d) { return d.mes + '/' + String(d.ano).slice(2); });
+  var sem = lista.filter(function (d) { return d.fora > 0; });
+  prAvisar('Desligados diretos do mês no extrato do ponto, gravados na ' + PR_ABA_HISTORICO + ' (desligadosPonto e desligadosForaPonto):\n'
+    + lista.map(function (d) { return d.mes + '/' + d.ano + ': ' + d.noPonto + ' no extrato, ' + d.fora + ' fora'; }).join('\n')
+    + (sem.length ? '\n\nFORA do extrato (pedir ao RH o Extrato de Totais com os demitidos do período; mês fechado: processar, aceitarPontoNaHistorico e processar de novo):\n'
+       + sem.map(function (d) { return d.mes + '/' + d.ano + ': ' + d.foraLista.join(', '); }).join('\n') : '')
+    + (com.length && sem.length ? '\n\nBASE MISTA: ' + com.join(', ') + ' com os desligados, ' + sem.map(function (d) { return d.mes + '/' + String(d.ano).slice(2); }).join(', ')
+       + ' sem. Pontos por direto e absenteísmo desses meses não se comparam direito.' : '')
+    + '\n\nO painel pega no próximo sync.');
 }
 
 /* Regrava a FUNCIONARIOS a partir da aba DP do controle (Cód | Nome | Setor |
