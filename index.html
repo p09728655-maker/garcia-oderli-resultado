@@ -26963,9 +26963,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.97';
+var APP_VERSAO = 'b96.98';
 var APP_DATA   = '10/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.98', data:'10/11/2026', itens:[
+    'Afastado ou de ferias o mes inteiro nao conta mais como colaborador. O extrato do ponto traz essa pessoa com a linha em branco (sem carga, normais e extras; conferido em 10/11/2026 com uma direta afastada) e ela entrava em colaboradores, dividindo pontos e producao por pessoa e aumentando funcionarios necessarios. PontoRH.gs passa a contar so quem teve alguma hora, em colaboradores, colaboradoresTotal e pessoas da PONTO_SETOR, e lista os nomes no aviso do processamento.',
+    'As horas da escala dessa pessoa continuam em nao trabalhadas e na PONTO_PESSOA: o absenteismo segue o que o controle de faltas lancou (afastado), sem mudanca. Mes fechado reprocessado com o mesmo extrato passa para a regra nova; mes nao reprocessado fica com a contagem antiga. Desligado do mes sem horas nao e descontado duas vezes nos ativos do fim do mes.'
+  ]},
   { v:'b96.97', data:'10/11/2026', itens:[
     'Auditoria do Briefing Mensal e da Reuniao do Mes: cada indicador numa funcao do DashUtils usada pelos dois relatorios. O Briefing passa a ler os dados normalizados (load), como a Reuniao; lia o dash_v3 cru e refazia todas as contas.',
     'Fechamos o ano? (DashUtils.fechamentoAno/vereditoAno, tambem no Planejamento Mestre): saldo = plano do ano - realizado (OUT/26: 57.819; o "falta produzir 56.359" era o plano de NOV+DEZ, que vira "plano restante"); aderencia ao plano acumulado 99,5% (-1.460) no lugar do 84,0% contra o ano inteiro; dias uteis restantes pelo calendario (segunda a sexta menos a aba FERIADOS) ate o ultimo dia de producao, DIA_FIM_ANO = 18/12 na aba METAS: 33 dias (eram 44 no Briefing e 34 na Reuniao, duas tabelas fixas); ritmo exigido = saldo / dias = 1.752 pc/dia.',
