@@ -213,7 +213,7 @@ sec('Painel: leitura do Web App e atalho da Reunião');
   afirma('relatório em A4 deitado com a régua de impressão do painel', /function imprimirQuadroSetor\(\)[\s\S]*?size:A4 landscape[\s\S]*?printBase\(\)/.test(HTML));
   const pl = new Function(HTML.match(/function _qsPl\([^)]*\)\{[^\n]*\}/)[0] + '\nreturn _qsPl;')();
   afirma('balão no singular com 1 ("1 desligado") e no plural com 2', pl(1, 'desligado', 'desligados') === '1 desligado' && pl(2, 'admitido', 'admitidos') === '2 admitidos');
-  afirma('Reunião tem o atalho para a seção, fora da impressão', /class="reu-noprint" onclick="reuIrQuadro\(/.test(HTML) && HTML.includes('window.reuIrQuadro=function'));
+  afirma('Reunião tem o atalho para a seção, fora da impressão', /class="reu-noprint" onclick="(?:event\.stopPropagation\(\);)?reuIrQuadro\(/.test(HTML) && HTML.includes('window.reuIrQuadro=function'));
 }
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
