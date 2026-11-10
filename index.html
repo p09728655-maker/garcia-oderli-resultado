@@ -1903,19 +1903,10 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
       <div class="cEmpty" id="emPcHist">Sem pontos lançados no período (HISTORICO, coluna pontos).</div>
     </div>
   </div>
-  <div class="charts1">
-    <div class="cBox">
-      <div class="cHdr">
-        <span class="cTtl">▸ Δ Produção vs Mês Anterior (peças)</span>
-        <div class="lgnd">
-          <span class="li"><span class="ld" style="background:var(--cyan)"></span>Aumento</span>
-          <span class="li"><span class="ld" style="background:var(--pink)"></span>Queda</span>
-        </div>
-      </div>
-      <canvas id="cDeltaProd" height="190" width="0" style="display: block; height: 190px;" class="canvas-zoom" title="Clique para ampliar"></canvas>
-      <div class="cEmpty" id="emDeltaProd" style="display: none;">Mínimo 2 meses de dados</div>
-    </div>
-  </div>
+  <!-- b96.96: saiu o "Δ Produção vs mês anterior". A variação de um mês
+       para o outro mistura dias úteis e sazonalidade e não sustenta decisão
+       que o Plano × produção não responda. A coluna Δ Produção da tabela da
+       aba Comparativo continua. -->
 </div>
 
 <!-- ══ PÁGINA: COMPARATIVO ══ -->
@@ -7766,10 +7757,10 @@ function renderDeltaTable(deltas){
 
 function drawComparacao(dados){
   if(!dados||dados.length<2){
-    ['cDeltaEf','cDeltaProd','cDeltaAbs','cDeltaTkt'].forEach(function(id){
+    ['cDeltaEf','cDeltaAbs','cDeltaTkt'].forEach(function(id){
       var el=document.getElementById(id); if(el)el.style.display='none';
     });
-    ['emDeltaEf','emDeltaProd','emDeltaAbs','emDeltaTkt'].forEach(function(id){
+    ['emDeltaEf','emDeltaAbs','emDeltaTkt'].forEach(function(id){
       var el=document.getElementById(id); if(el)el.style.display='block';
     });
     renderDeltaTable([]);return
@@ -7777,7 +7768,6 @@ function drawComparacao(dados){
   var deltas=calcDeltas(dados);
   var labels=deltas.map(function(d){return d.mes});
   drawDivBars('cDeltaEf',  'emDeltaEf',  labels,deltas.map(function(d){return d.dEf}),   C.green,C.red,   190,' p.p.',   true);
-  drawDivBars('cDeltaProd','emDeltaProd', labels,deltas.map(function(d){return d.dProd}),  C.cyan, C.pink,  190,' pç', false);
   drawDivBars('cDeltaAbs', 'emDeltaAbs',  labels,deltas.map(function(d){return d.dAbs}),   C.green,C.red,   180,'%',   true);
   drawDivBars('cDeltaTkt', 'emDeltaTkt',  labels,deltas.map(function(d){return d.dTkt}),   C.amber,C.red,   180,' R$', false);
   renderDeltaTable(deltas)
@@ -9675,7 +9665,6 @@ function bindZooms(){
   bindZoom('cAbs','Absenteísmo Mensal (%)',drawAbs,function(){return [dd()];});
   bindZoom('cDeltaEf','Δ Dependência de HE vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaEf','emDeltaEf',x.map(function(r){return r.mes;}),x.map(function(r){return r.dEf;}),C.green,C.red,520,' p.p.',true];});
   bindZoom('cDeltaAbs','Δ Absenteísmo vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaAbs','emDeltaAbs',x.map(function(r){return r.mes;}),x.map(function(r){return r.dAbs;}),C.green,C.red,520,' p.p.',true];});
-  bindZoom('cDeltaProd','Δ Produção vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaProd','emDeltaProd',x.map(function(r){return r.mes;}),x.map(function(r){return r.dProd;}),C.cyan,C.pink,520,' pç',false];});
   bindZoom('cDeltaTkt','Δ Ticket Médio vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaTkt','emDeltaTkt',x.map(function(r){return r.mes;}),x.map(function(r){return r.dTkt;}),C.amber,C.red,520,' R$',false];});
   bindZoom('cDeltaCap','Δ Capacidade vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaCap','emDeltaCap',x.map(function(r){return r.mes;}),x.map(function(r){return r.dHT;}),C.cyan,C.red,520,' h',false];});
   bindZoom('cDeltaCap2','Δ Capacidade vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaCap2','emDeltaCap2',x.map(function(r){return r.mes;}),x.map(function(r){return r.dHT;}),C.cyan,C.red,520,' h',false];});
@@ -17906,7 +17895,7 @@ input:disabled, select:disabled {
           {l:'Ader\u00eancia ao plano c/ HE', v:txt('kv5-var'), cls:'v'}
         ],[2])
       + secHdr('Gr\u00e1ficos — Produ\u00e7\u00e3o')
-      + gg([['cMetaReal','Meta vs. Real'],['cProd2','Produ\u00e7\u00e3o Mensal'],['cTkt2','Ticket M\u00e9dio'],['cDeltaProd','Varia\u00e7\u00e3o Produ\u00e7\u00e3o']])
+      + gg([['cMetaReal','Meta vs. Real'],['cTkt2','Ticket M\u00e9dio']])
       + '<div class="footer"><span>Patrimar M\u00f3veis Ltda \u2014 PCP</span><span>Gerado em ' + dataGer + '</span></div>';
 
     /* ══ PÁG 5B — PREVISÃO × CAPACIDADE ══ */
@@ -26725,9 +26714,12 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.95';
+var APP_VERSAO = 'b96.96';
 var APP_DATA   = '10/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.96', data:'10/11/2026', itens:[
+    'Producao & Vendas: sai o grafico Delta Producao vs mes anterior. A variacao de um mes para o outro mistura dias uteis e sazonalidade e nao sustenta decisao que o Plano x producao nao responda. Sai tambem do Relatorio e do zoom. A coluna Delta Producao da tabela da aba Comparativo continua.'
+  ]},
   { v:'b96.95', data:'10/11/2026', itens:[
     'Producao & Vendas redesenhada. Quatro cards no lugar de sete, numero e unidade numa linha so: Producao (com previsto, media e pico na linha de apoio), Aderencia ao plano em duas leituras lado a lado, so jornada normal e com hora extra, e quanto a hora extra cobriu em pontos percentuais; Ticket medio; Carteira a faturar. Cor de veredito so na aderencia e na carteira.',
     'Plano x producao numa barra so: a barra e a producao do mes, cheia na jornada normal e hachurada na hora extra, e o traco e o previsto do Plano Mestre. Acima, quanto do plano a jornada normal entregou, na regua da Reuniao (100% verde, 95 a 99% ambar, abaixo vermelho). Antes a barra era so a jornada normal, vermelha em 9 de 10 meses, enquanto o card dizia 99,5% com hora extra: a tela nao mostrava que a diferenca era a hora extra. Mes sem plano mostra a barra sem traco; balao com plano, jornada normal, hora extra, total e quanto faltou ou passou.',
