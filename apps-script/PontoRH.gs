@@ -403,7 +403,11 @@ function prBrutasDoMesFechado(ss, mes, ano, a, atual) {
   var mudouColab = Math.round(atual.colaboradores) !== a.n;
   if (!mudouNT && !mudouTotal && !mudouColab) return null;
   prLancarHistorico(ss, mes, ano, a, true);
-  return mudouNT ? { antes: atual.naoTrabalhadas || 0, depois: a.naoTrabalhadas } : null;
+  if (!mudouNT && !mudouColab) return null;
+  var r = {};
+  if (mudouNT) { r.antes = atual.naoTrabalhadas || 0; r.depois = a.naoTrabalhadas; }
+  if (mudouColab) { r.colabAntes = Math.round(atual.colaboradores); r.colabDepois = a.n; }
+  return r;
 }
 
 /* O que a HISTORICO tem hoje para o mês (ou null se a linha não existe). */
@@ -667,8 +671,11 @@ function processarPontoDrive() {
                            + ' | h. normais ' + Math.round(r.a.normais) + ' × ' + Math.round(r.protegido.horasNormais)
                            + ' | extra50 ' + Math.round(r.a.e50) + ' × ' + Math.round(r.protegido.extra50)
                            + ' | extra100 ' + Math.round(r.a.e100) + ' × ' + Math.round(r.protegido.extra100)
-                           + (r.brutas ? '. Mesmo extrato: não trabalhadas ' + Math.round(r.brutas.antes) + ' → ' + Math.round(r.brutas.depois) + ' h (coluna do script, atualizada pela regra atual)'
-                                       : '. Para aceitar o ponto: PR_PROTEGER_FECHADOS = false e reprocessar este arquivo.')
+                           + (r.brutas ? '. Mesmo extrato, atualizado pela regra atual:'
+                                         + (r.brutas.antes !== undefined ? ' não trabalhadas ' + Math.round(r.brutas.antes) + ' → ' + Math.round(r.brutas.depois) + ' h;' : '')
+                                         + (r.brutas.colabAntes !== undefined ? ' colaboradores ' + r.brutas.colabAntes + ' → ' + r.brutas.colabDepois + ' (sem quem veio sem horas no extrato);' : '')
+                                       : r.extratoDiferente ? '. Para aceitar o ponto: PR_PROTEGER_FECHADOS = false e reprocessar este arquivo.'
+                                       : '. Mesmo extrato, já pela regra atual: nada a mudar.')
                          : ''));
         if (!r.a.e50 && !r.a.e100) feitos.push('   ATENÇÃO: extrato sem hora extra (colunas Ex50%/Ex100% ausentes ou zeradas). Exporte de novo com as colunas de extras.');
         if (r.a.desligadosFora.length) feitos.push('   ATENÇÃO: ' + r.a.desligadosFora.length + ' desligado(s) em ' + r.ext.mes + '/' + r.ext.ano
