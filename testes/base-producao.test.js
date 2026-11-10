@@ -93,7 +93,9 @@ ok('produção COM extras',       o.comExtras, 556827, 0);
 ok('produção SEM extras',       o.semExtras, 472441, 0);
 ok('peças vindas de hora extra',o.deExtras,   84386, 0);
 ok('dependência de hora extra %',o.depExtras, 15.15);
-ok('absenteísmo ponderado %',   o.absenteismo, 12.10);
+/* b96.97: absenteísmo sobre horas previstas (normais + faltas + atrasos),
+   decisão do PPCP em 10/11/2026. Era 12,10% sobre as horas normais. */
+ok('absenteísmo ponderado % (÷ horas previstas)',   o.absenteismo, 10.79);
 ok('% horas extras',            o.pctExtras,   12.68);
 ok('ticket ponderado R$',       o.ticket,     247.69);
 ok('ritmo hora normal pç/h',    o.ritmoNormal,  1.79);
@@ -292,7 +294,7 @@ const N = U.normalizar(ENT);
 ok('totalFaltaAtraso',     N.totalFaltaAtraso, 2050, 0.05);
 ok('totalExtras',          N.totalExtras,     1193.17, 0.05);
 ok('horasTotais',          N.horasTotais,     15707.17, 0.05);
-ok('absenteismo %',        N.absenteismo,     14.12, 0.01);
+ok('absenteismo % (÷ horas previstas; era 14,12)',        N.absenteismo,     12.38, 0.01);
 ok('prodSemExtras',        N.prodSemExtras,   29703, 1);
 ok('meta (cap. teórica)',  N.meta,            31511, 1);
 ok('eficiencia %',         N.eficiencia,      94.26, 0.02);
@@ -323,7 +325,7 @@ const PONTO = U.normalizar({ ano:2026, mes:'AGO', horasCarga:14907.2, horasNorma
 ok('ponto: atraso = atrasos do ponto',        PONTO.atraso, 207.6, 0.05);
 ok('ponto: faltas = nãoTrab − férias − atraso', PONTO.faltas, 1742.6, 0.05);
 ok('ponto: totalFaltaAtraso',                 PONTO.totalFaltaAtraso, 1950.2, 0.05);
-ok('ponto: absenteísmo %',                    PONTO.absenteismo, 13.44, 0.01);
+ok('ponto: absenteísmo % (÷ horas previstas; era 13,44)',                    PONTO.absenteismo, 11.84, 0.01);
 afirma('ponto ausente: faltas e atraso digitados ficam',
   (() => { const z = U.normalizar({ ano:2026, mes:'SET', horasNormais:14000, horasCarga:14400, faltas:2000, atraso:100 }); return z.faltas === 2000 && z.atraso === 100; })());
 afirma('ponto sem férias lançadas → integridade avisa (atenção férias)',
@@ -339,7 +341,7 @@ const CTRL = U.normalizar({ ano:2026, mes:'AGO', horasCarga:14907.2, horasNormai
 ok('controle: faltas = falta + atestado + afastado', CTRL.faltas, 1595.2, 0.05);
 ok('controle com ponto: atraso = atrasos do ponto', CTRL.atraso, 207.6, 0.05);
 ok('controle: totalFaltaAtraso',                    CTRL.totalFaltaAtraso, 1802.8, 0.05);
-ok('controle: absenteísmo %',                       CTRL.absenteismo, 12.42, 0.01);
+ok('controle: absenteísmo % (÷ horas previstas; era 12,42)',                       CTRL.absenteismo, 11.05, 0.01);
 afirma('controle sem ponto: atraso = ausAtraso',
   (() => { const z = U.normalizar({ ano:2026, mes:'JUL', horasNormais:14000, horasCarga:14400, ausFalta:500, ausAtestado:200, ausAfastado:300, ausAtraso:12.3, faltas:9999, atraso:9999 }); return z.faltas === 1000 && z.atraso === 12.3; })());
 afirma('controle manda sobre a regra do ponto',
@@ -352,8 +354,11 @@ afirma('controle sem ponto: nenhuma conferência ponto × controle',
   !U.integridade([U.normalizar({ ano:2026, mes:'JUL', horasNormais:14000, horasCarga:14400, ausFalta:500, ausAtraso:12.3, horasFerias:100 })]).itens.some(i => i.tipo === 'ponto'));
 afirma('dataset embutido: normalizar() reproduz eficiência da planilha em 18 de 18 meses (±0,05)',
   REGS.every(r => Math.abs(U.normalizar(r).eficiencia - r.eficiencia) <= 0.05));
-afirma('dataset embutido: normalizar() reproduz absenteísmo em 18 de 18 meses (±0,02)',
-  REGS.every(r => Math.abs(U.normalizar(r).absenteismo - r.absenteismo) <= 0.02));
+/* A planilha guarda o absenteísmo sobre as horas normais; o painel calcula
+   sobre as horas previstas (b96.97). A conferência passa a ser: o painel =
+   faltas + atrasos ÷ (normais + faltas + atrasos) da própria linha. */
+afirma('dataset embutido: normalizar() = faltas + atrasos ÷ horas previstas em 18 de 18 meses (±0,02)',
+  REGS.every(r => Math.abs(U.normalizar(r).absenteismo - r.totalFaltaAtraso / (r.horasNormais + r.totalFaltaAtraso) * 100) <= 0.02));
 
 sec('Absenteísmo por motivo — AGO × SET/26 da HISTORICO (absMotivos, absComparar)');
 /* Os dois meses como estão na HISTORICO em 13/10/26: controle de faltas do RH
@@ -367,21 +372,23 @@ const SET_H = U.normalizar({ ano:2026, mes:'SET', horasCarga:15479.2, horasNorma
   ausFalta:525.52, ausAtestado:270.15, ausAfastado:202.4, ausAtraso:3.02 });
 const MA = U.absMotivos([AGO_H]), MS = U.absMotivos([SET_H]);
 const pctDe = (M, k) => M.itens.find(x => x.k === k).pct;
-ok('AGO afastamento %',            pctDe(MA, 'afastado'), 4.30);
-ok('AGO falta sem justificativa %', pctDe(MA, 'falta'),    4.72);
-ok('AGO atraso % (do ponto)',       pctDe(MA, 'atraso'),   1.43);
-ok('AGO atestado %',                pctDe(MA, 'atestado'), 1.97);
+/* b96.97: cada motivo sobre as horas previstas, o mesmo denominador do card
+   (eram 4,30 / 4,72 / 1,43 / 1,97 sobre as horas normais). */
+ok('AGO afastamento %',            pctDe(MA, 'afastado'), 3.83);
+ok('AGO falta sem justificativa %', pctDe(MA, 'falta'),    4.20);
+ok('AGO atraso % (do ponto)',       pctDe(MA, 'atraso'),   1.27);
+ok('AGO atestado %',                pctDe(MA, 'atestado'), 1.75);
 ok('AGO total = card',              MA.total, U.periodo([AGO_H]).absenteismo, 0.01);
 ok('SET total = card',              MS.total, U.periodo([SET_H]).absenteismo, 0.01);
-ok('SET total %',                   MS.total, 7.50);
+ok('SET total % (era 7,50 sobre as horas normais)',                   MS.total, 6.98);
 const CMP = U.absComparar(MS, MA, 'AGO/26', 6);
-ok('variação total (p.p.)',         CMP.delta, -4.92);
-ok('maior variação: afastamento',   CMP.maior.k === 'afastado' ? CMP.maior.dpp : NaN, -2.97);
-ok('falta + atraso (gestão de presença)', CMP.gestao, -1.76);
-afirma('frase: "Caiu 4,9 p.p. contra AGO/26."',          CMP.frase.indexOf('Caiu 4,9 p.p. contra AGO/26.') === 0);
-afirma('frase: "3,0 desses p.p. vieram de afastamento"',  CMP.frase.indexOf('3,0 desses p.p. vieram de afastamento.') > 0);
-afirma('frase: falta e atraso "caíram 1,8 p.p."',          CMP.frase.indexOf('caíram 1,8 p.p.') > 0);
-afirma('frase: "7,5%: acima da meta de 6%."',              /7,5%: acima da meta de 6%\.$/.test(CMP.frase));
+ok('variação total (p.p.)',         CMP.delta, -4.07);
+ok('maior variação: afastamento',   CMP.maior.k === 'afastado' ? CMP.maior.dpp : NaN, -2.59);
+ok('falta + atraso (gestão de presença)', CMP.gestao, -1.38);
+afirma('frase: "Caiu 4,1 p.p. contra AGO/26."',          CMP.frase.indexOf('Caiu 4,1 p.p. contra AGO/26.') === 0);
+afirma('frase: "2,6 desses p.p. vieram de afastamento"',  CMP.frase.indexOf('2,6 desses p.p. vieram de afastamento.') > 0);
+afirma('frase: falta e atraso "caíram 1,4 p.p."',          CMP.frase.indexOf('caíram 1,4 p.p.') > 0);
+afirma('frase: "7,0%: acima da meta de 6%."',              /7,0%: acima da meta de 6%\.$/.test(CMP.frase));
 afirma('variação < 0,5 p.p. → "Estável", sem procurar causa',
   U.absComparar(MS, U.absMotivos([Object.assign({}, SET_H, { ausFalta:560 })]), 'AGO/26', 6).frase.indexOf('Estável:') === 0);
 afirma('mês sem controle de faltas → sem quebra por motivo (null)',
@@ -408,11 +415,11 @@ const AP = { aplicarDuplicidade:true };
 const ABR_A = U.normalizar(Object.assign({}, ABR_H, { atrasoDuplicado:201.7, duplicidadeApurada:1 }), AP);
 const SET_A = U.normalizar(Object.assign({}, SET_H, { atrasoDuplicado:80.6, duplicidadeApurada:1 }), AP);
 ok('ABR/26: atraso = 229,2 − 201,7', ABR_A.atraso, 27.5, 0.05);
-ok('ABR/26: absenteísmo 14,06% → 12,58%', ABR_A.absenteismo, 12.58);
-ok('ABR/26: antes da apuração continua 14,06%', ABR_H.absenteismo, 14.06);
+ok('ABR/26: absenteísmo 12,32% → 11,17% (÷ horas previstas)', ABR_A.absenteismo, 11.17);
+ok('ABR/26: antes da apuração continua 12,32%', ABR_H.absenteismo, 12.32);
 ok('SET/26: atraso = 141,17 − 80,6', SET_A.atraso, 60.6, 0.05);
-ok('SET/26: absenteísmo 7,50% → 6,97%', SET_A.absenteismo, 6.97);
-ok('SET/26: motivo atraso cai junto (absMotivos usa o atraso da regra)', pctDe(U.absMotivos([SET_A]), 'atraso'), 60.57 / 15188.43 * 100);
+ok('SET/26: absenteísmo 6,98% → 6,52% (÷ horas previstas)', SET_A.absenteismo, 6.52);
+ok('SET/26: motivo atraso cai junto (absMotivos usa o atraso da regra)', pctDe(U.absMotivos([SET_A]), 'atraso'), 60.57 / (15188.43 + SET_A.totalFaltaAtraso) * 100);
 ok('SET/26: total por motivo = card', U.absMotivos([SET_A]).total, U.periodo([SET_A]).absenteismo, 0.01);
 ok('duplicidade maior que o atraso → atraso 0, nunca negativo', U.normalizar(Object.assign({}, SET_H, { atrasoDuplicado:999 }), AP).atraso, 0, 0);
 afirma('sem controle (só ponto): atrasoDuplicado não se aplica (não há o que duplicar)',
@@ -477,7 +484,7 @@ ok('FURAÇÃO: duplicidade maior que o atraso → 0, nunca negativo', sOf('17-FU
 /* fábrica = soma dos dois primeiros setores: o card e a tabela batem */
 const FAB = U.normalizar({ ano:2026, mes:'SET', horasNormais:5000, horasCarga:5200, naoTrabalhadas:400, atrasosPonto:35, atrasoDuplicado:15.4,
   ausFalta:250, ausAtestado:30, horasFerias:50, producaoReal:12000 }, AP);
-ok('soma dos setores ÷ horas = absenteísmo do card', (sOf('1-USINAGEM').aus + sOf('2-EMBALAGEM').aus) / 5000 * 100, FAB.absenteismo, 0.01);
+ok('soma dos setores ÷ horas previstas = absenteísmo do card', (sOf('1-USINAGEM').aus + sOf('2-EMBALAGEM').aus) / (5000 + sOf('1-USINAGEM').aus + sOf('2-EMBALAGEM').aus) * 100, FAB.absenteismo, 0.01);
 ok('doPeriodo usa a mesma regra', SH.doPeriodo(2026, ['SET']).find(x => x.setor === '1-USINAGEM').aus, 112.6);
 SH.w.aplicar = false;
 ok('base incompleta: setor fica na conta antiga, como o card', SH.doMes('SET', 2026).find(x => x.setor === '1-USINAGEM').aus, 120);

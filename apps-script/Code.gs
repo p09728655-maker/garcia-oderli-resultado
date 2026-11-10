@@ -78,12 +78,13 @@ var ABA_FERIADOS = 'FERIADOS';
 var EMB_SHEET_ID = '1W9bK_IoWknk8eKFbSWCMxILAQcaXuWD2gG7B0jcwFzg';
 var METAS_PADRAO = [
   ['chave','valor','unidade','vigencia','origem','observacao'],
-  ['META_ABS',    3,   '%',   '2026-01', 'RH',        'Absenteísmo (faltas + atrasos ÷ h. normais): dentro da meta até este valor. Histórico 2025-26: 9% a 17%'],
+  ['META_ABS',    3,   '%',   '2026-01', 'RH',        'Absenteísmo (faltas + atrasos ÷ horas previstas = normais + faltas + atrasos, desde a b96.97): dentro da meta até este valor'],
   ['ABS_ATENCAO', 6,   '%',   '2026-01', 'RH',        'Absenteísmo acima disto é crítico'],
-  ['META_DEP_HE', 8,   '%',   '2026-01', 'PPCP',      'Máximo do volume entregue que pode vir de hora extra'],
+  ['META_DEP_HE', 8,   '%',   '2026-01', 'PPCP',      'Limite de hora extra sobre horas normais (horas extras ÷ horas normais)'],
   ['META_TICKET', 250, 'R$',  '2026-01', 'Comercial', 'Ticket médio mínimo (R$ por peça faturada). 250 é a média histórica dos 18 meses (R$ 247,69), não uma meta decidida'],
   ['DUTEIS',      22,  'dias','2026-01', 'PPCP',      'Dias úteis de referência por mês (capacidade teórica e carteira em dias)'],
   ['PROD_ERP_DESDE', 2025, 'ano', '2025-01', 'PPCP',   'A partir deste ano, producaoReal = produtosReportados (total do relatório REPORTE do ERP, produtos acabados). Antes disso vale o digitado.'],
+  ['DIA_FIM_ANO', 18,  'dia', '2026-11', 'PPCP',      'Último dia de produção do ano, em dezembro (depois é recesso). Base dos dias úteis restantes: segunda a sexta menos a aba FERIADOS até este dia'],
   ['CUSTO_HORA',  0,   'R$/h','2026-10', 'RH',        'Custo da hora normal dos diretos, com encargos. O painel põe a hora extra em reais: extra50 × 1,5 + extra100 × 2, vezes este valor (sem o reflexo no DSR). 0 = ainda não cadastrado: o card diz que falta o custo-hora']
 ];
 
@@ -133,7 +134,7 @@ var DICIONARIO_LINHAS = [
   ['totalFaltaAtraso', 'calculado', 'painel', 'faltas + atraso'],
   ['totalExtras', 'calculado', 'painel', 'extra50 + extra100'],
   ['horasTotais', 'calculado', 'painel', 'horasNormais + totalExtras'],
-  ['absenteismo', 'calculado', 'painel', 'totalFaltaAtraso ÷ horasNormais × 100'],
+  ['absenteismo', 'calculado', 'painel', 'totalFaltaAtraso ÷ (horasNormais + totalFaltaAtraso) × 100 — horas previstas (b96.97; era ÷ horasNormais)'],
   ['prodSemExtras', 'calculado', 'painel', 'producaoReal × (1 − totalExtras ÷ horasNormais)'],
   ['meta', 'calculado', 'painel', 'producaoReal × horasNormais ÷ horasCarga (capacidade teórica; derivada do realizado, não é alvo)'],
   ['eficiencia', 'calculado', 'painel', 'prodSemExtras ÷ meta × 100'],
