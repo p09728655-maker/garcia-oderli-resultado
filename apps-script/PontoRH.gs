@@ -264,11 +264,13 @@ function prExtrair(sheet) {
 
 /* Linha do extrato sem nenhuma hora (carga, normais e extras vazias): a
    pessoa está na folha, mas não teve escala no mês — afastada ou de férias
-   o mês inteiro (extrato conferido em 10/11/2026: uma direta afastada com a
-   linha inteira em branco). Não conta em colaboradores nem em colaboradoresTotal (contagem de quem
-   trabalhou, base de pontos e produção por pessoa). As horas da escala dela
-   continuam em naoTrabalhadas e na PONTO_PESSOA, para bater com o
-   afastamento lançado no controle de faltas. */
+   o mês inteiro (extrato de OUT/26: duas diretas afastadas com a linha em
+   branco). CONTA em colaboradores e colaboradoresTotal: a vaga está ocupada
+   e ninguém foi contratado no lugar, então para a produção a ausência é
+   absenteísmo (decisão do PPCP em 10/11/2026). A b96.98 tirou essas pessoas
+   da contagem e foi desfeita no mesmo dia: o absenteísmo as tratava como
+   escaladas e colaboradores não. Fica só a lista no aviso, para conferir
+   com o afastamento lançado no controle de faltas. */
 function prTemHoras(p) { return p.carga > 0 || p.normais > 0 || p.e50 > 0 || p.e100 > 0; }
 
 /* ══ 3 · SOMA DOS DIRETOS ══ */
@@ -278,7 +280,7 @@ function prAgregar(ext, func) {
     var f = func.mapa[p.codigo];
     if (!f) { pend.push(p.codigo + ' ' + p.nome); return; }
     if (f.admissao && ext.fim && f.admissao > ext.fim) { if (f.direto) depois.push(p.codigo + ' ' + p.nome); return; }
-    if (prTemHoras(p)) nTotal++;   /* quadro inteiro: o mesmo filtro da PONTO_SETOR (prAgregarSetores) */
+    nTotal++;   /* quadro inteiro: o mesmo filtro da PONTO_SETOR (prAgregarSetores) */
     if (!f.direto) return;
     dir.push(p);
   });
@@ -287,7 +289,7 @@ function prAgregar(ext, func) {
   /* jornada cheia = carga mais frequente (arredondada a 0,1 h) */
   var cont = {}, jornada = 0, melhor = 0;
   dir.forEach(function (p) { if (p.carga > 0) { var k = Math.round(p.carga * 10) / 10; cont[k] = (cont[k] || 0) + 1; if (cont[k] > melhor) { melhor = cont[k]; jornada = k; } } });
-  var a = { n: dir.length - semHoras.length, nSemHoras: semHoras.length, nTotal: nTotal, carga: soma('carga'), normais: soma('normais'), faltasPonto: soma('faltas'),
+  var a = { n: dir.length, nSemHoras: semHoras.length, nTotal: nTotal, carga: soma('carga'), normais: soma('normais'), faltasPonto: soma('faltas'),
             atrasosPonto: soma('atrasos'), e50: soma('e50'), e100: soma('e100'), jornada: jornada };
   /* Quem entrou ou saiu dentro do mês tem a própria carga como jornada: os
      dias antes da admissão e depois do desligamento não são ausência. Com
@@ -360,8 +362,8 @@ function prLancarHistorico(ss, mes, ano, a, soBrutas) {
   }
   var grava = function (nome, v) { var c = col[prNormaliza(nome)]; if (c !== undefined) aba.getRange(linha, c + 1).setValue(Math.round(v * 100) / 100); };
   /* soBrutas só vem de mês fechado com o MESMO extrato (prMesmoExtrato): aí
-     colaboradores ou já é a.n, ou é a.n + quem veio sem horas (regra de
-     antes da b96.98) e passa para a regra de hoje */
+     colaboradores ou já é a.n, ou é a.n − quem veio sem horas (gravado pela
+     b96.98, desfeita) e volta para a regra de hoje */
   grava('colaboradores', a.n);
   if (!soBrutas) {
     grava('horasCarga', a.carga);
@@ -383,7 +385,7 @@ function prLancarHistorico(ss, mes, ano, a, soBrutas) {
    atualiza só as colunas brutas do script (naoTrabalhadas, faltasPonto,
    atrasosPonto, colaboradoresTotal), que não são digitadas e seguem a regra
    do script de hoje. colaboradores também, só quando a diferença é quem veio
-   sem horas no extrato (b96.98): é a mesma gente, contada pela regra nova.
+   sem horas no extrato: a b96.98 (desfeita) gravou OUT/26 sem eles.
    Sem isso, MAR a AGO/26 ficaram com naoTrabalhadas da regra antiga (quem
    foi admitido ou desligado no meio do mês contava o mês inteiro), 79 a
    334 h a mais por mês, e a integridade acusou JUN/26 sem divergência real.
@@ -392,8 +394,8 @@ function prLancarHistorico(ss, mes, ano, a, soBrutas) {
 function prMesmoExtrato(atual, a) {
   if (!atual) return false;
   var perto = function (x, y) { return Math.abs((x || 0) - (y || 0)) < 1; };
-  var c = Math.round(atual.colaboradores);   /* antes da b96.98, quem veio sem horas também contava */
-  return (c === a.n || (a.nSemHoras > 0 && c === a.n + a.nSemHoras)) && perto(atual.horasCarga, a.carga) && perto(atual.horasNormais, a.normais)
+  var c = Math.round(atual.colaboradores);   /* a b96.98 (desfeita) gravava sem quem veio sem horas */
+  return (c === a.n || (a.nSemHoras > 0 && c === a.n - a.nSemHoras)) && perto(atual.horasCarga, a.carga) && perto(atual.horasNormais, a.normais)
     && perto(atual.extra50, a.e50) && perto(atual.extra100, a.e100);
 }
 function prBrutasDoMesFechado(ss, mes, ano, a, atual) {
@@ -464,8 +466,7 @@ function prAgregarSetores(ext, func) {
     var nome = String(f.setor || '').trim() || '(sem setor)';
     var s = por[nome] || (por[nome] = { setor: nome, direto: false, n: 0, carga: 0, normais: 0, faltasPonto: 0, atrasosPonto: 0, e50: 0, e100: 0 });
     s.direto = s.direto || f.direto;
-    if (prTemHoras(p)) s.n++;
-    s.carga += p.carga; s.normais += p.normais; s.faltasPonto += p.faltasPonto === undefined ? p.faltas : p.faltasPonto;
+    s.n++; s.carga += p.carga; s.normais += p.normais; s.faltasPonto += p.faltasPonto === undefined ? p.faltas : p.faltasPonto;
     s.atrasosPonto += p.atrasos; s.e50 += p.e50; s.e100 += p.e100;
   });
   return Object.keys(por).sort().map(function (k) { return por[k]; });
@@ -673,7 +674,7 @@ function processarPontoDrive() {
                            + ' | extra100 ' + Math.round(r.a.e100) + ' × ' + Math.round(r.protegido.extra100)
                            + (r.brutas ? '. Mesmo extrato, atualizado pela regra atual:'
                                          + (r.brutas.antes !== undefined ? ' não trabalhadas ' + Math.round(r.brutas.antes) + ' → ' + Math.round(r.brutas.depois) + ' h;' : '')
-                                         + (r.brutas.colabAntes !== undefined ? ' colaboradores ' + r.brutas.colabAntes + ' → ' + r.brutas.colabDepois + ' (sem quem veio sem horas no extrato);' : '')
+                                         + (r.brutas.colabAntes !== undefined ? ' colaboradores ' + r.brutas.colabAntes + ' → ' + r.brutas.colabDepois + ' (com quem veio sem horas no extrato);' : '')
                                        : r.extratoDiferente ? '. Para aceitar o ponto: PR_PROTEGER_FECHADOS = false e reprocessar este arquivo.'
                                        : '. Mesmo extrato, já pela regra atual: nada a mudar.')
                          : ''));
@@ -684,8 +685,8 @@ function processarPontoDrive() {
           + 'depois tire-os do "fora do ponto" do mês no painel, senão contam duas vezes no quadro. ' + r.a.desligadosFora.join(', '));
         if (r.desligados && r.desligados.noPonto) feitos.push('   desligados diretos de ' + r.ext.mes + '/' + r.ext.ano + ' dentro do extrato: ' + r.desligados.noPonto
           + ' (entram em colaboradores e horas). Mês com e mês sem os desligados não se comparam: o painel marca a base de cada mês. Mês fechado com fora do ponto lançado: tire-os do fora do ponto.');
-        if (r.a.semHoras.length) feitos.push('   diretos sem nenhuma hora no extrato (afastados ou de férias o mês inteiro), fora de colaboradores: ' + r.a.semHoras.join(', ')
-          + '. As horas da escala continuam em não trabalhadas; no absenteísmo vale o que o controle de faltas lançou.');
+        if (r.a.semHoras.length) feitos.push('   diretos sem nenhuma hora no extrato (afastados ou de férias o mês inteiro): ' + r.a.semHoras.join(', ')
+          + '. Contam em colaboradores (a vaga está ocupada); no absenteísmo entra o que o controle de faltas lançou: confira se o RH lançou o afastamento.');
         if (r.a.pendentes.length) pend.push(r.ext.mes + '/' + r.ext.ano + ': ' + r.a.pendentes.join(', '));
         if (r.a.admitidosDepois.length) feitos.push('   admitidos depois de ' + r.ext.mes + '/' + r.ext.ano + ', não contam neste mês: ' + r.a.admitidosDepois.join(', '));
         feitos.push(r.extratoDiferente
@@ -986,19 +987,15 @@ var PR_COLS_DESLIGADOS = ['desligadosPonto', 'desligadosForaPonto'];
 
 /* cods = diretos do extrato no mês (PONTO_PESSOA). Devolve
    { noPonto, fora, foraLista: ['cod nome', ...] }. */
-function prDesligadosDoMes(cods, func, mes, ano, semHoras) {
+function prDesligadosDoMes(cods, func, mes, ano) {
   var mi = PR_MESES.indexOf(mes), r = { noPonto: 0, fora: 0, foraLista: [] };
   if (mi < 0 || !func) return r;
-  var inicio = new Date(ano, mi, 1), fim = new Date(ano, mi + 1, 0), tem = {}, zero = {};
+  var inicio = new Date(ano, mi, 1), fim = new Date(ano, mi + 1, 0), tem = {};
   (cods || []).forEach(function (c) { tem[String(c).trim()] = true; });
-  (semHoras || []).forEach(function (c) { zero[String(c).trim()] = true; });
   Object.keys(func.mapa).forEach(function (cod) {
     var f = func.mapa[cod];
     if (!f.direto || !f.demissao || f.demissao < inicio || f.demissao > fim) return;
     if (f.admissao && f.admissao > fim) return;
-    /* no extrato sem nenhuma hora: já está fora de colaboradores (b96.98);
-       contar aqui tiraria a mesma pessoa duas vezes em ativosFim */
-    if (zero[cod]) return;
     if (tem[cod]) r.noPonto++;
     else { r.fora++; r.foraLista.push(cod + ' ' + (f.nome || '')); }
   });
@@ -1018,14 +1015,11 @@ function prApurarDesligados(ss, func) {
     var cod = String(l[0] === null || l[0] === undefined ? '' : l[0]).trim().replace(/\.0$/, '');
     var mes = String(l[1] || '').trim().toUpperCase().slice(0, 3), ano = parseInt(l[2], 10);
     if (!cod || PR_MESES.indexOf(mes) < 0 || !(ano > 2000)) return;
-    var k = mes + '/' + ano, m = porMes[k] || (porMes[k] = { mes: mes, ano: ano, cods: [], semHoras: [] });
-    m.cods.push(cod);
-    /* PONTO_PESSOA: cod | mes | ano | carga | faltas | atrasos | normais (não tem extras) */
-    var carga = parseFloat(l[3]), normais = parseFloat(l[6]);
-    if (isFinite(carga) && !prTemHoras({ carga: carga, normais: isFinite(normais) ? normais : 0 })) m.semHoras.push(cod);
+    var k = mes + '/' + ano;
+    (porMes[k] || (porMes[k] = { mes: mes, ano: ano, cods: [] })).cods.push(cod);
   });
   var lista = Object.keys(porMes).map(function (k) {
-    var m = porMes[k], d = prDesligadosDoMes(m.cods, func, m.mes, m.ano, m.semHoras);
+    var m = porMes[k], d = prDesligadosDoMes(m.cods, func, m.mes, m.ano);
     d.mes = m.mes; d.ano = m.ano; return d;
   }).sort(function (a, b) { return (a.ano - b.ano) || (PR_MESES.indexOf(a.mes) - PR_MESES.indexOf(b.mes)); });
   prGravarDesligadosHistorico(ss, lista);

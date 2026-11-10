@@ -26967,8 +26967,8 @@ var APP_VERSAO = 'b96.98';
 var APP_DATA   = '10/11/2026';
 var APP_HISTORICO = [
   { v:'b96.98', data:'10/11/2026', itens:[
-    'Afastado ou de ferias o mes inteiro nao conta mais como colaborador. O extrato do ponto traz essa pessoa com a linha em branco (sem carga, normais e extras; conferido em 10/11/2026 com uma direta afastada) e ela entrava em colaboradores, dividindo pontos e producao por pessoa e aumentando funcionarios necessarios. PontoRH.gs passa a contar so quem teve alguma hora, em colaboradores, colaboradoresTotal e pessoas da PONTO_SETOR, e lista os nomes no aviso do processamento.',
-    'As horas da escala dessa pessoa continuam em nao trabalhadas e na PONTO_PESSOA: o absenteismo segue o que o controle de faltas lancou (afastado), sem mudanca. Mes fechado reprocessado com o mesmo extrato passa para a regra nova; mes nao reprocessado fica com a contagem antiga. Desligado do mes sem horas nao e descontado duas vezes nos ativos do fim do mes.'
+    'Afastado ou de ferias o mes inteiro vem no extrato do ponto com a linha em branco (OUT/26: duas diretas afastadas). Continua contando como colaborador: a vaga esta ocupada e ninguem foi contratado no lugar, entao para a producao a ausencia e absenteismo (decisao do PPCP em 10/11/2026). O PontoRH.gs lista essas pessoas no aviso do processamento, para conferir com o afastamento lancado no controle de faltas.',
+    'Uma versao do script de 10/11 tirava essas pessoas de colaboradores e foi desfeita no mesmo dia: o absenteismo as tratava como escaladas e colaboradores nao. OUT/26 ficou com 94 diretos; processar de novo o extrato de OUT volta para 96. Aviso do mes fechado com o mesmo extrato: mostra o que mudou e nao manda mais mexer em PR_PROTEGER_FECHADOS.'
   ]},
   { v:'b96.97', data:'10/11/2026', itens:[
     'Auditoria do Briefing Mensal e da Reuniao do Mes: cada indicador numa funcao do DashUtils usada pelos dois relatorios. O Briefing passa a ler os dados normalizados (load), como a Reuniao; lia o dash_v3 cru e refazia todas as contas.',
