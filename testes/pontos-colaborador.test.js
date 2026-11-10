@@ -267,5 +267,31 @@ sec('PontoRH.gs: colaboradoresTotal na HISTORICO');
   }
 }
 
+sec('pontosHist (b96.94): histórico mês a mês, aba Produção & Vendas');
+{
+  const r = (mes, ano, pontos, dir, tot, o = {}) => Object.assign(reg(mes, ano, pontos, dir, tot), o);
+  const set25 = r('SET', 2025, 8538678, 98, 0);
+  const set26 = r('SET', 2026, 8450122, 93, 147, { horasNormais: 15000, totalExtras: 1130, desligadosForaPonto: 5 });
+  const out26 = r('OUT', 2026, 8325548, 96, 152, { horasNormais: 13855, totalExtras: 1751, desligadosPonto: 5, foraDoPonto: 33 });
+  const ago26 = r('AGO', 2026, 0, 93, 148);
+  const nov26 = r('NOV', 2026, 0, 0, 0, { producaoReal: 9000 });
+  const todos = [set25, ago26, set26, out26, nov26];
+  const H = U.pontosHist([ago26, set26, out26, nov26], todos, '2026-11-10');
+  const [hA, hS, hO, hN] = H;
+  ok('SET/26 por direto = o mesmo do card (8.450.122 ÷ 93)', hS.porDireto, 8450122 / 93);
+  ok('SET/26 por hora = pontos ÷ (normais + extras)', hS.porHora, 8450122 / 16130);
+  ok('mesmo mês do ano anterior: SET/25 por direto', hS.antDireto, 8538678 / 98);
+  afirma('SET/26 rótulo e rótulo do ano anterior', hS.rot === 'SET/26' && hS.antRot === 'SET/25');
+  afirma('ano anterior sem o mês → null, não zero', hO.antDireto === null && hO.antHora === null);
+  ok('OUT/26 quadro total = pontos ÷ (152 do ponto + 33 fora)', hO.porTotal, 8325548 / 185);
+  afirma('SET/25 sem colaboradoresTotal: quadro do ano anterior null', hS.antTotal === null);
+  afirma('base: OUT/26 com os 5, SET/26 sem os 5', hO.desl === 'com' && hO.deslN === 5 && hS.desl === 'sem' && hS.deslN === 5);
+  afirma('mês sem a contagem de desligados: desl null', hA.desl === null);
+  afirma('AGO/26 fechado sem pontos: lacuna avisada, valores null', hA.semPontos === true && hA.pontos === null && hA.porDireto === null && hA.porHora === null);
+  afirma('NOV/26 ainda aberto (hoje 10/11/26) sem pontos: não é cobrado', hN.semPontos === false);
+  afirma('sem hoje: todo mês com produção conta como fechado', U.pontosHist([nov26], todos).at(0).semPontos === true);
+  afirma('lista vazia ou com buraco não quebra', U.pontosHist(null, null).length === 0 && U.pontosHist([null, set26], todos).length === 1);
+}
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

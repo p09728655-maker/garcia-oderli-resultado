@@ -213,6 +213,14 @@ h1 span{color:var(--cyan)}
 .ld{width:9px;height:9px;border-radius:2px;flex-shrink:0}
 canvas{width:100%!important;display:block}
 .cEmpty{text-align:center;color:var(--t3);font-size:.8rem;padding:36px;display:none}
+/* b96.94: histórico dos pontos por colaborador (aba Produção & Vendas) */
+.pc-nota{font-size:.74rem;color:var(--t2);margin:-6px 2px 12px;line-height:1.4}
+.pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:860px){.pc-grid{grid-template-columns:1fr}}
+.pc-sub{font-size:.8rem;font-weight:700;color:var(--t1);margin:0 0 6px 2px}
+.pc-sub span{display:block;font-weight:400;font-size:.68rem;color:var(--t2);margin-top:2px}
+.pc-rodape{font-size:.8rem;color:var(--t1);margin:12px 2px 0;line-height:1.5}
+.pc-rodape b{font-family:var(--mono)}
 
 /* ─── TABELA ─── */
 .tWrap{background:var(--panel);border:1px solid var(--b);border-radius:var(--r);
@@ -1822,6 +1830,36 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
       <div class="cHdr"><span class="cTtl">▸ Ticket Médio de Venda (R$)</span></div>
       <canvas id="cTkt2" height="200" width="0" style="display: block; height: 200px;" class="canvas-zoom" title="Clique para ampliar"></canvas>
       <div class="cEmpty" id="emTkt2" style="display: none;">Sem dados</div>
+    </div>
+  </div>
+  <!-- b96.94: histórico dos pontos por colaborador (drawPontosHist), a mesma
+       conta dos cards da Reunião mês a mês. Fica embaixo do ticket porque
+       pontos = faturado × ticket: sem o ticket por perto, preço caindo vira
+       produtividade caindo. Os cards de pontos da Reunião descem até aqui. -->
+  <div class="charts1">
+    <div class="cBox" id="pc-hist">
+      <div class="cHdr">
+        <span class="cTtl">▸ Pontos por colaborador · mês a mês · <span id="pcPeriodo"></span></span>
+        <div class="lgnd">
+          <span class="li"><span class="ld" style="background:#F5A623"></span>Mês</span>
+          <span class="li"><span class="ld" style="background:#E0E0E0;height:2px;width:12px;border-radius:0"></span>Mesmo mês do ano anterior</span>
+          <span class="li"><span class="ld" style="background:transparent;border:1px dashed #F5A623"></span>Base com os desligados do mês</span>
+          <span class="li"><span class="ld" style="background:transparent;border:1px dashed var(--t3)"></span>Sem pontos lançados</span>
+        </div>
+      </div>
+      <div class="pc-nota">Pontos = faturado × ticket médio: mede faturamento por pessoa, não ritmo de produção. O ticket mês a mês está no gráfico acima.</div>
+      <div class="pc-grid" id="pcGrid">
+        <div class="pc-col">
+          <div class="pc-sub">Por hora trabalhada <span>pontos ÷ horas normais + extras dos diretos · o mais estável</span></div>
+          <canvas id="cPcHora" height="220" width="0" style="display:block;height:220px"></canvas>
+        </div>
+        <div class="pc-col">
+          <div class="pc-sub">Por pessoa <span>pontos ÷ diretos · oscila com dias úteis, hora extra, falta e desligados</span></div>
+          <canvas id="cPcPessoa" height="220" width="0" style="display:block;height:220px"></canvas>
+        </div>
+      </div>
+      <div class="pc-rodape" id="pcRodape"></div>
+      <div class="cEmpty" id="emPcHist">Sem pontos lançados no período (HISTORICO, coluna pontos).</div>
     </div>
   </div>
   <div class="charts1">
@@ -7110,12 +7148,52 @@ window.DashUtils = (function() {
     return o;
   }
 
+  /* ── HISTÓRICO DOS PONTOS POR COLABORADOR (b96.94) ─────────────────────────
+     Um item por mês de regs, com a MESMA conta dos cards da Reunião
+     (pontosColab de um mês só) e o mesmo mês do ano anterior tirado de todos,
+     que é a comparação que a Reunião faz. Três regras que o gráfico precisa
+     para não enganar:
+       • mês fechado sem pontos sai com semPontos e valores null: lacuna, nunca
+         zero. Mês ainda aberto (hoje, 'AAAA-MM-DD', no mês ou antes dele) não
+         é cobrado: falta = mês fechado e com produção;
+       • desl diz a base dos diretos: 'com' (desligados do mês dentro do
+         extrato: diretos maiores, por direto menor), 'sem' (fora do extrato) ou
+         null (mês sem a contagem). OUT/26 com os 5 deu −5,2% por direto sem
+         nada mudar na fábrica;
+       • o quadro total só existe onde há colaboradoresTotal (2025 não tem). */
+  function pontosHist(regs, todos, hoje) {
+    var ORD = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    var hj = String(hoje || ''), hjK = /^\d{4}-\d{2}/.test(hj) ? (+hj.slice(0, 4)) * 12 + (+hj.slice(5, 7) - 1) : null;
+    var idx = {};
+    (todos || []).forEach(function (r) { if (r && r.mes && r.ano) idx[r.ano + '|' + r.mes] = r; });
+    return (regs || []).filter(Boolean).map(function (r) {
+      var P = pontosColab([r]), ant = idx[(r.ano - 1) + '|' + r.mes], PA = ant ? pontosColab([ant]) : null;
+      var mk = r.ano * 12 + ORD.indexOf(r.mes);
+      var fechado = hjK === null || mk < hjK;
+      var h = (r.horasNormais || 0) + (r.totalExtras || 0);
+      return {
+        mes: r.mes, ano: r.ano, rot: r.mes + '/' + String(r.ano).slice(2),
+        pontos: r.pontos > 0 ? r.pontos : null,
+        porDireto: P.porDireto, porTotal: P.porTotal, porHora: P.porHora,
+        diretos: r.colaboradores > 0 ? r.colaboradores : null,
+        quadro: P.colabTot > 0 ? P.colabTot : null,
+        horas: h > 0 ? h : null,
+        ticket: r.ticketMedio > 0 ? r.ticketMedio : null,
+        semPontos: fechado && P.semPontos.length > 0,
+        desl: P.deslFora > 0 ? 'sem' : (P.deslIncl > 0 ? 'com' : null),
+        deslN: P.deslFora > 0 ? P.deslFora : P.deslIncl,
+        antRot: r.mes + '/' + String(r.ano - 1).slice(2),
+        antDireto: PA ? PA.porDireto : null, antHora: PA ? PA.porHora : null, antTotal: PA ? PA.porTotal : null
+      };
+    });
+  }
+
   return { getDias:getDias, getFat:getFat, getProd:getProd,
            periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
            integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar, duplicidadeCompleta:duplicidadeCompleta,
            cienteLer:cienteLer, cienteTexto:cienteTexto,
-           absMotivos:absMotivos, absComparar:absComparar, custoHE:custoHE, pontosColab:pontosColab,
+           absMotivos:absMotivos, absComparar:absComparar, custoHE:custoHE, pontosColab:pontosColab, pontosHist:pontosHist,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
 
@@ -7842,6 +7920,181 @@ function drawBars(canvasId,emId,dados,valFn,cor,H,labelFn){
   cv.onmouseleave=tipHide
 }
 
+/* ── PONTOS POR COLABORADOR, MÊS A MÊS (b96.94) ─────────────────────────────
+   Aba Produção & Vendas, embaixo do ticket. Dois gráficos, cada um no seu
+   eixo: por hora (~500) e por direto (~86 mil) num eixo duplo achatariam um
+   dos dois. Barra = o mês; traço claro = o mesmo mês do ano anterior (a
+   comparação dos cards da Reunião); barra vazada com contorno tracejado =
+   base com os desligados do mês (diretos maiores, por direto menor); mês
+   fechado sem pontos = moldura vazia, nunca zero. Cor da marca, sem verde e
+   vermelho: pontos não tem meta. Dados: DashUtils.pontosHist. */
+var PC_COR='#F5A623', PC_ANT='#E0E0E0';
+function _pcHoje(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function _pcVar(v,a){ return (v!==null&&a!==null&&a>0)?((v/a-1)*100):null; }
+function _pcVarTxt(p){ return p===null?'':((p>=0?'+':'−')+f(Math.abs(p),1)+'%'); }
+function _pcPasso(bruto){
+  if(!(bruto>0)) return 1;
+  var p=Math.pow(10,Math.floor(Math.log10(bruto))), m=bruto/p;
+  return (m<=1?1:m<=2?2:m<=5?5:10)*p;
+}
+function _pcBase(x){
+  if(x.desl==='com') return 'com '+(x.deslN===1?'o desligado':'os '+fi(x.deslN)+' desligados')+' do mês';
+  if(x.desl==='sem') return 'sem '+(x.deslN===1?'o desligado':'os '+fi(x.deslN)+' desligados')+' do mês (fora do extrato)';
+  return 'sem a contagem de desligados';
+}
+function _pcTip(x){
+  /* rótulo curto e a comparação numa linha própria: no balão estreito,
+     "533 · +17,2% vs OUT/25 (455)" quebrava rótulo e valor */
+  var vs=function(v,a,fmt){ var p=_pcVar(v,a); return p===null?'':tipRow('&nbsp;&nbsp;vs '+x.antRot,_pcVarTxt(p)+' ('+fmt(a)+')'); };
+  var html='<div class="tip-title">Pontos por colaborador — '+x.rot+'</div>';
+  if(x.pontos===null) return html+tipRow('Pontos','não lançados','a');
+  return html
+    +tipRow('Por hora',x.porHora!==null?fi(x.porHora):'—')+vs(x.porHora,x.antHora,fi)
+    +tipRow('Por direto',x.porDireto!==null?fi(x.porDireto):'—')+vs(x.porDireto,x.antDireto,fi)
+    +tipRow('Quadro total',x.porTotal!==null?(fi(x.porTotal)+' · '+fi(x.quadro)+' pess.'):'—')
+    +tipRow('Pontos',fi(x.pontos))
+    +tipRow('Diretos',x.diretos!==null?fi(x.diretos):'—')
+    +tipRow('Horas',x.horas!==null?fi(x.horas)+' h':'—')
+    +tipRow('Ticket',x.ticket!==null?('R$ '+f(x.ticket,2)):'—')
+    +'<div style="margin-top:6px;font-size:.72rem;color:var(--t2);max-width:240px">Base: '+_pcBase(x)+'</div>';
+}
+function _pcBarras(id,H,k,kAnt,rotFn,eixoFn){
+  var cv=document.getElementById(id); if(!cv) return;
+  var o=setupCanvas(id,220), ctx=o.ctx, W=o.W;
+  if(!W) return;   /* aba escondida: redesenha ao abrir */
+  var pad={t:22,r:8,b:38,l:52};
+  var gW=W-pad.l-pad.r, gH=o.H-pad.t-pad.b, n=H.length;
+  var vals=H.map(function(x){return x[k];}), ants=H.map(function(x){return x[kAnt];});
+  var tudo=vals.concat(ants).filter(function(v){return v!==null;});
+  var maxV=(tudo.length?Math.max.apply(null,tudo):1)*1.14;
+  var slot=gW/n, bw=Math.max(4,Math.min(44,slot*0.66));
+  function xC(i){return pad.l+slot*i+slot/2;}
+  function yP(v){return pad.t+gH-(v/maxV)*gH;}
+
+  /* grade em passo redondo, 4 a 5 linhas */
+  var step=_pcPasso(maxV/4);
+  ctx.font='11px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(var v=0;v<=maxV;v+=step){
+    var yy=yP(v);
+    ctx.beginPath(); ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.setLineDash([3,4]);
+    ctx.moveTo(pad.l,yy); ctx.lineTo(pad.l+gW,yy); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=C.txt; ctx.fillText(eixoFn(v),pad.l-6,yy);
+  }
+  /* eixo X: mês; o ano no primeiro mês e em cada JAN, com divisória */
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  H.forEach(function(x,i){
+    ctx.font='11px Consolas,monospace'; ctx.fillStyle=C.txt;
+    ctx.fillText(x.mes,xC(i),pad.t+gH+6);
+    if(i===0||x.mes==='JAN'){
+      ctx.font='bold 10px Consolas,monospace'; ctx.fillStyle='#BBBBBB';
+      ctx.fillText(String(x.ano),xC(i),pad.t+gH+20);
+      if(i>0){
+        var xs=pad.l+slot*i;
+        ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.lineWidth=1;
+        ctx.moveTo(xs,pad.t-4); ctx.lineTo(xs,pad.t+gH+30); ctx.stroke();
+      }
+    }
+  });
+  /* barras, traço do ano anterior e rótulo */
+  var cabeRot=bw>=24;
+  H.forEach(function(x,i){
+    var v=vals[i], a=ants[i], cx=xC(i), x0=cx-bw/2, base=pad.t+gH;
+    ctx.globalAlpha=x.foco===false?0.55:1;
+    if(v===null){
+      if(x.semPontos){
+        var hv=gH*0.22;
+        ctx.setLineDash([3,3]); ctx.strokeStyle='#666666'; ctx.lineWidth=1;
+        ctx.strokeRect(x0+.5,base-hv+.5,bw-1,hv-1); ctx.setLineDash([]);
+        ctx.font='bold 11px Consolas,monospace'; ctx.fillStyle='#888888'; ctx.textBaseline='bottom';
+        ctx.fillText('s/ pts',cx,base-hv-3);
+      }
+      ctx.globalAlpha=1;
+      return;
+    }
+    var y=yP(v), h=base-y;
+    if(x.desl==='com'){
+      ctx.fillStyle='rgba(245,166,35,.42)'; ctx.fillRect(x0,y,bw,h);
+      ctx.setLineDash([4,3]); ctx.strokeStyle=PC_COR; ctx.lineWidth=1.5;
+      ctx.strokeRect(x0+.75,y+.75,bw-1.5,h-1.5); ctx.setLineDash([]);
+    } else {
+      var g=ctx.createLinearGradient(0,y,0,base);
+      g.addColorStop(0,PC_COR); g.addColorStop(1,PC_COR+'44');
+      ctx.fillStyle=g; ctx.fillRect(x0,y,bw,h);
+    }
+    var topo=y;
+    if(a!==null){
+      var ya=yP(a);
+      ctx.strokeStyle=PC_ANT; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(x0-3,ya); ctx.lineTo(x0+bw+3,ya); ctx.stroke();
+      topo=Math.min(y,ya);
+    }
+    if(cabeRot||x.ultimo){
+      ctx.font='bold 11px Consolas,monospace'; ctx.fillStyle=PC_COR;
+      ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.fillText(rotFn(v),cx,topo-3);
+    }
+    ctx.globalAlpha=1;
+  });
+
+  cv.onmousemove=function(e){
+    var rect=cv.getBoundingClientRect();
+    var idx=Math.floor((e.clientX-rect.left-pad.l)/slot);
+    if(idx<0||idx>=n){tipHide();return}
+    tipShow(_pcTip(H[idx]),e);
+  };
+  cv.onmouseleave=tipHide;
+}
+/* Rodapé: o que exige atenção no último mês com pontos — a variação por hora
+   (a leitura estável), o por direto com a base dele, e o que falta lançar. */
+function _pcRodape(H){
+  var com=H.filter(function(x){return x.pontos!==null;});
+  var u=com.filter(function(x){return x.foco!==false;}).pop()||com[com.length-1];
+  if(!u) return '';
+  var pH=_pcVar(u.porHora,u.antHora), pD=_pcVar(u.porDireto,u.antDireto);
+  var t='<b>'+u.rot+'</b>: '
+    +(u.porHora!==null?('<b>'+fi(u.porHora)+'</b> pontos por hora'+(pH!==null?(', '+_pcVarTxt(pH)+' vs '+u.antRot):'')):'sem horas')
+    +' · <b>'+(u.porDireto!==null?fi(u.porDireto):'—')+'</b> por direto'+(pD!==null?(', '+_pcVarTxt(pD)+' vs '+u.antRot):'')
+    +' ('+_pcBase(u)+').';
+  var deslCom=com.filter(function(x){return x.desl==='com';}).map(function(x){return x.rot;});
+  if(deslCom.length && com.length>deslCom.length)
+    t+='<br>Base com os desligados do mês em '+deslCom.join(', ')+': nesses meses o por direto cai sem nada mudar na fábrica. Para comparar, use o por hora.';
+  var falta=H.filter(function(x){return x.semPontos;}).map(function(x){return x.rot;});
+  if(falta.length) t+='<br><span style="color:var(--amber)">Sem pontos lançados: '+falta.join(', ')+'</span> (HISTORICO, coluna pontos).';
+  return t;
+}
+/* Histórico não se filtra por mês: com OUT filtrado (a Reunião acerta a
+   lateral com o mês dela) sobrava uma barra só. Vale o ano da lateral; os
+   meses filtrados ficam em destaque e os outros esmaecidos. dados fica na
+   assinatura por ser o que drawAll passa. */
+function drawPontosHist(dados){
+  var box=document.getElementById('pc-hist'); if(!box) return;
+  var em=document.getElementById('emPcHist'), grid=document.getElementById('pcGrid'), rod=document.getElementById('pcRodape');
+  var todos=load();
+  var doAno=sortD(todos.filter(function(r){
+    return (anoAtivo?r.ano===anoAtivo:true) && ((r.horasCarga||0)>0||(r.producaoReal||0)>0);
+  }));
+  var H=(window.DashUtils&&DashUtils.pontosHist)?DashUtils.pontosHist(doAno,todos,_pcHoje()):[];
+  /* mês ainda aberto e sem pontos não entra: não é falta */
+  H=H.filter(function(x){return x.pontos!==null||x.semPontos;});
+  var filtro=(typeof mesesAtivos!=='undefined'&&mesesAtivos.length)?mesesAtivos:null;
+  H.forEach(function(x){ x.foco=filtro?filtro.indexOf(x.mes)>=0:true; });
+  var focoPts=H.filter(function(x){return x.foco&&x.pontos!==null;});
+  var ult=focoPts.length?focoPts[focoPts.length-1]:null;
+  H.forEach(function(x){ x.ultimo=(x===ult); });
+  var per=document.getElementById('pcPeriodo');
+  if(per) per.textContent=(anoAtivo?String(anoAtivo):'todos os anos')+(filtro?(' · '+filtro.join(', ')+' em destaque'):'');
+  if(!H.some(function(x){return x.pontos!==null;})){
+    grid.style.display='none'; rod.innerHTML=''; em.style.display='block'; return;
+  }
+  grid.style.display=''; em.style.display='none';
+  _pcBarras('cPcHora',H,'porHora','antHora',function(v){return fi(v);},function(v){return fi(v);});
+  _pcBarras('cPcPessoa',H,'porDireto','antDireto',function(v){return f(v/1000,1);},function(v){return v?fi(v/1000)+' mil':'0';});
+  rod.innerHTML=_pcRodape(H);
+}
+
 /* Barras coloridas pela dependência de HE do mês (menor é melhor) */
 function corEf(r){
   var e=depHE(r); if(e===null) return C.cyan;
@@ -8143,6 +8396,7 @@ function drawAll(dados){
   drawTkt(dados);
   drawBars('cTkt2','emTkt2',dados,function(r){return r.ticketMedio>0?r.ticketMedio:null},
     C.purple,200,function(v){return v?'R$'+f(v,0):''});
+  try{ drawPontosHist(dados); }catch(e){ console.warn('drawPontosHist', e); }
   drawAbs(dados);
   drawComparacao(dados);
   // Delta capacidade
@@ -23417,7 +23671,7 @@ window.CompAnos = (function () {
     /* ir = id de aba (desce a pirâmide) ou '#id' (rola até um bloco desta tela) */
     var nav=!ir?' style="'
       : ir.charAt(0)==='#' ? ' onclick="reuFoco(\''+ir+'\')" title="Ver o plano de ação" style="cursor:pointer;'
-      : ' onclick="reuIr(\''+ir+'\')" title="Ver o detalhe — '+ir+'" style="cursor:pointer;';
+      : ' onclick="reuIr(\''+ir+'\')" title="Ver o detalhe — '+ir.split('#')[0]+'" style="cursor:pointer;';
     return '<div class="reu-card'+(grande?' reu-big':'')+(ir?' reu-link':'')+'"'+nav
       +'background:var(--panel);border:1px solid var(--b);border-top:3px solid '+cor+';'
       +'border-radius:var(--r);padding:'+(grande?'11px 15px':'9px 13px')+'">'
@@ -24175,12 +24429,12 @@ window.CompAnos = (function () {
         return ' · sem os que não batem ponto';
       };
       var motEdit = (!anoTodo && rMes.colaboradoresTotal>0)
-        ? (' <button type="button" class="reu-noprint" onclick="editarReg(\''+rMes.id+'\',\'fForaDoPonto\')" title="Quem está na folha e não bate ponto em '+mes+': entra no quadro total" '
+        ? (' <button type="button" class="reu-noprint" onclick="event.stopPropagation();editarReg(\''+rMes.id+'\',\'fForaDoPonto\')" title="Quem está na folha e não bate ponto em '+mes+': entra no quadro total" '
            +'style="background:none;border:none;padding:0;color:#F5A623;cursor:pointer;font:inherit;text-decoration:underline">'
            +(rMes.foraDoPonto>0?'✎ fora do ponto':'✎ lançar fora do ponto')+'</button>')
         : '';
       /* b96.82: atalho para o Quadro por setor (aba Pessoas), no mês da Reunião */
-      var qsLink = ' <button type="button" class="reu-noprint" onclick="reuIrQuadro('+(ano*100+ORDEM_M.indexOf(mes)+1)+')" title="Onde o quadro cresceu ou caiu, setor a setor (aba Pessoas)" '
+      var qsLink = ' <button type="button" class="reu-noprint" onclick="event.stopPropagation();reuIrQuadro('+(ano*100+ORDEM_M.indexOf(mes)+1)+')" title="Onde o quadro cresceu ou caiu, setor a setor (aba Pessoas)" '
            +'style="background:none;border:none;padding:0;color:#F5A623;cursor:pointer;font:inherit;text-decoration:underline">ver por setor ›</button>';
       var baseTot = anoTodo
         ? (fi(PC.pontosTot)+' pontos em '+PC.mesesTot+' meses ÷ '+fi(PC.colabTot/(PC.mesesTot||1))+' no quadro (média)'+motTxt(PC, true))
@@ -24193,6 +24447,10 @@ window.CompAnos = (function () {
            ? ('<div style="margin-top:6px;font-size:.74rem;color:var(--t2)">quadro total: sem o total de colaboradores em '+rotPer+' (HISTORICO, coluna colaboradoresTotal)</div>')
            : '');
       var subRot = '<span style="font-size:.72rem;font-weight:600;color:var(--t2);margin-left:8px">por direto</span>';
+      /* b96.94: os quatro cards de pontos descem para o histórico mês a mês
+         (Produção & Vendas › Pontos por colaborador). Os botões de dentro do
+         card (lápis, ver por setor) param o clique para não descer junto. */
+      var PC_IR = 'producao#pc-hist';
       bPontos=card('Pontos por pessoa'+(anoTodo?' · média/mês':''),
                PC.porDireto!==null ? (fi(PC.porDireto)+subRot) : '—',
                (PC.porDireto!==null
@@ -24200,7 +24458,7 @@ window.CompAnos = (function () {
                  : ('pontos de '+mes+' não lançados (HISTORICO, coluna pontos)'))
                +tktLinha(A.tktMed)
                +linhaTot,
-               '#F5A623', false)
+               '#F5A623', false, PC_IR)
         +card('Pontos por hora trabalhada',
                PC.porHora!==null ? fi(PC.porHora) : '—',
                PC.porHora!==null
@@ -24208,7 +24466,7 @@ window.CompAnos = (function () {
                     +'<br>horas normais + extras dos diretos'+deslTxt(PC, anoTodo)
                     +cmpDest(comp2Hora))
                  : ('pontos de '+mes+' não lançados'),
-               '#F5A623', false);
+               '#F5A623', false, PC_IR);
       /* Média do ano em cards próprios, abaixo dos do mês (b96.74): os
          números da antiga linha "ano" (PCano, até o mês escolhido), com a
          comparação contra os mesmos meses do ano anterior, a mesma da visão
@@ -24229,7 +24487,7 @@ window.CompAnos = (function () {
                     +tktLinha(Y.tktMed)
                     +(PCano.porTotal!==null?qtDest(fi(PCano.porTotal), fi(PCano.colabTot/PCano.mesesTot)+' no quadro (média por mês)'+motTxt(PCano, true)):''))
                  : 'sem diretos nos meses com pontos',
-               '#F5A623', false)
+               '#F5A623', false, PC_IR)
           +card('Pontos por hora · ano até '+ultPC,
                PCano.porHora!==null ? fi(PCano.porHora) : '—',
                PCano.porHora!==null
@@ -24237,7 +24495,7 @@ window.CompAnos = (function () {
                     +'<br>horas normais + extras dos diretos'+deslTxt(PCano, true)
                     +cmpDest(cmpHoraAno))
                  : 'sem horas nos meses com pontos',
-               '#F5A623', false);
+               '#F5A623', false, PC_IR);
       }
     }
     var CT = DashUtils.carteira(todos, ano, mes);
@@ -24644,6 +24902,13 @@ window.CompAnos = (function () {
     }, 150);
   };
   window.reuIr=function(id){
+    /* b96.94: 'aba#bloco' desce para a aba e rola até o bloco (cards de
+       pontos → producao#pc-hist). */
+    var alvo=null, cerca=String(id).indexOf('#');
+    if(cerca>0){ alvo=String(id).slice(cerca+1); id=String(id).slice(0,cerca); }
+    if(alvo) setTimeout(function(){
+      try{ var el=document.getElementById(alvo); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
+    }, 150);
     _descendo = true;
     if(typeof mudarPagina==='function') mudarPagina(id);
     /* acende o grupo certo na barra de cima, senão o usuário se perde */
@@ -26252,9 +26517,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.93';
-var APP_DATA   = '09/11/2026';
+var APP_VERSAO = 'b96.94';
+var APP_DATA   = '10/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.94', data:'10/11/2026', itens:[
+    'Producao & Vendas ganha Pontos por colaborador mes a mes, logo abaixo do ticket medio (pontos = faturado x ticket: sem o ticket por perto, preco caindo vira produtividade caindo). Dois graficos, cada um no seu eixo: por hora trabalhada (pontos / horas normais + extras dos diretos, a leitura mais estavel) e por direto. Mesma conta dos cards da Reuniao (DashUtils.pontosHist sobre pontosColab).',
+    'Em cada barra, um traco claro com o mesmo mes do ano anterior, a comparacao que a Reuniao faz. Mes com os desligados do mes na base aparece vazado com contorno tracejado (OUT/26: por direto -5,6% sem nada mudar na fabrica); mes fechado sem pontos aparece como moldura vazia "s/ pts", nunca zero; mes ainda aberto nao e cobrado. Balao com por hora, por direto, quadro total, pontos, diretos, horas, ticket e a base do mes. Rodape com o ultimo mes e o aviso de base diferente.',
+    'O historico segue o ano da lateral e nao o mes: com OUT filtrado (a Reuniao acerta a lateral com o mes dela) sobrava uma barra so. Os meses filtrados ficam em destaque e os outros esmaecidos.',
+    'Reuniao, pergunta 3: os quatro cards de pontos (mes e ano, por pessoa e por hora) ficam clicaveis e descem para o historico (reuIr aceita aba#bloco e rola ate o bloco). O lapis do fora do ponto e o ver por setor de dentro do card nao descem junto.'
+  ]},
   { v:'b96.93', data:'09/11/2026', itens:[
     'Desligados do mes no extrato do ponto. O ponto so traz no Extrato de Totais quem saiu no mes se o RH exportar com os demitidos; JAN a SET/26 vieram sem (2, 1, 6, 5, 2, 5, 7, 4 e 5 diretos) e OUT/26, reexportado, com os 5. Com eles, OUT foi de 91 para 96 diretos, absenteismo de 8,86% para 8,66% e pontos por direto -5,2%, sem nada mudar na fabrica: mes com e mes sem nao se comparam.',
     'PontoRH.gs conta, so diretos, os desligados do mes dentro do extrato (desligadosPonto) e fora dele (desligadosForaPonto), pela PONTO_PESSOA x FUNCIONARIOS, e grava na HISTORICO a cada extrato e controle processados, ou pelo menu Ponto > Contar desligados do mes no extrato. So contagem; os nomes ficam no aviso de quem processa. Code.gs protege as duas colunas do sync do painel.',
