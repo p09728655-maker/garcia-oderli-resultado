@@ -221,6 +221,24 @@ canvas{width:100%!important;display:block}
 .pc-sub span{display:block;font-weight:400;font-size:.68rem;color:var(--t2);margin-top:2px}
 .pc-rodape{font-size:.8rem;color:var(--t1);margin:12px 2px 0;line-height:1.5}
 .pc-rodape b{font-family:var(--mono)}
+/* b96.95: Produção & Vendas. Só nesta aba (#page-producao): os cards do
+   resto do painel seguem como estão. Número e unidade numa linha só, a
+   unidade menor; 4 colunas, 2 no notebook estreito, 1 no celular. */
+/* !important: o painel força .kGrid com !important nos breakpoints (linhas
+   ~656-665, inclusive 2 colunas no celular, onde "304.477 pç" estourava). */
+#page-producao .pv-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14px}
+@media(max-width:1180px){#page-producao .pv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:560px){#page-producao .pv-kpis{grid-template-columns:1fr!important}}
+#page-producao .pv-k{display:flex;flex-direction:column}
+#page-producao .pv-k .kVal{font-size:2rem!important;white-space:nowrap;color:var(--t1)}
+#page-producao .pv-k .kVal small{font-size:.48em;font-weight:600;color:var(--t2);letter-spacing:0}
+#page-producao .pv-k .kSub{font-size:.74rem!important;color:var(--t2)!important;line-height:1.5!important;margin-top:10px!important}
+#page-producao .pv-k .kSub b{font-family:var(--mono);font-weight:700;color:var(--t1)}
+#page-producao .pv-duo{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap}
+#page-producao .pv-duo .kVal{font-size:1.75rem!important}
+#page-producao .pv-cap{font-size:.68rem;color:var(--t2);margin-top:5px}
+#page-producao .pv-nota{font-size:.74rem;color:var(--t2);margin:-6px 2px 12px;line-height:1.45}
+#page-producao .pv-ld-he{background:repeating-linear-gradient(135deg,rgba(245,166,35,.85) 0 2px,rgba(245,166,35,.15) 2px 4px);border:1px solid #F5A623}
 
 /* ─── TABELA ─── */
 .tWrap{background:var(--panel);border:1px solid var(--b);border-radius:var(--r);
@@ -1794,42 +1812,64 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
       <div class="pageHdrSub">Produção real, metas, atingimento e ticket médio</div>
     </div>
   </div>
-  <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-    <div class="kCard kc"><div class="kLbl">Produção Total</div><div class="kVal" id="kv5-prod">556.827 pç</div><div class="kSub">Peças acumuladas</div></div>
-    <div class="kCard ka" id="card5-med"><div class="kLbl">Média Mensal</div><div class="kVal" id="kv5-med">30.935 pç</div><div class="kSub">Peças/mês</div></div>
-    <div class="kCard kp"><div class="kLbl">Ticket Médio</div><div class="kVal" id="kv5-tkt">R$ 249,36</div><div class="kSub">R$ por peça</div></div>
-    <div class="kCard kg" id="card5-best"><div class="kLbl">Melhor Mês</div><div class="kVal" id="kv5-best">36.450 pç</div><div class="kSub" id="ks5-best">MAI/2025</div></div>
-    <div class="kCard kc"><div class="kLbl">Previsto (Plano Mestre)</div><div class="kVal" id="kv5-meta">—</div><div class="kSub">Σ previsão dos meses com plano</div></div>
-    <div class="kCard ka" id="card5-var"><div class="kLbl">Aderência ao plano · c/ HE</div><div class="kVal" id="kv5-var">—</div><div class="kSub">produção entregue ÷ previsto</div></div>
+  <!-- b96.95: quatro números, na ordem da pergunta da aba: produzimos o
+       plano? quanto foi sem hora extra? a que preço? a fila de faturamento
+       cresce? Eram sete cards do mesmo peso, com número quebrando linha;
+       previsto, média e pico viraram a linha de apoio do primeiro card (os
+       ids continuam: o Relatório lê kv5-meta, kv5-med e kv5-best). A cor de
+       veredito fica só nos números que têm régua: aderência e carteira. -->
+  <div class="kGrid pv-kpis">
+    <div class="kCard kc pv-k">
+      <div class="kLbl">Produção</div>
+      <div class="kVal" id="kv5-prod">—</div>
+      <div class="kSub">de <b id="kv5-meta">—</b> previstos · média <b id="kv5-med">—</b>/mês<br>pico <b id="kv5-best">—</b> em <b id="ks5-best">—</b></div>
+    </div>
+    <div class="kCard kc pv-k">
+      <div class="kLbl">Aderência ao plano</div>
+      <div class="pv-duo">
+        <div><div class="kVal" id="kv5-prevse">—</div><div class="pv-cap">só jornada normal</div></div>
+        <div><div class="kVal" id="kv5-var">—</div><div class="pv-cap">com hora extra</div></div>
+      </div>
+      <div class="kSub" id="ks5-var">produção ÷ previsto, nos meses com plano</div>
+    </div>
+    <div class="kCard kc pv-k">
+      <div class="kLbl">Ticket médio</div>
+      <div class="kVal" id="kv5-tkt">—</div>
+      <div class="kSub">receita ÷ peças faturadas no período</div>
+    </div>
     <!-- Carteira a faturar em dias úteis de produção normal: a mesma conta do
          card da Reunião (DashUtils.carteira), que desce para esta aba. É a
          VARIAÇÃO acumulada vendido − faturado desde o início da série, não o
          saldo absoluto do ERP. -->
-    <div class="kCard kc" id="card5-cart" style="display:none"><div class="kLbl">Carteira a faturar</div><div class="kVal" id="kv5-cart">—</div><div class="kSub" id="ks5-cart">vendido − faturado acumulado, em dias úteis normais</div></div>
+    <div class="kCard kc pv-k" id="card5-cart" style="display:none"><div class="kLbl">Carteira a faturar</div><div class="kVal" id="kv5-cart">—</div><div class="kSub" id="ks5-cart">vendido − faturado acumulado, em dias úteis normais</div></div>
   </div>
+  <!-- b96.95: plano × produção numa barra só. A barra é a produção do mês,
+       cheia na jornada normal e hachurada na hora extra; o traço é o plano.
+       Antes a barra era só a jornada normal, vermelha em 9 de 10 meses, e o
+       card ao lado dizia 99,5% com hora extra: a tela não mostrava que a
+       diferença era a hora extra. O gráfico "Produção real total" saiu: o
+       total é o topo desta barra, e a cor dele (dependência de HE, sem
+       legenda) virou a parte hachurada. -->
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
-        <span class="cTtl">▸ Previsto (Plano Mestre) vs Realizado s/ Hora Extra (peças)</span>
+        <span class="cTtl">▸ Plano × produção · mês a mês (peças)</span>
         <div class="lgnd">
-          <span class="li"><span class="ld" style="background:var(--t2);border:1px dashed var(--t2)"></span>Meta</span>
-          <span class="li"><span class="ld" style="background:var(--cyan)"></span>Realizado</span>
+          <span class="li"><span class="ld" style="background:#F5A623"></span>Jornada normal</span>
+          <span class="li"><span class="ld pv-ld-he"></span>Hora extra</span>
+          <span class="li"><span class="ld" style="background:#E0E0E0;height:2px;width:14px;border-radius:0"></span>Plano (Plano Mestre)</span>
         </div>
       </div>
-      <canvas id="cMetaReal" height="240" width="0" style="display: block; height: 240px;" class="canvas-zoom" title="Clique para ampliar"></canvas>
-      <div class="cEmpty" id="emMetaReal" style="display: none;">Sem dados</div>
+      <div class="pv-nota">Acima de cada barra, quanto do plano a jornada normal entregou: <span style="color:var(--green)">100% ou mais</span> · <span style="color:var(--amber)">95 a 99%</span> · <span style="color:var(--red)">abaixo de 95%</span>. O que passa do traço com a parte hachurada foi plano fechado com hora extra.</div>
+      <canvas id="cMetaReal" height="260" width="0" style="display:block;height:260px"></canvas>
+      <div class="cEmpty" id="emMetaReal" style="display:none">Sem produção no período</div>
     </div>
   </div>
-  <div class="charts2">
+  <div class="charts1">
     <div class="cBox">
-      <div class="cHdr"><span class="cTtl">▸ Produção Real Total (peças)</span></div>
-      <canvas id="cProd2" height="240" width="0" style="display: block; height: 240px;" class="canvas-zoom" title="Clique para ampliar"></canvas>
-      <div class="cEmpty" id="emProd2" style="display: none;">Sem dados</div>
-    </div>
-    <div class="cBox">
-      <div class="cHdr"><span class="cTtl">▸ Ticket Médio de Venda (R$)</span></div>
-      <canvas id="cTkt2" height="200" width="0" style="display: block; height: 200px;" class="canvas-zoom" title="Clique para ampliar"></canvas>
-      <div class="cEmpty" id="emTkt2" style="display: none;">Sem dados</div>
+      <div class="cHdr"><span class="cTtl">▸ Ticket médio de venda · mês a mês (R$ por peça)</span></div>
+      <canvas id="cTkt2" height="200" width="0" style="display:block;height:200px"></canvas>
+      <div class="cEmpty" id="emTkt2" style="display:none">Sem ticket médio no período</div>
     </div>
   </div>
   <!-- b96.94: histórico dos pontos por colaborador (drawPontosHist), a mesma
@@ -1842,6 +1882,7 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
         <span class="cTtl">▸ Pontos por colaborador · mês a mês · <span id="pcPeriodo"></span></span>
         <div class="lgnd">
           <span class="li"><span class="ld" style="background:#F5A623"></span>Mês</span>
+          <span class="li"><span class="ld" style="background:#64B5F6;height:3px;width:14px;border-radius:2px"></span>Todos os colaboradores</span>
           <span class="li"><span class="ld" style="background:#E0E0E0;height:2px;width:12px;border-radius:0"></span>Mesmo mês do ano anterior</span>
           <span class="li"><span class="ld" style="background:transparent;border:1px dashed #F5A623"></span>Base com os desligados do mês</span>
           <span class="li"><span class="ld" style="background:transparent;border:1px dashed var(--t3)"></span>Sem pontos lançados</span>
@@ -1854,7 +1895,7 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
           <canvas id="cPcHora" height="220" width="0" style="display:block;height:220px"></canvas>
         </div>
         <div class="pc-col">
-          <div class="pc-sub">Por pessoa <span>pontos ÷ diretos · oscila com dias úteis, hora extra, falta e desligados</span></div>
+          <div class="pc-sub">Por pessoa <span>barra: pontos ÷ diretos · <b style="color:#64B5F6;font-weight:600">linha: pontos ÷ todos os colaboradores do quadro</b> (ponto + fora do ponto, desde JAN/26)</span></div>
           <canvas id="cPcPessoa" height="220" width="0" style="display:block;height:220px"></canvas>
         </div>
       </div>
@@ -7632,6 +7673,8 @@ function calcDeltas(dados){
 }
 
 function drawDivBars(canvasId,emId,labels,values,posColor,negColor,H,suffix,invert){
+  /* b96.95: peça é inteira (era "+5.714,0"); as outras grandezas seguem com 1 casa */
+  var fV=function(v){ return suffix===' pç'?fi(v):f(v); };
   var cv=document.getElementById(canvasId), em=document.getElementById(emId);
   if(!cv||!em) return;   /* gráfico de aba que não existe mais */
   if(!values||!values.length||values.every(function(v){return v===null})){
@@ -7657,7 +7700,7 @@ function drawDivBars(canvasId,emId,labels,values,posColor,negColor,H,suffix,inve
     ctx.lineWidth=v===0?1.5:1;ctx.setLineDash(v===0?[]:[3,4]);
     ctx.moveTo(pad.l,yy);ctx.lineTo(pad.l+gW,yy);ctx.stroke();ctx.setLineDash([]);
     ctx.textAlign='right';ctx.textBaseline='middle';
-    ctx.fillText((v>0?'+':'')+f(v)+(suffix||''),pad.l-5,yy)
+    ctx.fillText((v>0?'+':'')+fV(v)+(suffix||''),pad.l-5,yy)
   });
 
   values.forEach(function(v,i){
@@ -7675,7 +7718,7 @@ function drawDivBars(canvasId,emId,labels,values,posColor,negColor,H,suffix,inve
     ctx.fillRect(x,v>=0?barY:barY+barH-2,bW,2);
     ctx.font='bold 13px Consolas,monospace';ctx.fillStyle=cor;
     ctx.textAlign='center';ctx.textBaseline=v>=0?'bottom':'top';
-    var vStr=(v>0?'+':'')+f(v)+(suffix||'');
+    var vStr=(v>0?'+':'')+fV(v)+(suffix||'');
     ctx.fillText(vStr,xP(i),v>=0?barY-2:barY+barH+2)
   });
 
@@ -7734,7 +7777,7 @@ function drawComparacao(dados){
   var deltas=calcDeltas(dados);
   var labels=deltas.map(function(d){return d.mes});
   drawDivBars('cDeltaEf',  'emDeltaEf',  labels,deltas.map(function(d){return d.dEf}),   C.green,C.red,   190,' p.p.',   true);
-  drawDivBars('cDeltaProd','emDeltaProd', labels,deltas.map(function(d){return d.dProd}),  C.cyan, C.pink,  190,'',    false);
+  drawDivBars('cDeltaProd','emDeltaProd', labels,deltas.map(function(d){return d.dProd}),  C.cyan, C.pink,  190,' pç', false);
   drawDivBars('cDeltaAbs', 'emDeltaAbs',  labels,deltas.map(function(d){return d.dAbs}),   C.green,C.red,   180,'%',   true);
   drawDivBars('cDeltaTkt', 'emDeltaTkt',  labels,deltas.map(function(d){return d.dTkt}),   C.amber,C.red,   180,' R$', false);
   renderDeltaTable(deltas)
@@ -7928,7 +7971,7 @@ function drawBars(canvasId,emId,dados,valFn,cor,H,labelFn){
    base com os desligados do mês (diretos maiores, por direto menor); mês
    fechado sem pontos = moldura vazia, nunca zero. Cor da marca, sem verde e
    vermelho: pontos não tem meta. Dados: DashUtils.pontosHist. */
-var PC_COR='#F5A623', PC_ANT='#E0E0E0';
+var PC_COR='#F5A623', PC_ANT='#E0E0E0', PC_QT='#64B5F6';   /* PC_QT: todos os colaboradores (quadro total), b96.95 */
 function _pcHoje(){
   var d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -7954,21 +7997,22 @@ function _pcTip(x){
   return html
     +tipRow('Por hora',x.porHora!==null?fi(x.porHora):'—')+vs(x.porHora,x.antHora,fi)
     +tipRow('Por direto',x.porDireto!==null?fi(x.porDireto):'—')+vs(x.porDireto,x.antDireto,fi)
-    +tipRow('Quadro total',x.porTotal!==null?(fi(x.porTotal)+' · '+fi(x.quadro)+' pess.'):'—')
+    +tipRow('Todos os colab.',x.porTotal!==null?(fi(x.porTotal)+' · '+fi(x.quadro)+' pess.'):'sem o quadro total')+vs(x.porTotal,x.antTotal,fi)
     +tipRow('Pontos',fi(x.pontos))
     +tipRow('Diretos',x.diretos!==null?fi(x.diretos):'—')
     +tipRow('Horas',x.horas!==null?fi(x.horas)+' h':'—')
     +tipRow('Ticket',x.ticket!==null?('R$ '+f(x.ticket,2)):'—')
     +'<div style="margin-top:6px;font-size:.72rem;color:var(--t2);max-width:240px">Base: '+_pcBase(x)+'</div>';
 }
-function _pcBarras(id,H,k,kAnt,rotFn,eixoFn){
+function _pcBarras(id,H,k,kAnt,rotFn,eixoFn,linha){
   var cv=document.getElementById(id); if(!cv) return;
   var o=setupCanvas(id,220), ctx=o.ctx, W=o.W;
   if(!W) return;   /* aba escondida: redesenha ao abrir */
   var pad={t:22,r:8,b:38,l:52};
   var gW=W-pad.l-pad.r, gH=o.H-pad.t-pad.b, n=H.length;
   var vals=H.map(function(x){return x[k];}), ants=H.map(function(x){return x[kAnt];});
-  var tudo=vals.concat(ants).filter(function(v){return v!==null;});
+  var lin=linha?H.map(function(x){return x[linha.k];}):[];
+  var tudo=vals.concat(ants).concat(lin).filter(function(v){return v!==null&&v!==undefined;});
   var maxV=(tudo.length?Math.max.apply(null,tudo):1)*1.14;
   var slot=gW/n, bw=Math.max(4,Math.min(44,slot*0.66));
   function xC(i){return pad.l+slot*i+slot/2;}
@@ -8039,6 +8083,34 @@ function _pcBarras(id,H,k,kAnt,rotFn,eixoFn){
     ctx.globalAlpha=1;
   });
 
+  /* b96.95: segunda série no mesmo eixo (mesma unidade, pontos por pessoa):
+     pontos ÷ todos os colaboradores do quadro. Linha só onde há o quadro
+     total (2025 não tem colaboradoresTotal); mês sem valor interrompe. */
+  if(linha){
+    ctx.strokeStyle=linha.cor; ctx.lineWidth=2; ctx.beginPath();
+    var aberto=false;
+    lin.forEach(function(v,i){
+      if(v===null||v===undefined){ aberto=false; return; }
+      if(aberto) ctx.lineTo(xC(i),yP(v)); else { ctx.moveTo(xC(i),yP(v)); aberto=true; }
+    });
+    ctx.stroke();
+    lin.forEach(function(v,i){
+      if(v===null||v===undefined) return;
+      var x=H[i], cx=xC(i), cy=yP(v);
+      ctx.globalAlpha=x.foco===false?0.55:1;
+      ctx.beginPath(); ctx.arc(cx,cy,x.ultimo?4.5:3.2,0,Math.PI*2);
+      ctx.fillStyle=linha.cor; ctx.fill();
+      ctx.lineWidth=1.5; ctx.strokeStyle='#0d1b2e'; ctx.stroke();
+      if(x.ultimo){   /* só o último: com rótulo em todo ponto, barra e linha somavam 20 números */
+        var t=linha.rot(v);
+        ctx.font='bold 11px Consolas,monospace'; ctx.textAlign='center'; ctx.textBaseline='top';
+        ctx.lineWidth=3; ctx.strokeStyle='rgba(13,27,46,.92)'; ctx.strokeText(t,cx,cy+7);
+        ctx.fillStyle=linha.cor; ctx.fillText(t,cx,cy+7);
+      }
+      ctx.globalAlpha=1;
+    });
+  }
+
   cv.onmousemove=function(e){
     var rect=cv.getBoundingClientRect();
     var idx=Math.floor((e.clientX-rect.left-pad.l)/slot);
@@ -8057,7 +8129,10 @@ function _pcRodape(H){
   var t='<b>'+u.rot+'</b>: '
     +(u.porHora!==null?('<b>'+fi(u.porHora)+'</b> pontos por hora'+(pH!==null?(', '+_pcVarTxt(pH)+' vs '+u.antRot):'')):'sem horas')
     +' · <b>'+(u.porDireto!==null?fi(u.porDireto):'—')+'</b> por direto'+(pD!==null?(', '+_pcVarTxt(pD)+' vs '+u.antRot):'')
-    +' ('+_pcBase(u)+').';
+    +' ('+_pcBase(u)+')'
+    +(u.porTotal!==null?(' · <b style="color:'+PC_QT+'">'+fi(u.porTotal)+'</b> por colaborador, com todos os '+fi(u.quadro)+' do quadro'
+       +(u.diretos!==null&&u.quadro>0?(' (diretos são '+f(u.diretos/u.quadro*100,0)+'%)'):'')):'')
+    +'.';
   var deslCom=com.filter(function(x){return x.desl==='com';}).map(function(x){return x.rot;});
   if(deslCom.length && com.length>deslCom.length)
     t+='<br>Base com os desligados do mês em '+deslCom.join(', ')+': nesses meses o por direto cai sem nada mudar na fábrica. Para comparar, use o por hora.';
@@ -8091,7 +8166,8 @@ function drawPontosHist(dados){
   }
   grid.style.display=''; em.style.display='none';
   _pcBarras('cPcHora',H,'porHora','antHora',function(v){return fi(v);},function(v){return fi(v);});
-  _pcBarras('cPcPessoa',H,'porDireto','antDireto',function(v){return f(v/1000,1);},function(v){return v?fi(v/1000)+' mil':'0';});
+  _pcBarras('cPcPessoa',H,'porDireto','antDireto',function(v){return f(v/1000,1);},function(v){return v?fi(v/1000)+' mil':'0';},
+    { k:'porTotal', cor:PC_QT, rot:function(v){return f(v/1000,1);} });
   rod.innerHTML=_pcRodape(H);
 }
 
@@ -8253,73 +8329,192 @@ function drawTkt(dados){
   })
 }
 
-/* Gráfico Previsto (Plano Mestre) vs Realizado s/ Hora Extra */
+/* ── PLANO × PRODUÇÃO (b96.95) ─────────────────────────────────────────────
+   Uma barra por mês = produção total, empilhada: jornada normal (cheia) +
+   hora extra (hachurada). Traço claro = previsto do Plano Mestre. Rótulo =
+   quanto do plano a jornada normal entregou, na régua da Reunião (≥ 100
+   verde · ≥ 95 âmbar · abaixo vermelho). Antes a barra era só a jornada
+   normal, vermelha em quase todo mês, e o card ao lado dizia 99,5% com hora
+   extra: a tela não mostrava que a diferença era a hora extra. Mês sem plano
+   mostra a barra sem traço e sem rótulo; mês sem prodSemExtras, a barra
+   inteira cheia e sem rótulo (não dá para separar a hora extra). Mesmo
+   canvas e mesma assinatura: zoom e Relatório continuam lendo cMetaReal. */
+function _pvHachura(ctx){
+  var t=document.createElement('canvas'); t.width=6; t.height=6;
+  var c=t.getContext('2d');
+  c.strokeStyle='rgba(245,166,35,.9)'; c.lineWidth=1.4;
+  c.beginPath(); c.moveTo(-1,7); c.lineTo(7,-1); c.moveTo(-1,1); c.lineTo(1,-1); c.moveTo(5,7); c.lineTo(7,5); c.stroke();
+  return ctx.createPattern(t,'repeat');
+}
+function _pvEixoX(ctx,rs,xC,y0,slot,pad,gH){
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  rs.forEach(function(r,i){
+    ctx.font='11px Consolas,monospace'; ctx.fillStyle=C.txt;
+    ctx.fillText(r.mes,xC(i),y0+6);
+    if(i===0||r.mes==='JAN'){
+      ctx.font='bold 10px Consolas,monospace'; ctx.fillStyle='#BBBBBB';
+      ctx.fillText(String(r.ano),xC(i),y0+20);
+      if(i>0){
+        var xs=pad.l+slot*i;
+        ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.lineWidth=1;
+        ctx.moveTo(xs,pad.t-4); ctx.lineTo(xs,pad.t+gH+30); ctx.stroke();
+      }
+    }
+  });
+}
+function _pvCorAd(p){ return p>=100?C.green:p>=95?C.amber:C.red; }
 function drawMetaReal(dados){
   var cv=document.getElementById('cMetaReal'), em=document.getElementById('emMetaReal');
-  var comMeta=dados.filter(function(r){return (r.previsaoProducao||0)>0&&r.prodSemExtras>0});
-  if(!comMeta.length){cv.style.display='none';em.style.display='block';return}
-  cv.style.display='block'; em.style.display='none';
-  var o=setupCanvas('cMetaReal',240), ctx=o.ctx, W=o.W, H=o.H;
-  var pad={t:20,r:20,b:38,l:68};
-  var gW=W-pad.l-pad.r, gH=H-pad.t-pad.b, n=comMeta.length;
+  if(!cv) return;
+  var rs=(dados||[]).filter(function(r){return (r.producaoReal||0)>0;});
+  if(!rs.length){cv.style.display='none';if(em)em.style.display='block';return}
+  cv.style.display='block'; if(em)em.style.display='none';
+  var o=setupCanvas('cMetaReal',260), ctx=o.ctx, W=o.W, H=o.H;
+  if(!W) return;   /* aba escondida: redesenha ao abrir */
+  var pad={t:28,r:10,b:40,l:58};
+  var gW=W-pad.l-pad.r, gH=H-pad.t-pad.b, n=rs.length;
+  var maxV=Math.max.apply(null,rs.map(function(r){return Math.max(r.producaoReal||0,r.previsaoProducao||0);}))*1.12||1;
+  var slot=gW/n, bw=Math.max(6,Math.min(58,slot*0.6)), base=pad.t+gH;
+  function xC(i){return pad.l+slot*i+slot/2;}
+  function yP(v){return base-(v/maxV)*gH;}
 
-  var allV=comMeta.map(function(r){return Math.max(r.previsaoProducao,r.prodSemExtras)});
-  var maxV=Math.max.apply(null,allV)*1.12||1;
-  var step=Math.ceil(maxV/5/1000)*1000||1;
-
-  function xP(i){return pad.l+(i+0.5)*(gW/n)}
-  function yP(v){return pad.t+gH-(v/maxV)*gH}
-  function barW(){return Math.max(6, Math.min(32, gW/n*0.38))}
-
-  // Grid
-  ctx.font='12px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle';
+  var step=_pcPasso(maxV/5);
+  ctx.font='11px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle';
   for(var v=0;v<=maxV;v+=step){
     var yy=yP(v);
     ctx.beginPath(); ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.setLineDash([3,4]);
     ctx.moveTo(pad.l,yy); ctx.lineTo(pad.l+gW,yy); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle=C.txt; ctx.fillText(fi(v),pad.l-7,yy)
+    ctx.fillStyle=C.txt; ctx.fillText(fi(v),pad.l-6,yy);
   }
+  _pvEixoX(ctx,rs,xC,base,slot,pad,gH);
 
-  // Labels eixo X
-  ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle=C.txt;
-  comMeta.forEach(function(r,i){ctx.fillText(r.mes,xP(i),pad.t+gH+8)});
-
-  var bw=barW();
-
-  comMeta.forEach(function(r,i){
-    var x=xP(i);
-    var yMeta=yP(r.previsaoProducao), yReal=yP(r.prodSemExtras);
-    var atingiu=r.prodSemExtras>=r.previsaoProducao;
-
-    // Barra META (tracejada, fundo)
-    ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
-    ctx.strokeRect(x-bw-2, yMeta, bw*2+4, pad.t+gH-yMeta);
-    ctx.setLineDash([]);
-
-    // Barra REALIZADO
-    var cor=atingiu?C.green:C.red;
-    var grad=ctx.createLinearGradient(0,yReal,0,pad.t+gH);
-    grad.addColorStop(0, atingiu?'rgba(100,221,100,.85)':'rgba(255,90,90,.85)');
-    grad.addColorStop(1, atingiu?'rgba(100,221,100,.2)':'rgba(255,90,90,.2)');
-    ctx.fillStyle=grad;
-    ctx.beginPath();
-    ctx.roundRect?ctx.roundRect(x-bw+1,yReal,bw*2-2,pad.t+gH-yReal,3):
-      ctx.rect(x-bw+1,yReal,bw*2-2,pad.t+gH-yReal);
-    ctx.fill();
-
-    // Linha meta no topo
-    ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.5;
-    ctx.setLineDash([4,3]);
-    ctx.moveTo(x-bw-3, yMeta); ctx.lineTo(x+bw+3, yMeta); ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Variação %
-    var var_pct=((r.prodSemExtras-r.previsaoProducao)/r.previsaoProducao*100);
-    ctx.font='bold 13px Consolas,monospace'; ctx.textAlign='center';
-    ctx.fillStyle=atingiu?C.green:C.red;
-    var labelY=Math.min(yReal,yMeta)-12;
-    ctx.fillText((atingiu?'+':'')+f(var_pct)+'%', x, labelY);
+  var hach=_pvHachura(ctx), cabe=slot>=30;
+  rs.forEach(function(r,i){
+    var tot=r.producaoReal||0, temSE=(r.prodSemExtras||0)>0;
+    var nor=temSE?Math.min(r.prodSemExtras,tot):tot, he=tot-nor;
+    var cx=xC(i), x0=cx-bw/2, yN=yP(nor), yT=yP(tot);
+    var g=ctx.createLinearGradient(0,yN,0,base);
+    g.addColorStop(0,'#F5A623'); g.addColorStop(1,'rgba(245,166,35,.35)');
+    ctx.fillStyle=g; ctx.fillRect(x0,yN,bw,base-yN);
+    if(he>0){
+      ctx.fillStyle='rgba(245,166,35,.14)'; ctx.fillRect(x0,yT,bw,yN-yT);
+      ctx.fillStyle=hach; ctx.fillRect(x0,yT,bw,yN-yT);
+      ctx.strokeStyle='rgba(245,166,35,.9)'; ctx.lineWidth=1;
+      ctx.strokeRect(x0+.5,yT+.5,bw-1,yN-yT-1);
+    }
+    var pl=r.previsaoProducao||0, topo=yT;
+    if(pl>0){
+      var yPl=yP(pl);
+      ctx.strokeStyle='#E0E0E0'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(x0-5,yPl); ctx.lineTo(x0+bw+5,yPl); ctx.stroke();
+      topo=Math.min(yT,yPl);
+      if(temSE && (cabe||i===n-1)){
+        var ad=nor/pl*100;
+        ctx.font='bold 12px Consolas,monospace'; ctx.fillStyle=_pvCorAd(ad);
+        ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText(f(ad,0)+'%',cx,topo-4);
+      }
+    }
   });
+
+  cv.onmousemove=function(e){
+    var rect=cv.getBoundingClientRect(), idx=Math.floor((e.clientX-rect.left-pad.l)/slot);
+    if(idx<0||idx>=n){tipHide();return}
+    var r=rs[idx], tot=r.producaoReal||0, pl=r.previsaoProducao||0, temSE=(r.prodSemExtras||0)>0;
+    var nor=temSE?Math.min(r.prodSemExtras,tot):null, he=temSE?tot-nor:null;
+    var cls=function(p){return p>=100?'g':p>=95?'a':'r';};
+    var html='<div class="tip-title">Plano × produção — '+r.mes+'/'+String(r.ano).slice(2)+'</div>'
+      +tipRow('Plano',pl>0?fi(pl)+' pç':'sem plano lançado');
+    if(temSE){
+      html+=tipRow('Jornada normal',fi(nor)+' pç')
+        +(pl>0?tipRow('&nbsp;&nbsp;do plano',f(nor/pl*100,1)+'%',cls(nor/pl*100)):'')
+        +tipRow('Hora extra',fi(he)+' pç')
+        +(tot>0?tipRow('&nbsp;&nbsp;da produção',f(he/tot*100,1)+'%'):'');
+    }
+    html+=tipRow('Produção total',fi(tot)+' pç')
+      +(pl>0?tipRow('&nbsp;&nbsp;do plano',f(tot/pl*100,1)+'%',cls(tot/pl*100)):'');
+    if(pl>0) html+=tipRow(tot>=pl?'Passou do plano':'Faltou para o plano',fi(Math.abs(tot-pl))+' pç',tot>=pl?'g':'r');
+    if(!temSE) html+='<div style="margin-top:6px;font-size:.72rem;color:var(--t2)">Sem a produção sem hora extra no mês: a barra não separa a hora extra.</div>';
+    tipShow(html,e);
+  };
+  cv.onmouseleave=tipHide;
+}
+
+/* ── TICKET MÉDIO EM LINHA (b96.95) ─────────────────────────────────────────
+   A pergunta do ticket é tendência, não volume: linha com pontos e rótulo,
+   eixo começando perto do menor valor (dito no eixo, em R$), não no zero —
+   em barras de zero a variação de R$ 230 a R$ 300 sumia. Mês sem ticket
+   interrompe a linha. O mais baixo do período fica marcado. */
+function drawTktLinha(cvId,emId,dados){
+  var cv=document.getElementById(cvId), em=document.getElementById(emId);
+  if(!cv) return;
+  var rs=(dados||[]).filter(function(r){return (r.producaoReal||0)>0||(r.ticketMedio||0)>0;});
+  var vals=rs.map(function(r){return r.ticketMedio>0?r.ticketMedio:null;});
+  var ok=vals.filter(function(v){return v!==null;});
+  if(!ok.length){cv.style.display='none';if(em)em.style.display='block';return}
+  cv.style.display='block'; if(em)em.style.display='none';
+  var o=setupCanvas(cvId,200), ctx=o.ctx, W=o.W, H=o.H;
+  if(!W) return;
+  var pad={t:26,r:16,b:40,l:62};
+  var gW=W-pad.l-pad.r, gH=H-pad.t-pad.b, n=rs.length, base=pad.t+gH;
+  var mn=Math.min.apply(null,ok), mx=Math.max.apply(null,ok);
+  var step=_pcPasso(Math.max(mx-mn,10)/3);
+  var lo=Math.max(0,Math.floor((mn-step*0.35)/step)*step), hi=Math.ceil((mx+step*0.4)/step)*step;
+  if(hi<=lo) hi=lo+step;
+  var slot=gW/n;
+  function xC(i){return pad.l+slot*i+slot/2;}
+  function yP(v){return base-((v-lo)/(hi-lo))*gH;}
+  ctx.font='11px Consolas,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(var v=lo;v<=hi+0.001;v+=step){
+    var yy=yP(v);
+    ctx.beginPath(); ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.setLineDash([3,4]);
+    ctx.moveTo(pad.l,yy); ctx.lineTo(pad.l+gW,yy); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=C.txt; ctx.fillText('R$ '+fi(v),pad.l-6,yy);
+  }
+  _pvEixoX(ctx,rs,xC,base,slot,pad,gH);
+  var COR='#90A4AE', iMin=vals.indexOf(mn), iUlt=-1;
+  vals.forEach(function(v,i){ if(v!==null) iUlt=i; });
+  /* área suave sob a linha, por trecho contínuo */
+  var trechos=[], cur=[];
+  vals.forEach(function(v,i){ if(v===null){ if(cur.length) trechos.push(cur); cur=[]; } else cur.push(i); });
+  if(cur.length) trechos.push(cur);
+  trechos.forEach(function(t){
+    var g=ctx.createLinearGradient(0,pad.t,0,base);
+    g.addColorStop(0,'rgba(144,164,174,.22)'); g.addColorStop(1,'rgba(144,164,174,0)');
+    ctx.beginPath(); ctx.moveTo(xC(t[0]),base);
+    t.forEach(function(i){ ctx.lineTo(xC(i),yP(vals[i])); });
+    ctx.lineTo(xC(t[t.length-1]),base); ctx.closePath(); ctx.fillStyle=g; ctx.fill();
+    ctx.beginPath(); t.forEach(function(i,k){ if(k) ctx.lineTo(xC(i),yP(vals[i])); else ctx.moveTo(xC(i),yP(vals[i])); });
+    ctx.strokeStyle=COR; ctx.lineWidth=2; ctx.stroke();
+  });
+  var cabe=slot>=44;
+  vals.forEach(function(v,i){
+    if(v===null) return;
+    var x=xC(i), y=yP(v), destaque=(i===iUlt||i===iMin);
+    ctx.beginPath(); ctx.arc(x,y,destaque?4.5:3,0,Math.PI*2);
+    ctx.fillStyle=i===iMin?'#FF8A80':(i===iUlt?'#E0E0E0':COR); ctx.fill();
+    if(cabe||destaque){
+      ctx.font=(destaque?'bold ':'')+'11px Consolas,monospace';
+      ctx.fillStyle=i===iMin?'#FF8A80':(i===iUlt?'#E0E0E0':'#B0BEC5');
+      ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.fillText('R$'+fi(v),x,y-8);
+    }
+  });
+  cv.onmousemove=function(e){
+    var rect=cv.getBoundingClientRect(), idx=Math.floor((e.clientX-rect.left-pad.l)/slot);
+    if(idx<0||idx>=n||vals[idx]===null){tipHide();return}
+    var r=rs[idx], v=vals[idx], ant=null;
+    for(var k=idx-1;k>=0;k--){ if(vals[k]!==null){ ant=vals[k]; break; } }
+    var td=(typeof load==='function')?load():[], ly=td.filter(function(x){return x.ano===r.ano-1&&x.mes===r.mes&&x.ticketMedio>0;})[0];
+    var pv=function(a){ var p=(v/a-1)*100; return (p>=0?'+':'−')+f(Math.abs(p),1)+'%'; };
+    tipShow('<div class="tip-title">Ticket médio — '+r.mes+'/'+String(r.ano).slice(2)+'</div>'
+      +tipRow('Ticket','R$ '+f(v,2))
+      +(ant!==null?tipRow('vs mês anterior',pv(ant)+' (R$ '+f(ant,2)+')'):'')
+      +(ly?tipRow('vs '+r.mes+'/'+String(r.ano-1).slice(2),pv(ly.ticketMedio)+' (R$ '+f(ly.ticketMedio,2)+')'):'')
+      +(r.qtdeFaturado>0?tipRow('Peças faturadas',fi(r.qtdeFaturado)):'')
+      +(idx===iMin?'<div style="margin-top:6px;font-size:.72rem;color:#FF8A80">O mais baixo do período</div>':''),e);
+  };
+  cv.onmouseleave=tipHide;
 }
 
 /* Barras absenteísmo com linha limite 3% */
@@ -8394,8 +8589,7 @@ function drawAll(dados){
     function(r){return corEf(r)},240,function(v){return fi(v)});
   drawHoras(dados);
   drawTkt(dados);
-  drawBars('cTkt2','emTkt2',dados,function(r){return r.ticketMedio>0?r.ticketMedio:null},
-    C.purple,200,function(v){return v?'R$'+f(v,0):''});
+  drawTktLinha('cTkt2','emTkt2',dados);   /* b96.95: linha; era barra de zero */
   try{ drawPontosHist(dados); }catch(e){ console.warn('drawPontosHist', e); }
   drawAbs(dados);
   drawComparacao(dados);
@@ -8951,10 +9145,16 @@ function renderKPIsExtras(d){
   })();
 
   // Produção — com 1 mês só, Média e Melhor Mês repetem o Total: esconde
-  s('kv5-prod', fi(tProd)+' pç');
+  /* b96.95: número e unidade numa linha, a unidade menor (<small>). O espaço
+     fica dentro do <small> para o textContent, que o Relatório lê, sair
+     "304.477 pç" como antes. */
+  var sU=function(id, num, un, antes){ var e=document.getElementById(id); if(!e) return;
+    e.innerHTML = antes ? ('<small>'+un+' </small>'+num) : (num+'<small> '+un+'</small>'); };
+  sU('kv5-prod', fi(tProd), 'pç');
   s('kv5-med',  fi(tProd/d.length)+' pç');
   var _Pt5=DashUtils.periodo(d);
-  s('kv5-tkt',  _Pt5.ticket>0?'R$ '+f(_Pt5.ticket,2):(nTkt>0?'R$ '+f(tTkt/nTkt,2):'—'));
+  var _tk5=_Pt5.ticket>0?_Pt5.ticket:(nTkt>0?tTkt/nTkt:0);
+  if(_tk5>0) sU('kv5-tkt', f(_tk5,2), 'R$', true); else s('kv5-tkt','—');
   s('kv5-best', fi(bestProd)+' pç');
   var _c5med=document.getElementById('card5-med'), _c5best=document.getElementById('card5-best');
   if(_c5med)  _c5med.style.display  = d.length>1?'':'none';
@@ -8984,7 +9184,7 @@ function renderKPIsExtras(d){
     var tend=(CT.tendMes===null?'tendência: histórico curto':('6 meses '+(CT.tendMes>=0?'+':'')+fi(CT.tendMes)+' pç/mês'))
       +(tC!==null?(' · '+nC+' meses '+(tC>=0?'+':'')+fi(tC)+' pç/mês · '+(tC>0?'fila crescendo':'fila caindo')):'');
     card.style.display='';
-    s('kv5-cart', dias!==null?((dias<0?'-':'')+fi(Math.abs(dias))+' dias úteis'):saldoTxt);
+    if(dias!==null) sU('kv5-cart', (dias<0?'-':'')+fi(Math.abs(dias)), 'dias úteis'); else s('kv5-cart', saldoTxt);
     var v=document.getElementById('kv5-cart'); if(v) v.style.color=cor;
     var k=document.getElementById('ks5-cart');
     if(k) k.textContent='até '+ult.mes+'/'+String(ult.ano).slice(2)+' · '+saldoTxt+(dias!==null?(' · '+fi(prodDiaN)+' pç/dia útil normal'):'')+' · '+tend;
@@ -9001,7 +9201,8 @@ function renderKPIsExtras(d){
     if(el5){el5.textContent=f(at5)+'%'; el5.style.color=at5>=100?'var(--green)':at5>=95?'var(--amber)':'var(--red)';}
     if(c5){c5.className='kCard '+(at5>=100?'kg':at5>=95?'ka':'kr');}
   } else { if(el5){el5.textContent='—'; el5.style.color='';} }
-  s('ks5-best', bestMes);
+  /* b96.95: mês do pico vai direto, sem countUp: "SET/2026" animava como número (SET/1.013) */
+  (function(){ var e=document.getElementById('ks5-best'); if(e) e.textContent=bestMes; })();
 
   // Previsão de Produção vs Realizado (com e sem extras)
   var tPrev5=0, tProdCE5=0, tProdSE5=0, nPrev5=0;
@@ -9024,10 +9225,17 @@ function renderKPIsExtras(d){
     var elSE=document.getElementById('kv5-prevse');
     if(elSE){elSE.textContent=f(pctSE)+'%'; elSE.style.color=pctSE>=100?'var(--green)':pctSE>=95?'var(--amber)':'var(--red)';}
     var cCE=document.getElementById('card5-prevce'); if(cCE)cCE.className='kCard '+(pctCE>=100?'kg':pctCE>=95?'ka':'kr');
+    /* b96.95: a diferença entre as duas aderências é a hora extra; dita em
+       pontos percentuais do plano, com quantos meses entram na conta. */
+    var ks5v=document.getElementById('ks5-var');
+    if(ks5v) ks5v.textContent = (tProdSE5>0
+      ? ('a hora extra cobriu '+f(Math.max(0,pctCE-pctSE),1)+' p.p. do plano · ')
+      : '')+nPrev5+(nPrev5===1?' mês':' meses')+' com plano';
     var cSE=document.getElementById('card5-prevse'); if(cSE)cSE.className='kCard '+(pctSE>=100?'kg':pctSE>=95?'ka':'kr');
   } else {
     s('kv5-prev','—'); s('ks5-prev','Nenhum mês com previsão informada');
     s('kv5-prevce','—'); s('kv5-prevse','—');
+    var ks5n=document.getElementById('ks5-var'); if(ks5n) ks5n.textContent='nenhum mês com plano no período';
   }
 
   // Leitura executiva — quantos meses fechados cumpriram a previsão e como
@@ -9459,11 +9667,11 @@ function bindZooms(){
   bindZoom('cEfic','Evolução — Eficiência & Absenteísmo',drawEfic,function(){return [dd()];});
   bindZoom('cEfic2','Evolução — Dependência de HE (% do volume)',drawEficSimples,function(){return [dd(),'cEfic2','emEfic2'];});
   bindZoom('cProd','Produção Real (peças)',drawBars,function(){var d=dd();return ['cProd','emProd',d,function(r){return r.producaoReal;},function(r){return corEf(r);},520,function(v){return fi(v);}];});
-  bindZoom('cMetaReal','Previsto vs Realizado s/ Hora Extra',drawMetaReal,function(){return [dd()];});
+  bindZoom('cMetaReal','Plano × produção (jornada normal + hora extra)',drawMetaReal,function(){return [dd()];});
   bindZoom('cProd2','Produção Real Total (peças)',drawBars,function(){var d=dd();return ['cProd2','emProd2',d,function(r){return r.producaoReal;},function(r){return corEf(r);},520,function(v){return fi(v);}];});
   bindZoom('cHoras','Horas Totais vs Normais vs Extras',drawHoras,function(){return [dd()];});
   bindZoom('cTkt','Ticket Médio (R$)',drawTkt,function(){return [dd()];});
-  bindZoom('cTkt2','Ticket Médio (R$)',drawBars,function(){var d=dd();return ['cTkt2','emTkt2',d,function(r){return r.ticketMedio>0?r.ticketMedio:null;},C.purple,520,function(v){return v?'R$'+f(v,0):'';} ];});
+  bindZoom('cTkt2','Ticket Médio (R$)',drawTktLinha,function(){return ['cTkt2','emTkt2',dd()];});
   bindZoom('cAbs','Absenteísmo Mensal (%)',drawAbs,function(){return [dd()];});
   bindZoom('cDeltaEf','Δ Dependência de HE vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaEf','emDeltaEf',x.map(function(r){return r.mes;}),x.map(function(r){return r.dEf;}),C.green,C.red,520,' p.p.',true];});
   bindZoom('cDeltaAbs','Δ Absenteísmo vs Mês Anterior',drawDivBars,function(){var x=dl();return ['cDeltaAbs','emDeltaAbs',x.map(function(r){return r.mes;}),x.map(function(r){return r.dAbs;}),C.green,C.red,520,' p.p.',true];});
@@ -26517,9 +26725,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.94';
+var APP_VERSAO = 'b96.95';
 var APP_DATA   = '10/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.95', data:'10/11/2026', itens:[
+    'Producao & Vendas redesenhada. Quatro cards no lugar de sete, numero e unidade numa linha so: Producao (com previsto, media e pico na linha de apoio), Aderencia ao plano em duas leituras lado a lado, so jornada normal e com hora extra, e quanto a hora extra cobriu em pontos percentuais; Ticket medio; Carteira a faturar. Cor de veredito so na aderencia e na carteira.',
+    'Plano x producao numa barra so: a barra e a producao do mes, cheia na jornada normal e hachurada na hora extra, e o traco e o previsto do Plano Mestre. Acima, quanto do plano a jornada normal entregou, na regua da Reuniao (100% verde, 95 a 99% ambar, abaixo vermelho). Antes a barra era so a jornada normal, vermelha em 9 de 10 meses, enquanto o card dizia 99,5% com hora extra: a tela nao mostrava que a diferenca era a hora extra. Mes sem plano mostra a barra sem traco; balao com plano, jornada normal, hora extra, total e quanto faltou ou passou.',
+    'Sai o grafico Producao real total: o total e o topo da barra do plano, e a cor dele (dependencia de hora extra, sem legenda) virou a parte hachurada. Ticket medio vira linha, com o eixo em R$ perto do menor valor: em barras a partir de zero a variacao sumia. O mais baixo do periodo fica marcado; balao com mes anterior e mesmo mes do ano anterior.',
+    'Pontos por colaborador: o grafico Por pessoa ganha a linha de todos os colaboradores do quadro (ponto + fora do ponto), no mesmo eixo das barras por direto, desde JAN/26 (2025 nao tem o quadro total). Rodape e balao com o valor e quanto os diretos sao do quadro.'
+  ]},
   { v:'b96.94', data:'10/11/2026', itens:[
     'Producao & Vendas ganha Pontos por colaborador mes a mes, logo abaixo do ticket medio (pontos = faturado x ticket: sem o ticket por perto, preco caindo vira produtividade caindo). Dois graficos, cada um no seu eixo: por hora trabalhada (pontos / horas normais + extras dos diretos, a leitura mais estavel) e por direto. Mesma conta dos cards da Reuniao (DashUtils.pontosHist sobre pontosColab).',
     'Em cada barra, um traco claro com o mesmo mes do ano anterior, a comparacao que a Reuniao faz. Mes com os desligados do mes na base aparece vazado com contorno tracejado (OUT/26: por direto -5,6% sem nada mudar na fabrica); mes fechado sem pontos aparece como moldura vazia "s/ pts", nunca zero; mes ainda aberto nao e cobrado. Balao com por hora, por direto, quadro total, pontos, diretos, horas, ticket e a base do mes. Rodape com o ultimo mes e o aviso de base diferente.',
