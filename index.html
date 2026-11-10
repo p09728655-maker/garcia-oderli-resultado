@@ -2953,7 +2953,7 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
     <table>
       <thead>
         <tr>
-          <th>Mês</th><th>Colabs</th><th title="Horas de jornada planejada (normais + faltas + atrasos)">H. Carga</th><th title="Horas efetivamente trabalhadas (normais + extras)">H. Tot.</th>
+          <th>Mês</th><th>Colabs</th><th title="Carga do ponto: horas escaladas (8,8 h × dias úteis por pessoa), já sem férias, atestado e afastamento. Não vem do ERP.">H. Carga</th><th title="Horas efetivamente trabalhadas (normais + extras)">H. Tot.</th>
           <th title="Horas trabalhadas em jornada normal, sem horas extras">H. Norm.</th><th title="Total de horas extras (50% + 100%)">H. Ext.</th><th title="Total de horas de faltas no mês">Faltas</th><th title="Total de horas de atrasos no mês">Atraso</th>
           <th title="(Faltas + Atrasos) ÷ H. Normais × 100
 Mede o % da jornada perdida por ausências">Abs. %</th>
@@ -3359,17 +3359,6 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
 #brfg-wrap .brfg-calc-table tbody td { padding: 5px 9px; border-bottom: 1px solid #edf2f7; color: #2d3748 !important; background: #fff !important; }
 #brfg-wrap .brfg-calc-table tbody tr:nth-child(even) td { background: #f8fafc !important; }
 #brfg-wrap .brfg-calc-table tbody td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: #1a1a2e !important; }
-/* ── SWOT ── */
-.brfg-swot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-.brfg-swot-box { border-radius: 8px; padding: 14px 16px; border: 1px solid #e2e8f0; }
-.brfg-swot-box.forcas        { background: #e8f5e9; border-color: #c6f6d5; }
-.brfg-swot-box.fraquezas     { background: #fff8e1; border-color: #fefcbf; }
-.brfg-swot-box.oportunidades { background: #e3f2fd; border-color: #bee3f8; }
-.brfg-swot-box.ameacas       { background: #ffebee; border-color: #fed7d7; }
-#brfg-wrap .brfg-swot-ttl { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; color: #1a1a2e; }
-#brfg-wrap .brfg-swot-box ul { margin: 0; padding-left: 18px; }
-#brfg-wrap .brfg-swot-box li { font-size: 12.5px; line-height: 1.55; color: #2d3748; margin-bottom: 4px; }
-@media (max-width: 640px) { .brfg-swot-grid { grid-template-columns: 1fr; } }
 </style>
 
 <div id="brfg-toast">✓ Conteúdo copiado! Cole diretamente no Gmail ou Outlook.</div>
@@ -3430,99 +3419,126 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
 
   /* ── Achados estruturados: FATO → ANÁLISE → RECOMENDAÇÃO ──
      Mesmo padrão de limiares do gerarPauta / classes dos KPIs. */
-  function gerarAchados(a,ant,anoAnt) {
-    var out=[];
+  /* b96.97: geradores de texto do Briefing. Todo texto depende do número
+     (nada fixo) e as contas vêm do DashUtils, as mesmas da Reunião:
+       • capacidade = DashUtils.capacidadeNormal (horas previstas, absenteísmo
+         na meta, peças por hora normal); era o campo meta (produção × normais
+         ÷ carga), que sai da própria produção;
+       • hora extra = HE sobre horas normais (limite META_DEP_HE), no mês e no
+         ano (ctx.heAno). "Sustentada na jornada normal" só quando a jornada
+         normal cobriu o plano;
+       • absenteísmo = faltas + atrasos ÷ horas previstas; a recomendação segue
+         o motivo que mais subiu (DashUtils.absMotivos/absComparar). */
+  function _heN(r){ return (r&&r.horasNormais>0)?(r.totalExtras||0)/r.horasNormais*100:null; }
+  function _ref(r){ return r.mes+'/'+String(r.ano).slice(2); }
 
-    /* 1 · Entrega × capacidade da jornada normal
-       Comparava producaoReal (COM hora extra) contra `meta` (calculada sobre
-       horas normais). Como meta = producaoReal x horasNormais/horasCarga, o
-       ramo "superou" era verdadeiro em 18 de 18 meses e o outro nunca rodava.
-       Este e o texto que circula por e-mail antes da reuniao. */
-    if(a.meta>0){
-      var _pn = (a.prodSemExtras>0?a.prodSemExtras:(a.producaoReal||0));
-      var _he = Math.max(0,(a.producaoReal||0)-_pn);
-      if(_pn>=a.meta){
-        var acima=_pn-a.meta, pctA=(acima/a.meta)*100;
-        out.push({status:'ok',titulo:'Capacidade cumprida na jornada normal',
-          fato:'Saíram '+bFmt(_pn)+' peças em jornada normal contra capacidade de '+bFmt(a.meta)+' peças. '
-            +'Total entregue no mês: '+bFmt(a.producaoReal)+' peças.',
-          analise:'A entrega do mês não dependeu de hora extra para cobrir a capacidade.',
-          recomendacao:'Registrar o que sustentou o ritmo e usar este mês como referência de capacidade no próximo plano.',
-          calculos:[
-            {label:'Peças acima da capacidade',formula:bFmt(_pn)+' − '+bFmt(a.meta),resultado:bFmt(acima)+' peças'},
-            {label:'% acima',formula:bFmt(acima)+' ÷ '+bFmt(a.meta)+' × 100',resultado:bFmtPct(pctA)}
-          ]});
+  function gerarAchados(a,ant,anoAnt,ctx) {
+    var out=[];
+    ctx=ctx||{};
+    var _pn = (a.prodSemExtras>0?a.prodSemExtras:(a.producaoReal||0));
+    var _he = Math.max(0,(a.producaoReal||0)-_pn);
+    var _pv = a.previsaoProducao||0;
+
+    /* 1 · Plano × capacidade da jornada normal */
+    var CAP = DashUtils.capacidadeNormal([a], META_ABS);
+    if(CAP && _pv>0){
+      var calcCap=[
+        {label:'Horas previstas',formula:bFmt(a.horasNormais)+' h normais + '+bFmt(a.totalFaltaAtraso,1)+' h de falta e atraso',resultado:bFmt(CAP.hPrevistas)+' h'},
+        {label:'Peças por hora na jornada normal',formula:bFmt(CAP.normal)+' ÷ '+bFmt(CAP.hNormais)+' h normais',resultado:bFmt(CAP.ritmoNormal,3)+' pç/h'},
+        {label:'Horas perdidas acima da meta de '+META_ABS+'%',formula:bFmt(CAP.hPerdidas,1)+' − '+META_ABS+'% × '+bFmt(CAP.hPrevistas),resultado:bFmt(CAP.hAcimaMeta)+' h'},
+        {label:'Capacidade da jornada normal',formula:bFmt(CAP.ritmoNormal,3)+' × ('+bFmt(CAP.hNormais)+' + '+bFmt(CAP.hAcimaMeta)+')',resultado:bFmt(CAP.capacidade)+' peças'},
+        {label:'Gap previsão − capacidade',formula:bFmt(_pv)+' − '+bFmt(CAP.capacidade),resultado:bFmt(CAP.gap)+' peças'}
+      ];
+      if(CAP.gap>0){
+        out.push({status:'bad',titulo:'O plano do mês passou da capacidade da jornada normal',
+          fato:'Com o absenteísmo na meta de '+META_ABS+'%, a jornada normal entregaria '+bFmt(CAP.capacidade)+' peças; o plano pedia '+bFmt(_pv)+'. Faltam '+bFmt(CAP.gap)+' peças.',
+          analise:'É capacidade, não presença: mesmo recuperando as '+bFmt(CAP.recuperavel)+' peças perdidas acima da meta de absenteísmo, o plano não cabe na jornada normal.',
+          recomendacao:'Decidir entre aumentar capacidade (turno, headcount ou hora extra estrutural) ou repactuar o plano com a área comercial.',
+          calculos:calcCap});
       } else {
-        var gapM=a.meta-_pn, pctG=(gapM/a.meta)*100;
-        out.push({status:_he>0?'warn':'bad',titulo:'A entrega dependeu de hora extra',
-          fato:'Em jornada normal saíram '+bFmt(_pn)+' peças contra capacidade de '+bFmt(a.meta)+'. '
-            +'As outras '+bFmt(_he)+' peças vieram de '+bFmt(a.totalExtras,1)+'h de hora extra, fechando '+bFmt(a.producaoReal)+'.',
-          analise:'O volume entregue não se sustenta na jornada normal. Avaliar se é pico de demanda ou dependência estrutural.',
-          recomendacao:'Comparar o custo da hora extra recorrente com turno ou headcount, e atacar as horas perdidas por falta e atraso.',
-          calculos:[
-            {label:'Gap na jornada normal',formula:bFmt(a.meta)+' − '+bFmt(_pn),resultado:bFmt(gapM)+' peças'},
-            {label:'% abaixo da capacidade',formula:bFmt(gapM)+' ÷ '+bFmt(a.meta)+' × 100',resultado:bFmtPct(pctG)},
-            {label:'Peças vindas de hora extra',formula:bFmt(a.producaoReal)+' − '+bFmt(_pn),resultado:bFmt(_he)+' peças'}
-          ]});
+        out.push({status:_pn>=_pv?'ok':'warn',titulo:'O plano do mês cabe na capacidade da jornada normal',
+          fato:'Com o absenteísmo na meta de '+META_ABS+'%, a jornada normal entregaria '+bFmt(CAP.capacidade)+' peças, contra plano de '+bFmt(_pv)+'.',
+          analise:_pn>=_pv?'A jornada normal cobriu o plano do mês.'
+            :('O que faltou foi presença: em jornada normal saíram '+bFmt(_pn)+' peças; com o absenteísmo na meta o plano caberia sem hora extra.'),
+          recomendacao:_pn>=_pv?'Manter o ritmo e usar o mês como referência de capacidade.':'Atacar o motivo de ausência que mais subiu (ver o achado de absenteísmo).',
+          calculos:calcCap});
       }
     }
 
-    /* 2 · Produção × Previsão (só se houver previsão) */
-    if((a.previsaoProducao||0)>0){
-      var gapP=a.previsaoProducao-a.producaoReal, pctReal=(a.producaoReal/a.previsaoProducao)*100;
-      var atingiu=a.producaoReal>=a.previsaoProducao;
-      out.push({status:atingiu?'ok':'warn',titulo:atingiu?'Previsão de produção atingida':'Produção abaixo da previsão',
-        fato:'Previsão de produção de '+bFmt(a.previsaoProducao)+' peças e produção real de '+bFmt(a.producaoReal)+' peças.',
+    /* 2 · Produção × previsão (com hora extra) */
+    if(_pv>0){
+      var gapP=_pv-a.producaoReal, pctReal=(a.producaoReal/_pv)*100, pctN=(_pn/_pv)*100;
+      var atingiu=a.producaoReal>=_pv;
+      out.push({status:atingiu?(_pn>=_pv?'ok':'warn'):'bad',
+        titulo:atingiu?(_pn>=_pv?'Plano do mês cumprido na jornada normal':'A hora extra fechou o plano do mês'):'O plano do mês não fechou nem com hora extra',
+        fato:'Plano de '+bFmt(_pv)+' peças; produção de '+bFmt(a.producaoReal)+' ('+bFmtPct(pctReal)+'), das quais '+bFmt(_pn)+' em jornada normal ('+bFmtPct(pctN)+').',
         analise:atingiu
-          ?'A produção alcançou a necessidade planejada do período.'
-          :'A meta pode ter sido batida, mas a previsão (necessidade planejada) não foi alcançada. Diferenciar meta, previsão e capacidade evita ruído gerencial.',
-        recomendacao:'Acompanhar meta, previsão e capacidade como campos separados no painel.',
+          ?(_pn>=_pv?'A jornada normal sozinha cobriu o plano.':'Sem a hora extra o plano não fecharia: a jornada normal entregou '+bFmtPct(pctN)+'.')
+          :('Faltaram '+bFmt(gapP)+' peças mesmo com hora extra ('+bFmtPct(pctReal)+' do plano).'),
+        recomendacao:atingiu?'Acompanhar o saldo do ano na seção Planejamento Mestre.':'Recuperar o que faltou no saldo do ano e decidir capacidade ou repactuação.',
         calculos:[
-          {label:'Gap contra previsão',formula:bFmt(a.previsaoProducao)+' − '+bFmt(a.producaoReal),resultado:bFmt(gapP)+' peças'},
-          {label:'% realizado da previsão',formula:bFmt(a.producaoReal)+' ÷ '+bFmt(a.previsaoProducao)+' × 100',resultado:bFmtPct(pctReal)}
+          {label:'Gap contra previsão',formula:bFmt(_pv)+' − '+bFmt(a.producaoReal),resultado:bFmt(gapP)+' peças'},
+          {label:'% realizado da previsão (com HE)',formula:bFmt(a.producaoReal)+' ÷ '+bFmt(_pv)+' × 100',resultado:bFmtPct(pctReal)},
+          {label:'% realizado da previsão (jornada normal)',formula:bFmt(_pn)+' ÷ '+bFmt(_pv)+' × 100',resultado:bFmtPct(pctN)}
         ]});
     }
 
-    /* 3 · Margem de Melhoria — distância até a meta de eficiência.
-       A coluna da planilha chamada "Margem Melhoria" é (90% − Eficiência) ÷ 90%,
-       não margem financeira. Positivo = falta para a meta; negativo = meta
-       superada. A base não tem receita nem custo de produto, então não há como
-       falar de resultado econômico aqui. */
-    /* Dependência de hora extra: peças de HE ÷ peças entregues. Era
-       "Independência de HE" (prod. normal ÷ meta derivada) com "margem de
-       melhoria" — o mesmo fato, invertido, contra uma meta circular. */
-    var _pnD = (a.prodSemExtras>0?a.prodSemExtras:(a.producaoReal||0));
-    var _heD = Math.max(0,(a.producaoReal||0)-_pnD);
-    var _dep = (a.producaoReal>0)?(_heD/a.producaoReal)*100:0;
-    if(_dep>META_DEP_HE){
-      out.push({status: _dep>15?'bad':'warn', titulo:'Dependência de hora extra acima da meta de '+META_DEP_HE+'% do volume',
-        fato:bFmt(_heD)+' das '+bFmt(a.producaoReal)+' peças entregues ('+bFmtPct(_dep)+') só existiram porque houve hora extra; a meta é no máximo '+META_DEP_HE+'%.',
-        analise:'Hora extra não é capacidade: é a fábrica comprando horas para cobrir o que a jornada normal não entregou. '
-          +'Quanto maior a parcela, mais o resultado do mês depende de custo extra e de disposição da equipe.',
-        recomendacao:'Atacar as causas de perda de hora produtiva na jornada normal: absenteísmo, setup, parada de máquina e retrabalho.',
-        calculos:[
-          {label:'Peças de hora extra',formula:bFmt(a.producaoReal)+' − '+bFmt(_pnD),resultado:bFmt(_heD)+' pçs'},
-          {label:'Dependência de HE',formula:bFmt(_heD)+' ÷ '+bFmt(a.producaoReal)+' × 100',resultado:bFmtPct(_dep)}
-        ]});
-    } else {
-      out.push({status:'ok',titulo:'Dependência de hora extra dentro da meta de '+META_DEP_HE+'%',
-        fato:bFmt(_heD)+' das '+bFmt(a.producaoReal)+' peças entregues ('+bFmtPct(_dep)+') vieram de hora extra.',
-        analise:'A entrega do mês se sustentou na jornada normal.',
-        recomendacao:'Registrar o que sustentou o resultado e manter o acompanhamento mensal.',
-        calculos:[
-          {label:'Dependência de HE',formula:bFmt(_heD)+' ÷ '+bFmt(a.producaoReal)+' × 100',resultado:bFmtPct(_dep)}
-        ]});
+    /* 3 · Hora extra sobre horas normais (limite META_DEP_HE), mês e ano */
+    var heN=_heN(a), heAno=(ctx.heAno!==undefined&&ctx.heAno!==null)?ctx.heAno:null;
+    if(heN!==null){
+      var calcHE=[
+        {label:'HE sobre horas normais',formula:bFmt(a.totalExtras,1)+' h ÷ '+bFmt(a.horasNormais)+' h × 100',resultado:bFmtPct(heN)},
+        {label:'Peças estimadas em hora extra',formula:bFmt(a.producaoReal)+' − '+bFmt(_pn)+' (produção × HE ÷ horas normais)',resultado:bFmt(_he)+' pçs'}
+      ];
+      if(heAno!==null) calcHE.push({label:'HE sobre horas normais no ano',formula:bFmt(ctx.P.hExtras)+' h ÷ '+bFmt(ctx.P.hNormais)+' h × 100',resultado:bFmtPct(heAno)});
+      if(heN>META_DEP_HE){
+        out.push({status:heN>15?'bad':'warn',titulo:'Hora extra acima do limite: '+bFmtPct(heN)+' das horas normais (limite '+META_DEP_HE+'%)',
+          fato:bFmt(a.totalExtras,1)+' h extras sobre '+bFmt(a.horasNormais)+' h normais; estimativa de '+bFmt(_he)+' das '+bFmt(a.producaoReal)+' peças em hora extra.',
+          analise:'Hora extra não é capacidade: é a fábrica comprando horas para cobrir o que a jornada normal não entregou.',
+          recomendacao:'Atacar as causas de perda de hora produtiva na jornada normal: absenteísmo, setup, parada de máquina e retrabalho.',
+          calculos:calcHE});
+      } else {
+        var anoAcima=heAno!==null&&heAno>META_DEP_HE, normalAbaixo=_pv>0&&_pn<_pv;
+        out.push({status:(anoAcima||normalAbaixo)?'warn':'ok',
+          titulo:'Hora extra dentro do limite de '+META_DEP_HE+'% no mês ('+bFmtPct(heN)+' das horas normais)',
+          fato:bFmt(a.totalExtras,1)+' h extras sobre '+bFmt(a.horasNormais)+' h normais.'+(anoAcima?(' No ano: '+bFmtPct(heAno)+', acima do limite.'):''),
+          analise:normalAbaixo
+            ?('Dentro do limite no mês, mas a jornada normal entregou '+bFmtPct(_pn/_pv*100)+' do plano: o mês não se sustentou na jornada normal.')
+            :'A jornada normal cobriu o plano e a hora extra ficou dentro do limite.',
+          recomendacao:anoAcima?'O ano segue acima do limite: tratar a hora extra como custo recorrente na decisão de capacidade.':'Manter o acompanhamento mensal.',
+          calculos:calcHE});
+      }
     }
 
-    /* 4 · Absenteísmo */
-    /* Usava 10 e 13 cravados enquanto o resto do painel usa META_ABS. */
+    /* 4 · Absenteísmo (faltas + atrasos ÷ horas previstas), com a causa */
     if(a.absenteismo>META_ABS){
-      var comp=ant?' Variação de '+(a.absenteismo-ant.absenteismo>=0?'+':'')+bFmt(a.absenteismo-ant.absenteismo,2)+' pp vs '+ant.mes+'/'+String(ant.ano).slice(2)+'.':'';
+      var comp=ant?' Variação de '+(a.absenteismo-ant.absenteismo>=0?'+':'')+bFmt(a.absenteismo-ant.absenteismo,2)+' p.p. contra '+_ref(ant)+'.':'';
+      var M1=DashUtils.absMotivos([a]), M0=ant?DashUtils.absMotivos([ant]):null;
+      var CMP=(M1&&M0)?DashUtils.absComparar(M1,M0,_ref(ant),META_ABS):null;
+      var rec;
+      if(CMP&&CMP.delta>=0.5){
+        /* Separa o que é saúde e licença (atestado, afastamento) do que a
+           gestão de presença controla (falta sem justificativa, atraso). */
+        var subiram=CMP.itens.filter(function(x){ return x.dpp>0.05; }).sort(function(x,y){ return y.dpp-x.dpp; });
+        var lst=function(arr){ return arr.map(function(x){ return x.rotulo.toLowerCase()+' (+'+bFmt(x.dpp,2)+' p.p.)'; }).join(' e '); };
+        var saude=subiram.filter(function(x){ return !x.gestao; }), pres=subiram.filter(function(x){ return x.gestao; });
+        var gTxt='Falta sem justificativa e atraso, juntos, '+(Math.abs(CMP.gestao)<0.05?'ficaram estáveis.':((CMP.gestao<0?'caíram ':'subiram ')+bFmt(Math.abs(CMP.gestao),2)+' p.p.'));
+        rec = (pres.length&&(!saude.length||CMP.gestao>=CMP.delta-CMP.gestao))
+          ? 'A alta veio da parte que a gestão de presença controla: '+lst(pres)+'. Atacar falta sem justificativa e atraso por setor e turno.'
+            +(saude.length?(' Também subiram '+lst(saude)+': levar ao RH e à medicina do trabalho.'):'')
+          : 'A alta veio de '+lst(saude)+': saúde e licença, não disciplina. Levar ao RH e à medicina do trabalho, por setor e causa. '+gTxt;
+      } else if(M1){
+        var maior=M1.itens.slice().sort(function(x,y){ return y.pct-x.pct; })[0];
+        rec = 'Maior parcela: '+maior.rotulo.toLowerCase()+' ('+bFmt(maior.pct,2)+' p.p.). '
+          +(maior.gestao?'É controlável pela gestão de presença: atacar por setor e turno.':'É saúde e licença: levar ao RH e à medicina do trabalho.');
+      } else {
+        rec = 'Sem o controle de faltas por motivo no mês: RH e Produção devem acompanhar por setor e turno.';
+      }
       out.push({status:a.absenteismo>ABS_ATENCAO?'bad':'warn',titulo:'Absenteísmo acima da meta',
-        fato:'Absenteísmo de '+bFmtPct(a.absenteismo)+', acima da meta de '+META_ABS+'%.'+comp,
-        analise:'Faltas afetam ritmo, balanceamento, qualidade e estabilidade de setores críticos, como coladeira, pintura, CNC, embalagem e expedição.',
-        recomendacao:'RH, Produção e CQP devem acompanhar absenteísmo por setor, turno e impacto em qualidade.',
-        calculos:[]});
+        fato:'Absenteísmo de '+bFmtPct(a.absenteismo)+' (faltas + atrasos ÷ horas previstas), acima da meta de '+META_ABS+'%.'+comp,
+        analise:CMP?CMP.frase:'Faltas afetam ritmo, balanceamento, qualidade e estabilidade de setores críticos.',
+        recomendacao:rec,
+        calculos:[{label:'Absenteísmo',formula:bFmt(a.totalFaltaAtraso,1)+' h ÷ ('+bFmt(a.horasNormais)+' + '+bFmt(a.totalFaltaAtraso,1)+') h previstas × 100',resultado:bFmtPct(a.absenteismo)}]});
     }
 
     /* 5 · Venda × Faturamento */
@@ -3542,139 +3558,112 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
     return out;
   }
 
-  /* ── SWOT derivada dos indicadores do mês ── */
-  /* ── Achado de Ticket Médio: tendência de TODOS os meses (sem quebra por família) ── */
-  function gerarAchadoTicket(reais) {
-    var rs = (reais||[]).filter(function(r){ return r.ticketMedio > 0; });
-    if (rs.length < 2) return null;
-    var first = rs[0], last = rs[rs.length-1];
-    var delta = (last.ticketMedio - first.ticketMedio) / first.ticketMedio * 100;
-    var minR = rs.reduce(function(x,y){ return y.ticketMedio < x.ticketMedio ? y : x; });
-    var volF = first.qtdeFaturado || 0, volL = last.qtdeFaturado || 0;
-    var volDelta = volF > 0 ? (volL - volF) / volF * 100 : 0;
-    var ref = function(r){ return r.mes + '/' + String(r.ano).slice(2); };
-    var caindo = delta < -2;
-    var status = caindo ? 'warn' : (delta > 2 ? 'ok' : 'info');
-    var titulo = caindo ? 'Ticket médio em queda no período'
-              : (delta > 2 ? 'Ticket médio em recuperação no período' : 'Ticket médio estável no período');
-    var fato = 'Ticket médio foi de ' + bFmtR(first.ticketMedio) + ' (' + ref(first) + ') para '
-             + bFmtR(last.ticketMedio) + ' (' + ref(last) + '), ' + (delta>=0?'+':'') + bFmt(delta,1)
-             + '% no período. Menor valor: ' + bFmtR(minR.ticketMedio) + ' em ' + ref(minR) + '.';
-    var analise;
-    if (caindo && volDelta > 5)
-      analise = 'A queda do ticket acompanha o aumento do volume faturado (' + (volDelta>=0?'+':'') + bFmt(volDelta,0)
-              + '% de peças). Isso aponta para mix de produtos de menor valor e/ou desconto para girar volume — não um problema isolado de um mês.';
-    else if (caindo)
-      analise = 'A queda do ticket não é explicada por aumento de volume (' + (volDelta>=0?'+':'') + bFmt(volDelta,0)
-              + '% de peças). Provável pressão de preço ou mudança de mix — revisar política comercial.';
-    else
-      analise = 'Ticket médio relativamente estável/em recuperação; volume faturado ' + (volDelta>=0?'+':'') + bFmt(volDelta,0) + '% no período.';
-    var recomendacao = 'Acompanhar ticket médio × volume × margem mês a mês. Para cravar a causa exata, seria preciso o faturamento por produto/família (não disponível hoje na base).';
-    return {
-      status: status, titulo: titulo, fato: fato, analise: analise, recomendacao: recomendacao,
-      calculos: [
-        { label: 'Variação do ticket no período', formula: bFmtR(last.ticketMedio) + ' vs ' + bFmtR(first.ticketMedio), resultado: (delta>=0?'+':'') + bFmt(delta,1) + '%' },
-        { label: 'Variação do volume faturado',   formula: bFmt(volL) + ' vs ' + bFmt(volF) + ' pç',                    resultado: (volDelta>=0?'+':'') + bFmt(volDelta,0) + '%' }
-      ]
-    };
+  /* ── Achado de Ticket Médio (b96.97) ──
+     Mês contra o mesmo mês do ano anterior e contra o ticket do ano até o mês
+     (DashUtils.ticketComparar). Era o primeiro mês da série (JAN/25) contra o
+     último, com "relativamente estável/em recuperação" fixo para qualquer
+     variação acima de −2% — inclusive +34,6%. "Positivo" só com alta nas duas
+     comparações. */
+  function gerarAchadoTicket(dados, a) {
+    var T = DashUtils.ticketComparar(dados, a.ano, a.mes);
+    if (!T) return null;
+    var ref = _ref(a), refLy = a.mes + '/' + String(a.ano - 1).slice(2);
+    var sg = function (v) { return (v >= 0 ? '+' : '−') + bFmt(Math.abs(v), 1) + '%'; };
+    var comps = [T.vsLy, T.vsMedia].filter(function (v) { return v !== null; });
+    var cai = comps.some(function (v) { return v < -2; });
+    var sobe = comps.length > 0 && comps.every(function (v) { return v > 2; });
+    var status = cai ? 'warn' : (sobe ? 'ok' : 'info');
+    var titulo = cai ? 'Ticket médio abaixo da referência' : (sobe ? 'Ticket médio acima da referência' : 'Ticket médio estável');
+    var fato = 'Ticket de ' + ref + ': ' + bFmtR(T.ticket) + '.'
+      + (T.ly !== null ? (' Contra ' + refLy + ' (' + bFmtR(T.ly) + '): ' + sg(T.vsLy) + '.') : (' Sem ' + refLy + ' para comparar.'))
+      + (T.mediaAno ? (' Contra o ticket do ano até ' + a.mes + ' (' + bFmtR(T.mediaAno) + ', receita ÷ peças faturadas): ' + sg(T.vsMedia) + '.') : '');
+    var analise = cai
+      ? 'Preço ou mix de menor valor. Ticket mais baixo derruba os pontos por pessoa sem que a produtividade mude.'
+      : (sobe ? 'Mix de maior valor ou reajuste: sobe a receita por peça.' : 'Variação dentro de ±2%: sem leitura de preço no mês.');
+    var calculos = [];
+    if (T.ly !== null) calculos.push({ label: 'Contra o mesmo mês do ano anterior', formula: bFmtR(T.ticket) + ' ÷ ' + bFmtR(T.ly) + ' − 1', resultado: sg(T.vsLy) });
+    if (T.mediaAno) calculos.push({ label: 'Contra o ticket do ano', formula: bFmtR(T.ticket) + ' ÷ ' + bFmtR(T.mediaAno) + ' − 1', resultado: sg(T.vsMedia) });
+    return { status: status, titulo: titulo, fato: fato, analise: analise,
+      recomendacao: 'Acompanhar ticket × volume × margem mês a mês. A causa exata pede o faturamento por produto ou família (não disponível hoje na base).',
+      calculos: calculos };
   }
 
-  function gerarSWOT(a,ant,anoAnt) {
-    var s={forcas:[],fraquezas:[],oportunidades:[],ameacas:[]};
+  /* b96.97: o SWOT saiu do Briefing (pedido do PPCP em 10/11/2026). A
+     leitura do ano e a dependência de hora extra estão na pauta e nos
+     achados, com as contas do DashUtils. */
 
-    /* Forças */
-    /* Dependência de HE = parcela do VOLUME vinda de hora extra — a mesma conta
-       da Reunião. Antes era h. extras ÷ h. carga > 10%, com o mesmo nome. */
-    var _depV=a.producaoReal>0?((a.producaoReal-(a.prodSemExtras||a.producaoReal))/a.producaoReal)*100:0;
-    var depExtra=_depV>META_DEP_HE;
-    var _pv=a.previsaoProducao||0, _pn=a.prodSemExtras||0;
-    if(_pv>0&&_pn>=_pv) s.forcas.push('Plano do mês cumprido em jornada normal ('+bFmt(_pn)+' de '+bFmt(_pv)+' pçs).');
-    else if(_pv>0&&a.producaoReal>=_pv) s.fraquezas.push('Plano do mês só fechou com hora extra ('+bFmt(_pn)+' em jornada normal, '+bFmt(a.producaoReal-_pn)+' em HE).');
-    if(!depExtra) s.forcas.push('Dependência de hora extra dentro da meta ('+bFmtPct(_depV)+' do volume).');
-    if(ant){ var _depAnt=ant.producaoReal>0?((ant.producaoReal-(ant.prodSemExtras||ant.producaoReal))/ant.producaoReal)*100:null;
-      if(_depAnt!==null&&_depV<_depAnt) s.forcas.push('Dependência de hora extra caiu frente a '+ant.mes+'/'+String(ant.ano).slice(2)+' ('+bFmtPct(_depAnt)+' → '+bFmtPct(_depV)+').'); }
-    if(ant&&a.totalExtras<ant.totalExtras) s.forcas.push('Redução de horas extras contra o mês anterior.');
-    if(anoAnt&&a.producaoReal>anoAnt.producaoReal) s.forcas.push('Produção superior ao mesmo mês do ano anterior.');
-    if(!s.forcas.length) s.forcas.push('Base de indicadores consolidada para acompanhamento mensal.');
-
-    /* Fraquezas */
-    if(a.absenteismo>10) s.fraquezas.push('Absenteísmo acima de 10% ('+bFmtPct(a.absenteismo)+').');
-    if((a.previsaoProducao||0)>0&&a.producaoReal<a.previsaoProducao) s.fraquezas.push('Previsão de produção não atingida.');
-    if(_pv>0&&a.producaoReal<_pv) s.fraquezas.push('Produção abaixo do plano do mês ('+bFmt(a.producaoReal)+' de '+bFmt(_pv)+' pçs, mesmo com hora extra).');
-    if(depExtra) s.fraquezas.push('Dependência de hora extra acima de '+META_DEP_HE+'% do volume ('+bFmtPct(_depV)+' da entrega veio de HE).');
-    if(!s.fraquezas.length) s.fraquezas.push('Sem fraquezas críticas detectadas automaticamente neste mês.');
-
-    /* Oportunidades */
-    s.oportunidades.push('Usar o CQP para integrar produção, qualidade e finanças.');
-    if(depExtra) s.oportunidades.push('Reduzir a dependência de hora extra atacando as perdas de hora produtiva da jornada normal.');
-    if((a.qtdeVendida||0)>(a.qtdeFaturado||0)) s.oportunidades.push('Carteira vendida aquecida — potencial de faturamento se a capacidade acompanhar.');
-    s.oportunidades.push('Reduzir perdas e retrabalhos com plano de qualidade.');
-    s.oportunidades.push('Melhorar o planejamento de capacidade (meta × previsão × capacidade).');
-
-    /* Ameaças */
-    if((a.qtdeVendida||0)>(a.qtdeFaturado||0)) s.ameacas.push('Carteira vendida maior que faturada pode gerar pressão e queda de qualidade.');
-    if(_depV>15) s.ameacas.push('Dependência de hora extra acima de 15% do volume tende a virar hora extra recorrente.');
-    if(a.absenteismo>ABS_ATENCAO) s.ameacas.push('Absenteísmo pode afetar a estabilidade de setores críticos.');
-    if(depExtra) s.ameacas.push('Horas extras elevadas podem aumentar fadiga e falhas.');
-    if(!s.ameacas.length) s.ameacas.push('Monitorar absenteísmo e horas extras, que corroem a eficiência.');
-
-    return s;
-  }
-
-  function gerarPauta(a,ant) {
+  function gerarPauta(a,ant,ctx) {
     var itens=[];
-    /* Usava 10% enquanto o Resumo Executivo usa META_ABS (3%): o Briefing
-       imprimia "absenteísmo controlado" para o mesmo mês que o Resumo marcava
-       em vermelho. Um painel não pode se contradizer por escrito. */
+    ctx=ctx||{};
     var _mAbs = (typeof META_ABS!=='undefined') ? META_ABS : 3;
     var _aAbs = (typeof ABS_ATENCAO!=='undefined') ? ABS_ATENCAO : 6;
-    var comp=ant?' ('+((a.absenteismo-ant.absenteismo)>=0?'+':'')+((a.absenteismo-ant.absenteismo).toFixed(2))+'pp vs mês anterior)':'';
+    /* 0 · O ano (b96.97): a mesma manchete da Reunião (DashUtils.vereditoAno). */
+    if(ctx.V&&ctx.F&&ctx.F.mesesAcum>0&&ctx.F.planoAno>0){
+      var V=ctx.V, ok=V.cor==='#4CAF50', lim=V.cor==='#FF9800';
+      itens.push({icon:ok?'🟢':(lim?'🟡':'🔴'), badge:ok?'green':(lim?'yellow':'red'), label:ok?'Positivo':(lim?'Atenção':'Crítico'),
+        texto:'<strong>'+V.titulo+'</strong> — '+V.frase});
+      if(V.alerta) itens.push({icon:'🟡',badge:'yellow',label:'Atenção',texto:V.alerta.texto});
+    }
+    var comp=ant?' ('+((a.absenteismo-ant.absenteismo)>=0?'+':'')+bFmt(a.absenteismo-ant.absenteismo,2)+' p.p. contra o mês anterior)':'';
+    var baseAbs=' faltas + atrasos ÷ horas previstas';
     if(a.absenteismo>_aAbs){
       itens.push({icon:'🔴',badge:'red',label:'Crítico',
-        texto:'<strong>Absenteísmo em '+bFmtPct(a.absenteismo)+'</strong>'+comp+' — acima do limite de '+_aAbs+'%. Cada hora perdida sai direto da capacidade do mês.'});
+        texto:'<strong>Absenteísmo em '+bFmtPct(a.absenteismo)+'</strong>'+comp+' —'+baseAbs+', acima do limite de '+_aAbs+'%.'});
     } else if(a.absenteismo>_mAbs){
       itens.push({icon:'🟡',badge:'yellow',label:'Atenção',
-        texto:'<strong>Absenteísmo em '+bFmtPct(a.absenteismo)+'</strong>'+comp+' — acima da meta de '+_mAbs+'%.'});
+        texto:'<strong>Absenteísmo em '+bFmtPct(a.absenteismo)+'</strong>'+comp+' —'+baseAbs+', acima da meta de '+_mAbs+'%.'});
     } else {
       itens.push({icon:'🟢',badge:'green',label:'Positivo',
-        texto:'<strong>Absenteísmo dentro da meta</strong> — '+bFmtPct(a.absenteismo)+', limite '+_mAbs+'%.'});
+        texto:'<strong>Absenteísmo dentro da meta</strong> — '+bFmtPct(a.absenteismo)+' ('+baseAbs.trim()+'), meta '+_mAbs+'%.'});
     }
-    /* Comparava producaoReal (COM hora extra) contra `meta` (calculada sobre
-       horas normais). Como meta = producaoReal x horasNormais/horasCarga, e
-       horasNormais < horasCarga sempre, isto era verdadeiro em 18 de 18 meses
-       por álgebra — o ramo negativo abaixo nunca executou. E o texto chamava
-       de "apenas" exatamente a hora extra que produziu o resultado: em ABR/26
-       declarava meta batida com 1.509 h de HE, quando em jornada normal
-       faltaram 2.193 peças. Era o pior texto do produto. */
+    /* Hora extra e plano do mês (item 5 da auditoria): "sustentada na jornada
+       normal" só quando a jornada normal cobriu o plano; se não cobriu, diz
+       se a hora extra fechou o plano ou se nem com ela fechou. */
     var _pn = (a.prodSemExtras > 0 ? a.prodSemExtras : (a.producaoReal || 0));
-    var _he = Math.max(0, (a.producaoReal || 0) - _pn);
-    var _depP = (a.producaoReal>0)?(_he/a.producaoReal)*100:0;
     var _pvP = a.previsaoProducao||0;
-    /* Um item só para a hora extra: quanto da entrega dependeu dela, contra a
-       meta de volume — e, se há plano, se a jornada normal o cobriu. */
-    if(_depP<=META_DEP_HE){
-      itens.push({icon:'🟢',badge:'green',label:'Positivo',
-        texto:'<strong>Entrega sustentada na jornada normal</strong> — '+bFmt(_pn)+' pçs sem hora extra; '+bFmtPct(_depP)+' do volume veio de HE (meta ≤ '+META_DEP_HE+'%).'
-          +(_pvP>0?(_pn>=_pvP?' Plano do mês cumprido sem hora extra.':' Sem hora extra o plano de '+bFmt(_pvP)+' pçs não teria fechado.'):'')});
+    var heN=_heN(a)||0, heTxt='HE sobre horas normais '+bFmtPct(heN)+' ('+(heN<=META_DEP_HE?'dentro do':'acima do')+' limite de '+META_DEP_HE+'%)';
+    if(_pvP>0){
+      if(_pn>=_pvP){
+        itens.push({icon:heN<=META_DEP_HE?'🟢':'🟡',badge:heN<=META_DEP_HE?'green':'yellow',label:heN<=META_DEP_HE?'Positivo':'Atenção',
+          texto:'<strong>Plano do mês cumprido na jornada normal</strong> — '+bFmt(_pn)+' de '+bFmt(_pvP)+' pçs; '+heTxt+'.'});
+      } else if(a.producaoReal>=_pvP){
+        itens.push({icon:'🟡',badge:'yellow',label:'Atenção',
+          texto:'<strong>A hora extra fechou o plano</strong> — em jornada normal saíram '+bFmt(_pn)+' de '+bFmt(_pvP)+' pçs ('+bFmtPct(_pn/_pvP*100)+'); '+heTxt+'.'});
+      } else {
+        itens.push({icon:'🔴',badge:'red',label:'Crítico',
+          texto:'<strong>O plano não fechou nem com hora extra ('+bFmtPct(a.producaoReal/_pvP*100)+')</strong> — '+bFmt(a.producaoReal)+' de '+bFmt(_pvP)+' pçs, '+bFmt(_pn)+' em jornada normal ('+bFmtPct(_pn/_pvP*100)+'); '+heTxt+'.'});
+      }
     } else {
-      itens.push({icon: _depP>15?'🔴':'🟡', badge: _depP>15?'red':'yellow', label: _depP>15?'Crítico':'Atenção',
-        texto:'<strong>A entrega dependeu de hora extra</strong> — '+bFmt(_he)+' das '+bFmt(a.producaoReal)+' pçs ('+bFmtPct(_depP)+') vieram de HE, meta ≤ '+META_DEP_HE+'%.'
-          +(_pvP>0?(' Em jornada normal saíram '+bFmt(_pn)+' pçs contra plano de '+bFmt(_pvP)+'.'):'')});
+      itens.push({icon:heN<=META_DEP_HE?'🟢':'🟡',badge:heN<=META_DEP_HE?'green':'yellow',label:heN<=META_DEP_HE?'Positivo':'Atenção',
+        texto:'<strong>Hora extra '+(heN<=META_DEP_HE?'dentro do':'acima do')+' limite</strong> — '+heTxt+'. Sem plano lançado para o mês.'});
     }
-    if(ant&&a.colaboradores<ant.colaboradores){
+    if(ctx.heAno!==null&&ctx.heAno!==undefined&&ctx.heAno>META_DEP_HE&&heN<=META_DEP_HE){
       itens.push({icon:'🟡',badge:'yellow',label:'Atenção',
-        texto:'<strong>Headcount recuou</strong> de '+ant.colaboradores+' para '+a.colaboradores+' colaboradores — avaliar impacto na capacidade produtiva do próximo mês.'});
-    } else if(ant&&a.colaboradores>ant.colaboradores){
+        texto:'<strong>Hora extra do ano acima do limite</strong> — '+bFmtPct(ctx.heAno)+' das horas normais no acumulado, limite '+META_DEP_HE+'%.'});
+    }
+    /* Equipe pelos ativos no fim do mês (item 9): os diretos do mês contam os
+       desligados quando o extrato os traz, e OUT/26 "cresceu de 93 para 96"
+       com 5 desligados. Sem a contagem de desligados, diz que é a base mista. */
+    var atA=DashUtils.ativosFim(a), atP=ant?DashUtils.ativosFim(ant):null, usaAt=atA!==null&&atP!==null;
+    var vA=usaAt?atA:a.colaboradores, vP=ant?(usaAt?atP:ant.colaboradores):null;
+    var rotEq=usaAt?' ativos no fim do mês':' diretos no mês (conta os desligados quando o extrato os traz)';
+    if(ant&&vA<vP){
+      itens.push({icon:'🟡',badge:'yellow',label:'Atenção',
+        texto:'<strong>Equipe recuou</strong> de '+bFmt(vP)+' para '+bFmt(vA)+rotEq+' — avaliar impacto na capacidade do próximo mês.'});
+    } else if(ant&&vA>vP){
       itens.push({icon:'🔵',badge:'blue',label:'Info',
-        texto:'<strong>Equipe cresceu</strong> de '+ant.colaboradores+' para '+a.colaboradores+' colaboradores — monitorar curva de integração e impacto na eficiência.'});
+        texto:'<strong>Equipe cresceu</strong> de '+bFmt(vP)+' para '+bFmt(vA)+rotEq+' — monitorar integração e impacto no ritmo.'});
+    }
+    /* Estoque (item 15): faturado acima do produzido no ano. */
+    var CB=ctx.carteira;
+    if(CB&&CB.estoqueConsumido>0){
+      itens.push({icon:'🟡',badge:'yellow',label:'Atenção',
+        texto:'<strong>Faturado acima do produzido no ano</strong> — '+bFmt(CB.faturado)+' faturadas contra '+bFmt(CB.produzido)+' produzidas até '+a.mes+': '
+          +bFmt(CB.estoqueConsumido)+' pçs saíram do estoque, enquanto o vendido − faturado do ano chegou a '+bFmt(CB.saldo)+' pçs.'});
     }
     if(a.qtdeVendida>a.qtdeFaturado*1.3){
       itens.push({icon:'🔵',badge:'blue',label:'Info',
         texto:'<strong>Carteira de vendas aquecida</strong> — '+bFmt(a.qtdeVendida)+' pçs vendidas vs '+bFmt(a.qtdeFaturado)+' faturadas. Avaliar capacidade de entrega para o próximo período.'});
-    }
-    if(a.totalExtras<700&&a.producaoReal<a.meta){
-      itens.push({icon:'🔵',badge:'blue',label:'Info',
-        texto:'<strong>Horas extras baixas ('+bFmt(a.totalExtras,1)+'h)</strong> com produção abaixo da meta — folga de horas disponível para recuperação via jornada extra no próximo mês.'});
     }
     return itens;
   }
@@ -3691,16 +3680,22 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
     var ant=reais.find(function(d){return d.mes===ma.mes&&d.ano===ma.ano;})||null;
     var anoAnt=dados.find(function(d){return d.mes===a.mes&&d.ano===a.ano-1&&d.colaboradores>0;})||null;
 
-    /* Acumulado no ano — meses reais do mesmo ano de "a", até o mês de referência */
+    /* b96.97: as contas do ano saem do DashUtils, as mesmas da Reunião e da
+       aba Mestre: fechamento do ano (saldo, aderência acumulada, ritmos com
+       e sem hora extra, dias úteis pelo calendário até o último dia de
+       produção), veredito, período do ano (HE sobre horas normais) e
+       vendido − faturado do ano com a conciliação contra a série. */
+    var FB=DashUtils.fechamentoAno(dados, a.ano, a.mes, { feriados:(typeof feriadosLocais==='function'?feriadosLocais():[]), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) });
+    var VB=DashUtils.vereditoAno(FB);
+    var PAno=DashUtils.periodo(dados.filter(function(d){ return d.ano===a.ano&&ORDEM_MES.indexOf(d.mes)<=ORDEM_MES.indexOf(a.mes); }));
+    var CB=DashUtils.carteiraAno(dados, a.ano, a.mes);
+    var ctx={ F:FB, V:VB, heAno:PAno.heNormais, P:PAno, carteira:CB };
+
+    /* Acumulado no ano — meses do mesmo ano de "a", até o mês de referência */
     var idxRef=ORDEM_MES.indexOf(a.mes);
     var mesesAno=reais.filter(function(d){return d.ano===a.ano&&ORDEM_MES.indexOf(d.mes)<=idxRef;});
-    var producaoAc=0,faturadaAc=0,vendidaAc=0;
-    mesesAno.forEach(function(d){
-      producaoAc+=(d.producaoReal||0);
-      faturadaAc+=(d.qtdeFaturado||0);
-      vendidaAc+=(d.qtdeVendida||0);
-    });
-    var saldoCarteira=vendidaAc-faturadaAc;
+    var producaoAc=CB.produzido, faturadaAc=CB.faturado, vendidaAc=CB.vendido;
+    var saldoCarteira=CB.saldo;
     var pctCarteira=faturadaAc>0?(saldoCarteira/faturadaAc)*100:0;
     var nMeses=mesesAno.length;
     var mesIni=nMeses?( (MESES_NOME[mesesAno[0].mes]||mesesAno[0].mes).substring(0,3) ):'—';
@@ -3725,10 +3720,10 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
       (function(){
         var _pn = (a.prodSemExtras>0?a.prodSemExtras:(a.producaoReal||0));
         var _he = Math.max(0,(a.producaoReal||0)-_pn);
-        var _dep = a.producaoReal>0 ? (_he/a.producaoReal)*100 : 0;
+        var _heN = a.horasNormais>0 ? (a.totalExtras||0)/a.horasNormais*100 : 0;
         return {label:'Produção Entregue', value:bFmt(a.producaoReal)+' pçs',
-                cls:_dep<=8?'ok':(_dep<=15?'warn':'bad'),
-                delta:bFmt(_pn)+' em jornada normal + '+bFmt(_he)+' em hora extra ('+bFmt(_dep,1)+'%)'};
+                cls:_heN<=META_DEP_HE?'ok':(_heN<=15?'warn':'bad'),
+                delta:bFmt(_pn)+' em jornada normal + '+bFmt(_he)+' estimadas em hora extra · HE sobre horas normais '+bFmt(_heN,1)+'% (limite '+META_DEP_HE+'%)'};
       })(),
       /* Era Efic. Ajustada — coluna opaca da planilha, não reproduzível, passa
          de 100%. Trocada pelo mesmo conceito em unidade auditável. */
@@ -3742,7 +3737,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
                 delta:bFmt(a.totalFaltaAtraso,1)+'h de falta/atraso · '+bFmt(_pct,1)+'% da produção normal'};
       })(),
       {label:'Absenteísmo',value:bFmtPct(a.absenteismo),cls:a.absenteismo<=META_ABS?'ok':(a.absenteismo<=ABS_ATENCAO?'warn':'bad'),
-       delta:ant?bDeltaPp(a.absenteismo,ant.absenteismo,true)+colRef1:'—'},
+       delta:'faltas + atrasos ÷ horas previstas · meta '+META_ABS+'%'+(ant?('<br>'+bDeltaPp(a.absenteismo,ant.absenteismo,true)+colRef1):'')},
       {label:'Qtde Vendida',value:bFmt(a.qtdeVendida)+' pçs',cls:'neu',delta:ant?bDelta(a.qtdeVendida,ant.qtdeVendida)+' vs '+colRef1:'—'},
       {label:'Qtde Faturada',value:bFmt(a.qtdeFaturado)+' pçs',cls:'neu',delta:ant?bDelta(a.qtdeFaturado,ant.qtdeFaturado)+' vs '+colRef1:'—'},
       {label:'Custo Capital',value:bFmtR(a.custoCap),cls:'neu',delta:ant?bDelta(a.custoCap,ant.custoCap,true)+' vs '+colRef1:'—'},
@@ -3753,30 +3748,34 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
       return '<tr><td>'+label+'</td><td class="brfg-hl">'+(fn(a)||'—')+'</td><td>'+(ant?fn(ant)||'—':'—')+'</td><td>'+(anoAnt?fn(anoAnt)||'—':'—')+'</td></tr>';
     }
     var tabela=[
-      lin('Colaboradores',      function(d){return bFmt(d.colaboradores);}),
+      /* b96.97: diretos do mês contam os desligados quando o extrato os traz;
+         ativos no fim do mês tiram os desligados (DashUtils.ativosFim). */
+      lin('Diretos no mês (com desligados)', function(d){return bFmt(d.colaboradores);}),
+      lin('Ativos no fim do mês', function(d){var v=DashUtils.ativosFim(d); return v===null?'—':bFmt(v);}),
       lin('Dias Trabalhados',   function(d){return bFmt(d.diasTrabalhados);}),
-      lin('Horas Carga',        function(d){return bFmt(d.horasCarga)+' h';}),
-      lin('Faltas (horas)',     function(d){return bFmt(d.faltas)+' h';}),
+      lin('Carga do ponto (h)', function(d){return bFmt(d.horasCarga)+' h';}),
+      lin('Horas previstas (normais + faltas + atrasos)', function(d){return bFmt((d.horasNormais||0)+(d.totalFaltaAtraso||0))+' h';}),
+      lin('Faltas + atrasos (h)', function(d){return bFmt(d.totalFaltaAtraso,1)+' h';}),
       lin('Total Extras',       function(d){return bFmt(d.totalExtras,1)+' h';}),
-      lin('Absenteísmo',        function(d){return bFmtPct(d.absenteismo);}),
+      lin('Absenteísmo (÷ horas previstas)', function(d){return bFmtPct(d.absenteismo);}),
       lin('Produção Real',      function(d){return bFmt(d.producaoReal)+' pçs';}),
       lin('Previsão (Plano Mestre)', function(d){return d.previsaoProducao>0?bFmt(d.previsaoProducao)+' pçs':'—';}),
       lin('Qtde Faturada',      function(d){return bFmt(d.qtdeFaturado)+' pçs';}),
       lin('Qtde Vendida',       function(d){return bFmt(d.qtdeVendida)+' pçs';}),
-      lin('Dependência de HE',  function(d){var v=depHE(d); return v===null?'—':bFmtPct(v);}),
+      lin('HE sobre horas normais', function(d){return d.horasNormais>0?bFmtPct((d.totalExtras||0)/d.horasNormais*100):'—';}),
       lin('Ticket Médio',       function(d){return bFmtR(d.ticketMedio);}),
       lin('Custo Capital',      function(d){return bFmtR(d.custoCap);})
     ].join('');
 
-    var pauta=gerarPauta(a,ant);
+    var pauta=gerarPauta(a,ant,ctx);
     var pautaHTML=pauta.map(function(p){
       return '<li><span class="brfg-icon">'+p.icon+'</span><span class="brfg-badge '+p.badge+'">'+p.label+'</span>'+p.texto+'</li>';
     }).join('');
 
     /* Achados estruturados (FATO / ANÁLISE / RECOMENDAÇÃO) */
     var ACH_META={ok:{ico:'🟢',rot:'Positivo'},warn:{ico:'🟡',rot:'Atenção'},bad:{ico:'🔴',rot:'Crítico'},info:{ico:'🔵',rot:'Informativo'}};
-    var achados=gerarAchados(a,ant,anoAnt);
-    var achTicket=gerarAchadoTicket(reais); if(achTicket) achados.push(achTicket);
+    var achados=gerarAchados(a,ant,anoAnt,ctx);
+    var achTicket=gerarAchadoTicket(dados,a); if(achTicket) achados.push(achTicket);
     var achadosHTML=achados.map(function(ac){
       var m=ACH_META[ac.status]||ACH_META.info;
       var calc=(ac.calculos&&ac.calculos.length)
@@ -3795,101 +3794,78 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
       +'</div>';
     }).join('');
 
-    /* SWOT */
-    var swot=gerarSWOT(a,ant,anoAnt);
-    function swotBox(cls,titulo,itens){
-      return '<div class="brfg-swot-box '+cls+'"><div class="brfg-swot-ttl">'+titulo+'</div><ul>'
-        +itens.map(function(i){return '<li>'+i+'</li>';}).join('')+'</ul></div>';
-    }
-    var swotHTML='<div class="brfg-swot-grid">'
-      +swotBox('forcas','Forças',swot.forcas)
-      +swotBox('fraquezas','Fraquezas',swot.fraquezas)
-      +swotBox('oportunidades','Oportunidades',swot.oportunidades)
-      +swotBox('ameacas','Ameaças',swot.ameacas)
-    +'</div>';
+
 
     /* Previsão × Capacidade — mesmo mês de referência (a) */
     var temPrevisao = (a.previsaoProducao||0) > 0;
     var atCE = temPrevisao ? (a.producaoReal / a.previsaoProducao) * 100 : null;
     var atSE = temPrevisao ? (a.prodSemExtras / a.previsaoProducao) * 100 : null;
-    var pctNormCarga = a.horasCarga>0 ? (a.horasNormais / a.horasCarga) * 100 : null;
-    var pctExtCarga  = a.horasCarga>0 ? (a.totalExtras  / a.horasCarga) * 100 : null;
+    /* b96.97: capacidade da jornada normal com absenteísmo na meta, a mesma
+       conta da Reunião (DashUtils.capacidadeNormal). Saíram "% normais /
+       carga" e "% extras / carga": uma terceira base de horas, com a carga do
+       ponto rotulada como "capacidade teórica do ERP". */
+    var CAPB = DashUtils.capacidadeNormal([a], META_ABS);
+    var hPrevB = (a.horasNormais||0)+(a.totalFaltaAtraso||0);
 
     var previsaoKpis = temPrevisao ? [
-      {label:'Previsão de Produção', value:bFmt(a.previsaoProducao)+' pçs', cls:'neu', delta:'Meta prevista do mês'},
+      {label:'Previsão de Produção', value:bFmt(a.previsaoProducao)+' pçs', cls:'neu', delta:'Plano Mestre do mês'},
       {label:'Realizado c/ Extras',  value:bFmtPct(atCE), cls: atCE>=100?'ok':(atCE>=90?'warn':'bad'),
        delta: atCE>=100?'<span class="brfg-up">✓ Bateu a previsão</span>':'<span class="brfg-down">✗ Abaixo da previsão</span>'},
       {label:'Realizado s/ Extras',  value:bFmtPct(atSE), cls: atSE>=100?'ok':(atSE>=90?'warn':'bad'),
        delta: atSE<atCE-5?'<span class="brfg-down">Dependeu de hora extra</span>':'Sem grande diferença c/ extras'},
-      {label:'Horas Carga',          value:bFmt(a.horasCarga)+' h', cls:'neu', delta:'Capacidade teórica (ERP)'},
-      {label:'% Normais / Carga',    value:pctNormCarga!=null?bFmtPct(pctNormCarga):'—', cls: pctNormCarga>=90?'ok':(pctNormCarga>=75?'warn':'bad'), delta:'Coberto sem hora extra'},
-      {label:'% Extras / Carga',     value:pctExtCarga!=null?bFmtPct(pctExtCarga):'—', cls: pctExtCarga<=10?'ok':(pctExtCarga<=15?'warn':'bad'), delta:'Da capacidade em hora extra'}
+      {label:'Horas Previstas',      value:bFmt(hPrevB)+' h', cls:'neu',
+       delta:bFmt(a.horasNormais)+' h normais + '+bFmt(a.totalFaltaAtraso,1)+' h de falta e atraso · carga do ponto '+bFmt(a.horasCarga)+' h (sem férias, atestado e afastamento)'},
+      {label:'Capacidade da Jornada Normal', value:CAPB?bFmt(CAPB.capacidade)+' pçs':'—', cls:'neu',
+       delta:CAPB?(bFmt(CAPB.ritmoNormal,3)+' pç/h × ('+bFmt(CAPB.hNormais)+' h normais + '+bFmt(CAPB.hAcimaMeta)+' h perdidas acima da meta de '+META_ABS+'%)'):'sem horas normais'},
+      {label:'Gap Previsão − Capacidade', value:(CAPB&&CAPB.gap!==null)?((CAPB.gap>=0?'':'−')+bFmt(Math.abs(CAPB.gap))+' pçs'):'—', cls:(CAPB&&CAPB.gap>0)?'bad':'ok',
+       delta:(CAPB&&CAPB.gap>0)?'não cabe na jornada normal nem com absenteísmo na meta: é capacidade':'cabe na jornada normal com absenteísmo na meta'}
     ] : null;
 
     /* ══ PLANEJAMENTO MESTRE — plano do ano × ritmo × demanda ══
        Mesma conta da aba: o ritmo demonstrado é comparado com o que o plano
        INTEIRO exige, não com o que sobrou, senão um mês leve no fim do
        horizonte faz parecer que há folga. */
-    var pmDiasPlan={JAN:17,FEV:20,MAR:22,ABR:20,MAI:20,JUN:21,JUL:23,AGO:21,SET:22,OUT:22,NOV:21,DEZ:23};
-    var pmDoAno=dados.filter(function(d){ return d.ano===a.ano; });
-    var pmPlanoAno=0,pmDiasPlanoAno=0,pmReal=0,pmNormal=0,pmDias=0,pmHE=0,pmDiasFech=0,
-        pmPlanoFech=0,pmFat=0,pmVen=0,pmAberto=0,pmDiasAbertos=0,pmSemPlano=[];
-    pmDoAno.forEach(function(d){
-      var pl=d.previsaoProducao||0, rl=d.producaoReal||0, nm=d.prodSemExtras||0;
-      var dP=pmDiasPlan[d.mes]||22, di=(rl>0&&(d.diasTrabalhados||0)>0)?d.diasTrabalhados:dP;
-      pmPlanoAno+=pl;
-      if(pl>0) pmDiasPlanoAno+=dP; else if(rl<=0) pmSemPlano.push(d.mes);
-      if(rl>0) pmReal+=rl;
-      if(rl>0&&nm>0&&di>0){
-        pmNormal+=nm; pmDias+=di; pmHE+=Math.max(0,rl-nm);
-        pmPlanoFech+=pl; pmDiasFech+=di;   /* dias reais (coluna W) */
-        pmFat+=(d.qtdeFaturado||0); pmVen+=(d.qtdeVendida||0);
-      }
-      if(rl<=0&&pl>0){ pmAberto+=pl; pmDiasAbertos+=dP; }
-    });
-    var pmRitmoPlano=pmDiasPlanoAno>0?pmPlanoAno/pmDiasPlanoAno:0;
-    var pmRitmoDem=pmDias>0?pmNormal/pmDias:0;
-    /* Mesmo critério da aba: o exigido usa os dias realmente trabalhados. */
-    var pmRitmoExig=pmDiasFech>0?pmPlanoFech/pmDiasFech:pmRitmoPlano;
-    var pmGap=pmRitmoExig>0?((pmRitmoDem/pmRitmoExig)-1)*100:0;
-    var pmPctVen=pmVen>0?((pmPlanoFech/pmVen)-1)*100:null;
-    var temMestre=pmPlanoAno>0&&pmRitmoDem>0;
-
-    var pmCls = pmGap>=0?'ok':(pmGap>-5?'warn':'bad');
+    /* b96.97: tudo do DashUtils.fechamentoAno/vereditoAno (FB/VB), a mesma
+       conta da Reunião. Saíram a tabela fixa de dias (NOV 21 + DEZ 23 = 44),
+       o "falta produzir" = plano dos meses abertos (56.359 em OUT/26, quando
+       o saldo era 57.819), o "% do plano" contra o ano inteiro e o veredito
+       só da jornada normal. */
+    var temMestre=FB.planoAno>0&&FB.mesesAcum>0;
+    var dmFim=FB.fimAno.slice(8,10)+'/12';
+    var sgn=function(v,d){ return (v>=0?'+':'−')+bFmt(Math.abs(v),d); };
+    var clsF=function(v){ return v===null?'neu':(v>=0?'ok':(v>-5?'warn':'bad')); };
     var pmKpis = temMestre ? [
-      {label:'Plano do Ano', value:bFmt(pmPlanoAno)+' pçs', cls:'neu', delta:pmDiasPlanoAno+' dias úteis planejados'},
-      {label:'Realizado no Ano', value:bFmt(pmReal)+' pçs', cls:'neu',
-       delta:bFmtPct(pmPlanoAno>0?(pmReal/pmPlanoAno)*100:0)+' do plano'},
-      {label:'Ritmo do Plano', value:bFmt(pmRitmoPlano)+' pç/dia', cls:'neu', delta:'Plano do ano ÷ dias úteis'},
-      {label:'Ritmo Exigido', value:bFmt(pmRitmoExig)+' pç/dia', cls:'neu', delta:'Cobrado nos dias trabalhados'},
-      {label:'Ritmo Demonstrado', value:bFmt(pmRitmoDem)+' pç/dia', cls:pmCls,
-       delta:(pmGap>=0?'<span class="brfg-up">▲ ':'<span class="brfg-down">▼ ')+bFmt(Math.abs(pmGap),1)+'%</span> vs plano'},
-      {label:'Falta Produzir', value:pmAberto>0?(bFmt(pmAberto)+' pçs'):'—', cls:'neu',
-       delta:pmAberto>0?(pmDiasAbertos+' dias úteis planejados'):'Horizonte planejado concluído'},
-      {label:'Dependência de HE', value:bFmt(pmHE)+' pçs', cls:pmHE>0?'warn':'ok', delta:'Só saíram por hora extra'}
+      {label:'Plano do Ano', value:bFmt(FB.planoAno)+' pçs', cls:'neu', delta:'Plano Mestre, linha TOTAL GERAL'},
+      {label:'Aderência ao Plano Acumulado', value:bFmtPct(FB.aderAcum), cls:FB.aderAcum>=100?'ok':(FB.aderAcum>=95?'warn':'bad'),
+       delta:bFmt(FB.realComPlano)+' de '+bFmt(FB.planoAcum)+' previstas até '+a.mes+' ('+sgn(FB.desvioAcum,0)+' pçs) · '+bFmtPct(FB.pctAno)+' do plano do ano inteiro ('+FB.mesesAcum+' de 12 meses)'},
+      {label:'Ritmo com HE vs Plano', value:FB.pctVolume!==null?(sgn(FB.pctVolume,1)+'%'):'—', cls:clsF(FB.pctVolume),
+       delta:bFmt(FB.ritmoComHE)+' contra '+bFmt(FB.diasAcum>0?FB.planoAcum/FB.diasAcum:0)+' pç/dia do plano · mede o volume'},
+      {label:'Ritmo só Jornada Normal vs Plano', value:FB.pctJornada!==null?(sgn(FB.pctJornada,1)+'%'):'—', cls:clsF(FB.pctJornada),
+       delta:(FB.ritmoSemHE!==null?bFmt(FB.ritmoSemHE):'—')+' contra '+(FB.ritmoPlanoNormal!==null?bFmt(FB.ritmoPlanoNormal):'—')+' pç/dia · mede a dependência de HE'},
+      {label:'Saldo para Fechar o Ano', value:bFmt(Math.max(0,FB.saldo))+' pçs', cls:VB.cor==='#4CAF50'?'ok':(VB.cor==='#FF9800'?'warn':'bad'),
+       delta:'plano do ano − realizado · '+FB.diasRestantes+' dias úteis até '+dmFim+(FB.ritmoExigido?(' = '+bFmt(FB.ritmoExigido)+' pç/dia'):'')},
+      {label:'Plano Restante', value:bFmt(FB.planoRestante)+' pçs', cls:'neu', delta:'plano dos meses depois de '+a.mes},
+      {label:'Peças em Hora Extra no Ano', value:bFmt(PAno.deExtras)+' pçs', cls:PAno.heNormais>META_DEP_HE?'warn':'ok',
+       delta:'HE sobre horas normais no ano '+bFmt(PAno.heNormais,1)+'% (limite '+META_DEP_HE+'%)'}
     ] : null;
 
     var pmFrase='';
     if(temMestre){
-      if(pmGap>=0){
-        pmFrase='Nos dias trabalhados o plano exigiu <b>'+bFmt(pmRitmoExig)+' pç/dia</b> e a fábrica entregou <b>'
-          +bFmt(pmRitmoDem)+' pç/dia</b> na jornada normal — <b>'+bFmt(Math.abs(pmGap),1)+'% acima</b>. '
-          +'O plano cabe sem hora extra estrutural (o ano é dimensionado a '+bFmt(pmRitmoPlano)+' pç/dia).';
-      } else {
-        pmFrase='Nos dias trabalhados o plano exigiu <b>'+bFmt(pmRitmoExig)+' pç/dia</b>, mas a fábrica entregou <b>'
-          +bFmt(pmRitmoDem)+' pç/dia</b> na jornada normal — <b>'+bFmt(Math.abs(pmGap),1)+'% abaixo</b>. '
-          +'A diferença vem sendo coberta com hora extra ('+bFmt(pmHE)+' pçs no ano). '
-          +'O plano do ano é dimensionado a '+bFmt(pmRitmoPlano)+' pç/dia.';
+      pmFrase='<b>'+VB.titulo+'</b>'+(VB.pct!==null?(' ('+sgn(VB.pct,1)+'%, '+VB.pctRot+')'):'')+'. '+VB.frase
+        +(VB.alerta?(' '+VB.alerta.texto):'')
+        +' <b>Decisão:</b> '+VB.acao;
+      /* Item 10 da auditoria: vendido ÷ plano − 1 (era plano ÷ vendido − 1,
+         −11,7% lido como "12% maior"; o certo em OUT/26 é +13,2%). */
+      var pctVenPlano=FB.planoAcum>0?((CB.vendido/FB.planoAcum)-1)*100:null;
+      if(pctVenPlano!==null&&pctVenPlano>0){
+        pmFrase+=' A carteira vendida até '+a.mes+' é <b>'+bFmt(pctVenPlano,1)+'% maior</b> que o plano do mesmo período (vendido '
+          +bFmt(CB.vendido)+' ÷ plano '+bFmt(FB.planoAcum)+' − 1): cumprir o plano não zera a fila.';
       }
-      if(pmPctVen!==null&&pmPctVen<0){
-        pmFrase+=' Além disso, a carteira vendida do período é <b>'+bFmt(Math.abs(pmPctVen),0)
-          +'% maior</b> que o plano (vendido '+bFmt(pmVen)+' vs plano '+bFmt(pmPlanoFech)
-          +' pçs): cumprir o plano não zera a fila, porque o próprio plano está dimensionado abaixo da venda.';
+      if(FB.semPlano.length){
+        pmFrase+=' <b>'+FB.semPlano.length+' '+(FB.semPlano.length>1?'meses seguem':'mês segue')+' sem plano</b> ('
+          +FB.semPlano.join(', ')+'): o saldo cobre só o horizonte já planejado.';
       }
-      if(pmSemPlano.length){
-        pmFrase+=' <b>'+pmSemPlano.length+' '+(pmSemPlano.length>1?'meses seguem':'mês segue')+' sem plano</b> ('
-          +pmSemPlano.join(', ')+') — o "falta produzir" cobre só o horizonte já planejado.';
-      }
+      if(FB.semFeriados) pmFrase+=' <b>Sem a aba FERIADOS na planilha: feriado conta como dia útil.</b>';
     }
 
     var mestreSectionHTML = temMestre
@@ -3916,10 +3892,14 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
     /* Acumulado no Ano — cards + frase de contexto para a ameaça mensal */
     var acumKpis=[
       {label:'Produção Acum.',           value:bFmt(producaoAc)+' pçs', cls:'neu', delta:nMeses+' meses no ano'},
-      {label:'Faturado Acum.',           value:bFmt(faturadaAc)+' pçs', cls:'neu', delta:'Qtde faturada no período'},
-      {label:'Vendido Acum. (carteira)', value:bFmt(vendidaAc)+' pçs',  cls:'neu', delta:'Qtde vendida no período'},
-      {label:'Carteira − Faturado',      value:(saldoCarteira>=0?'+':'')+bFmt(saldoCarteira)+' pçs', cls:saldoCarteira>0?'warn':'neu',
-       delta:(pctCarteira>=0?'+':'')+bFmt(pctCarteira,1)+'% vendido '+(saldoCarteira>=0?'acima':'abaixo')+' do faturado'}
+      {label:'Faturado Acum.',           value:bFmt(faturadaAc)+' pçs', cls:CB.estoqueConsumido>0?'warn':'neu',
+       delta:CB.estoqueConsumido>0?('faturado − produzido: '+bFmt(CB.estoqueConsumido)+' pçs saíram do estoque'):'Qtde faturada no período'},
+      {label:'Vendido Acum.',            value:bFmt(vendidaAc)+' pçs',  cls:'neu', delta:'Qtde vendida no período'},
+      /* b96.97: nome distinto da "Carteira a faturar" da Reunião, que acumula
+         desde o início da série. A conciliação vai na linha de apoio. */
+      {label:'Vendido − Faturado no Ano', value:(saldoCarteira>=0?'+':'')+bFmt(saldoCarteira)+' pçs', cls:saldoCarteira>0?'warn':'neu',
+       delta:(pctCarteira>=0?'+':'')+bFmt(pctCarteira,1)+'% vendido '+(saldoCarteira>=0?'acima':'abaixo')+' do faturado'
+         +'<br>desde o início da série: '+bFmt(CB.saldoSerie)+' pçs (= '+bFmt(saldoCarteira)+' do ano + '+bFmt(CB.anteriorAoAno)+' de antes de '+a.ano+'). Nenhum dos dois é o saldo da carteira no ERP'}
     ];
     var acumSectionHTML='<div class="brfg-kpi-grid">'+acumKpis.map(function(k){
         return '<div class="brfg-kpi-card '+k.cls+'">'
@@ -3929,7 +3909,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
         +'</div>';
       }).join('')+'</div>';
     var acumFrase = saldoCarteira>0
-      ? 'No acumulado do ano a carteira vendida está '+bFmt(pctCarteira,1)+'% acima do faturado ('+bFmt(saldoCarteira)+' pçs) — a pressão vista em '+mesNome.substring(0,3)+'/'+a.ano+' se confirma no período, não é isolada.'
+      ? 'No acumulado do ano o vendido está '+bFmt(pctCarteira,1)+'% acima do faturado ('+bFmt(saldoCarteira)+' pçs) — a pressão vista em '+mesNome.substring(0,3)+'/'+a.ano+' se confirma no período, não é isolada.'
       : (saldoCarteira<0
         ? 'No acumulado do ano o faturado supera a carteira vendida em '+bFmt(-saldoCarteira)+' pçs ('+bFmt(-pctCarteira,1)+'%) — a pressão de carteira do mês não se sustenta no período.'
         : 'No acumulado do ano a carteira vendida e o faturado estão equilibrados no período.');
@@ -3941,7 +3921,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
        +'<h2>Briefing Mensal — '+mesNome+' / '+a.ano+'</h2>'
        +'<div class="brfg-sub">Referência para reunião · Comparativo: '+(colRef1!=='—'?colRef1:'sem mês anterior')+' e '+(colRef2!=='—'?colRef2:'sem ano anterior')+'</div>'
        +'<div class="brfg-meta-row">'
-         +'<div class="brfg-meta-item"><span>'+bFmt(a.colaboradores)+'</span>Colaboradores</div>'
+         +'<div class="brfg-meta-item"><span>'+bFmt(a.colaboradores)+'</span>Diretos no mês</div>'
          +'<div class="brfg-meta-item"><span>'+bFmt(a.diasTrabalhados)+'</span>Dias Trabalhados</div>'
          /* Cabeçalho do briefing: mesmos rótulos do resto do painel. Antes dizia
             "Produção Real" (sem indicar que inclui hora extra) e "Eficiência"
@@ -3950,7 +3930,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
             "Custo Capital" na mesma tela é lido como margem financeira. Ela
             continua no corpo do briefing, com o rótulo completo. */
          +'<div class="brfg-meta-item"><span>'+bFmt(a.producaoReal)+' pçs</span>Produção entregue (c/ HE)</div>'
-         +'<div class="brfg-meta-item"><span>'+(depHE(a)===null?'—':bFmtPct(depHE(a)))+'</span>Veio de hora extra</div>'
+         +'<div class="brfg-meta-item"><span>'+(a.horasNormais>0?bFmtPct((a.totalExtras||0)/a.horasNormais*100):'—')+'</span>HE ÷ horas normais</div>'
          +'<div class="brfg-meta-item"><span>'+bFmtPct(a.absenteismo)+'</span>Absenteísmo</div>'
        +'</div>'
       +'</div>'
@@ -4002,10 +3982,10 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
             +'<th>'+colRef2+'</th>'
           +'</tr></thead><tbody>'+tabela+'</tbody></table>'
         +'</div>'
-        /* 6 · SWOT (síntese estratégica) */
-        +'<div class="brfg-section" id="brfg-sec-swot">'
-          +'<div class="brfg-section-title">Análise SWOT — Produção '+mesNome+'/'+a.ano+'</div>'
-          +swotHTML
+        /* 7 · Glossário (b96.97): o mesmo texto da Reunião (glossarioHTML) */
+        +'<div class="brfg-section" id="brfg-sec-glossario">'
+          +'<div class="brfg-section-title">Glossário — como cada número é calculado</div>'
+          +(typeof glossarioHTML==='function'?glossarioHTML():'')
         +'</div>'
       +'</div>'
       +'<div class="brfg-footer">'
@@ -4098,13 +4078,6 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
       '.brfg-calc-table td{padding:3px 6px;border-bottom:1px solid #edf2f7;color:#2d3748;}' +
       '.brfg-calc-table tbody tr:nth-child(even){background:#f8fafc;}' +
       '.brfg-calc-table td:last-child{text-align:right;font-weight:700;}' +
-      /* swot */
-      '.brfg-swot-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;break-inside:avoid;}' +
-      '.brfg-swot-box{border-radius:5px;padding:8px 10px;border:1px solid #e2e8f0;break-inside:avoid;}' +
-      '.brfg-swot-box{background:#fff;border-color:#D3D8DE;}' +
-      '.brfg-swot-ttl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;color:#1F2933;border-bottom:1px solid #E4E7EB;padding-bottom:3px;}' +
-      '.brfg-swot-box ul{margin:0;padding-left:14px;}' +
-      '.brfg-swot-box li{font-size:8pt;line-height:1.4;color:#2d3748;margin-bottom:2px;}' +
       /* footer */
       '.brfg-footer{background:#fff;border-top:1px solid #D3D8DE;padding:5px 20px;font-size:7.5px;color:#7B8794;display:flex;justify-content:space-between;margin-top:10px;break-inside:avoid;}' +
       '</style></head><body>' +
@@ -4144,8 +4117,8 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
           : '') +
         /* 5 · Comparativo Mensal */
         (document.getElementById('brfg-sec-comparativo') ? document.getElementById('brfg-sec-comparativo').outerHTML : '') +
-        /* 6 · SWOT */
-        (document.getElementById('brfg-sec-swot') ? document.getElementById('brfg-sec-swot').outerHTML : '') +
+        /* 6 · Glossário (b96.97; o SWOT saiu) */
+        (document.getElementById('brfg-sec-glossario') ? document.getElementById('brfg-sec-glossario').outerHTML : '') +
       '</div>' +
       document.querySelector('.brfg-footer').outerHTML +
       '</div>' +
@@ -4179,8 +4152,11 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
   /* Inicializa quando a aba for aberta */
   function brfgInit() {
     try {
-      var raw=localStorage.getItem('dash_v3');
-      if(raw){var dados=JSON.parse(raw);if(Array.isArray(dados)&&dados.length){renderBriefing(dados);return;}}
+      /* b96.97: dados NORMALIZADOS (load(), a mesma base da Reunião). Lia o
+         dash_v3 cru: produção sem extras, absenteísmo e meta vinham com a
+         regra gravada na planilha, não com a do painel. */
+      var dados=(typeof load==='function')?load():JSON.parse(localStorage.getItem('dash_v3')||'[]');
+      if(Array.isArray(dados)&&dados.length){renderBriefing(dados);return;}
     } catch(e){}
     document.getElementById('brfg-content').innerHTML=
       '<div class="brfg-sem-dados"><h3>Dados não encontrados</h3>'
@@ -4988,7 +4964,7 @@ var SK      = 'dash_v3';
    Uma meta escalonada (12% → 10% → 8%) mediria progresso de verdade. */
 var META_ABS    = 3;   /* dentro da meta                */
 var ABS_ATENCAO = 6;   /* acima disto, crítico          */
-var META_DEP_HE = 8;   /* % do volume vindo de hora extra */
+var META_DEP_HE = 8;   /* HE sobre horas normais: horas extras ÷ horas normais (decisão do PPCP em 10/11/2026) */
 var PROD_ERP_DESDE = 2025;   /* a partir deste ano producaoReal = total do reporte do ERP (produtosReportados) */
 /* Ticket médio (R$ por peça faturada). Os R$ 250 estavam cravados em seis
    lugares do Resumo. Registro: a média ponderada dos 18 meses fechados é
@@ -5007,6 +4983,31 @@ var CUSTO_HORA = 0;
 var JORNADA_MIN_DIA = 528;
 var HDÍA    = JORNADA_MIN_DIA/60; /* 8,8 h/dia */
 var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
+/* Último dia de produção do ano, em dezembro (b96.97, decisão do PPCP em
+   10/11/2026: vamos até 18/12; depois é recesso). Base dos dias úteis
+   restantes dos dois relatórios e da aba Mestre (DashUtils.fechamentoAno). */
+var DIA_FIM_ANO = 18;
+/* Feriados da aba FERIADOS (o doGet grava em dash_feriados_v1). */
+function feriadosLocais(){ try{ var f=JSON.parse(localStorage.getItem('dash_feriados_v1')); return Array.isArray(f)?f:[]; }catch(e){ return []; } }
+/* Glossário dos relatórios (b96.97): o mesmo texto no Briefing e na Reunião,
+   com as metas vigentes (aba METAS). Cores herdadas: serve ao tema escuro da
+   Reunião e ao papel claro do Briefing. */
+function glossarioHTML(){
+  var g=[
+    ['Plano (previsão)','Produção prevista no Plano Mestre para o mês (aba PLANO MESTRE, linha TOTAL GERAL). É o compromisso de volume.'],
+    ['Meta','Limite de um indicador (hora extra, absenteísmo), definido na aba METAS. Não é volume.'],
+    ['Aderência ao plano acumulado','Realizado ÷ plano dos meses até o mês de referência. Com hora extra mede o volume; só jornada normal mede a dependência de hora extra.'],
+    ['Saldo para fechar o ano','Plano do ano − realizado acumulado. Plano restante é outra coisa: o plano dos meses que ainda não fecharam.'],
+    ['Dias úteis restantes','Segunda a sexta, menos a aba FERIADOS, até '+(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18)+'/12, o último dia de produção do ano (aba METAS). Ritmo exigido = saldo ÷ dias úteis restantes.'],
+    ['Carga do ponto','Horas escaladas no extrato do ponto (8,8 h × dias úteis por pessoa), já sem férias, atestado e afastamento. Não vem do ERP.'],
+    ['Horas previstas','Horas normais + faltas + atrasos: o que a equipe deveria trabalhar na jornada normal.'],
+    ['Capacidade da jornada normal','Peças por hora normal × (horas normais + horas perdidas acima da meta de absenteísmo). Gap = plano − capacidade: o que nem a presença na meta cobre.'],
+    ['HE sobre horas normais','Horas extras ÷ horas normais. Limite '+(typeof META_DEP_HE!=='undefined'?META_DEP_HE:8)+'%. HE sobre horas totais é outra conta: horas extras ÷ (normais + extras).'],
+    ['Absenteísmo','(Faltas + atrasos) ÷ horas previstas. Meta '+(typeof META_ABS!=='undefined'?META_ABS:3)+'%.']
+  ];
+  return '<dl style="display:grid;grid-template-columns:minmax(150px,230px) 1fr;gap:6px 16px;margin:0;font-size:12px;line-height:1.5">'
+    +g.map(function(x){ return '<dt style="font-weight:700">'+x[0]+'</dt><dd style="margin:0;opacity:.85">'+x[1]+'</dd>'; }).join('')+'</dl>';
+}
 
 /* ── METAS OFICIAIS (aba METAS da planilha) ─────────────────────────────────
    Os valores acima são o PADRÃO do código. A fonte oficial é a aba METAS
@@ -5016,7 +5017,7 @@ var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
    localStorage para a primeira pintura não sair com o padrão e depois trocar.
    Chaves aceitas: só as constantes abaixo, para uma célula errada não virar
    variável solta. */
-var METAS_CHAVES = ['META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS','PROD_ERP_DESDE','CUSTO_HORA'];   /* META_EF aposentada com a Independência de HE */
+var METAS_CHAVES = ['META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS','PROD_ERP_DESDE','CUSTO_HORA','DIA_FIM_ANO'];   /* META_EF aposentada com a Independência de HE */
 var METAS_ORIGEM = {};   /* chave → { valor, unidade, vigencia, origem, observacao } */
 function aplicarMetas(m, avisar){
   if(!m || typeof m!=='object') return 0;
@@ -5487,7 +5488,7 @@ window.SetorHE = (function(){
       a.pessoas=a.meses>0?a.pessoas/a.meses:0;
       a.jor=jor; a.heP=jor>0?a.he/jor:null;
       a.hePct=a.hn>0?a.he/a.hn*100:0;
-      a.absPct=(a.temAus&&a.hn>0)?a.aus/a.hn*100:null;
+      a.absPct=(a.temAus&&a.hn>0)?a.aus/(a.hn+a.aus)*100:null;   /* b96.97: ÷ horas previstas */
       return a;
     });
   }
@@ -5508,7 +5509,7 @@ window.SetorHE = (function(){
         var temAus=(n(r.ausFalta)>0||n(r.ausAtestado)>0||n(r.ausAfastado)>0||atr>0);
         return { setor:String(r.setor||'').trim()||'(sem setor)', direto:/^s/i.test(String(r.direto||'')), pessoas:n(r.pessoas),
                  hc:n(r.horasCarga), hn:hn, he:he, jor:jor, heP:jor>0?he/jor:null, e50:n(r.extra50), e100:n(r.extra100), hePct:hn>0?he/hn*100:0,
-                 aus:aus, absPct:(temAus&&hn>0)?aus/hn*100:null };
+                 aus:aus, absPct:(temAus&&hn>0)?aus/(hn+aus)*100:null };   /* b96.97: ÷ horas previstas */
       });
   }
   /* Nome curto para frase: "7-LINHA DE PINTURA" → "linha de pintura". */
@@ -5542,7 +5543,7 @@ window.SetorHE = (function(){
     var top=dir.slice(0,3).filter(function(x){ return x.he>0; });
     return { mes:mes, ano:ano, rotulo:rotulo, varios:(rotulo===String(ano)||/–/.test(rotulo)), setores:dir, indiretos:ind, heDir:heDir, hnDir:hnDir, hcDir:hcDir, heInd:heInd, hcInd:sum(ind,'hc'),
              jornada:jor, hePesDir:jor>0?heDir/jor:null, hePesInd:jor>0?heInd/jor:null, hnInd:hnInd,
-             refPct:ref, absDir:(temAusDir&&hnDir>0)?ausDir/hnDir*100:null, absCrit:absCrit,
+             refPct:ref, absDir:(temAusDir&&hnDir>0)?ausDir/(hnDir+ausDir)*100:null,   /* b96.97: ÷ horas previstas */ absCrit:absCrit,
              top:top, topParte:top.reduce(function(t,x){ return t+x.parte; },0),
              cobrindo:dir.filter(function(x){ return x.leitura==='cobrindo falta'; }),
              capacidade:dir.filter(function(x){ return x.leitura==='capacidade'; }) };
@@ -6642,7 +6643,16 @@ window.DashUtils = (function() {
     /* Denominador é horasNormais, não horasCarga. Conferido contra os 18 meses
        da planilha: /hNormais fecha em 18/18; /hCarga erra em 17/18, de 0,23 a
        0,74 p.p. por mês. Os tooltips do painel documentam a fórmula errada. */
-    o.absenteismo = _pct(o.hPerdidas, o.hNormais);
+    /* b96.97: sobre horas previstas = normais + faltas + atrasos (ver
+       normalizar). Era ÷ hNormais. */
+    o.hPrevistas  = o.hNormais + o.hPerdidas;
+    o.absenteismo = _pct(o.hPerdidas, o.hPrevistas);
+    /* HE sobre horas normais: a base da meta de 8% (decisão do PPCP em
+       10/11/2026). No ano é Σ extras ÷ Σ normais. O depExtras (peças de HE ÷
+       produção) continua para a contagem em peças, mas não é "% do volume":
+       como prodSemExtras = produção × (1 − extras ÷ normais), ele repete esta
+       mesma razão mês a mês. */
+    o.heNormais   = _pct(o.hExtras,   o.hNormais);
     o.pctExtras   = _pct(o.hExtras,   o.hTotais);
     o.depExtras   = _pct(o.deExtras,  o.comExtras);  /* quanto do volume veio de HE */
     o.ticket      = _div(o.receita,   o.fatPecas);
@@ -6854,8 +6864,12 @@ window.DashUtils = (function() {
       if (F > 0 && (r.faltas > 0 || r.atraso > 0) && dif(F, (r.faltas || 0) + (r.atraso || 0), 1))
         add(r, 'atencao', 'horas', 'Planilha desatualizada: faltas + atrasos ≠ total lançado', F, (r.faltas || 0) + (r.atraso || 0));
       /* 2 · colunas derivadas gravadas na planilha, contra a regra do painel */
-      if (H > 0 && r.absenteismo > 0 && dif(r.absenteismo, F / H * 100, 0.05))
-        add(r, 'atencao', 'derivada', 'Planilha desatualizada: absenteísmo ≠ (faltas + atrasos) ÷ horas normais', r.absenteismo, F / H * 100);
+      /* b96.97: a base passou a ser horas previstas (normais + faltas +
+         atrasos). A coluna da planilha ainda guarda a base antiga (÷ normais)
+         até o painel regravar o mês: as duas valem, só acusa se não for
+         nenhuma. */
+      if (H > 0 && r.absenteismo > 0 && dif(r.absenteismo, F / (H + F) * 100, 0.05) && dif(r.absenteismo, F / H * 100, 0.05))
+        add(r, 'atencao', 'derivada', 'Planilha desatualizada: absenteísmo ≠ (faltas + atrasos) ÷ horas previstas', r.absenteismo, F / (H + F) * 100);
       if (H > 0 && r.prodSemExtras > 0 && pctDif(r.prodSemExtras, P * (1 - K / H)) > 0.5)
         add(r, 'atencao', 'derivada', 'Planilha desatualizada: produção sem extras calculada sobre outra produção', r.prodSemExtras, P * (1 - K / H));
       if (H > 0 && C > 0 && r.meta > 0 && pctDif(r.meta, P * H / C) > 0.5)
@@ -6974,7 +6988,8 @@ window.DashUtils = (function() {
        totalFaltaAtraso = faltas + atraso
        totalExtras      = extra50 + extra100
        horasTotais      = horasNormais + totalExtras
-       absenteismo      = totalFaltaAtraso ÷ horasNormais × 100
+       absenteismo      = totalFaltaAtraso ÷ (horasNormais + totalFaltaAtraso) × 100
+                          (horas previstas; era ÷ horasNormais até a b96.96)
        prodSemExtras    = producaoReal × (1 − totalExtras ÷ horasNormais)
        meta             = producaoReal × horasNormais ÷ horasCarga
        eficiencia       = prodSemExtras ÷ meta × 100
@@ -7023,7 +7038,12 @@ window.DashUtils = (function() {
     var H = n(o.horasNormais), K = n(o.totalExtras), F = n(o.totalFaltaAtraso), P = n(o.producaoReal), C = n(o.horasCarga);
     if (H > 0) {
       o.horasTotais = r1(H + K);
-      o.absenteismo = r2(F / H * 100);
+      /* b96.97: absenteísmo sobre HORAS PREVISTAS (normais + faltas +
+         atrasos), decisão do PPCP em 10/11/2026. Sobre as normais o mesmo
+         mês dava mais (OUT/26: 8,66% contra 7,97%) e a base não fechava com
+         nada: horas previstas = carga do ponto + atestado + afastamento +
+         (falta do controle − falta do ponto), conferido em OUT/26 (16.035 h). */
+      o.absenteismo = r2(F / (H + F) * 100);
       if (P > 0) {
         o.prodSemExtras = Math.round(P * (1 - K / H));
         if (C > 0) {
@@ -7068,12 +7088,14 @@ window.DashUtils = (function() {
     { k:'atestado', rotulo:'Atestado',                campo:'ausAtestado', gestao:false }
   ];
   function absMotivos(regs) {
+    /* b96.97: denominador = horas previstas (normais + faltas + atrasos), o
+       mesmo do absenteísmo; senão a soma dos motivos não fecha com o card. */
     var hn = 0, meses = 0, semControle = 0, h = {};
     MOTIVOS_ABS.forEach(function (m) { h[m.k] = 0; });
     (regs || []).forEach(function (r) {
       if (!r || !((r.horasCarga > 0) || (r.producaoReal > 0))) return;
       meses++;
-      hn += (r.horasNormais || 0);
+      hn += (r.horasNormais || 0) + (r.totalFaltaAtraso || 0);
       if (!(r.ausFalta > 0 || r.ausAtestado > 0 || r.ausAfastado > 0 || r.ausAtraso > 0)) { semControle++; return; }
       MOTIVOS_ABS.forEach(function (m) { h[m.k] += (r[m.campo] || 0); });
     });
@@ -7105,6 +7127,213 @@ window.DashUtils = (function() {
     }
     if (meta > 0) frase += ' ' + fN(atual.total, 1) + '%: ' + (atual.total <= meta ? 'dentro' : 'acima') + ' da meta de ' + fN(meta, 0) + '%.';
     return { itens:itens, delta:delta, gestao:gestao, maior:maior, frase:frase };
+  }
+
+  /* ── CALENDÁRIO DE DIAS ÚTEIS (b96.97) ──────────────────────────────────────
+     Um só para os dois relatórios e a aba Mestre. Eram sete tabelas fixas:
+     DIAS_FB repetida em 5 lugares (OUT 23), pmDiasPlan no Briefing (NOV 21 +
+     DEZ 23 = 44 dias restantes) e DIAS_PLAN no Mestre (NOV 19 + DEZ 15 = 34).
+     Dia útil = segunda a sexta, menos a aba FERIADOS da planilha. O ano
+     produtivo termina no dia DIA_FIM_ANO de dezembro (aba METAS; padrão 18,
+     decisão do PPCP em 10/11/2026): depois dele é recesso. */
+  function _isoD(a, m, d) { return a + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d; }
+  function _utc(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : null; }
+  function diasUteis(iniIso, fimIso, feriados) {
+    var a = _utc(iniIso), b = _utc(fimIso);
+    if (a === null || b === null || b < a) return 0;
+    var fer = {};
+    (Array.isArray(feriados) ? feriados : []).forEach(function (f) {
+      var k = String((f && f.data) || f || '').slice(0, 10); if (k) fer[k] = 1;
+    });
+    var n = 0;
+    for (var t = a; t <= b; t += 86400000) {
+      var d = new Date(t), dow = d.getUTCDay();
+      if (dow >= 1 && dow <= 5 && !fer[d.toISOString().slice(0, 10)]) n++;
+    }
+    return n;
+  }
+  function fimProducaoAno(ano, diaFim) {
+    var d = diaFim > 0 ? Math.min(31, Math.round(diaFim)) : 18;
+    return _isoD(ano, 12, d);
+  }
+
+  /* ── FECHAMENTO DO ANO (b96.97) ─────────────────────────────────────────────
+     "Fechamos o ano?" no fim do mês de referência (o mês da Reunião ou do
+     Briefing), com as contas separadas:
+       • aderência ao plano acumulado = realizado ÷ plano dos meses até a
+         referência com produção lançada. É também o ritmo COM hora extra
+         contra o plano (os dias são os mesmos dos dois lados): mede o volume;
+       • ritmo SÓ jornada normal contra o plano: mede a dependência de hora
+         extra (só meses com a produção sem extras apurada);
+       • saldo para fechar o ano = plano do ano − realizado acumulado. Não é o
+         plano dos meses que faltam: em OUT/26 o painel dizia "falta produzir
+         56.359" (plano de NOV+DEZ) e o saldo era 57.819, porque o −1.460 do
+         acumulado também precisa sair;
+       • plano restante = plano dos meses depois da referência;
+       • dias úteis restantes: do 1º dia do mês seguinte até o último dia de
+         produção do ano, pelo calendário;
+       • ritmo exigido para fechar = saldo ÷ dias úteis restantes.
+     Mês até a referência com plano e sem produção fica fora do acumulado e
+     vai para semReal, para a tela avisar em vez de contar como zero. */
+  function fechamentoAno(todos, ano, mesRef, opt) {
+    opt = opt || {};
+    var iRef = _ORDEM_M.indexOf(mesRef);
+    var o = { ano:ano, mesRef:mesRef, planoAno:0, planoAcum:0, realAcum:0, realComPlano:0, diasAcum:0, mesesAcum:0,
+              normalAcum:0, planoNormal:0, diasNormal:0, planoRestante:0, semPlano:[], semReal:[] };
+    (todos || []).forEach(function (r) {
+      if (!r || r.ano !== ano) return;
+      var i = _ORDEM_M.indexOf(r.mes), pl = r.previsaoProducao > 0 ? r.previsaoProducao : 0;
+      var P = r.producaoReal > 0 ? r.producaoReal : 0;
+      o.planoAno += pl;
+      if (i > iRef) { if (pl > 0) o.planoRestante += pl; else o.semPlano.push(r.mes); return; }
+      if (!(P > 0)) { if (pl > 0) o.semReal.push(r.mes); return; }
+      o.mesesAcum++; o.realAcum += P; o.diasAcum += getDias(r);
+      if (pl > 0) { o.planoAcum += pl; o.realComPlano += P; }
+      if (pl > 0 && r.prodSemExtras > 0) { o.normalAcum += r.prodSemExtras; o.planoNormal += pl; o.diasNormal += getDias(r); }
+    });
+    o.aderAcum   = _pct(o.realComPlano, o.planoAcum);
+    o.desvioAcum = o.planoAcum > 0 ? o.realComPlano - o.planoAcum : null;
+    o.pctVolume  = o.aderAcum === null ? null : o.aderAcum - 100;
+    o.pctJornada = o.planoNormal > 0 ? (o.normalAcum / o.planoNormal - 1) * 100 : null;
+    o.pctAno     = _pct(o.realAcum, o.planoAno);   /* realizado ÷ plano do ano INTEIRO */
+    o.ritmoComHE = _div(o.realAcum, o.diasAcum);
+    o.ritmoSemHE = _div(o.normalAcum, o.diasNormal);
+    o.ritmoPlanoNormal = _div(o.planoNormal, o.diasNormal);
+    o.saldo      = o.planoAno - o.realAcum;
+    o.fimAno     = fimProducaoAno(ano, opt.diaFim);
+    o.diasRestantes = iRef < 0 || iRef >= 11 ? 0 : diasUteis(_isoD(ano, iRef + 2, 1), o.fimAno, opt.feriados);
+    o.semFeriados = !(Array.isArray(opt.feriados) && opt.feriados.length);
+    o.ritmoExigido = (o.saldo > 0 && o.diasRestantes > 0) ? o.saldo / o.diasRestantes : null;
+    o.folgaFechar  = (o.ritmoExigido && o.ritmoComHE) ? (o.ritmoComHE / o.ritmoExigido - 1) * 100 : null;
+    return o;
+  }
+
+  /* Veredito do ano a partir do fechamentoAno. A pergunta "fechamos o ano?"
+     se responde com o VOLUME (ritmo com hora extra contra o exigido para
+     fechar). A jornada normal abaixo do plano é outro recado — dependência
+     de hora extra, custo recorrente — e vai em alerta, não no título. Antes
+     um −10,5% da jornada normal virava "RITMO ABAIXO DO PLANO" com a decisão
+     de aumentar capacidade, num ano que estava a −0,5% no volume.
+     Faixas da folga para fechar: ≥ 0 fecha · > −5% no limite · senão não
+     fecha. */
+  function vereditoAno(F) {
+    var v = { titulo:'SEM BASE PARA RESPONDER', cor:'#888888', pct:null, pctRot:'', frase:'', acao:'', alerta:null };
+    if (!F || !(F.planoAno > 0) || !(F.mesesAcum > 0)) {
+      v.frase = 'Falta o plano do ano ou um mês fechado com produção para responder.';
+      v.acao = 'Lançar o Plano Mestre e a produção do mês.';
+      return v;
+    }
+    var dm = F.fimAno.slice(8, 10) + '/' + F.fimAno.slice(5, 7);
+    var ref = F.mesRef + '/' + String(F.ano).slice(2);
+    var acum = 'Até ' + ref + ': <b>' + fI(F.realAcum) + '</b> pç'
+      + (F.planoAcum > 0 ? (' de ' + fI(F.planoAcum) + ' previstas (<b>' + fN(F.aderAcum, 1) + '%</b>, '
+        + (F.desvioAcum >= 0 ? '+' : '−') + fI(Math.abs(F.desvioAcum)) + ' pç)') : '') + '.';
+    if (F.saldo <= 0) {
+      v.titulo = 'PLANO DO ANO ATINGIDO'; v.cor = '#4CAF50';
+      v.frase = acum + ' O plano do ano (' + fI(F.planoAno) + ' pç) já foi produzido.';
+      v.acao = 'Manter o ritmo e antecipar a carteira.';
+    } else if (!(F.diasRestantes > 0)) {
+      v.titulo = 'ANO ENCERRADO ABAIXO DO PLANO'; v.cor = '#F44336';
+      v.frase = acum + ' Ficaram ' + fI(F.saldo) + ' pç do plano do ano sem dia útil para produzir.';
+      v.acao = 'Repactuar o saldo com a área comercial.';
+    } else {
+      var f = F.folgaFechar;
+      v.pct = f; v.pctRot = 'ritmo do ano com hora extra vs exigido para fechar';
+      var falta = ' Para fechar o ano faltam <b>' + fI(F.saldo) + ' pç em ' + F.diasRestantes + ' dias úteis</b> (até ' + dm + ') = <b>'
+        + fI(F.ritmoExigido) + ' pç/dia</b>; o ritmo do ano com hora extra é ' + fI(F.ritmoComHE) + ' pç/dia';
+      if (f >= 0) {
+        v.titulo = 'FECHA O ANO NO RITMO ATUAL'; v.cor = '#4CAF50';
+        v.frase = acum + falta + ' (' + fN(f, 1) + '% de folga).';
+        v.acao = (F.pctJornada !== null && F.pctJornada < 0)
+          ? 'O volume fecha, mas com hora extra: decidir se ela segue como custo recorrente ou vira capacidade (turno ou headcount).'
+          : 'Manter o ritmo: o plano cabe na jornada normal.';
+      } else if (f > -5) {
+        v.titulo = 'FECHA O ANO NO LIMITE'; v.cor = '#FF9800';
+        v.frase = acum + falta + ' (' + fN(Math.abs(f), 1) + '% abaixo do necessário).';
+        v.acao = 'Sem folga: garantir a hora extra planejada até ' + dm + ' e atacar o absenteísmo; uma parada tira o fechamento.';
+      } else {
+        v.titulo = 'NÃO FECHA NO RITMO ATUAL'; v.cor = '#F44336';
+        v.frase = acum + falta + ' (' + fN(Math.abs(f), 1) + '% abaixo do necessário).';
+        v.acao = 'Decidir entre aumentar capacidade (turno, headcount ou hora extra estrutural) ou repactuar o plano com a área comercial.';
+      }
+    }
+    if (F.pctJornada !== null && F.pctJornada < 0) {
+      v.alerta = { cor: F.pctJornada > -5 ? '#FF9800' : '#F44336', pct: F.pctJornada,
+        texto: 'Dependência de hora extra: só na jornada normal o ano está <b>' + fN(Math.abs(F.pctJornada), 1)
+          + '% abaixo</b> do plano (' + fI(F.ritmoSemHE) + ' contra ' + fI(F.ritmoPlanoNormal) + ' pç/dia). '
+          + 'O volume depende de hora extra: é custo recorrente, não capacidade.' };
+    }
+    return v;
+  }
+
+  /* ── CAPACIDADE NA JORNADA NORMAL (b96.97) ──────────────────────────────────
+     Quanto a jornada normal entrega com o absenteísmo, no máximo, na meta:
+       capacidade = peças por hora normal × (horas normais + horas perdidas
+                    acima da meta)
+     onde horas perdidas acima da meta = faltas + atrasos − meta × horas
+     previstas (nunca negativo) e peças por hora normal = produção sem extras
+     ÷ horas normais. Com absenteísmo acima da meta é o mesmo que horas
+     previstas × (1 − meta) × peças por hora. gap = plano − capacidade: o
+     que nem a presença na meta cobre, e é o mesmo número da frase da Reunião
+     ((plano − produção normal) − recuperável). Substitui a "capacidade" do
+     campo meta (produção × normais ÷ carga), que saía da própria produção. */
+  function capacidadeNormal(regs, metaAbs) {
+    var P = periodo(regs), m = metaAbs > 0 ? metaAbs / 100 : 0;
+    if (!(P.hNormais > 0) || P.ritmoNormal === null) return null;
+    var acima = Math.max(0, P.hPerdidas - m * P.hPrevistas);
+    var cap = P.ritmoNormal * (P.hNormais + acima);
+    return { hPrevistas:P.hPrevistas, hNormais:P.hNormais, hPerdidas:P.hPerdidas, hAcimaMeta:acima,
+             ritmoNormal:P.ritmoNormal, metaAbs:metaAbs, capacidade:cap, normal:P.semExtras,
+             plano:P.plano, gap:P.plano > 0 ? P.plano - cap : null, recuperavel:acima * P.ritmoNormal };
+  }
+
+  /* Ativos no fim do mês: diretos do extrato menos os desligados do mês que
+     estão nele (desligadosPonto). Mês sem a contagem (2025, ou antes do
+     PontoRH.gs da b96.93): null, nunca adivinhado. */
+  function _temCampo(v) { return v !== undefined && v !== null && v !== ''; }
+  function ativosFim(r) {
+    if (!r || !(r.colaboradores > 0)) return null;
+    if (!_temCampo(r.desligadosPonto) && !_temCampo(r.desligadosForaPonto)) return null;
+    var dIn = +r.desligadosPonto > 0 ? +r.desligadosPonto : 0;
+    return r.colaboradores - dIn;
+  }
+
+  /* Vendido − faturado só do ano até o mês. A carteira() acumula desde o
+     início da série (JAN/25), sem saldo inicial do ERP; a diferença entre as
+     duas é a variação acumulada antes de janeiro do ano. Nenhuma das duas é o
+     saldo da carteira no ERP. Junto, produzido e faturado do ano: faturado
+     acima do produzido = estoque consumido. */
+  function carteiraAno(todos, ano, mes) {
+    var iRef = _ORDEM_M.indexOf(mes), o = { vendido:0, faturado:0, produzido:0, meses:0 };
+    (todos || []).forEach(function (r) {
+      if (!r || r.ano !== ano || _ORDEM_M.indexOf(r.mes) > iRef) return;
+      if (!(r.qtdeVendida > 0 || r.qtdeFaturado > 0 || r.producaoReal > 0)) return;
+      o.meses++; o.vendido += (r.qtdeVendida || 0); o.faturado += (r.qtdeFaturado || 0); o.produzido += (r.producaoReal || 0);
+    });
+    o.saldo = o.vendido - o.faturado;
+    o.estoqueConsumido = o.faturado - o.produzido;
+    var serie = carteira(todos, ano, mes);
+    o.saldoSerie = serie.saldo;
+    o.anteriorAoAno = serie.saldo - o.saldo;
+    return o;
+  }
+
+  /* Ticket do mês contra o mesmo mês do ano anterior e contra o ticket do
+     ano até o mês (receita ÷ peças faturadas). Era o primeiro mês da série
+     (JAN/25) contra o último, que mistura dois anos de preço e de mix. */
+  function ticketComparar(todos, ano, mes) {
+    var iRef = _ORDEM_M.indexOf(mes), r = null, ly = null, doAno = [];
+    (todos || []).forEach(function (x) {
+      if (!x) return;
+      if (x.ano === ano && x.mes === mes) r = x;
+      if (x.ano === ano - 1 && x.mes === mes) ly = x;
+      if (x.ano === ano && _ORDEM_M.indexOf(x.mes) <= iRef) doAno.push(x);
+    });
+    if (!r || !(r.ticketMedio > 0)) return null;
+    var tAno = periodo(doAno).ticket;
+    return { ticket:r.ticketMedio, ly:(ly && ly.ticketMedio > 0) ? ly.ticketMedio : null,
+             vsLy:(ly && ly.ticketMedio > 0) ? (r.ticketMedio / ly.ticketMedio - 1) * 100 : null,
+             mediaAno:tAno, vsMedia:tAno > 0 ? (r.ticketMedio / tAno - 1) * 100 : null };
   }
 
   /* ── CUSTO DA HORA EXTRA ─────────────────────────────────────────────────
@@ -7226,6 +7455,8 @@ window.DashUtils = (function() {
            integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar, duplicidadeCompleta:duplicidadeCompleta,
            cienteLer:cienteLer, cienteTexto:cienteTexto,
            absMotivos:absMotivos, absComparar:absComparar, custoHE:custoHE, pontosColab:pontosColab, pontosHist:pontosHist,
+           diasUteis:diasUteis, fimProducaoAno:fimProducaoAno, fechamentoAno:fechamentoAno, vereditoAno:vereditoAno,
+           capacidadeNormal:capacidadeNormal, ativosFim:ativosFim, carteiraAno:carteiraAno, ticketComparar:ticketComparar,
            fN:fN, fI:fI, fSign:fSign, DIAS_FB:DIAS_FB };
 })();
 
@@ -8981,11 +9212,13 @@ function bindCardTooltips(dados){
     tipRow('Média/mês',fi(tHFP_tip/dados.length)+' h')+
     tipRow('Pior mês',fi(Math.max.apply(null,dados.map(function(r){return calcHFP(r)||0})))+' h');
 
-  var cargaHtml='<div class="tip-title">H. Carga — Jornada Planejada</div>'+
-    /* Não é derivada: H.Carga é a jornada contratada que vem do ERP.
-       A igualdade que estava aqui é falsa em 18 de 18 meses — JAN/25 daria
-       12.375 + 1.425 = 13.800 contra os 12.820 registrados. */
-    tipRow('Fórmula','Jornada contratada no período (vem do ERP)')+
+  var cargaHtml='<div class="tip-title">H. Carga — Carga do ponto</div>'+
+    /* b96.97: H.Carga é a "Carga" do extrato do ponto (PontoRH.gs): horas
+       escaladas, 8,8 h × dias úteis por pessoa, já sem férias, atestado e
+       afastamento. Não vem do ERP. Normais + faltas + atrasos do painel dá
+       mais que ela porque a falta do controle inclui atestado e afastamento
+       (OUT/26: 15.180 + 476 + 334 + 45 = 16.035 h = horas previstas). */
+    tipRow('Fórmula','Carga do extrato do ponto: horas escaladas, sem férias, atestado e afastamento')+
     tipRow('Total acumulado',fi(tCarga)+' h')+
     tipRow('H. Totais trabalhadas',fi(tHT)+' h')+
     tipRow('Diferença (perdas)',fi(tCarga-tHT)+'  h')+
@@ -14041,8 +14274,8 @@ function cfInicializar() {
     },
     'kv2-carga': {
       titulo: 'H. Carga Total',
-      formula: 'Σ Horas Carga (ERP) dos meses filtrados',
-      corpo: 'Capacidade teórica de horas disponíveis para produção, conforme a jornada planejada no ERP.',
+      formula: 'Σ carga do ponto dos meses filtrados',
+      corpo: 'Horas escaladas no extrato do ponto (8,8 h × dias úteis por pessoa), já sem férias, atestado e afastamento. Não vem do ERP. A base do absenteísmo é outra: horas previstas = normais + faltas + atrasos.',
       interpretacao: 'É o total contra o qual as Horas Normais e Extras abaixo são comparadas.'
     },
     'card2-hnpct': {
@@ -19464,9 +19697,22 @@ window.MesEmCurso = (function(){
      aberto com dias lançados na planilha também usa os da planilha
      (diasPlanejados) — a tabela é só o fallback. */
   var DIAS_PLAN={JAN:17,FEV:20,MAR:22,ABR:20,MAI:20,JUN:21,JUL:23,AGO:21,SET:21,OUT:21,NOV:19,DEZ:15};
+  /* b96.97: mês ABERTO (sem produção) conta os dias pelo calendário único
+     (DashUtils.diasUteis: segunda a sexta menos a aba FERIADOS, até o último
+     dia de produção do ano, DIA_FIM_ANO). Decisão do PPCP em 10/11/2026:
+     vamos até 18/12, então DEZ tem 14 dias e não os 15 da tabela. A tabela
+     DIAS_PLAN fica só para mês fechado sem dias lançados. A simulação segue
+     com os próprios dias (DIAS_SIM). */
+  function diasCalendario(r){
+    var i=ORDEM_M.indexOf(r.mes); if(i<0||!(r.ano>0)) return 0;
+    var mm=(i<9?'0':'')+(i+1), ult=new Date(Date.UTC(r.ano,i+1,0)).getUTCDate();
+    var fim=DashUtils.fimProducaoAno(r.ano,(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18));
+    var fimMes=r.ano+'-'+mm+'-'+(ult<10?'0':'')+ult;
+    return DashUtils.diasUteis(r.ano+'-'+mm+'-01', fimMes<fim?fimMes:fim, feriadosLocais());
+  }
   function diasPlanejados(r){
     if(r._simulado&&DIAS_SIM[r.mes]) return diasSim(r.mes);
-    if((r.producaoReal||0)<=0&&(r.diasTrabalhados||0)>0) return r.diasTrabalhados;
+    if((r.producaoReal||0)<=0) return diasCalendario(r);
     return DIAS_PLAN[r.mes]||22;
   }
   var _ult = null;   /* último apurado, usado pela impressão executiva */
@@ -19923,56 +20169,38 @@ window.MesEmCurso = (function(){
       if(!cursoNoAno) normalAno=normalFech;
       else if(curso.he&&curso.he.realSemHE>0){ normalAno=normalFech+curso.he.realSemHE; normalAnoEst=true; }
     }
-    var ritmoNecR=diasAbertos>0?planoAberto/diasAbertos:0;    /* só o que falta */
+    /* b96.97: o que falta = saldo do ano (plano do ano − realizado), não o
+       plano dos meses abertos. */
+    var saldoAno=Math.max(0,planoAno-realAcum);
+    var ritmoNecR=diasAbertos>0?saldoAno/diasAbertos:0;    /* só o que falta */
     var pctFolga=ritmoExig>0?((ritmoDem/ritmoExig)-1)*100:0;
     /* Rótulo dos meses fechados com horas ("JAN a AGO"), para a explicação
        dos ritmos dizer de onde vem cada conta. */
     var comHoras=mesesTab.filter(function(m){ return m.normal!==null&&m.normal>0; }).map(function(m){ return m.mes; });
     var fechados=comHoras.length?(comHoras.length===1?comHoras[0]:comHoras[0]+' a '+comHoras[comHoras.length-1]):'os meses fechados';
     var explic=MesEmCurso.explicarRitmos({ planoAno:planoAno, diasPlanoAno:diasPlanoAno, planoFech:planoFech, diasPlanFech:diasPlanFech,
-      normalFech:normalFech, diasFech:diasFech, heP:heP, planoAberto:planoAberto, diasAbertos:diasAbertos, fechados:fechados,
+      normalFech:normalFech, diasFech:diasFech, heP:heP, planoAberto:saldoAno, diasAbertos:diasAbertos, fechados:fechados,
       curso:(curso&&curso.estado!=='suspeito')?curso:null });
 
-    var cor,rgb,titulo,frase,acao;
-    /* A leitura do que resta depende de contra o que se compara. "Mais leve
-       que a média do ano" era texto fixo, escrito quando o restante era agosto
-       (1.148 pç/dia); em SET/26 o restante pedia 1.658 — 24% acima do
-       demonstrado, o trecho mais pesado do ano — e a frase dizia "leve". */
-    var relRest = ritmoNecR<=0 ? ''
-      : (ritmoDem>0 && ritmoNecR>ritmoDem)
-        ? ' — <b>'+fd((ritmoNecR/ritmoDem-1)*100,0)+'% acima</b> do ritmo demonstrado: o trecho mais pesado do ano'
-      : (ritmoPlano>0 && ritmoNecR>ritmoPlano)
-        ? ' — acima da média do ano ('+fi(ritmoPlano)+'), mas dentro do que a fábrica vem entregando'
-      : ' — mais leve que a média do ano';
-    var restante = planoAberto>0
-      ? ' O que resta do plano (<b>'+fi(planoAberto)+'</b> peças em <b>'+diasAbertos
-        +'</b> dias) pede <b>'+fi(ritmoNecR)+'</b> pç/dia'+relRest+'.'
-      : '';
-
-    var nominal = (ritmoPlano>0 && Math.abs(ritmoPlano-ritmoExig)>=5)
-      ? ' O plano do ano inteiro é dimensionado a <b>'+fi(ritmoPlano)+'</b> pç/dia.' : '';
-    if(ritmoExig<=0||ritmoDem<=0){
-      cor='#888888'; rgb='136,136,136'; titulo='SEM BASE PARA COMPARAR';
-      frase='Falta plano ou faltam meses fechados com horas lançadas para calcular o ritmo.';
-      acao='Lançar a previsão na planilha e fechar as horas do mês corrente.';
-    } else if(pctFolga>=0){
-      cor='#4CAF50'; rgb='76,175,80'; titulo='RITMO COBRE O PLANO';
-      frase='Nos dias efetivamente trabalhados o plano exigiu <b>'+fi(ritmoExig)+'</b> pç/dia e a fábrica entregou <b>'
-        +fi(ritmoDem)+'</b> pç/dia na jornada normal — <b>'+fd(Math.abs(pctFolga),1)+'% acima</b>.'+nominal+restante;
-      acao='Manter o ritmo — o plano cabe na jornada normal, sem hora extra estrutural.';
-    } else if(pctFolga>-5){
-      cor='#FF9800'; rgb='255,152,0'; titulo='RITMO NO LIMITE DO PLANO';
-      frase='Nos dias efetivamente trabalhados o plano exigiu <b>'+fi(ritmoExig)+'</b> pç/dia e a fábrica entregou <b>'
-        +fi(ritmoDem)+'</b> pç/dia na jornada normal — <b>'+fd(Math.abs(pctFolga),1)+'% abaixo</b>. '
-        +'A diferença vem sendo coberta com hora extra.'+nominal+restante;
-      acao='Sem folga para imprevisto: reduzir absenteísmo ou assumir a hora extra como custo recorrente.';
-    } else {
-      cor='#F44336'; rgb='244,67,54'; titulo='RITMO ABAIXO DO PLANO';
-      frase='Nos dias efetivamente trabalhados o plano exigiu <b>'+fi(ritmoExig)+'</b> pç/dia, mas a fábrica entregou <b>'
-        +fi(ritmoDem)+'</b> pç/dia na jornada normal — <b>'+fd(Math.abs(pctFolga),1)+'% abaixo</b>. '
-        +'Por isso nenhum mês do ano fechou a previsão sem hora extra.'+nominal+restante;
-      acao='Decidir entre aumentar capacidade (turno, headcount ou hora extra estrutural) ou repactuar o plano com a área comercial.';
-    }
+    /* b96.97: veredito pelo DashUtils.fechamentoAno/vereditoAno — a mesma
+       conta da Reunião e do Briefing, no último mês fechado. O título diz se
+       o VOLUME fecha o ano (ritmo com hora extra contra o exigido para fechar:
+       saldo ÷ dias úteis restantes); a jornada normal abaixo do plano vai em
+       alerta de dependência de hora extra. Antes o título saía só da jornada
+       normal (−10,5% em OUT/26 virava "RITMO ABAIXO DO PLANO" com a decisão de
+       aumentar capacidade) e o "falta produzir" era o plano dos meses
+       abertos, sem o −1.460 do acumulado. A simulação entra (usa recs). */
+    var mesesFech=recs.filter(function(r){ return (r.producaoReal||0)>0; });
+    var mesRefPM=mesesFech.length?mesesFech[mesesFech.length-1].mes:null;
+    var FPM=mesRefPM?DashUtils.fechamentoAno(recs, ano, mesRefPM, { feriados:feriadosLocais(), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) }):null;
+    var VPM=DashUtils.vereditoAno(FPM);
+    var cor=VPM.cor, titulo=VPM.titulo, frase=VPM.frase, acao=VPM.acao;
+    var rgb=cor==='#4CAF50'?'76,175,80':(cor==='#FF9800'?'255,152,0':(cor==='#F44336'?'244,67,54':'136,136,136'));
+    if(VPM.alerta) frase+='<div style="margin-top:9px;padding:8px 12px;border-left:3px solid '+VPM.alerta.cor+';background:rgba(255,255,255,.03);border-radius:4px;font-size:.84rem">'+VPM.alerta.texto+'</div>';
+    /* Saldo ao vivo (com o corte do mês em curso, se houver): plano do ano −
+       realizado até hoje, nos dias úteis que sobram. Mesma fórmula do saldo
+       da Reunião; muda só a data de referência, que o card diz. */
+    var saldoVivo=saldoAno;
 
     /* Aviso: plano incompleto invalida qualquer leitura de "falta produzir" */
     var avisoPlano = semPlano.length
@@ -20015,8 +20243,8 @@ window.MesEmCurso = (function(){
       +'<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:9px">'
         +'<span style="font-size:1.8rem;font-weight:800;color:'+cor+'">'+titulo+'</span>'
         +'<span style="font-size:1.15rem;font-family:var(--mono);font-weight:700;color:'+cor+'">'
-          +(ritmoPlano>0?((pctFolga>=0?'+':'')+fd(pctFolga,1)+'%'):'—')+'</span>'
-        +'<span style="font-size:.72rem;color:var(--t2)">ritmo demonstrado vs exigido pelo plano</span>'
+          +(VPM.pct!==null?((VPM.pct>=0?'+':'')+fd(VPM.pct,1)+'%'):'—')+'</span>'
+        +'<span style="font-size:.72rem;color:var(--t2)">'+(VPM.pctRot||'')+'</span>'
       +'</div>'
       +'<div style="font-size:.92rem;color:var(--t1);line-height:1.55;max-width:960px">'+frase+'</div>'
       +'<div style="margin-top:12px;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:6px;'
@@ -20030,12 +20258,20 @@ window.MesEmCurso = (function(){
       blocoMesEmCurso(curso)
       +'<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(235px,1fr))">'
       +card('Plano do ano', fi(planoAno)+' pç', diasPlanoAno+' dias úteis planejados', '#00E5FF')
-      +card('Realizado até agora', fi(realAcum)+' pç', fd(pctPlano,1)+'% do plano'
+      /* b96.97: "% do plano" comparava 10 meses de realizado com 12 de plano
+         (84,0% em OUT/26). A aderência compara com o plano dos mesmos meses. */
+      +(FPM&&FPM.planoAcum>0?card('Aderência ao plano acumulado', fd(FPM.aderAcum,1)+'%',
+          fi(FPM.realAcum)+' de '+fi(FPM.planoAcum)+' previstas até '+FPM.mesRef+' ('+(FPM.desvioAcum>=0?'+':'−')+fi(Math.abs(FPM.desvioAcum))+' pç)',
+          FPM.aderAcum>=100?'#4CAF50':(FPM.aderAcum>=95?'#FF9800':'#F44336')):'')
+      +card('Realizado até agora', fi(realAcum)+' pç', fd(pctPlano,1)+'% do plano do ano inteiro (12 meses)'
           +(cursoNoAno?' · '+cursoNoAno.mes+' até '+cursoNoAno.ate:''), '#F5A623')
       +card('Ritmo do plano', fi(ritmoPlano)+' pç/dia', 'Plano do ano ÷ dias úteis', '#00E5FF')
       +card('Ritmo exigido', fi(ritmoExig)+' pç/dia', 'Cobrado nos dias trabalhados', '#00E5FF')
       +card('Ritmo demonstrado', fi(ritmoDem)+' pç/dia', 'Entregue na jornada normal', cor)
-      +card('Falta produzir', fi(planoAberto)+' pç', diasAbertos+' dias úteis '+(cursoNoAno?'restantes':'planejados'), '#FF9800')
+      /* b96.97: saldo = plano do ano − realizado (era o plano dos meses
+         abertos). Dias: calendário até o último dia de produção do ano. */
+      +card('Saldo para fechar o ano', fi(saldoVivo)+' pç', diasAbertos+' dias úteis restantes'+(diasAbertos>0?(' = '+fi(ritmoNecR)+' pç/dia'):'')
+          +'<br>plano restante '+fi(planoAberto)+' pç', '#FF9800')
       +card('Dependência de hora extra', fi(heP)+' pç', 'Saíram só por hora extra', heP>0?'#FF9800':'#4CAF50')
       +'</div>'
       +blocoComoLer(explic)
@@ -20053,7 +20289,10 @@ window.MesEmCurso = (function(){
              ritmoExig:ritmoExig, diasPlanFech:diasPlanFech,
              ritmoDem:ritmoDem, ritmoNecR:ritmoNecR, pctFolga:pctFolga, heP:heP,
              planoFech:planoFech, fatFech:fatFech, venFech:venFech, semPlano:semPlano,
-             titulo:titulo, frase:frase, acao:acao, cor:cor, curso:curso, explic:explic, meses:mesesTab };
+             titulo:titulo, frase:frase, acao:acao, cor:cor, curso:curso, explic:explic, meses:mesesTab,
+             /* b96.97: o percentual que acompanha o título, o alerta de
+                dependência e o saldo (plano do ano − realizado). */
+             pctTitulo:VPM.pct, pctRotulo:VPM.pctRot, alerta:VPM.alerta, saldo:saldoVivo, fechamento:FPM };
   }
 
   /* ── O plano cobre a demanda? ──
@@ -20074,7 +20313,9 @@ window.MesEmCurso = (function(){
     if(pv===null){
       msg='Sem quantidade vendida no período para comparar.';
     } else if(pv<0){
-      msg='A carteira vendida do período é <b style="color:'+cor+'">'+fd(Math.abs(pv),0)+'% maior</b> que o plano. '
+      /* b96.97: "X% maior" = vendido ÷ plano − 1 (pv é plano ÷ vendido − 1:
+         −11,7% era lido como "12% maior"; o certo em OUT/26 é 13,2%). */
+      msg='A carteira vendida do período é <b style="color:'+cor+'">'+fd((ven/plano-1)*100,1)+'% maior</b> que o plano. '
         +'Cumprir o plano não zera a fila: o plano está dimensionado abaixo do que a área comercial vem vendendo.';
     } else {
       msg='O plano cobre a carteira vendida do período com <b style="color:'+cor+'">'+fd(pv,0)+'%</b> de margem.';
@@ -20582,47 +20823,16 @@ window.MesEmCurso = (function(){
     return txt;
   }
 
-  /* ── SWOT do plano — derivado do apurado, não de texto fixo ── */
-  function swot(u){
-    var f=[],w=[],o=[],a=[];
-    var cumpriu=u.meses.filter(function(m){return m.status==='Cumpriu';}).length;
-    var comHE=u.meses.filter(function(m){return m.status==='Cumpriu c/ HE';}).length;
-    var nao=u.meses.filter(function(m){return m.status==='Não cumpriu';}).length;
-    var fechados=cumpriu+comHE+nao;
-
-    if(cumpriu>0) f.push(cumpriu+' '+(cumpriu>1?'meses cumpriram':'mês cumpriu')+' a previsão na jornada normal.');
-    if(comHE+cumpriu>0) f.push((comHE+cumpriu)+' de '+fechados+' meses entregaram o plano, ainda que '+comHE+' com hora extra.');
-    if(u.realAcum>=u.planoAno*0.9) f.push('Realizado no ano em '+fd(u.planoAno>0?(u.realAcum/u.planoAno)*100:0,1)+'% do plano.');
-    if(u.pctFolga>=0) f.push('Ritmo demonstrado cobre o exigido pelo plano.');
-    if(!f.length) f.push('Base de plano e realizado consolidada para acompanhamento mensal.');
-
-    if(u.pctFolga<0) w.push('Ritmo de '+fi(u.ritmoDem)+' pç/dia contra '+fi(u.ritmoPlano)+' exigidos — '+fd(Math.abs(u.pctFolga),1)+'% abaixo do plano.');
-    if(nao>0) w.push(nao+' '+(nao>1?'meses não cumpriram':'mês não cumpriu')+' a previsão nem com hora extra.');
-    if(u.heP>0) w.push(fi(u.heP)+' peças no ano só saíram por hora extra.');
-    if(comHE>0) w.push(comHE+' '+(comHE>1?'meses dependeram':'mês dependeu')+' de hora extra para bater o plano.');
-    if(!w.length) w.push('Sem fraqueza relevante identificada no plano deste ano.');
-
-    if(u.pctFolga<0) o.push('Fechar a diferença de ritmo recupera '+fi(Math.abs(u.ritmoPlano-u.ritmoDem))+' pç/dia sem hora extra.');
-    if(u.semPlano.length) o.push('Planejar '+u.semPlano.join(', ')+' amplia o horizonte de capacidade e antecipa decisão de turno.');
-    if(u.heP>0) o.push('Converter hora extra recorrente em capacidade estrutural tende a sair mais barato por peça.');
-    o.push('Usar o ritmo demonstrado como base do próximo plano, em vez do nominal.');
-
-    if(u.venFech>u.planoFech) a.push('Carteira vendida '+fd(((u.venFech/u.planoFech)-1)*100,0)+'% acima do plano — cumprir o plano não zera a fila.');
-    if(u.semPlano.length) a.push(u.semPlano.length+' '+(u.semPlano.length>1?'meses sem plano':'mês sem plano')+' impedem enxergar a capacidade do fim do ano.');
-    if(u.heP>0) a.push('Dependência de hora extra pressiona custo, fadiga e qualidade.');
-    if(!a.length) a.push('Monitorar absenteísmo e paradas, que corroem o ritmo demonstrado.');
-    return {f:f,w:w,o:o,a:a};
-  }
-
   /* Apurado do plano, para quem precisar sem recalcular — é o que a tela de
      Reunião consome. Devolve null enquanto a aba não tiver renderizado. */
   window.pmApurado = function(){ return _ult; };
 
   window.pmImprimir = function(){
     if(!_ult){ if(typeof toast==='function') toast('Abra a aba e aguarde os dados carregarem.','wn'); return; }
-    var u=_ult, sw=swot(u), hoje=new Date().toLocaleDateString('pt-BR');
+    var u=_ult, hoje=new Date().toLocaleDateString('pt-BR');
     var pctPlano=u.planoAno>0?(u.realAcum/u.planoAno)*100:0;
-    var corV=u.pctFolga>=0?'#2f855a':(u.pctFolga>-5?'#b7791f':'#c53030');
+    var pV=(u.pctTitulo!==undefined&&u.pctTitulo!==null)?u.pctTitulo:u.pctFolga;   /* b96.97 */
+    var corV=pV>=0?'#2f855a':(pV>-5?'#b7791f':'#c53030');
 
     function kpi(l,v,s){ return '<div class="k"><div class="kl">'+l+'</div><div class="kv">'+v+'</div><div class="ks">'+s+'</div></div>'; }
     function box(t,itens,cls){ return '<div class="sw '+cls+'"><div class="swt">'+t+'</div><ul>'
@@ -20821,7 +21031,7 @@ window.MesEmCurso = (function(){
       +'<div class="bd">'
       +'<div class="st">Veredito do Plano</div>'
       +'<div class="ver"><h2>'+u.titulo+' &nbsp;<span style="font-size:12px">'
-        +(u.pctFolga>=0?'+':'')+fd(u.pctFolga,1)+'%</span></h2>'
+        +(pV>=0?'+':'')+fd(pV,1)+'%</span></h2>'
         +'<p>'+u.frase+'</p>'
         +(u.ponte&&u.ponte.temKg
           ? '<p style="margin-top:6px;color:#4a5568;font-size:10.5px"><b>Este veredito é medido em peças.</b> '
@@ -20889,11 +21099,8 @@ window.MesEmCurso = (function(){
       +'<table><thead><tr><th>Mês</th><th>Status</th><th>Plano</th><th>Realizado</th><th>Desvio</th>'
         +'<th>Dias úteis</th><th>Ritmo nec.</th><th>Ritmo real.</th></tr></thead><tbody>'+linhas+'</tbody></table>'
       +secProd
-      +'<div class="st">Análise SWOT — Planejamento Mestre '+u.ano+'</div>'
-      +'<div class="swg">'
-        +box('Forças', sw.f, 'f')+box('Fraquezas', sw.w, 'w')
-        +box('Oportunidades', sw.o, 'o')+box('Ameaças', sw.a, 'a')
-      +'</div>'
+      /* b96.97: o SWOT saiu (pedido do PPCP em 10/11/2026); dizia "ritmo
+         demonstrado cobre o exigido" pela regra antiga do veredito. */
       +'</div>'
       +'<div class="ft"><span>PPCP — Dashboard de Produção · Planejamento Mestre '+u.ano
         +(u.cenario?' · SIMULAÇÃO cenário '+u.cenario+' — não é o plano da planilha':'')+'</span>'
@@ -24124,7 +24331,9 @@ window.CompAnos = (function () {
       prod:    P.comExtras,      /* entregue, com hora extra */
       normal:  P.semExtras,      /* jornada normal            */
       deHE:    P.deExtras,       /* peças que vieram da HE    */
-      depHE:   P.depExtras || 0, /* % do volume vindo de HE   */
+      depHE:   P.depExtras || 0, /* peças de HE ÷ produção (contagem em peças) */
+      heNormais: P.heNormais || 0, /* HE sobre horas normais: base da meta de 8% (b96.97) */
+      hPrev:   P.hPrevistas,      /* normais + faltas + atrasos: base do absenteísmo (b96.97) */
       meta:    P.meta,
       hn:      P.hNormais, he: P.hExtras, ht: P.hTotais, carga: P.hCarga,
       dias:    P.dias,
@@ -24510,7 +24719,7 @@ window.CompAnos = (function () {
     var perdDias = (perdPc!==null && A._P.prodDia>0) ? perdPc/A._P.prodDia : null;
 
     var corAder = aderSE===null?'#00E5FF':corMeta(aderSE,100);
-    var corHE   = A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336');
+    var corHE   = A.heNormais<=META_DEP_HE_?'#4CAF50':(A.heNormais<=15?'#FF9800':'#F44336');
     var corAbsC = corMeta(A.absMed,META_ABS_,true);
     var b2=card('Aderência ao plano de '+(anoTodo?ano:mes)+' · s/ HE', aderSE!==null?(fd(aderSE,1)+'%'):'—',
                 aderSE!==null ? ('com hora extra '+fd(ader,1)+'%<br>previsto '+fi(planoRef)+' pç')
@@ -24519,9 +24728,14 @@ window.CompAnos = (function () {
       /* Custo da hora extra (DashUtils.custoHE) dentro do card de HE: era um
          card próprio que passava meses em "—". Sem custo-hora na aba METAS, a
          linha de rodapé da pergunta diz o que falta, nunca R$ 0. */
-      +card('Dependência de hora extra', fd(A.depHE,1)+'%',
-             fi(A.deHE)+' pç de '+fi(A.he)+' h extras<br>'+fd(A.pctHE,1)+'% das horas totais'
-             +(anoTodo?'':(' · ano '+fd(Y.depHE,1)+'%'))+' · limite '+META_DEP_HE_+'%'
+      /* b96.97: o nome diz a conta. A meta de 8% é sobre horas normais
+         (decisão do PPCP em 10/11/2026); o card dizia "dependência" e as telas
+         liam "% do volume". HE sobre horas totais é outro número, com nome
+         próprio na linha de apoio. */
+      +card('HE sobre horas normais', fd(A.heNormais,1)+'%',
+             fi(A.he)+' h extras ÷ '+fi(A.hn)+' h normais · limite '+META_DEP_HE_+'%'
+             +(anoTodo?'':(' · ano '+fd(Y.heNormais,1)+'%'))
+             +'<br>HE sobre horas totais '+fd(A.pctHE,1)+'% · '+fi(A.deHE)+' pç estimadas em hora extra'
              +(CH.valor!==null?('<br>custo R$ '+fi(CH.valor)+' (R$ '+fd(CUSTO_HORA_,2)+'/h)'+(anoTodo?'':(' · ano R$ '+fi(CHano.valor)))):''),
              corHE, false, 'eficiencia')
       +card('Absenteísmo', fd(A.absMed,1)+'%',
@@ -24529,7 +24743,9 @@ window.CompAnos = (function () {
                 jornada normal do próprio período = peças que não saíram, e
                 quantos dias de fábrica isso representa. Mesma conta da aba
                 Eficiência & Horas (DashUtils.pecasPerdidas). */
-             (perdPc!==null ? (fi(A._P.hPerdidas)+' h de falta e atraso = '+fi(perdPc)+' pç'
+             /* b96.97: base = horas previstas (normais + faltas + atrasos). */
+             fi(A._P.hPerdidas)+' h de falta e atraso ÷ '+fi(A.hPrev)+' h previstas<br>'
+             +(perdPc!==null ? ('= '+fi(perdPc)+' pç'
                                +(perdDias!==null?(' · '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de produção'):'')+'<br>') : '')
              +(anoTodo?'':('ano '+fd(Y.absMed,1)+'% · '))+'meta '+META_ABS_+'%',
              corAbsC, false, 'pessoas');
@@ -24734,14 +24950,29 @@ window.CompAnos = (function () {
        Recuperável = peças perdidas × (abs − meta) ÷ abs — a parcela das horas
        perdidas acima da meta, ao ritmo da jornada normal. Se cobre o que
        faltou, é absenteísmo; se não cobre, é capacidade. */
+    /* b96.97: recuperável e "faltariam" saem de DashUtils.capacidadeNormal, a
+       mesma conta do Briefing: capacidade da jornada normal com o absenteísmo
+       na meta (horas previstas, ritmo da jornada normal). Identidade:
+       (plano − produção normal) − recuperável = plano − capacidade. */
     var gapSE = (aderSE===null) ? null : (anoTodo ? (A.plano - A.normal) : (planoMes - DashUtils.getProd(rMes)));
-    var recup = (perdPc>0 && A.absMed>META_ABS_) ? perdPc*(A.absMed-META_ABS_)/A.absMed : 0;
+    var CAPN = DashUtils.capacidadeNormal(anoTodo?fechados:[rMes], META_ABS_);
+    var recup = CAPN ? CAPN.recuperavel : 0;
     var vered = '';
-    if(gapSE!==null && gapSE>0 && perdPc>0){
-      vered = recup>=gapSE
+    if(gapSE!==null && gapSE>0 && CAPN){
+      vered = CAPN.gap<=0
         ? ' → com absenteísmo na meta de '+META_ABS_+'% recuperaria '+fi(recup)+' pç: caberia sem hora extra'
-        : ' → mesmo com absenteísmo na meta de '+META_ABS_+'% (recupera '+fi(recup)+' pç) faltariam '+fi(gapSE-recup)+' pç: é capacidade';
+        : ' → mesmo com absenteísmo na meta de '+META_ABS_+'% (recupera '+fi(recup)+' pç) faltariam '+fi(CAPN.gap)+' pç: é capacidade'
+          +' (a jornada normal com absenteísmo na meta entrega '+fi(CAPN.capacidade)+' pç, o plano pede '+fi(CAPN.plano)+')';
     }
+    /* b96.97: "Fechamos o ano?" pelo DashUtils.fechamentoAno, a mesma conta do
+       Briefing e da aba Mestre: saldo = plano do ano − realizado acumulado;
+       dias úteis restantes pelo calendário (aba FERIADOS) até o último dia
+       de produção (DIA_FIM_ANO); o volume (com hora extra) no título e a
+       jornada normal como alerta de dependência. Antes vinha do pmApurado():
+       "falta produzir" = plano dos meses abertos e o título saía da jornada
+       normal. Referência = mês da Reunião (no ano todo, o último fechado). */
+    var FA = DashUtils.fechamentoAno(todos, ano, rMes.mes, { feriados:feriadosLocais(), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) });
+    var VA = DashUtils.vereditoAno(FA);
     /* b92.5: a faixa leva só o veredito (uma frase); o custo da falta e o
        "seria capacidade ou absenteísmo?" vão para uma linha sob os cards.
        Antes eram 170 caracteres em vermelho de ponta a ponta: ninguém lia. */
@@ -24762,15 +24993,16 @@ window.CompAnos = (function () {
     var c3 = corAc;
 
     _falas = {
-      abertura: (pm&&pm.ano===ano&&pm.titulo)
-        ? (pm.titulo+' · ritmo '+pct(pm.pctFolga)+' contra o exigido pelo plano do ano')
-        : r1,
-      cAbertura: (pm&&pm.ano===ano&&pm.cor)?pm.cor:c1,
+      abertura: (VA&&VA.pct!==null)
+        ? (VA.titulo+' · faltam '+fi(FA.saldo)+' pç em '+FA.diasRestantes+' dias úteis = '+fi(FA.ritmoExigido)
+           +' pç/dia, contra '+fi(FA.ritmoComHE)+' pç/dia do ano com hora extra')
+        : ((VA&&FA.mesesAcum>0)?VA.titulo:r1),
+      cAbertura: (VA&&FA.mesesAcum>0)?VA.cor:c1,
       r1:r1, c1:c1,
-      he: 'Dependência de HE '+fd(A.depHE,1)+'% (meta ≤ '+META_DEP_HE_+'%) · '+fi(A.deHE)+' pç saíram em '+fi(A.he)+' h extras'
+      he: 'HE sobre horas normais '+fd(A.heNormais,1)+'% (limite '+META_DEP_HE_+'%) · '+fi(A.he)+' h extras ÷ '+fi(A.hn)+' h normais'
           +(CH.valor!==null?(' · custo R$ '+fi(CH.valor)):'')
-          +(anoTodo?'':(' · no ano '+fd(Y.depHE,1)+'%')),
-      cHe: A.depHE<=META_DEP_HE_?'#4CAF50':(A.depHE<=15?'#FF9800':'#F44336'),
+          +(anoTodo?'':(' · no ano '+fd(Y.heNormais,1)+'%')),
+      cHe: A.heNormais<=META_DEP_HE_?'#4CAF50':(A.heNormais<=15?'#FF9800':'#F44336'),
       abs: 'Absenteísmo '+fd(A.absMed,1)+'% (meta '+META_ABS_+'%)'
           +(perdPc!==null?(' = '+fi(perdPc)+' pç que não saíram'+(perdDias!==null?(' = '+fd(perdDias,1)+' dia'+(perdDias>=1.95?'s':'')+' de fábrica'):'')):''),
       cAbs: corMeta(A.absMed,META_ABS_,true),
@@ -24803,13 +25035,15 @@ window.CompAnos = (function () {
        no ano, e só a 4ª linha do card ligava os dois. Ano sem Plano Mestre
        apurado (2025): só a linha do período, como o card fazia. */
     var linhasRit=[];
-    if(anoTodo){
-      if(ritDem!==null) linhasRit.push({ rot:'Ritmo do ano', dem:ritDem, exg:ritExg, f:folga, cor:(pmAno&&pm.cor)?pm.cor:corRit,
-                                         sub:pmAno?'':('sem hora extra · '+fi(A.dias)+' dias trabalhados') });
-    } else {
-      if(pmAno&&pm.ritmoExig>0) linhasRit.push({ rot:'Ritmo do ano', dem:pm.ritmoDem, exg:pm.ritmoExig, f:pm.pctFolga, cor:pm.cor||corRit });
-      if(ritDem!==null) linhasRit.push({ rot:'Ritmo de '+mes, dem:ritDem, exg:ritExg, f:folga, cor:corRit });
+    var refAno=FA.mesRef+'/'+String(ano).slice(2);
+    var corF=function(f){ return (f===null||f===undefined)?'#00E5FF':(f>=0?'#4CAF50':(f>-5?'#FF9800':'#F44336')); };
+    /* b96.97: duas leituras do ano, cada uma com o próprio exigido — com hora
+       extra mede o volume; só jornada normal mede a dependência de HE. */
+    if(FA.mesesAcum>0 && FA.planoAcum>0 && FA.diasAcum>0){
+      linhasRit.push({ rot:'Ano até '+refAno, sub:'com hora extra · volume', dem:FA.ritmoComHE, exg:FA.planoAcum/FA.diasAcum, f:FA.pctVolume, cor:corF(FA.pctVolume) });
+      if(FA.ritmoSemHE!==null) linhasRit.push({ rot:'Ano até '+refAno, sub:'só jornada normal · dependência', dem:FA.ritmoSemHE, exg:FA.ritmoPlanoNormal, f:FA.pctJornada, cor:corF(FA.pctJornada) });
     }
+    if(!anoTodo && ritDem!==null) linhasRit.push({ rot:'Ritmo de '+mes, sub:'sem hora extra', dem:ritDem, exg:ritExg, f:folga, cor:corRit });
     var escRit=linhasRit.reduce(function(m,l){ return Math.max(m,l.dem||0,l.exg||0); },0)*1.08;
     var pE=function(v){ return (escRit>0?Math.min(100,v/escRit*100):0).toFixed(1)+'%'; };
     var barrasRit=linhasRit.map(function(l){
@@ -24823,30 +25057,41 @@ window.CompAnos = (function () {
           +(l.f!==null&&l.f!==undefined&&isFinite(l.f)?(' <span style="font-family:var(--mono);font-size:.85rem;font-weight:700;color:'+l.cor+'">'+pct(l.f)+'</span>'):'')
           +'<div style="font-size:.66rem;color:var(--t2)">pç/dia'+(l.exg>0?'':' · sem plano')+'</div></div>';
     }).join('');
-    var fecharTxt = (pmAno&&pm.planoAberto>0)
-      ? ('Para fechar o ano: <b>'+fi(pm.planoAberto)+' pç em '+pm.diasAbertos+' dias úteis'+(pm.ritmoNecR>0?(' = '+fi(pm.ritmoNecR)+' pç/dia'):'')+'</b>')
-      : '';
-    var temManchete = pmAno && pm.titulo;
-    var l0 = linhasRit[0]||null;
-    var corQ1 = temManchete ? pm.cor : (l0?l0.cor:'var(--t2)');
+    var temManchete = FA.mesesAcum>0 && FA.planoAno>0;
+    var corQ1 = temManchete ? VA.cor : 'var(--t2)';
     var cabQ1 = temManchete
       ? ('<div style="display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap">'
-          +'<span class="reu-manchete" style="font-size:1.45rem;font-weight:800;color:'+pm.cor+'">'+pm.titulo+'</span>'
-          +'<span style="font-family:var(--mono);font-size:1.05rem;font-weight:800;color:'+pm.cor+'">'+pct(pm.pctFolga)+'</span>'
-          +'<span style="font-size:.72rem;color:var(--t2)">ritmo demonstrado no ano vs exigido pelo plano</span></div>')
+          +'<span class="reu-manchete" style="font-size:1.45rem;font-weight:800;color:'+VA.cor+'">'+VA.titulo+'</span>'
+          +(VA.pct!==null?('<span style="font-family:var(--mono);font-size:1.05rem;font-weight:800;color:'+VA.cor+'">'+pct(VA.pct)+'</span>'
+            +'<span style="font-size:.72rem;color:var(--t2)">'+VA.pctRot+'</span>'):'')+'</div>')
       : '';
-    var respQ1 = temManchete ? '' : (l0 ? (fi(l0.dem)+' pç/dia'+(l0.exg>0?(' contra '+fi(l0.exg)+' exigidos ('+pct(l0.f)+')'):' · sem plano lançado')) : 'sem ritmo apurado');
+    var fecharTxt = temManchete ? VA.frase : '';
+    var alertaQ1 = (temManchete&&VA.alerta)
+      ? ('<div class="reu-frase" style="font-size:.82rem;color:var(--t1);line-height:1.45;padding:7px 11px;border-left:3px solid '+VA.alerta.cor+';background:var(--input);border-radius:4px">'+VA.alerta.texto+'</div>')
+      : '';
+    /* Base de cada número, à vista: dias pelo calendário, plano restante e o
+       realizado contra o ano inteiro (10 de 12 meses), que não é aderência. */
+    var baseQ1 = temManchete
+      ? ('<div style="font-size:.7rem;color:var(--t2);line-height:1.45">Saldo = plano do ano '+fi(FA.planoAno)+' − realizado '+fi(FA.realAcum)
+          +' · plano restante (meses depois de '+FA.mesRef+') '+fi(FA.planoRestante)+' pç'
+          +' · dias úteis: segunda a sexta menos a aba FERIADOS, de 1º/'+String(ORDEM_M.indexOf(FA.mesRef)+2).padStart(2,'0')+' até '+FA.fimAno.slice(8,10)+'/12 (último dia de produção, aba METAS)'
+          +(FA.semFeriados?' · <b style="color:#FF9800">sem a aba FERIADOS: feriado conta como dia útil</b>':'')
+          +' · realizado = '+fd(FA.pctAno,1)+'% do plano do ano inteiro ('+FA.mesesAcum+' de 12 meses)'
+          +(FA.semReal.length?(' · <b style="color:#FF9800">sem produção lançada: '+FA.semReal.join(', ')+'</b>'):'')+'</div>')
+      : '';
+    var respQ1 = temManchete ? '' : 'sem plano ou produção lançada no ano';
     var q1 = bloco('1','Fechamos o ano?', respQ1, corQ1,
       '<div style="display:flex;flex-wrap:wrap;gap:12px 28px;align-items:stretch">'
         +'<div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:10px">'
           +cabQ1
           +(barrasRit?('<div style="display:grid;grid-template-columns:150px minmax(0,1fr) 150px;gap:6px 14px;align-items:center">'+barrasRit+'</div>'):'')
           +(fecharTxt?('<div class="reu-frase" style="font-size:.84rem;color:var(--t1);line-height:1.45">'+fecharTxt+'</div>'):'')
+          +alertaQ1+baseQ1
           +'<div class="reu-noprint"><button type="button" class="btn btn-g btn-sm" onclick="reuIr(\'mestre\')" title="Ritmo mês a mês, plano e lotes">Ver o Planejamento Mestre ›</button></div>'
         +'</div>'
-        +(temManchete&&pm.acao?('<div class="reu-decisao" style="flex:1 1 280px;background:var(--input);border:1px solid var(--b2);border-radius:var(--r);padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:6px">'
+        +(temManchete&&VA.acao?('<div class="reu-decisao" style="flex:1 1 280px;background:var(--input);border:1px solid var(--b2);border-radius:var(--r);padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:6px">'
           +'<div style="font-size:.66rem;font-weight:800;letter-spacing:.1em;color:var(--t2);text-transform:uppercase">Decisão</div>'
-          +'<div class="reu-frase" style="font-size:.92rem;font-weight:700;color:var(--t1);line-height:1.4">'+pm.acao+'</div></div>'):'')
+          +'<div class="reu-frase" style="font-size:.92rem;font-weight:700;color:var(--t1);line-height:1.4">'+VA.acao+'</div></div>'):'')
       +'</div>', corQ1);
 
     /* ── 2 · O plano coube sem hora extra? ── os cards e as duas leituras de
@@ -24884,7 +25129,11 @@ window.CompAnos = (function () {
         +q1
         +'<div class="reu-pares" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,600px),1fr));gap:12px;align-items:start">'+q2+q3+'</div>'
         +q4
-      +'</div>';
+      +'</div>'
+      /* b96.97: glossário, o mesmo do Briefing */
+      +'<details class="reu-glossario" style="margin-top:12px;background:var(--panel);border:1px solid var(--b);border-radius:var(--r);padding:10px 14px;color:var(--t1)">'
+        +'<summary style="cursor:pointer;font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t2)">Glossário — como cada número é calculado</summary>'
+        +'<div style="margin-top:10px">'+glossarioHTML()+'</div></details>';
   }
 
   /* Relatório de uma página, para circular antes da reunião. */
@@ -26714,9 +26963,17 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.96';
+var APP_VERSAO = 'b96.97';
 var APP_DATA   = '10/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.97', data:'10/11/2026', itens:[
+    'Auditoria do Briefing Mensal e da Reuniao do Mes: cada indicador numa funcao do DashUtils usada pelos dois relatorios. O Briefing passa a ler os dados normalizados (load), como a Reuniao; lia o dash_v3 cru e refazia todas as contas.',
+    'Fechamos o ano? (DashUtils.fechamentoAno/vereditoAno, tambem no Planejamento Mestre): saldo = plano do ano - realizado (OUT/26: 57.819; o "falta produzir 56.359" era o plano de NOV+DEZ, que vira "plano restante"); aderencia ao plano acumulado 99,5% (-1.460) no lugar do 84,0% contra o ano inteiro; dias uteis restantes pelo calendario (segunda a sexta menos a aba FERIADOS) ate o ultimo dia de producao, DIA_FIM_ANO = 18/12 na aba METAS: 33 dias (eram 44 no Briefing e 34 na Reuniao, duas tabelas fixas); ritmo exigido = saldo / dias = 1.752 pc/dia.',
+    'O titulo do ano sai do volume (ritmo com hora extra contra o exigido para fechar). A jornada normal abaixo do plano (-10,5%) vira alerta de dependencia de hora extra, nao "ritmo abaixo do plano". A Reuniao mostra as duas linhas do ano (com HE e so jornada normal) e a decisao do veredito novo.',
+    'Capacidade da jornada normal = pecas por hora normal x (horas normais + horas perdidas acima da meta de absenteismo); gap = plano - capacidade, o mesmo numero na Reuniao ("faltariam X pc: e capacidade") e no Briefing. Era o campo meta (producao x normais / carga), que sai da propria producao. Horas carga = carga do ponto (escalada, sem ferias, atestado e afastamento), nao "capacidade teorica do ERP".',
+    'Absenteismo sobre horas previstas (normais + faltas + atrasos), decisao do PPCP: OUT/26 7,97% (era 8,66% sobre as normais); motivos, setores e historico na mesma base. Meta de 8% de hora extra = HE sobre horas normais (5,75% em OUT/26), com esse nome; HE sobre horas totais (5,43%) e outro indicador.',
+    'Briefing: selo e achados condicionais (nunca "sustentada na jornada normal" com a jornada normal abaixo do plano; "a hora extra fechou o plano" ou "o plano nao fechou nem com hora extra"); recomendacao de absenteismo pelo motivo que subiu; equipe pelos ativos no fim do mes (OUT/26: 93 -> 91, nao 93 -> 96); carteira vendida 13,2% maior que o plano (era "12%", conta invertida, tambem no Mestre); "vendido - faturado no ano" com a conciliacao contra a serie; ticket contra o mesmo mes do ano anterior e o ticket do ano (era JAN/25 contra o ultimo mes); faturado acima do produzido (estoque consumido) na pauta; glossario no fim. O SWOT saiu do Briefing e do relatorio do Mestre.'
+  ]},
   { v:'b96.96', data:'10/11/2026', itens:[
     'Producao & Vendas: sai o grafico Delta Producao vs mes anterior. A variacao de um mes para o outro mistura dias uteis e sazonalidade e nao sustenta decisao que o Plano x producao nao responda. Sai tambem do Relatorio e do zoom. A coluna Delta Producao da tabela da aba Comparativo continua.'
   ]},
@@ -27908,7 +28165,10 @@ window.PlanoRealizado = (function(){
     }
 
     /* O ANO. A marca é a curva do plano (planoFech), não o tempo. */
-    var pa=+u.planoAberto||0, da=+u.diasAbertos||0;
+    /* b96.97: o que falta é o saldo do ano (plano do ano − realizado), que o
+       Mestre passa em u.saldo; planoAberto é o plano dos meses abertos e
+       deixava de fora o que o acumulado ficou devendo. */
+    var pa=(u.saldo!==undefined&&u.saldo!==null)?(+u.saldo||0):(+u.planoAberto||0), da=+u.diasAbertos||0;
     var necA=da>0?pa/da:0, cabeA=pa<=0||(dem>0&&necA<=dem);
     /* O realizado do ano já traz o corte do mês em curso (cursoNoAno); a
        marca da barra soma, do mês em curso, o que a curva linear do plano
