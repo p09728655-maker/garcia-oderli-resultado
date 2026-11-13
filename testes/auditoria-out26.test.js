@@ -229,9 +229,55 @@ afirma('o painel nunca grava carteiraERP e estoqueERP', /var _SO_PLANILHA = \[[^
 const GS = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8');
 afirma('Code.gs protege as duas colunas', /'carteiraerp', 'estoqueerp'\]/.test(GS));
 afirma('PRAZO_ENTREGA é meta aceita (painel e Code.gs)',
-  /'PRAZO_ENTREGA'\]/.test(HTML) && /\['PRAZO_ENTREGA', 30,/.test(GS) && /var PRAZO_ENTREGA = 30;/.test(HTML));
+  /'PRAZO_ENTREGA',/.test(HTML) && /\['PRAZO_ENTREGA', 30,/.test(GS) && /var PRAZO_ENTREGA = 30;/.test(HTML));
 const FL30 = U.filaERP(ERP, 2026, 'OUT', 1600, 30);
 afirma('prazo prometido 30: 23,8 dias está dentro (verde, nada acima)', FL30.cor === 'ok' && FL30.excesso === 0);
+
+sec('b96.104: aviso de capacidade × venda (dados reais JAN–OUT/26, fila NOV/26)');
+const CAP26 = [['JAN',22437,19261,17,36734],['FEV',28151,23526,20,14063],['MAR',27600,26635,22,52435],['ABR',29195,26125,19,40059],
+  ['MAI',33330,28932,20,26770],['JUN',30851,27444,20,41709],['JUL',32123,28226,23,21956],['AGO',32364,29703,21,35758],
+  ['SET',37948,35126,21,38698],['OUT',30478,28727,21,38213]].map(x => ({ mes:x[0], ano:2026, producaoReal:x[1], prodSemExtras:x[2], diasTrabalhados:x[3], qtdeVendida:x[4] }));
+const AV = U.avisoCapacidade(CAP26, 2026, 'OUT', { limiteHE:8, prazo:30, antecedencia:30, fila:{ fila:27167 } });
+ok('demanda = venda MAI–OUT ÷ dias (6 meses)', AV.demanda, 203104 / 126, 0.01);
+ok('sem hora extra AGO–OUT', AV.semHE, 93556 / 63, 0.01);
+ok('hora extra necessária = 1 − sem HE ÷ demanda (a base do prodSemExtras)', AV.heNec, 7.87, 0.01);
+afirma('7,9% fica dentro do limite de 8% (era 8,5% com demanda ÷ semHE − 1)', AV.heAcima === false);
+ok('prova: a produção real de OUT/26 dá a HE do mês pela mesma conta (848 h ÷ 14.758 h = 5,75%)', (1 - 28727 / 30478) * 100, 5.75, 0.01);
+ok('fila sobe ~2,5 dias úteis por mês (venda 1.788 − produção 1.600)', AV.crescMes, 2.48, 0.01);
+ok('fila hoje em dias úteis', AV.filaDias, 16.98, 0.01);
+ok('sem calendário: prazo 30 corridos ≈ 21,4 úteis; passa em ~37,7 dias úteis', AV.diasAte, 37.7, 0.1);
+afirma('dentro de 2× a antecedência de 30 → PREPARAR', AV.nivel === 'preparar');
+const AT = U.avisoCapacidadeTexto(AV);
+afirma('texto: rótulo e prazo para decidir', AT.rotulo === 'PREPARAR' && /Decidir o aumento em até 16 dias úteis/.test(AT.acao));
+afirma('texto diz o período de cada número', /Venda MAI–OUT/.test(AT.linhas[0]) && /Sem hora extra AGO–OUT/.test(AT.linhas[1]) && /AGO–OUT: venda 1\.788 × produção 1\.600/.test(AT.linhas[2]));
+afirma('texto curto: 4 linhas', AT.linhas.length === 4 && AT.linhas.every(l => l.length <= 90));
+const SET0 = CAP26.map(r => r.mes === 'SET' ? Object.assign({}, r, { prodSemExtras: 0 }) : r);
+const AVsb = U.avisoCapacidade(SET0, 2026, 'OUT', { limiteHE:8, prazo:30, antecedencia:30 });
+afirma('sem a produção sem HE de SET e sem fila → SEM BASE, nunca OK verde', AVsb.nivel === 'sembase' && U.avisoCapacidadeTexto(AVsb).status === 'sembase'
+  && /falta a produção sem hora extra de SET\/26/.test(U.avisoCapacidadeTexto(AVsb).linhas.join(' ')));
+const CAL = U.calendarioEntrega('2026-11-13', 16.98, 30, [{ data:'2026-11-20' }], 18);
+afirma('calendário: 17 dias úteis de 13/11 terminam em 09/12 (pula 20/11)', CAL.data === '2026-12-09' && CAL.corridos === 26);
+afirma('calendário: 30 dias corridos a partir de 13/11 (sex) = 19 dias úteis de produção (14/11 a 13/12, sem 20/11)', CAL.uteisPrazo === 19);
+afirma('calendário: produção vai até 18/12; 10 úteis de 10/12 caem em JAN',
+  U.calendarioEntrega('2026-12-10', 10, 0, [{ data:'2027-01-01' }], 18).data === '2027-01-07');
+const FLc = U.filaERP(ERP, 2026, 'OUT', 1600, 30, { hoje:'2026-11-13', feriados:[{ data:'2026-11-20' }], diaFim:18 });
+afirma('fila de NOV com calendário: 17 dias úteis, termina 09/12, prazo 30 = 19 úteis, dentro', Math.round(FLc.diasUteis) === 17 && FLc.dataEntrega === '2026-12-09' && FLc.uteisPrazo === 19 && FLc.cor === 'ok');
+const AVc = U.avisoCapacidade(CAP26, 2026, 'OUT', { limiteHE:8, prazo:30, antecedencia:30, fila:FLc });
+afirma('aviso com calendário: passa do prazo em ~17 dias úteis, dentro da antecedência (19); a fila só cresce há um mês → PREPARAR, confirmar',
+  Math.round(AVc.diasAte) === 17 && AVc.nivel === 'preparar' && AVc.confirmar === true && /Fila só cresceu em OUT: confirmar atualizando a carteira do ERP/.test(U.avisoCapacidadeTexto(AVc).acao));
+afirma('retrato de mês passado parte do fim daquele mês (31/10 + 10 úteis = 13/11)', U.filaERP([{ mes:'OUT', ano:2026, carteiraERP:16000, estoqueERP:0 }], 2026, 'OUT', 1600, 30, { hoje:'2026-11-13', feriados:[], diaFim:18 }).dataEntrega === '2026-11-13');
+const AV60 = U.avisoCapacidade(CAP26, 2026, 'OUT', { limiteHE:8, prazo:30, antecedencia:60, fila:{ fila:27167 } });
+afirma('antecedência 60: passa dentro dela, mas a fila só cresce há um mês (SET caiu) → PREPARAR, confirmar',
+  AV60.nivel === 'preparar' && AV60.confirmar === true);
+afirma('fila já acima do prazo (25 úteis > 21,4) → AUMENTAR AGORA',
+  U.avisoCapacidade(CAP26, 2026, 'OUT', { limiteHE:8, prazo:30, antecedencia:30, fila:{ fila:40000 } }).nivel === 'aumentar');
+const AVsem = U.avisoCapacidade(CAP26, 2026, 'OUT', { limiteHE:10, prazo:30, antecedencia:30 });
+afirma('sem carteira do ERP e HE dentro do limite → OK, diz que a fila não foi avaliada',
+  AVsem.nivel === 'ok' && /fila não avaliada/.test(U.avisoCapacidadeTexto(AVsem).linhas.join(' ')));
+afirma('menos de 3 meses de venda → null', U.avisoCapacidade(CAP26.slice(0, 2), 2026, 'FEV', {}) === null);
+afirma('Reunião, Briefing e Visão Geral usam o mesmo aviso',
+  (HTML.match(/DashUtils\.avisoCapacidade\(/g) || []).length === 3 && (HTML.match(/DashUtils\.avisoCapacidadeTexto\(/g) || []).length === 3);
+afirma('ANTECEDENCIA_CAP é meta aceita (painel e Code.gs)', /'ANTECEDENCIA_CAP'\]/.test(HTML) && /\['ANTECEDENCIA_CAP', 30,/.test(GS));
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);
