@@ -3659,11 +3659,11 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
     /* b96.104: capacidade × venda — sobe para o topo quando pede ação. */
     var AC=ctx.aviso;
     if(AC){
-      var itC={icon:AC.status==='critico'?'🔴':(AC.status==='atencao'?'🟡':'🟢'),
-               badge:AC.status==='critico'?'red':(AC.status==='atencao'?'yellow':'green'),
-               label:AC.status==='critico'?'Crítico':(AC.status==='atencao'?'Atenção':'OK'),
+      var itC={icon:AC.status==='critico'?'🔴':(AC.status==='atencao'?'🟡':(AC.status==='sembase'?'🔵':'🟢')),
+               badge:AC.status==='critico'?'red':(AC.status==='atencao'?'yellow':(AC.status==='sembase'?'blue':'green')),
+               label:AC.status==='critico'?'Crítico':(AC.status==='atencao'?'Atenção':(AC.status==='sembase'?'Info':'OK')),
                texto:'<strong>Capacidade × venda: '+AC.rotulo+'</strong> — '+AC.linhas.join(' ')+' '+AC.acao};
-      if(AC.status==='ok') itens.push(itC); else itens.unshift(itC);
+      if(AC.status==='ok'||AC.status==='sembase') itens.push(itC); else itens.unshift(itC);
     }
     /* Estoque (item 15): faturado acima do produzido no ano. */
     var CB=ctx.carteira;
@@ -3701,7 +3701,7 @@ Parcela das peças entregues que veio de hora extra. Meta: até 8% do volume.">D
     var PAno=DashUtils.periodo(dados.filter(function(d){ return d.ano===a.ano&&ORDEM_MES.indexOf(d.mes)<=ORDEM_MES.indexOf(a.mes); }));
     var CB=DashUtils.carteiraAno(dados, a.ano, a.mes);
     /* b96.104: aviso de capacidade × venda, a mesma conta da Reunião. */
-    var FLB=DashUtils.filaERP(dados, a.ano, a.mes, FB.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30));
+    var FLB=DashUtils.filaERP(dados, a.ano, a.mes, FB.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30), _calFila());
     var AVB=DashUtils.avisoCapacidade(dados, a.ano, a.mes, {
       limiteHE:(typeof META_DEP_HE!=='undefined'?META_DEP_HE:8), prazo:(typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30),
       antecedencia:(typeof ANTECEDENCIA_CAP!=='undefined'?ANTECEDENCIA_CAP:30), fila:(FLB&&FLB.diasCorridos!==null?FLB:null) });
@@ -5006,6 +5006,11 @@ var DIA_FIM_ANO = 18;
 var PRAZO_ENTREGA = 30;   /* prazo de entrega prometido, dias corridos (aba METAS) */
 var ANTECEDENCIA_CAP = 30;   /* dias que a fábrica leva para aumentar capacidade (aba METAS) */
 /* Feriados da aba FERIADOS (o doGet grava em dash_feriados_v1). */
+/* Calendário da fila de pedidos (b96.104): hoje, feriados e o recesso. */
+function _calFila(){
+  var d=new Date(), iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return { hoje:iso, feriados:feriadosLocais(), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) };
+}
 function feriadosLocais(){ try{ var f=JSON.parse(localStorage.getItem('dash_feriados_v1')); return Array.isArray(f)?f:[]; }catch(e){ return []; } }
 /* Glossário dos relatórios (b96.97): o mesmo texto no Briefing e na Reunião,
    com as metas vigentes (aba METAS). Cores herdadas: serve ao tema escuro da
@@ -5078,8 +5083,8 @@ var METAS_ROTULOS = {
   PROD_ERP_DESDE: ['Produção pelo reporte do ERP desde', 'ano', 'a partir deste ano a Produção Real é o total do relatório REPORTE (produtos acabados); antes vale o digitado'],
   CUSTO_HORA:  ['Custo da hora normal dos diretos', 'R$/h', 'com encargos, do RH; a hora extra sai a 1,5× (50%) e 2× (100%). Sem valor, o card de hora extra não mostra custo'],
   DIA_FIM_ANO: ['Último dia de produção do ano', 'dia', 'dia de dezembro; depois é recesso. Base dos dias úteis que faltam'],
-  PRAZO_ENTREGA: ['Prazo de entrega prometido', 'dias', 'dias corridos; a fila de pedidos acima disto fica âmbar, acima de 1,5× vermelha'],
-  ANTECEDENCIA_CAP: ['Antecedência para aumentar capacidade', 'dias', 'tempo para contratar e treinar ou abrir turno; o aviso de capacidade chega com essa folga']
+  PRAZO_ENTREGA: ['Prazo de entrega prometido', 'dias', 'dias corridos; o painel converte em dias úteis de produção pelo calendário. Fila acima disto fica âmbar, acima de 1,5× vermelha'],
+  ANTECEDENCIA_CAP: ['Antecedência para aumentar capacidade', 'dias', 'dias corridos para contratar e treinar ou abrir turno; o aviso de capacidade chega com essa folga (em dias úteis pelo calendário)']
 };
 function abrirMetas(){
   if(document.getElementById('metas-overlay')) return;
@@ -6775,7 +6780,33 @@ window.DashUtils = (function() {
      números para a mesma fila (revisão b96.103: 2025 mostrava a fila de
      NOV/26 ao ritmo de 2025).
      Sem carteira digitada → null (o painel volta ao vendido − faturado). */
-  function filaERP(todos, anoCorte, mesCorte, ritmo, prazo) {
+  /* Calendário de produção: seg–sex, menos a aba FERIADOS e o recesso de
+     dezembro (depois de DIA_FIM_ANO). O recesso de janeiro, se houver, entra
+     pela aba FERIADOS. */
+  function _diaProduz(t, fer, diaFim) {
+    var d = new Date(t), dow = d.getUTCDay(), iso = d.toISOString().slice(0, 10);
+    if (dow < 1 || dow > 5 || fer[iso]) return false;
+    return !(d.getUTCMonth() === 11 && d.getUTCDate() > (diaFim > 0 ? diaFim : 18));
+  }
+  function _ferSet(feriados) {
+    var fer = {};
+    (Array.isArray(feriados) ? feriados : []).forEach(function (f) {
+      var k = String((f && f.data) || f || '').slice(0, 10); if (k) fer[k] = 1;
+    });
+    return fer;
+  }
+  /* Data em que N dias de produção terminam, contando a partir do dia
+     seguinte a hojeIso; e os dias de produção nos próximos `corridos` dias. */
+  function calendarioEntrega(hojeIso, nUteis, prazoCorridos, feriados, diaFim) {
+    var t0 = _utc(hojeIso); if (t0 === null) return null;
+    var fer = _ferSet(feriados), alvo = Math.ceil(nUteis - 1e-9), t = t0, k = 0, guarda = 0;
+    while (k < alvo && guarda++ < 800) { t += 86400000; if (_diaProduz(t, fer, diaFim)) k++; }
+    var uteisPrazo = 0;
+    for (var i = 1; i <= (prazoCorridos || 0); i++) if (_diaProduz(t0 + i * 86400000, fer, diaFim)) uteisPrazo++;
+    return { data: new Date(t).toISOString().slice(0, 10), corridos: Math.round((t - t0) / 86400000), uteisPrazo: uteisPrazo };
+  }
+
+  function filaERP(todos, anoCorte, mesCorte, ritmo, prazo, cal) {
     var iC = _ORDEM_M.indexOf(mesCorte);
     if (!anoCorte || iC < 0) return null;
     var aS = iC === 11 ? anoCorte + 1 : anoCorte, mS = _ORDEM_M[(iC + 1) % 12];
@@ -6789,13 +6820,28 @@ window.DashUtils = (function() {
               semEstoque: !(r.estoqueERP > 0),
               fila: Math.max(0, r.carteiraERP - est), ritmo: ritmo > 0 ? ritmo : null,
               prazo: prazo > 0 ? prazo : null,
-              diasUteis: null, diasCorridos: null, excesso: null, cor: null };
+              diasUteis: null, diasCorridos: null, dataEntrega: null, uteisPrazo: null, excesso: null, cor: null };
     if (o.ritmo) {
       o.diasUteis = o.fila / o.ritmo;
       o.diasCorridos = o.diasUteis * 7 / 5;
+      /* b96.104: com o calendário (cal.hoje), dias corridos de verdade:
+         fim de semana, feriado e recesso. Sem ele, ≈ úteis × 7/5. O retrato
+         do mês corrente parte de hoje; o de um mês passado, do último dia
+         daquele mês (é o retrato do fechamento). */
+      var C = null;
+      if (cal && cal.hoje) {
+        var iM = _ORDEM_M.indexOf(r.mes), hj = String(cal.hoje).slice(0, 10);
+        var mesHoje = hj.slice(0, 7) === _isoD(r.ano, iM + 1, 1).slice(0, 7);
+        var ini = mesHoje ? hj : new Date(Date.UTC(r.ano, iM + 1, 0)).toISOString().slice(0, 10);
+        C = calendarioEntrega(ini, o.diasUteis, o.prazo || 0, cal.feriados, cal.diaFim);
+      }
+      if (C) { o.diasCorridos = C.corridos; o.dataEntrega = C.data; }
+      /* Produção sempre em dias ÚTEIS (PPCP, 13/11/2026). O prazo prometido
+         é em dias corridos: vira dias úteis de produção pelo calendário. */
       if (o.prazo) {
-        o.excesso = Math.max(0, o.fila - o.prazo * 5 / 7 * o.ritmo);
-        o.cor = o.diasCorridos <= o.prazo ? 'ok' : (o.diasCorridos <= 1.5 * o.prazo ? 'atencao' : 'critico');
+        o.uteisPrazo = C ? C.uteisPrazo : o.prazo * 5 / 7;
+        o.excesso = Math.max(0, o.fila - o.uteisPrazo * o.ritmo);
+        o.cor = o.diasUteis <= o.uteisPrazo ? 'ok' : (o.diasUteis <= 1.5 * o.uteisPrazo ? 'atencao' : 'critico');
       }
     }
     return o;
@@ -6837,7 +6883,10 @@ window.DashUtils = (function() {
       var vend = s.filter(function (r) { return r.qtdeVendida > 0; });
       var prod = s.filter(function (r) { return r.producaoReal > 0; }).slice(-3);
       var norm = prod.filter(function (r) { return r.prodSemExtras > 0; });
+      function per(l) { return l.length ? (l.length > 1 ? l[0].mes + '–' + l[l.length - 1].mes : l[0].mes) : ''; }
       return { v6: vend.slice(-6), v3: vend.slice(-3), prod: prod,
+               perV6: per(vend.slice(-6)), perV3: per(vend.slice(-3)), perP: per(prod),
+               semNorm: prod.filter(function (r) { return !(r.prodSemExtras > 0); }).map(function (r) { return r.mes + '/' + String(r.ano).slice(2); }),
                demanda: taxa(vend.slice(-6), 'qtdeVendida'), venda3: taxa(vend.slice(-3), 'qtdeVendida'),
                prod3: taxa(prod, 'producaoReal'), semHE: norm.length === prod.length ? taxa(norm, 'prodSemExtras') : null };
     }
@@ -6846,26 +6895,36 @@ window.DashUtils = (function() {
     var X = medir(anoCorte, mesCorte);
     if (X.v6.length < 3 || !X.prod3) return null;
     var o = { mesesDemanda: X.v6.length, demanda: X.demanda, venda3: X.venda3, prod3: X.prod3, semHE: X.semHE,
+              perV6: X.perV6, perV3: X.perV3, perP: X.perP, semNorm: X.semNorm, mesCorte: mesCorte,
               limiteHE: lim, prazo: prazo, antecedencia: ant,
               heNec: null, heAcima: false, cresc: X.venda3 - X.prod3, crescMes: null,
-              fila: null, filaDias: null, diasAte: null, jaPassou: false, confirmar: false, nivel: 'ok' };
-    if (X.semHE > 0) { o.heNec = Math.max(0, (X.demanda / X.semHE - 1) * 100); o.heAcima = o.heNec > lim; }
-    o.crescMes = 30 * o.cresc / X.prod3;   /* dias corridos de fila por mês */
+              fila: null, filaDias: null, prazoUteis: null, antUteis: null, diasAte: null, jaPassou: false, confirmar: false, nivel: 'ok' };
+    /* Na base do limite (HE ÷ horas normais). O painel monta prodSemExtras =
+       produção × (1 − extras ÷ normais), então a HE de uma produção D é
+       1 − semHE ÷ D (revisão b96.104: D ÷ semHE − 1 dava 8,5% contra 7,9%). */
+    if (X.semHE > 0) { o.heNec = Math.max(0, (1 - X.semHE / X.demanda) * 100); o.heAcima = o.heNec > lim; }
+    o.crescMes = 21 * o.cresc / X.prod3;   /* dias úteis de fila por mês de produção (~21 dias úteis) */
     var F = opt.fila;
     if (F && F.fila >= 0 && prazo) {
       o.fila = F.fila;
-      o.filaDias = F.fila / X.prod3 * 7 / 5;
-      if (o.filaDias >= prazo) { o.jaPassou = true; o.diasAte = 0; }
-      else if (o.cresc > 0) o.diasAte = (prazo - o.filaDias) / (o.cresc / X.prod3);
+      /* Tudo em dias ÚTEIS de produção: a fila do card (filaERP), o prazo e a
+         antecedência convertidos pelo mesmo calendário. */
+      o.filaDias = F.diasUteis !== null && F.diasUteis !== undefined ? F.diasUteis : F.fila / X.prod3;
+      o.prazoUteis = F.uteisPrazo > 0 ? F.uteisPrazo : prazo * 5 / 7;
+      o.antUteis = ant * o.prazoUteis / prazo;
+      if (o.filaDias >= o.prazoUteis) { o.jaPassou = true; o.diasAte = 0; }
+      else if (o.cresc > 0) o.diasAte = (o.prazoUteis - o.filaDias) / (o.cresc / X.prod3);
     }
     if (o.jaPassou) o.nivel = 'aumentar';
-    else if (o.diasAte !== null && o.diasAte <= ant) {
+    else if (o.diasAte !== null && o.diasAte <= o.antUteis) {
       var mA = iC === 0 ? 'DEZ' : _ORDEM_M[iC - 1], aA = iC === 0 ? anoCorte - 1 : anoCorte;
       var P = medir(aA, mA);
       var antesCresce = P.venda3 !== null && P.prod3 !== null && P.venda3 > P.prod3;
       if (antesCresce) o.nivel = 'aumentar'; else { o.nivel = 'preparar'; o.confirmar = true; }
     }
-    else if ((o.diasAte !== null && o.diasAte <= 2 * ant) || o.heAcima) o.nivel = 'preparar';
+    else if ((o.diasAte !== null && o.diasAte <= 2 * o.antUteis) || o.heAcima) o.nivel = 'preparar';
+    /* Nada avaliado (sem produção sem HE e sem fila): nunca OK verde. */
+    if (o.nivel === 'ok' && o.heNec === null && o.filaDias === null) o.nivel = 'sembase';
     return o;
   }
 
@@ -6873,25 +6932,28 @@ window.DashUtils = (function() {
   function avisoCapacidadeTexto(A) {
     if (!A) return null;
     function n(v, d) { return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
-    var rot = { ok: 'OK', preparar: 'PREPARAR', aumentar: 'AUMENTAR AGORA' }[A.nivel];
+    var rot = { ok: 'OK', preparar: 'PREPARAR', aumentar: 'AUMENTAR AGORA', sembase: 'SEM BASE' }[A.nivel];
     var L = [];
-    L.push('Venda: ' + n(A.demanda) + ' pç/dia (média de ' + A.mesesDemanda + ' meses).');
-    if (A.semHE > 0) L.push('Sem hora extra fazemos ' + n(A.semHE) + ': '
-      + (A.heNec > 0 ? 'precisa ' + n(A.heNec, 1) + '% de hora extra (limite ' + n(A.limiteHE) + '%).' : 'cabe.'));
+    L.push('Venda ' + A.perV6 + ': ' + n(A.demanda) + ' pç/dia.');
+    if (A.semHE > 0) L.push('Sem hora extra ' + A.perP + ': ' + n(A.semHE) + ' → '
+      + (A.heNec > 0 ? n(A.heNec, 1) + '% de hora extra (limite ' + n(A.limiteHE) + '%).' : 'cabe sem hora extra.'));
+    else L.push('Hora extra não avaliada: falta a produção sem hora extra de ' + (A.semNorm.join(', ') || A.perP) + '.');
     if (A.filaDias !== null) {
-      if (A.jaPassou) L.push('Fila ' + n(A.filaDias) + ' dias: já passou do prazo de ' + n(A.prazo) + '.');
-      else if (A.diasAte !== null) L.push('Fila ' + n(A.filaDias) + ' dias, sobe ' + n(A.crescMes, 1) + ' por mês: passa de ' + n(A.prazo) + ' em ~' + n(A.diasAte) + ' dias.');
-      else L.push('Fila ' + n(A.filaDias) + ' dias, estável ou caindo.');
+      L.push(A.perV3 + ': venda ' + n(A.venda3) + ' × produção ' + n(A.prod3) + ' → fila '
+        + (A.cresc > 0 ? 'sobe ' + n(A.crescMes, 1) + ' dias úteis por mês.' : 'estável ou caindo.'));
+      L.push('Fila ' + n(A.filaDias) + ' dias úteis; prazo ' + n(A.prazoUteis) + ': '
+        + (A.jaPassou ? 'já passou.' : (A.diasAte !== null ? 'estoura em ~' + n(A.diasAte) + ' dias úteis.' : 'dentro.')));
     } else L.push('Sem carteira do ERP: fila não avaliada.');
     var acao = A.nivel === 'aumentar' ? 'Aumentar capacidade agora: turno, quadro ou hora extra acima do limite.'
       : A.nivel === 'preparar'
-        ? ((A.diasAte !== null && A.diasAte > A.antecedencia)
-            ? 'Decidir o aumento em até ' + n(A.diasAte - A.antecedencia) + ' dias (leva ' + n(A.antecedencia) + ' para aumentar).'
-            : (A.confirmar ? 'Fila crescendo há um mês só: confirmar no próximo fechamento.'
+        ? ((A.diasAte !== null && A.diasAte > A.antUteis)
+            ? 'Decidir o aumento em até ' + n(Math.max(1, A.diasAte - A.antUteis)) + ' dias úteis (leva ' + n(A.antecedencia) + ' dias para aumentar).'
+            : (A.confirmar ? 'Estoura antes do tempo de aumentar (' + n(A.antUteis) + ' dias úteis). Fila só cresceu em ' + A.mesCorte + ': confirmar atualizando a carteira do ERP.'
                            : 'Para atender a venda, a hora extra passa do limite: planejar o aumento.'))
+        : A.nivel === 'sembase' ? 'Sem base para avisar: lançar as horas do ponto ou a carteira do ERP.'
         : 'Capacidade atende a venda.';
     return { rotulo: rot, linhas: L, acao: acao,
-             status: A.nivel === 'aumentar' ? 'critico' : (A.nivel === 'preparar' ? 'atencao' : 'ok') };
+             status: A.nivel === 'aumentar' ? 'critico' : (A.nivel === 'preparar' ? 'atencao' : (A.nivel === 'sembase' ? 'sembase' : 'ok')) };
   }
 
   /* ── PLANO DE AÇÃO (Reunião do Mês) ──────────────────────────────────────
@@ -7644,7 +7706,7 @@ window.DashUtils = (function() {
   }
 
   return { getDias:getDias, getFat:getFat, getProd:getProd,
-           periodo:periodo, carteira:carteira, filaERP:filaERP, avisoCapacidade:avisoCapacidade, avisoCapacidadeTexto:avisoCapacidadeTexto, acoesResumo:acoesResumo,
+           periodo:periodo, carteira:carteira, filaERP:filaERP, calendarioEntrega:calendarioEntrega, avisoCapacidade:avisoCapacidade, avisoCapacidadeTexto:avisoCapacidadeTexto, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
            integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar, duplicidadeCompleta:duplicidadeCompleta,
            cienteLer:cienteLer, cienteTexto:cienteTexto,
@@ -9590,19 +9652,19 @@ function renderKPIsExtras(d){
     if(!ult){ card.style.display='none'; return; }
     /* b96.103: com a carteira do ERP na HISTORICO, a mesma fila da Reunião. */
     var FA=DashUtils.fechamentoAno(todos, ult.ano, ult.mes, { feriados:(typeof feriadosLocais==='function'?feriadosLocais():[]), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) });
-    var FL=DashUtils.filaERP(todos, ult.ano, ult.mes, FA.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30));
+    var FL=DashUtils.filaERP(todos, ult.ano, ult.mes, FA.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30), _calFila());
     var lbl=document.getElementById('kl5-cart');
     if(FL && FL.diasCorridos!==null){
       card.style.display='';
       if(lbl) lbl.textContent='Fila de pedidos · ERP '+FL.mes+'/'+String(FL.ano).slice(2);
-      sU('kv5-cart', fi(FL.diasCorridos), 'dias corridos');
+      sU('kv5-cart', fi(FL.diasUteis), 'dias úteis');
       var vF=document.getElementById('kv5-cart');
       if(vF) vF.style.color=FL.cor==='ok'?'var(--green)':(FL.cor==='atencao'?'var(--amber)':(FL.cor==='critico'?'var(--red)':''));
       var kF=document.getElementById('ks5-cart');
       if(kF) kF.textContent=fi(FL.fila)+' pç = '+fi(FL.carteira)+' em carteira − '+fi(FL.estoque)+' em estoque'
         +(FL.semEstoque?' (estoque não digitado)':'')
-        +' · '+f(FL.diasUteis,1)+' dias úteis a '+fi(FL.ritmo)+' pç/dia'
-        +(FL.prazo?(' · prazo '+fi(FL.prazo)+' dias'+(FL.excesso>0?(' · '+fi(FL.excesso)+' pç acima'):' · dentro')):'');
+        +' · a '+fi(FL.ritmo)+' pç/dia'+(FL.dataEntrega?(' · termina '+FL.dataEntrega.slice(8,10)+'/'+FL.dataEntrega.slice(5,7)):'')
+        +(FL.prazo?(' · prazo '+fi(FL.prazo)+' dias = '+fi(FL.uteisPrazo)+' úteis'+(FL.excesso>0?(' · '+fi(FL.excesso)+' pç acima'):' · dentro')):'');
       return;
     }
     if(lbl) lbl.textContent='Vendido − faturado';
@@ -16881,13 +16943,13 @@ input:disabled, select:disabled {
       var T = null;
       if (u) {
         var F = DashUtils.fechamentoAno(todos, u.ano, u.mes, { feriados:(typeof feriadosLocais==='function'?feriadosLocais():[]), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) });
-        var FL = DashUtils.filaERP(todos, u.ano, u.mes, F.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30));
+        var FL = DashUtils.filaERP(todos, u.ano, u.mes, F.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30), _calFila());
         T = DashUtils.avisoCapacidadeTexto(DashUtils.avisoCapacidade(todos, u.ano, u.mes, {
           limiteHE:(typeof META_DEP_HE!=='undefined'?META_DEP_HE:8), prazo:(typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30),
           antecedencia:(typeof ANTECEDENCIA_CAP!=='undefined'?ANTECEDENCIA_CAP:30), fila:(FL&&FL.diasCorridos!==null?FL:null) }));
       }
       if (!T) { el.style.display = 'none'; el.innerHTML = ''; return; }
-      var cor = T.status === 'critico' ? '#F44336' : (T.status === 'atencao' ? '#FF9800' : '#4CAF50');
+      var cor = T.status === 'critico' ? '#F44336' : (T.status === 'atencao' ? '#FF9800' : (T.status === 'sembase' ? '#9AA5B1' : '#4CAF50'));
       el.style.cssText = 'display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin:0 0 12px;padding:10px 14px;'
         + 'background:var(--panel);border:1px solid var(--b);border-left:4px solid ' + cor + ';border-radius:var(--r)';
       el.innerHTML = '<div style="min-width:170px"><div style="font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;color:var(--t2)">Capacidade × venda · ' + u.mes + '/' + String(u.ano).slice(2) + '</div>'
@@ -25152,17 +25214,17 @@ window.CompAnos = (function () {
        "Fazemos" da pergunta 1 (últimos meses, com hora extra). Sem ela, o
        vendido − faturado de antes. */
     var FA = DashUtils.fechamentoAno(todos, ano, rMes.mes, { feriados:feriadosLocais(), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) });
-    var FL = DashUtils.filaERP(todos, ano, rMes.mes, FA.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30));
+    var FL = DashUtils.filaERP(todos, ano, rMes.mes, FA.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30), _calFila());
     var filaTxt = '';
     if(FL && FL.diasCorridos!==null){
       var corCart = FL.cor==='ok' ? '#4CAF50' : (FL.cor==='atencao' ? '#FF9800' : (FL.cor==='critico' ? '#F44336' : '#00E5FF'));
-      filaTxt = 'fila '+fi(FL.diasCorridos)+' dias corridos'+(FL.prazo||FL.semEstoque?(' ('+[FL.prazo?'prazo '+fi(FL.prazo):'',FL.semEstoque?'sem estoque':''].filter(Boolean).join(', ')+')'):'');
+      filaTxt = 'fila '+fi(FL.diasUteis)+' dias úteis'+(FL.prazo||FL.semEstoque?(' ('+[FL.prazo?'prazo '+fi(FL.uteisPrazo):'',FL.semEstoque?'sem estoque':''].filter(Boolean).join(', ')+')'):'');
       b3+=card('Fila de pedidos · ERP '+FL.mes+'/'+String(FL.ano).slice(2),
-               fi(FL.diasCorridos)+' dias corridos',
+               fi(FL.diasUteis)+' dias úteis',
                fi(FL.fila)+' pç = '+fi(FL.carteira)+' em carteira − '+fi(FL.estoque)+' em estoque'
                +(FL.semEstoque?' <span style="color:#FF9800">(estoque não digitado)</span>':'')
-               +'<br>'+fd(FL.diasUteis,1)+' dias úteis a '+fi(FL.ritmo)+' pç/dia'
-               +(FL.prazo?('<br>prazo '+fi(FL.prazo)+' dias'+(FL.excesso>0?(' · '+fi(FL.excesso)+' pç acima'):' · dentro')):''),
+               +'<br>a '+fi(FL.ritmo)+' pç/dia'+(FL.dataEntrega?(' · termina '+FL.dataEntrega.slice(8,10)+'/'+FL.dataEntrega.slice(5,7)):'')
+               +(FL.prazo?('<br>prazo '+fi(FL.prazo)+' dias = '+fi(FL.uteisPrazo)+' úteis'+(FL.excesso>0?(' · '+fi(FL.excesso)+' pç acima'):' · dentro')):''),
                corCart, true, 'producao');
     } else if(CT.meses > 0){
       var prodDiaN = Y.dias>0 ? Y.normal/Y.dias : 0;
@@ -25195,7 +25257,7 @@ window.CompAnos = (function () {
       antecedencia:(typeof ANTECEDENCIA_CAP!=='undefined'?ANTECEDENCIA_CAP:30), fila:(FL&&FL.diasCorridos!==null?FL:null) });
     var ATC = DashUtils.avisoCapacidadeTexto(AVC), corCap = null;
     if(ATC){
-      corCap = ATC.status==='critico' ? '#F44336' : (ATC.status==='atencao' ? '#FF9800' : '#4CAF50');
+      corCap = ATC.status==='critico' ? '#F44336' : (ATC.status==='atencao' ? '#FF9800' : (ATC.status==='sembase' ? '#9AA5B1' : '#4CAF50'));
       b3+=card('Capacidade × venda', ATC.rotulo, ATC.linhas.join('<br>')+'<br><b>'+ATC.acao+'</b>', corCap, true, 'producao');
     }
 
@@ -25207,7 +25269,11 @@ window.CompAnos = (function () {
     /* Os mesmos indicadores de antes (aderência, ritmo, hora extra,
        absenteísmo e carteira), contados pela cor: o ritmo saiu do card e foi
        para a pergunta 1, e contar a marcação dos cards deixaria ele de fora. */
-    var vermelhos=[corAder, corRit, corHE, corAbsC, corCart, corCap].filter(function(c){ return c==='#F44336'; }).length;
+    /* Fila acima do prazo é UM fato: o card da fila e o aviso não contam dois vermelhos. */
+    var _filaPassou = AVC && AVC.jaPassou;
+    var vermelhos=[corAder, corRit, corHE, corAbsC,
+                   _filaPassou ? ((corCart==='#F44336'||corCap==='#F44336')?'#F44336':corCart) : corCart,
+                   _filaPassou ? null : corCap].filter(function(c){ return c==='#F44336'; }).length;
     var semDono = vermelhos>0 && R.abertas===0;
     var corAc = R.criticas>0?'#F44336':(semDono?'#F44336':(R.abertas>0?'#FF9800':'#4CAF50'));
 
@@ -27261,7 +27327,9 @@ var APP_HISTORICO = [
   { v:'b96.104', data:'13/11/2026', itens:[
     'Aviso de capacidade x venda na Reuniao, no Briefing e na Visao Geral: OK, PREPARAR ou AUMENTAR AGORA.',
     'Venda media de 6 meses contra o ritmo sem hora extra (limite de HE), a fila crescendo (venda menos producao de 3 meses) e quando ela passa do prazo, contra a antecedencia para aumentar capacidade (ANTECEDENCIA_CAP, 30 dias, aba METAS).',
-    'OUT/26: venda 1.612 pc/dia, sem HE 1.485 (precisa 8,5% de HE, limite 8%), fila 24 dias subindo 3,5 por mes, passa de 30 em ~53 dias: PREPARAR, decidir em ate 23 dias.'
+    'Producao sempre em dias UTEIS: a fila sai em dias uteis com a data em que termina (calendario com feriados e producao ate 18/12); o prazo de 30 dias corridos vira dias uteis pelo calendario (13/11: 19).',
+    'OUT/26: venda MAI-OUT 1.612 pc/dia, sem HE AGO-OUT 1.485 (7,9% de HE, limite 8%), fila 17 dias uteis (termina 09/12) subindo 2,5 por mes, estoura o prazo em ~17 dias uteis, antes da antecedencia: PREPARAR, confirmar atualizando a carteira do ERP.',
+    'Sem a producao sem HE e sem carteira, o aviso diz SEM BASE (cinza), nunca OK. Code.gs: colar e reimplantar para salvar ANTECEDENCIA_CAP pelo Metas oficiais.'
   ]},
   { v:'b96.103', data:'13/11/2026', itens:[
     'Fila de pedidos pelo ERP: carteira menos estoque, digitados pelo PPCP na HISTORICO (colunas carteiraERP e estoqueERP), em dias contra o prazo de entrega. NOV/26: 27.167 pc = 17 dias uteis = 24 dias, prazo 30.',
