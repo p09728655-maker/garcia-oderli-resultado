@@ -194,5 +194,13 @@ afirma('sem SWOT nos relatórios', HTML.indexOf('gerarSWOT') < 0 && HTML.indexOf
 afirma('"sustentada na jornada normal" não existe mais como texto fixo', HTML.indexOf('Entrega sustentada na jornada normal') < 0);
 afirma('"relativamente estável/em recuperação" saiu do texto', HTML.indexOf("analise = 'Ticket médio relativamente estável") < 0);
 
+sec('b96.102: a meta de absenteísmo vem da aba METAS (tela Pessoas dizia 3%)');
+afirma('linha do gráfico na META_ABS', /var ylim=yP\(META_ABS\)/.test(HTML) && HTML.indexOf('var ylim=yP(3)') < 0);
+afirma('cor das barras pela META_ABS e ABS_ATENCAO', /var cor=v>ABS_ATENCAO\?C\.red:v>META_ABS\?C\.amber:C\.green/.test(HTML));
+afirma('nenhum "3%" fixo de absenteísmo sobrou', !/Meses acima 3%|Limite 3%|limite ≤ 3%|Meta: ≤ 3%|meta de 3%|absenteismo>3;|abs<=3\?|absM > 3\)/.test(HTML));
+afirma('rótulos fixos levam a meta num span pintado pela aba METAS',
+  (HTML.match(/class="metaAbsTxt"/g) || []).length === 5 && /function _pintarMetaAbs\(\)/.test(HTML)
+  && (HTML.match(/_pintarMetaAbs\(\);/g) || []).length === 2);
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

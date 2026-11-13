@@ -1446,7 +1446,7 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
       <div class="mes-card-sub">(Faltas + Atrasos) ÷ H. Normais</div>
       <div class="mes-card-meta">
         <span class="mes-meta-lbl">Limite</span>
-        <span class="mes-meta-val">≤ 3%</span>
+        <span class="mes-meta-val">≤ <span class="metaAbsTxt">3</span>%</span>
       </div>
     </div>
 
@@ -1756,7 +1756,7 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
     </div>
     <div>
       <div class="pageHdrTitle">Gestão de Pessoas</div>
-      <div class="pageHdrSub">Absenteísmo, faltas, atrasos e colaboradores — limite ≤ 3%</div>
+      <div class="pageHdrSub">Absenteísmo, faltas, atrasos e colaboradores — meta ≤ <span class="metaAbsTxt">3</span>%</div>
     </div>
   </div>
   <div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
@@ -1768,14 +1768,14 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
          (DashUtils.periodo → pecasPerdidas), que desce para esta aba. -->
     <div class="kCard kr" id="card4-perd"><div class="kLbl">Peças que não saíram</div><div class="kVal" id="kv4-perd">—</div><div class="kSub" id="ks4-perd">h de falta e atraso × ritmo da jornada normal</div></div>
     <div class="kCard kr" id="card4-dias"><div class="kLbl">Dias de fábrica perdidos</div><div class="kVal" id="kv4-dias">—</div><div class="kSub" id="ks4-dias">ao ritmo normal do período</div></div>
-    <div class="kCard kr"><div class="kLbl">Meses acima 3%</div><div class="kVal" id="kv4-acima">18/18</div><div class="kSub">Acima do limite</div></div>
+    <div class="kCard kr"><div class="kLbl"><span>Meses acima de <span class="metaAbsTxt">3</span>%</span></div><div class="kVal" id="kv4-acima">18/18</div><div class="kSub">Acima do limite</div></div>
   </div>
   <div class="charts1">
     <div class="cBox">
       <div class="cHdr">
         <span class="cTtl">▸ Absenteísmo Mensal (%)</span>
         <div class="lgnd">
-          <span class="li"><span class="ld" style="border:1px dashed rgba(244,67,54,.5)"></span>Limite 3%</span>
+          <span class="li"><span class="ld" style="border:1px dashed rgba(244,67,54,.5)"></span><span>Meta <span class="metaAbsTxt">3</span>%</span></span>
         </div>
       </div>
       <canvas id="cAbs" height="180" width="0" style="display: block; height: 180px;" class="canvas-zoom" title="Clique para ampliar"></canvas>
@@ -2058,7 +2058,7 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
     <div id="rex-abs-val" class="kVal" style="color:var(--amber)">—</div>
     <div class="kSub">% de horas perdidas</div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--b)">
-      <span style="font-size:.63rem;color:var(--t2)">Meta: ≤ 3%</span>
+      <span style="font-size:.63rem;color:var(--t2)">Meta: ≤ <span class="metaAbsTxt">3</span>%</span>
       <span id="rex-abs-diff" style="font-family: var(--mono); font-size: 0.72rem; color: rgb(255, 23, 68);">+ 9,1 p.p.</span>
     </div>
     <div id="rex-abs-status" style="position: absolute; top: 12px; right: 12px; width: 9px; height: 9px; border-radius: 50%; background: rgb(255, 23, 68); box-shadow: rgb(255, 23, 68) 0px 0px 6px;"></div>
@@ -5030,8 +5030,18 @@ function aplicarMetas(m, avisar){
     window[k]=v; METAS_ORIGEM[k]=(typeof rec==='object')?rec:{valor:v}; n++;
   });
   if(n){ try{ localStorage.setItem('dash_metas_sheet_v1', JSON.stringify(m)); }catch(e){} }
+  _pintarMetaAbs();
   if(avisar && mudou.length && typeof toast==='function') toast('Metas oficiais aplicadas da aba METAS: '+mudou.join(' · '),'ok');
   return n;
+}
+/* Os rótulos fixos do HTML (Pessoas, Resumo, card do mês) levam a meta de
+   absenteísmo num span .metaAbsTxt: o texto acompanha a aba METAS. */
+function _pintarMetaAbs(){
+  try{
+    var t=String(META_ABS).replace('.',',');
+    var els=document.querySelectorAll('.metaAbsTxt');
+    for(var i=0;i<els.length;i++) els[i].textContent=t;
+  }catch(e){}
 }
 /* Cópia local, antes de qualquer render. */
 (function(){ try{ var c=JSON.parse(localStorage.getItem('dash_metas_sheet_v1')); if(c) aplicarMetas(c,false); }catch(e){} })();
@@ -8144,7 +8154,7 @@ function drawEfic(dados){
     var hfp=calcHFP(r);
     var hfpPct=hfp!==null&&r.horasCarga>0?(hfp/r.horasCarga)*100:null;
     var efCls=ef<=META_DEP_HE?'g':ef<=15?'a':'r';
-    var absCls=abs<=3?'g':abs<=6?'a':'r';
+    var absCls=abs<=META_ABS?'g':abs<=ABS_ATENCAO?'a':'r';
     var html='<div class="tip-title">'+r.mes+'/'+r.ano+'</div>'+
       tipRow('Dep. HE (% volume)',f(ef)+'%',efCls)+
       tipRow('Absenteísmo',f(abs)+'%',absCls)+
@@ -8770,7 +8780,7 @@ function drawTktLinha(cvId,emId,dados){
   cv.onmouseleave=tipHide;
 }
 
-/* Barras absenteísmo com linha limite 3% */
+/* Barras absenteísmo com a linha da META_ABS (aba METAS) */
 function drawAbs(dados){
   var cv=document.getElementById('cAbs'), em=document.getElementById('emAbs');
   if(!dados.length){cv.style.display='none';em.style.display='block';return}
@@ -8793,19 +8803,19 @@ function drawAbs(dados){
     ctx.fillText(v+'%',pad.l-7,yy)
   });
 
-  // Linha limite 3%
-  var ylim=yP(3);
+  // Linha da meta (META_ABS, aba METAS)
+  var ylim=yP(META_ABS);
   ctx.beginPath(); ctx.strokeStyle='rgba(244,67,54,.4)'; ctx.lineWidth=1.2; ctx.setLineDash([5,3]);
   ctx.moveTo(pad.l,ylim); ctx.lineTo(pad.l+gW,ylim); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle='rgba(244,67,54,.6)'; ctx.textAlign='left'; ctx.font='12px Consolas,monospace';
-  ctx.textBaseline='bottom'; ctx.fillText('3%',pad.l+gW+3,ylim);
+  ctx.textBaseline='bottom'; ctx.fillText(String(META_ABS).replace('.',',')+'%',pad.l+gW+3,ylim);
 
   ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle=C.txt;
   dados.forEach(function(r,i){ctx.fillText(r.mes,xB(i)+bW()/2,pad.t+gH+7)});
 
   vals.forEach(function(v,i){
     var x=xB(i), w=bW(), h2=gH-(yP(v)-pad.t), y=yP(v);
-    var cor=v>6?C.red:v>3?C.amber:v>1.5?C.yellow:C.green;
+    var cor=v>ABS_ATENCAO?C.red:v>META_ABS?C.amber:C.green;
     ctx.fillStyle=cor+'aa'; ctx.fillRect(x,y,w,h2);
     ctx.font='bold 13px Consolas,monospace'; ctx.fillStyle=cor;
     ctx.textAlign='center'; ctx.textBaseline='bottom';
@@ -8819,7 +8829,7 @@ function drawAbs(dados){
     var idx=Math.floor((mx-pad.l)/bww);
     if(idx<0||idx>=n){tipHide();return}
     var r=dados[idx], v=vals[idx];
-    var cls=v>6?'r':v>3?'a':'g';
+    var cls=v>ABS_ATENCAO?'r':v>META_ABS?'a':'g';
     var html='<div class="tip-title">Absenteísmo — '+r.mes+'/'+r.ano+'</div>'+
       tipRow('Absenteísmo',f(v)+'%',cls)+
       tipRow('Limite',META_ABS+'%')+
@@ -9381,6 +9391,7 @@ function renderKPIsExtras(d){
   s('kv4-fat',   fi(tF)+' h');
   s('kv4-atr',   fi(tA)+' h');
   s('kv4-acima', acimaAbs+'/'+d.length);
+  _pintarMetaAbs();
   /* Peças e dias de fábrica que a falta e o atraso custaram — o que a
      Reunião promete ao descer para cá. Cor pela mesma régua do Resumo:
      ≤ 5% da produção normal ok, ≤ 10% atenção, acima crítico. */
@@ -10198,10 +10209,10 @@ function renderResumoExecutivo(dados) {
     }
     if(absM > ABS_ATENCAO){
       ins.push({t:'crit', txt:'Absenteísmo elevado: <b>'+fmtP(absM)+'</b> — impacta diretamente a capacidade produtiva.'});
-    } else if(absM > 3){
-      ins.push({t:'warn', txt:'Absenteísmo de <b>'+fmtP(absM)+'</b> acima da meta de 3%. Atenção às faltas e atrasos.'});
+    } else if(absM > META_ABS){
+      ins.push({t:'warn', txt:'Absenteísmo de <b>'+fmtP(absM)+'</b> acima da meta de '+META_ABS+'%. Atenção às faltas e atrasos.'});
     } else {
-      ins.push({t:'good', txt:'Absenteísmo controlado em <b>'+fmtP(absM)+'</b> — dentro da meta de 3%.'});
+      ins.push({t:'good', txt:'Absenteísmo controlado em <b>'+fmtP(absM)+'</b> — dentro da meta de '+META_ABS+'%.'});
     }
     if(pctE > 15){
       ins.push({t:'crit', txt:'<b>'+fmtP(pctE)+'</b> das horas são extras — custo operacional elevado. Revisar dimensionamento.'});
@@ -10320,7 +10331,8 @@ function renderResumoExecutivo(dados) {
     tipRow('Fórmula', '(Faltas + Atrasos) ÷ H. Normais × 100')+
     '<div style="border-top:1px solid var(--b);margin:5px 0"></div>'+
     '<div style="font-size:.62rem;color:var(--t2);margin-bottom:3px">dos '+n+' meses no período:</div>'+
-    tipRow('Meses acima 3% (ruim)', dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>3;}).length+' de '+n, dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>3;}).length===0?'g':dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>3;}).length===n?'r':'a')
+    (function(){ var nA=dados.filter(function(r){return r.producaoReal>0&&r.absenteismo>META_ABS;}).length;
+      return tipRow('Meses acima de '+META_ABS+'%', nA+' de '+n, nA===0?'g':nA===n?'r':'a'); })()
   );
 
   var tktCls = tktM>=META_TICKET?'g':tktM>=META_TICKET*0.8?'a':'r';
@@ -14141,7 +14153,7 @@ function cfInicializar() {
       titulo: 'Absenteísmo',
       formula: '(Faltas + Atrasos) ÷ H.Normais × 100',
       corpo: 'Percentual de horas perdidas por ausências em relação à jornada planejada.',
-      interpretacao: '<span class="uit-good">&lt; 3%</span> bom · <span class="uit-warn">3–6%</span> atenção · <span class="uit-bad">&gt; 6%</span> crítico'
+      get interpretacao(){ return '<span class="uit-good">≤ '+META_ABS+'%</span> meta'+(ABS_ATENCAO>META_ABS?' · <span class="uit-warn">'+META_ABS+'–'+ABS_ATENCAO+'%</span> atenção':'')+' · <span class="uit-bad">&gt; '+ABS_ATENCAO+'%</span> crítico'; }
     },
     'card-hfp': {
       titulo: 'Horas Perdidas (F+A)',
@@ -17890,7 +17902,7 @@ input:disabled, select:disabled {
       var ef = parseFloat(r.eficiencia||0);
       var abs = parseFloat(r.absenteismo||0);
       var efCls = ef>=90?'v':ef>=80?'y':'r';
-      var absCls = abs<=3?'v':abs<=6?'y':'r';
+      var absCls = abs<=META_ABS?'v':abs<=ABS_ATENCAO?'y':'r';
       function fN(v,d){ return v||v===0 ? Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}) : '\u2014'; }
       return '<tr>'
         + '<td>' + esc(r.mes) + '/' + r.ano + '</td>'
@@ -18140,9 +18152,9 @@ input:disabled, select:disabled {
           {l:'Absenteísmo M\u00e9dio', v:txt('kv4-abs'),   cls:'y'},
           {l:'Total Faltas (h)',  v:txt('kv4-fat'),   cls:'r'},
           {l:'Total Atrasos (h)', v:txt('kv4-atr'),   cls:'r'},
-          {l:'Meses acima 3%',   v:txt('kv4-acima'), cls:'r'}
+          {l:'Meses acima de '+META_ABS+'%',   v:txt('kv4-acima'), cls:'r'}
         ])
-      + '<div class="aviso">Refer\u00eancia: absenteísmo \u2264 3% \u00e9 aceit\u00e1vel \u00b7 > 6% exige a\u00e7\u00e3o imediata</div>'
+      + '<div class="aviso">Meta: absenteísmo \u2264 '+META_ABS+'% \u00b7 > '+ABS_ATENCAO+'% exige a\u00e7\u00e3o imediata</div>'
       + secHdr('Gr\u00e1ficos — Pessoas')
       + gg([['cAbs','Absenteísmo Mensal'],['cDeltaAbs','Varia\u00e7\u00e3o Absenteísmo']])
       + '<div class="footer"><span>Patrimar M\u00f3veis Ltda \u2014 PCP</span><span>Gerado em ' + dataGer + '</span></div>';
@@ -27008,9 +27020,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.101';
+var APP_VERSAO = 'b96.102';
 var APP_DATA   = '13/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.102', data:'13/11/2026', itens:[
+    'Absenteismo: a meta vem da aba METAS em todas as telas. Pessoas dizia 3% fixo (cabecalho, card, linha e cores do grafico) com a meta em 6%.',
+    'Mesma correcao no Resumo, no card do mes, nos insights, no tooltip e na impressao.'
+  ]},
   { v:'b96.101', data:'13/11/2026', itens:[
     'Reuniao, Fechamos o ano?: mais facil de ler. Precisa x fazemos em duas barras na mesma regua (1.752 x 1.600 pc/dia). Faltam 152 pc por dia.',
     'Por que em tres frases curtas: acumulado do ano, sem hora extra, venda contra o plano. A conta fica em "Como a conta sai", recolhido.',
