@@ -1841,7 +1841,7 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
          card da Reunião (DashUtils.carteira), que desce para esta aba. É a
          VARIAÇÃO acumulada vendido − faturado desde o início da série, não o
          saldo absoluto do ERP. -->
-    <div class="kCard kc pv-k" id="card5-cart" style="display:none"><div class="kLbl">Vendido − faturado</div><div class="kVal" id="kv5-cart">—</div><div class="kSub" id="ks5-cart">acumulado desde o início da série, em dias úteis normais · não é a carteira do ERP</div></div>
+    <div class="kCard kc pv-k" id="card5-cart" style="display:none"><div class="kLbl" id="kl5-cart">Vendido − faturado</div><div class="kVal" id="kv5-cart">—</div><div class="kSub" id="ks5-cart">acumulado desde o início da série, em dias úteis normais · não é a carteira do ERP</div></div>
   </div>
   <!-- b96.95: plano × produção numa barra só. A barra é a produção do mês,
        cheia na jornada normal e hachurada na hora extra; o traço é o plano.
@@ -4987,6 +4987,7 @@ var DUTEIS  = 22;   /* dias úteis/mês — referência para cap. teórica */
    10/11/2026: vamos até 18/12; depois é recesso). Base dos dias úteis
    restantes dos dois relatórios e da aba Mestre (DashUtils.fechamentoAno). */
 var DIA_FIM_ANO = 18;
+var PRAZO_ENTREGA = 30;   /* prazo de entrega prometido, dias corridos (aba METAS) */
 /* Feriados da aba FERIADOS (o doGet grava em dash_feriados_v1). */
 function feriadosLocais(){ try{ var f=JSON.parse(localStorage.getItem('dash_feriados_v1')); return Array.isArray(f)?f:[]; }catch(e){ return []; } }
 /* Glossário dos relatórios (b96.97): o mesmo texto no Briefing e na Reunião,
@@ -5017,7 +5018,7 @@ function glossarioHTML(){
    localStorage para a primeira pintura não sair com o padrão e depois trocar.
    Chaves aceitas: só as constantes abaixo, para uma célula errada não virar
    variável solta. */
-var METAS_CHAVES = ['META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS','PROD_ERP_DESDE','CUSTO_HORA','DIA_FIM_ANO'];   /* META_EF aposentada com a Independência de HE */
+var METAS_CHAVES = ['META_ABS','ABS_ATENCAO','META_DEP_HE','META_TICKET','DUTEIS','PROD_ERP_DESDE','CUSTO_HORA','DIA_FIM_ANO','PRAZO_ENTREGA'];   /* META_EF aposentada com a Independência de HE */
 var METAS_ORIGEM = {};   /* chave → { valor, unidade, vigencia, origem, observacao } */
 function aplicarMetas(m, avisar){
   if(!m || typeof m!=='object') return 0;
@@ -5058,7 +5059,9 @@ var METAS_ROTULOS = {
   META_TICKET: ['Ticket médio mínimo',         'R$',  'R$ por peça faturada'],
   DUTEIS:      ['Dias úteis de referência',    'dias','capacidade teórica e carteira em dias'],
   PROD_ERP_DESDE: ['Produção pelo reporte do ERP desde', 'ano', 'a partir deste ano a Produção Real é o total do relatório REPORTE (produtos acabados); antes vale o digitado'],
-  CUSTO_HORA:  ['Custo da hora normal dos diretos', 'R$/h', 'com encargos, do RH; a hora extra sai a 1,5× (50%) e 2× (100%). Sem valor, o card de hora extra não mostra custo']
+  CUSTO_HORA:  ['Custo da hora normal dos diretos', 'R$/h', 'com encargos, do RH; a hora extra sai a 1,5× (50%) e 2× (100%). Sem valor, o card de hora extra não mostra custo'],
+  DIA_FIM_ANO: ['Último dia de produção do ano', 'dia', 'dia de dezembro; depois é recesso. Base dos dias úteis que faltam'],
+  PRAZO_ENTREGA: ['Prazo de entrega prometido', 'dias', 'dias corridos; a fila de pedidos acima disto fica âmbar, acima de 1,5× vermelha']
 };
 function abrirMetas(){
   if(document.getElementById('metas-overlay')) return;
@@ -5753,10 +5756,11 @@ function _syncSheetsDebounced(d){
 /* integridadeCiente só sai no envio do próprio Ciente (comCiente): no envio
    em massa, uma cópia aberta antes do ciente gravaria vazio por cima. Sem a
    chave, gravarHistorico não toca na coluna.
-   pontos e colaboradoresTotal nunca saem: o PPCP digita os pontos na
+   pontos, colaboradoresTotal, carteiraERP e estoqueERP nunca saem: o PPCP
+   digita pontos, carteira e estoque na
    HISTORICO e o PontoRH.gs grava o total. O painel só lê — uma cópia aberta
    antes do lançamento mandaria 0 por cima do que foi digitado. */
-var _SO_PLANILHA = ['pontos', 'colaboradoresTotal'];
+var _SO_PLANILHA = ['pontos', 'colaboradoresTotal', 'carteiraERP', 'estoqueERP'];
 function _syncSheetsAgora(d, comCiente){
   if (!SHEETS_WEBAPP_URL || !d || !d.length) return;
   d = d.map(function(r){
@@ -5801,7 +5805,7 @@ var CAMPOS_NUM = ['ano','colaboradores','horasCarga','faltas','atraso','totalFal
   'ticketMedio','custoCap','qtdeFaturado','diasTrabalhados','qtdeVendida','previsaoProducao','horasFerias',
   'produtosReportados','volumesProduzidos','quilosProduzidos','planoNaHistorico',
   'naoTrabalhadas','faltasPonto','atrasosPonto','ausFalta','ausAtestado','ausAfastado','ausAtraso',
-  'atrasoDuplicado','duplicidadeApurada','pontos','colaboradoresTotal','foraDoPonto'];
+  'atrasoDuplicado','duplicidadeApurada','pontos','colaboradoresTotal','foraDoPonto','carteiraERP','estoqueERP'];
 
 /* ── TRADUÇÃO DE CABEÇALHO ──
    Quase toda coluna da planilha já usa o nome do campo (producaoReal,
@@ -6742,6 +6746,42 @@ window.DashUtils = (function() {
              tendMes: tend, ultimo: ultimo, hist: hist };
   }
 
+  /* ── FILA DE PEDIDOS PELO ERP (b96.103) ──────────────────────────────────
+     carteiraERP e estoqueERP são digitados pelo PPCP na HISTORICO, na linha
+     do mês (retrato do ERP). Fila = carteira − estoque: o que ainda precisa
+     ser produzido para entregar. Em dias úteis ao ritmo de agora; em dias
+     corridos ≈ úteis × 7/5, contra o prazo de entrega prometido (PRAZO_ENTREGA).
+     Retrato: o mais recente até o mês de corte; sem nenhum até o corte, o
+     mais recente de todos (a fila é de hoje, o mês vai no rótulo).
+     Sem carteira digitada → null (o painel volta ao vendido − faturado). */
+  function filaERP(todos, anoCorte, mesCorte, ritmo, prazo) {
+    var com = (todos || []).filter(function (r) { return r && r.carteiraERP > 0; })
+      .sort(function (a, b) {
+        return a.ano !== b.ano ? a.ano - b.ano : _ORDEM_M.indexOf(a.mes) - _ORDEM_M.indexOf(b.mes);
+      });
+    if (!com.length) return null;
+    var iCorte = _ORDEM_M.indexOf(mesCorte), r = null;
+    com.forEach(function (x) {
+      if (!anoCorte || x.ano < anoCorte || (x.ano === anoCorte && (iCorte < 0 || _ORDEM_M.indexOf(x.mes) <= iCorte))) r = x;
+    });
+    if (!r) r = com[com.length - 1];
+    var est = r.estoqueERP > 0 ? r.estoqueERP : 0;
+    var o = { mes: r.mes, ano: r.ano, carteira: r.carteiraERP, estoque: est,
+              semEstoque: !(r.estoqueERP > 0),
+              fila: Math.max(0, r.carteiraERP - est), ritmo: ritmo > 0 ? ritmo : null,
+              prazo: prazo > 0 ? prazo : null,
+              diasUteis: null, diasCorridos: null, excesso: null, cor: null };
+    if (o.ritmo) {
+      o.diasUteis = o.fila / o.ritmo;
+      o.diasCorridos = o.diasUteis * 7 / 5;
+      if (o.prazo) {
+        o.excesso = Math.max(0, o.fila - o.prazo * 5 / 7 * o.ritmo);
+        o.cor = o.diasCorridos <= o.prazo ? 'ok' : (o.diasCorridos <= 1.5 * o.prazo ? 'atencao' : 'critico');
+      }
+    }
+    return o;
+  }
+
   /* ── PLANO DE AÇÃO (Reunião do Mês) ──────────────────────────────────────
      Conta pura, para o card "Ações críticas" e para o teste. Crítica = em
      aberto E (prioridade Vermelho OU prazo vencido). Datas em ISO
@@ -7492,7 +7532,7 @@ window.DashUtils = (function() {
   }
 
   return { getDias:getDias, getFat:getFat, getProd:getProd,
-           periodo:periodo, carteira:carteira, acoesResumo:acoesResumo,
+           periodo:periodo, carteira:carteira, filaERP:filaERP, acoesResumo:acoesResumo,
            demanda:demanda, statusFabrica:statusFabrica, funcNecessarios:funcNecessarios,
            integridade:integridade, faixaLimite:faixaLimite, normalizar:normalizar, duplicidadeCompleta:duplicidadeCompleta,
            cienteLer:cienteLer, cienteTexto:cienteTexto,
@@ -9436,6 +9476,24 @@ function renderKPIsExtras(d){
     var fech=d.filter(function(r){ return (r.producaoReal||0)>0; }).sort(function(a,b){ return a.ano!==b.ano?a.ano-b.ano:OM.indexOf(a.mes)-OM.indexOf(b.mes); });
     var ult=fech[fech.length-1];
     if(!ult){ card.style.display='none'; return; }
+    /* b96.103: com a carteira do ERP na HISTORICO, a mesma fila da Reunião. */
+    var FA=DashUtils.fechamentoAno(todos, ult.ano, ult.mes, { feriados:(typeof feriadosLocais==='function'?feriadosLocais():[]), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) });
+    var FL=DashUtils.filaERP(todos, ult.ano, ult.mes, FA.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30));
+    var lbl=document.getElementById('kl5-cart');
+    if(FL && FL.diasCorridos!==null){
+      card.style.display='';
+      if(lbl) lbl.textContent='Fila de pedidos · ERP '+FL.mes+'/'+String(FL.ano).slice(2);
+      sU('kv5-cart', fi(FL.diasCorridos), 'dias');
+      var vF=document.getElementById('kv5-cart');
+      if(vF) vF.style.color=FL.cor==='ok'?'var(--green)':(FL.cor==='atencao'?'var(--amber)':(FL.cor==='critico'?'var(--red)':''));
+      var kF=document.getElementById('ks5-cart');
+      if(kF) kF.textContent=fi(FL.fila)+' pç = '+fi(FL.carteira)+' em carteira − '+fi(FL.estoque)+' em estoque'
+        +(FL.semEstoque?' (estoque não digitado)':'')
+        +' · '+f(FL.diasUteis,1)+' dias úteis a '+fi(FL.ritmo)+' pç/dia'
+        +(FL.prazo?(' · prazo '+fi(FL.prazo)+' dias'+(FL.excesso>0?(' · '+fi(FL.excesso)+' pç acima'):' · dentro')):'');
+      return;
+    }
+    if(lbl) lbl.textContent='Vendido − faturado';
     var CT=DashUtils.carteira(todos, ult.ano, ult.mes);
     if(!CT.meses){ card.style.display='none'; return; }
     var ateAqui=todos.filter(function(r){ return r.ano===ult.ano&&(r.producaoReal||0)>0&&OM.indexOf(r.mes)<=OM.indexOf(ult.mes); });
@@ -24947,7 +25005,24 @@ window.CompAnos = (function () {
     }
     var CT = DashUtils.carteira(todos, ano, mes);
     var diasCart=null;
-    if(CT.meses > 0){
+    /* b96.103: com a carteira do ERP digitada na HISTORICO, o card é a FILA
+       (carteira − estoque) em dias, contra o prazo de entrega. Ritmo = o
+       "Fazemos" da pergunta 1 (últimos meses, com hora extra). Sem ela, o
+       vendido − faturado de antes. */
+    var FA = DashUtils.fechamentoAno(todos, ano, rMes.mes, { feriados:feriadosLocais(), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) });
+    var FL = DashUtils.filaERP(todos, ano, rMes.mes, FA.ritmoAtual, (typeof PRAZO_ENTREGA!=='undefined'?PRAZO_ENTREGA:30));
+    var filaTxt = '';
+    if(FL && FL.diasCorridos!==null){
+      var corCart = FL.cor==='ok' ? '#4CAF50' : (FL.cor==='atencao' ? '#FF9800' : (FL.cor==='critico' ? '#F44336' : '#00E5FF'));
+      filaTxt = 'fila '+fi(FL.diasCorridos)+' dias'+(FL.prazo?(' (prazo '+fi(FL.prazo)+')'):'');
+      b3+=card('Fila de pedidos · ERP '+FL.mes+'/'+String(FL.ano).slice(2),
+               fi(FL.diasCorridos)+' dias',
+               fi(FL.fila)+' pç = '+fi(FL.carteira)+' em carteira − '+fi(FL.estoque)+' em estoque'
+               +(FL.semEstoque?' <span style="color:#FF9800">(estoque não digitado)</span>':'')
+               +'<br>'+fd(FL.diasUteis,1)+' dias úteis a '+fi(FL.ritmo)+' pç/dia'
+               +(FL.prazo?('<br>prazo '+fi(FL.prazo)+' dias'+(FL.excesso>0?(' · '+fi(FL.excesso)+' pç acima'):' · dentro')):''),
+               corCart, true, 'producao');
+    } else if(CT.meses > 0){
       var prodDiaN = Y.dias>0 ? Y.normal/Y.dias : 0;
       diasCart = prodDiaN>0 ? CT.saldo/prodDiaN : null;
       var corCart  = diasCart===null ? '#00E5FF'
@@ -25010,8 +25085,7 @@ window.CompAnos = (function () {
        jornada normal como alerta de dependência. Antes vinha do pmApurado():
        "falta produzir" = plano dos meses abertos e o título saía da jornada
        normal. Referência = mês da Reunião (no ano todo, o último fechado). */
-    var FA = DashUtils.fechamentoAno(todos, ano, rMes.mes, { feriados:feriadosLocais(), diaFim:(typeof DIA_FIM_ANO!=='undefined'?DIA_FIM_ANO:18) });
-    var VA = DashUtils.vereditoAno(FA);
+    var VA = DashUtils.vereditoAno(FA);   /* FA calculado no card da fila */
     /* b92.5: a faixa leva só o veredito (uma frase); o custo da falta e o
        "seria capacidade ou absenteísmo?" vão para uma linha sob os cards.
        Antes eram 170 caracteres em vermelho de ponta a ponta: ninguém lia. */
@@ -25024,8 +25098,9 @@ window.CompAnos = (function () {
     var r1 = r1Curta + (r1Detalhe?(' · '+r1Detalhe):'');   /* a narração (Apresentar) continua completa */
     var c1 = aderSE===null?'var(--t2)':corMeta(aderSE,100);
     var r2 = fi(A.prod)+' pç entregues'+(ader!==null?(', '+fd(ader,1)+'% do plano com hora extra'):'')
-           +(diasCart!==null?(' · vendido − faturado'+(iniCart?' desde '+iniCart:'')+': '+fi(diasCart)+' dias úteis'):'');
-    var c2 = diasCart===null?'var(--t2)':(diasCart<=0.5*DUTEIS_?'#4CAF50':(diasCart<=1.5*DUTEIS_?'#FF9800':'#F44336'));
+           +(filaTxt?(' · '+filaTxt)
+             :(diasCart!==null?(' · vendido − faturado'+(iniCart?' desde '+iniCart:'')+': '+fi(diasCart)+' dias úteis'):''));
+    var c2 = filaTxt?corCart:(diasCart===null?'var(--t2)':(diasCart<=0.5*DUTEIS_?'#4CAF50':(diasCart<=1.5*DUTEIS_?'#FF9800':'#F44336')));
     var r3 = R.abertas+' em aberto · '+R.criticas+' crítica'+(R.criticas===1?'':'s')
            +(R.vencidas>0?(' · '+R.vencidas+' com prazo vencido'):'')
            +(semDono?(' · '+vermelhos+' indicador'+(vermelhos===1?'':'es')+' vermelho'+(vermelhos===1?'':'s')+' sem ação registrada'):'');
@@ -27020,9 +27095,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.102';
+var APP_VERSAO = 'b96.103';
 var APP_DATA   = '13/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.103', data:'13/11/2026', itens:[
+    'Fila de pedidos pelo ERP: carteira menos estoque, digitados pelo PPCP na HISTORICO (colunas carteiraERP e estoqueERP), em dias contra o prazo de entrega. NOV/26: 27.167 pc = 17 dias uteis = 24 dias, prazo 30.',
+    'Substitui o vendido menos faturado na Reuniao e em Producao & Vendas quando ha carteira digitada. Ritmo = o Fazemos da pergunta 1. PRAZO_ENTREGA (30, prazo prometido) entra na aba METAS.',
+    'O painel nunca grava as duas colunas. Code.gs: colar e reimplantar para proteger as colunas e aceitar PRAZO_ENTREGA no editor de metas.'
+  ]},
   { v:'b96.102', data:'13/11/2026', itens:[
     'Absenteismo: a meta vem da aba METAS em todas as telas. Pessoas dizia 3% fixo (cabecalho, card, linha e cores do grafico) com a meta em 6%.',
     'Mesma correcao no Resumo, no card do mes, nos insights, no tooltip e na impressao.'

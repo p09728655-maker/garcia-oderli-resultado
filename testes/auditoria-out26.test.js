@@ -202,5 +202,33 @@ afirma('rótulos fixos levam a meta num span pintado pela aba METAS',
   (HTML.match(/class="metaAbsTxt"/g) || []).length === 5 && /function _pintarMetaAbs\(\)/.test(HTML)
   && (HTML.match(/_pintarMetaAbs\(\);/g) || []).length === 2);
 
+sec('b96.103: fila de pedidos pela carteira do ERP (NOV/26: 44.000 − 16.833)');
+const ERP = [
+  { mes:'OUT', ano:2026, producaoReal:30478 },
+  { mes:'NOV', ano:2026, carteiraERP:44000, estoqueERP:16833 }
+];
+const FL = U.filaERP(ERP, 2026, 'OUT', 1600, 14);
+afirma('sem retrato até OUT, usa o mais recente (NOV/26)', FL && FL.mes === 'NOV' && FL.ano === 2026);
+ok('fila = carteira − estoque', FL.fila, 27167, 0);
+ok('dias úteis = 27.167 ÷ 1.600', FL.diasUteis, 16.98, 0.01);
+ok('dias corridos ≈ úteis × 7/5', FL.diasCorridos, 23.77, 0.01);
+ok('acima do prazo: 27.167 − 14 × 5/7 × 1.600', FL.excesso, 11167, 0);
+afirma('23,8 dias > 1,5 × 14 → crítico', FL.cor === 'critico');
+afirma('dentro do prazo → ok', U.filaERP([{ mes:'NOV', ano:2026, carteiraERP:20000, estoqueERP:5000 }], 2026, 'NOV', 1600, 14).cor === 'ok');
+afirma('sem carteira digitada → null (volta ao vendido − faturado)', U.filaERP([{ mes:'NOV', ano:2026, estoqueERP:5000 }], 2026, 'NOV', 1600, 14) === null);
+afirma('estoque maior que a carteira → fila 0, nunca negativa', U.filaERP([{ mes:'NOV', ano:2026, carteiraERP:1000, estoqueERP:5000 }], 2026, 'NOV', 1600, 14).fila === 0);
+afirma('retrato até o corte vence o mais recente',
+  U.filaERP([{ mes:'SET', ano:2026, carteiraERP:30000 }, { mes:'NOV', ano:2026, carteiraERP:44000 }], 2026, 'OUT', 1600, 14).mes === 'SET');
+afirma('sem estoque digitado: avisa', U.filaERP([{ mes:'NOV', ano:2026, carteiraERP:44000 }], 2026, 'NOV', 1600, 14).semEstoque === true);
+afirma('Reunião e Produção & Vendas usam o filaERP com o ritmo da pergunta 1',
+  (HTML.match(/DashUtils\.filaERP\(todos, [^)]*FA\.ritmoAtual/g) || []).length === 2);
+afirma('o painel nunca grava carteiraERP e estoqueERP', /var _SO_PLANILHA = \[[^\]]*'carteiraERP', 'estoqueERP'\]/.test(HTML));
+const GS = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8');
+afirma('Code.gs protege as duas colunas', /'carteiraerp', 'estoqueerp'\]/.test(GS));
+afirma('PRAZO_ENTREGA é meta aceita (painel e Code.gs)',
+  /'PRAZO_ENTREGA'\]/.test(HTML) && /\['PRAZO_ENTREGA', 30,/.test(GS) && /var PRAZO_ENTREGA = 30;/.test(HTML));
+const FL30 = U.filaERP(ERP, 2026, 'OUT', 1600, 30);
+afirma('prazo prometido 30: 23,8 dias está dentro (verde, nada acima)', FL30.cor === 'ok' && FL30.excesso === 0);
+
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));
 process.exit(falhas ? 1 : 0);

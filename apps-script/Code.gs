@@ -23,8 +23,8 @@
  *
  * METAS — uma linha por meta (chave | valor | unidade | vigencia | origem |
  *   observacao). doGet devolve em `metas`; o painel sobrescreve as constantes
- *   META_ABS, ABS_ATENCAO, META_DEP_HE, META_TICKET, DUTEIS, PROD_ERP_DESDE e
- *   CUSTO_HORA com o que estiver aqui (valor 0 ou vazio é ignorado). O app NÃO escreve nesta aba: meta se muda na planilha,
+ *   META_ABS, ABS_ATENCAO, META_DEP_HE, META_TICKET, DUTEIS, PROD_ERP_DESDE,
+ *   DIA_FIM_ANO, PRAZO_ENTREGA e CUSTO_HORA com o que estiver aqui (valor 0 ou vazio é ignorado). O app NÃO escreve nesta aba: meta se muda na planilha,
  *   com origem e vigência, não no navegador. Rode criarAbaMetas() uma vez.
  *
  * ACOES — plano de ação da Reunião do Mês (uma linha por ação/decisão).
@@ -85,6 +85,7 @@ var METAS_PADRAO = [
   ['DUTEIS',      22,  'dias','2026-01', 'PPCP',      'Dias úteis de referência por mês (capacidade teórica e carteira em dias)'],
   ['PROD_ERP_DESDE', 2025, 'ano', '2025-01', 'PPCP',   'A partir deste ano, producaoReal = produtosReportados (total do relatório REPORTE do ERP, produtos acabados). Antes disso vale o digitado.'],
   ['DIA_FIM_ANO', 18,  'dia', '2026-11', 'PPCP',      'Último dia de produção do ano, em dezembro (depois é recesso). Base dos dias úteis restantes: segunda a sexta menos a aba FERIADOS até este dia'],
+  ['PRAZO_ENTREGA', 30, 'dias', '2026-11', 'Comercial', 'Prazo de entrega prometido ao cliente, em dias corridos. O painel compara a fila de pedidos (carteiraERP − estoqueERP, ao ritmo atual) com ele'],
   ['CUSTO_HORA',  0,   'R$/h','2026-10', 'RH',        'Custo da hora normal dos diretos, com encargos. O painel põe a hora extra em reais: extra50 × 1,5 + extra100 × 2, vezes este valor (sem o reflexo no DSR). 0 = ainda não cadastrado: o card diz que falta o custo-hora']
 ];
 
@@ -101,6 +102,8 @@ var DICIONARIO_LINHAS = [
   ['colaboradoresTotal', 'automático', 'ponto', 'Quadro inteiro no mês: diretos + indiretos do extrato do ponto que estão na FUNCIONARIOS (a soma de pessoas da PONTO_SETOR). PontoRH.gs grava junto com as colunas brutas. JAN a SET/26 preenchidos a partir da PONTO_SETOR em 21/10/2026; 2025 vazio (não há extrato processado). Sem quem não bate ponto (coluna foraDoPonto). Base de "pontos por colaborador (total)" junto com foraDoPonto. O painel não grava esta coluna.'],
   ['foraDoPonto', 'entrada', 'PPCP', 'Quem está na folha no mês e não bate ponto: motoristas, cargos de confiança, SENAI, comercial externo, gerência, industrial. O extrato (colaboradoresTotal) não os tem. Digitado no painel (Dados › Editar o mês, ou "lançar fora do ponto" no card de pontos da Reunião); a coluna é criada na primeira gravação com valor. JAN a SET/26 lançados em 22/10/2026 como ativos na FUNCIONARIOS (admissão e demissão) menos colaboradoresTotal. Quadro total da Reunião = colaboradoresTotal + foraDoPonto. Mês com colaboradoresTotal e sem foraDoPonto aparece como "sem os que não batem ponto", nunca é completado sozinho.'],
   ['pontos', 'entrada', 'PPCP', 'Pontos do mês (tabela PONTOS do PPCP), digitados na HISTORICO; JAN/25 a AGO/26 lançados em 21/10/2026. O painel não grava esta coluna, só lê. Reunião do Mês: pontos ÷ colaboradores (diretos), pontos ÷ colaboradoresTotal e pontos ÷ (horasNormais + totalExtras), o por hora trabalhada; no período, soma dos pontos ÷ soma dos colaboradores dos meses que têm os dois (média por mês).'],
+  ['carteiraERP', 'entrada', 'PPCP', 'Carteira de pedidos do ERP em peças, retrato do mês (o último dia, ou o dia em que foi digitado no mês em curso). Base da fila de pedidos do painel. O painel não grava esta coluna.'],
+  ['estoqueERP', 'entrada', 'PPCP', 'Estoque de produto acabado em peças, mesmo dia da carteiraERP: o que já atende pedido. Fila = carteiraERP − estoqueERP. O painel não grava esta coluna.'],
   ['horasCarga', 'automático', 'ponto', 'Carga do extrato, somada para os diretos: horas escaladas no mês (8,8 h × dias úteis, líquida de dias de férias e afastamento). Conferido em AGO/26.'],
   ['horasNormais', 'automático', 'ponto', 'Normais do extrato = Carga − Faltas − Atrasos: horas trabalhadas na jornada normal. Base do absenteísmo e das peças por hora. Conferido em AGO/26.'],
   ['naoTrabalhadas', 'automático', 'ponto', 'PontoRH.gs: soma, por direto, de jornada cheia do mês (carga mais frequente entre os diretos) − Normais. Quem foi admitido ou desligado dentro do mês entra com a própria Carga no lugar da jornada cheia: os dias fora da casa não são ausência. Tudo que não foi trabalhado, férias e afastamento incluídos. Com o controle de faltas lançado é só conferência (integridade: ponto × controle).'],
@@ -204,9 +207,10 @@ var SECRET = 'zYjhEkzRm3cc0lYiO4A7IUtmvgAkqrZC';
    colaboradoresTotal vem do PontoRH.gs: o painel só lê os dois, e uma cópia
    aberta antes do lançamento apagaria o que foi digitado. desligadosPonto e
    desligadosForaPonto são do PontoRH.gs (desligados do mês no extrato): uma
-   cópia de antes da contagem gravaria 0 por cima. */
+   cópia de antes da contagem gravaria 0 por cima. carteiraERP e estoqueERP
+   (b96.103) são o retrato do ERP digitado pelo PPCP na linha do mês. */
 var COLUNAS_PROTEGIDAS = ['previsaoproducao', 'previsao', 'previsaovolumes', 'atrasoduplicado', 'duplicidadeapurada',
-  'pontos', 'colaboradorestotal', 'desligadosponto', 'desligadosforaponto'];
+  'pontos', 'colaboradorestotal', 'desligadosponto', 'desligadosforaponto', 'carteiraerp', 'estoqueerp'];
 
 /* Colunas de TEXTO da HISTORICO (o resto é número). integridadeCiente: aviso
    de integridade conferido no painel, com motivo ("ponto | 1749 | 2119 |
