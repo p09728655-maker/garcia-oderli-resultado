@@ -265,10 +265,28 @@ afirma('fila de NOV com calendário: 17 dias úteis, termina 09/12, prazo 30 = 1
 const AVc = U.avisoCapacidade(CAP26, 2026, 'OUT', { limiteHE:8, prazo:30, antecedencia:30, fila:FLc });
 afirma('aviso com calendário: o prazo encolhe no recesso; a fila estoura em ~7 dias úteis (25/11, prazo 17), não em 17',
   AVc.diasAte === 7 && AVc.dataEstoura === '2026-11-25' && AVc.prazoNaData === 17 && AVc.antUteis === 19);
-afirma('dentro da antecedência e a fila só cresceu em OUT → PREPARAR, confirmar', AVc.nivel === 'preparar' && AVc.confirmar === true
-  && /Fila só cresceu em OUT: confirmar atualizando a carteira do ERP/.test(U.avisoCapacidadeTexto(AVc).acao));
-afirma('o texto mostra a data e o prazo daquele dia, e o recesso', /estoura em ~7 dias úteis \(25\/11, prazo 17\)/.test(U.avisoCapacidadeTexto(AVc).linhas.join(' '))
-  && /Recesso: pedido a partir de 26\/11 só fica pronto em janeiro/.test(U.avisoCapacidadeTexto(AVc).linhas.join(' ')));
+afirma('hoje: a fila estouraria também sem crescer (26/11) e a janela pega o recesso → causa recesso, PREPARAR, ajustar o prazo',
+  AVc.causa === 'recesso' && AVc.nivel === 'preparar' && /ajustar o prazo prometido/.test(U.avisoCapacidadeTexto(AVc).acao));
+afirma('o texto diz a partir de quando o pedido só fica pronto em janeiro (25/11)',
+  /pedido a partir de 25\/11 só fica pronto em janeiro \(recesso\)/.test(U.avisoCapacidadeTexto(AVc).linhas.join(' ')));
+const FER26 = [{ data:'2026-11-20' }];
+function avCaso(base, snap, carteira, hoje, corte) {
+  const D = base.concat([{ mes:snap, ano:2026, carteiraERP:carteira, estoqueERP:0 }]);
+  const cal = { hoje:hoje, feriados:FER26, diaFim:18 };
+  return U.avisoCapacidade(D, 2026, corte, { limiteHE:8, prazo:30, antecedencia:30, fila:U.filaERP(D, 2026, corte, 1600, 30, cal) });
+}
+const ESTv = CAP26.map(r => Object.assign({}, r, { qtdeVendida: r.producaoReal }));
+const A1103 = avCaso(ESTv.filter(r => ['JAN','FEV','MAR'].indexOf(r.mes) >= 0), 'MAR', 20.2 * 1600, '2026-03-11', 'MAR');
+afirma('11/03, fila 20,2 estável: o prazo oscila pelo dia da semana → limite, nunca "recesso"/"janeiro"',
+  A1103.causa === 'limite' && A1103.nivel === 'preparar' && !/janeiro|Recesso/.test(U.avisoCapacidadeTexto(A1103).linhas.join(' ') + U.avisoCapacidadeTexto(A1103).acao));
+const A1510 = avCaso(ESTv.filter(r => ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET'].indexOf(r.mes) >= 0), 'OUT', 15 * 1600, '2026-10-15', 'SET');
+afirma('15/10, fila 15 estável: estouro só pelo recesso (03/12) → ação de prazo, não "decidir o aumento"',
+  A1510.causa === 'recesso' && !/Decidir o aumento/.test(U.avisoCapacidadeTexto(A1510).acao));
+const A0712 = avCaso(CAP26, 'NOV', 36000 - 16833, '2026-12-07', 'NOV');
+afirma('retrato de NOV visto em 07/12: a fila anda até hoje e nenhuma data fica no passado',
+  A0712.filaRetrato === '2026-11-30' && (A0712.dataEstoura === null || A0712.dataEstoura >= '2026-12-07')
+  && /levado a hoje/.test(U.avisoCapacidadeTexto(A0712).linhas.join(' ')));
+afirma('já passou só por causa do recesso → PREPARAR com ação de prazo, não AUMENTAR AGORA', A0712.nivel === 'preparar' && A0712.causa === 'recesso');
 const EST = CAP26.map(r => ['AGO','SET','OUT'].indexOf(r.mes) >= 0 ? Object.assign({}, r, { qtdeVendida: r.producaoReal }) : r).concat([{ mes:'NOV', ano:2026, carteiraERP:44000, estoqueERP:16833 }]);
 const AVe = U.avisoCapacidade(EST, 2026, 'OUT', { limiteHE:8, prazo:30, antecedencia:30,
   fila: U.filaERP(EST, 2026, 'OUT', 1600, 30, { hoje:'2026-11-13', feriados:[{ data:'2026-11-20' }], diaFim:18 }) });
