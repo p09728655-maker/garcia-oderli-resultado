@@ -9224,7 +9224,7 @@ function bindCardTooltips(dados){
     tipRow('Média/mês',fi(tProd/dados.length)+' peças')+
     tipRow('Melhor mês',fi(Math.max.apply(null,dados.map(function(r){return r.producaoReal})))+' peças');
 
-  var absCls=ab<=3?'g':ab<=6?'a':'r';
+  var absCls=ab<=META_ABS?'g':ab<=ABS_ATENCAO?'a':'r';
   var absHtml='<div class="tip-title">Absenteísmo Médio</div>'+
     tipRow('Média',f(ab)+'%',absCls)+
     tipRow('Limite',META_ABS+'%')+
@@ -10325,7 +10325,7 @@ function renderResumoExecutivo(dados) {
   bindRexTooltip('rex-card-abs',
     '<div class="tip-title">Absenteísmo Médio</div>'+
     tipRow('Absenteísmo', fmtP(absM), absCls)+
-    tipRow('Meta', '≤ 3,0 %')+
+    tipRow('Meta', '≤ '+String(META_ABS).replace('.',',')+'%')+
     tipRow('Diferença', (abD<=0?'':'+')+ abD.toFixed(1).replace('.',',')+' p.p.', abD<=0?'g':'r')+
     tipRow('H. perdidas total', fmt(hPerdidasTotal)+' h')+
     tipRow('Fórmula', '(Faltas + Atrasos) ÷ H. Normais × 100')+
