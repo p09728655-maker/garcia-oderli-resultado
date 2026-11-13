@@ -6749,22 +6749,23 @@ window.DashUtils = (function() {
   /* ── FILA DE PEDIDOS PELO ERP (b96.103) ──────────────────────────────────
      carteiraERP e estoqueERP são digitados pelo PPCP na HISTORICO, na linha
      do mês (retrato do ERP). Fila = carteira − estoque: o que ainda precisa
-     ser produzido para entregar. Em dias úteis ao ritmo de agora; em dias
+     ser produzido para entregar. Em dias úteis ao ritmo até o corte; em dias
      corridos ≈ úteis × 7/5, contra o prazo de entrega prometido (PRAZO_ENTREGA).
-     Retrato: o mais recente até o mês de corte; sem nenhum até o corte, o
-     mais recente de todos (a fila é de hoje, o mês vai no rótulo).
+     Retrato: o do mês de corte; sem ele, o do mês seguinte (a Reunião de
+     OUT feita em NOV, com a carteira de NOV). Nunca outro mês: o ritmo que
+     divide a fila é o do corte, e um retrato de outra época daria dois
+     números para a mesma fila (revisão b96.103: 2025 mostrava a fila de
+     NOV/26 ao ritmo de 2025).
      Sem carteira digitada → null (o painel volta ao vendido − faturado). */
   function filaERP(todos, anoCorte, mesCorte, ritmo, prazo) {
-    var com = (todos || []).filter(function (r) { return r && r.carteiraERP > 0; })
-      .sort(function (a, b) {
-        return a.ano !== b.ano ? a.ano - b.ano : _ORDEM_M.indexOf(a.mes) - _ORDEM_M.indexOf(b.mes);
-      });
-    if (!com.length) return null;
-    var iCorte = _ORDEM_M.indexOf(mesCorte), r = null;
-    com.forEach(function (x) {
-      if (!anoCorte || x.ano < anoCorte || (x.ano === anoCorte && (iCorte < 0 || _ORDEM_M.indexOf(x.mes) <= iCorte))) r = x;
-    });
-    if (!r) r = com[com.length - 1];
+    var iC = _ORDEM_M.indexOf(mesCorte);
+    if (!anoCorte || iC < 0) return null;
+    var aS = iC === 11 ? anoCorte + 1 : anoCorte, mS = _ORDEM_M[(iC + 1) % 12];
+    function doMes(a, m) {
+      return (todos || []).filter(function (x) { return x && x.ano === a && x.mes === m && x.carteiraERP > 0; })[0] || null;
+    }
+    var r = doMes(anoCorte, mesCorte) || doMes(aS, mS);
+    if (!r) return null;
     var est = r.estoqueERP > 0 ? r.estoqueERP : 0;
     var o = { mes: r.mes, ano: r.ano, carteira: r.carteiraERP, estoque: est,
               semEstoque: !(r.estoqueERP > 0),
@@ -9483,7 +9484,7 @@ function renderKPIsExtras(d){
     if(FL && FL.diasCorridos!==null){
       card.style.display='';
       if(lbl) lbl.textContent='Fila de pedidos · ERP '+FL.mes+'/'+String(FL.ano).slice(2);
-      sU('kv5-cart', fi(FL.diasCorridos), 'dias');
+      sU('kv5-cart', fi(FL.diasCorridos), 'dias corridos');
       var vF=document.getElementById('kv5-cart');
       if(vF) vF.style.color=FL.cor==='ok'?'var(--green)':(FL.cor==='atencao'?'var(--amber)':(FL.cor==='critico'?'var(--red)':''));
       var kF=document.getElementById('ks5-cart');
@@ -25014,9 +25015,9 @@ window.CompAnos = (function () {
     var filaTxt = '';
     if(FL && FL.diasCorridos!==null){
       var corCart = FL.cor==='ok' ? '#4CAF50' : (FL.cor==='atencao' ? '#FF9800' : (FL.cor==='critico' ? '#F44336' : '#00E5FF'));
-      filaTxt = 'fila '+fi(FL.diasCorridos)+' dias'+(FL.prazo?(' (prazo '+fi(FL.prazo)+')'):'');
+      filaTxt = 'fila '+fi(FL.diasCorridos)+' dias corridos'+(FL.prazo||FL.semEstoque?(' ('+[FL.prazo?'prazo '+fi(FL.prazo):'',FL.semEstoque?'sem estoque':''].filter(Boolean).join(', ')+')'):'');
       b3+=card('Fila de pedidos · ERP '+FL.mes+'/'+String(FL.ano).slice(2),
-               fi(FL.diasCorridos)+' dias',
+               fi(FL.diasCorridos)+' dias corridos',
                fi(FL.fila)+' pç = '+fi(FL.carteira)+' em carteira − '+fi(FL.estoque)+' em estoque'
                +(FL.semEstoque?' <span style="color:#FF9800">(estoque não digitado)</span>':'')
                +'<br>'+fd(FL.diasUteis,1)+' dias úteis a '+fi(FL.ritmo)+' pç/dia'

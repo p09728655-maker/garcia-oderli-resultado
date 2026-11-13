@@ -208,7 +208,7 @@ const ERP = [
   { mes:'NOV', ano:2026, carteiraERP:44000, estoqueERP:16833 }
 ];
 const FL = U.filaERP(ERP, 2026, 'OUT', 1600, 14);
-afirma('sem retrato até OUT, usa o mais recente (NOV/26)', FL && FL.mes === 'NOV' && FL.ano === 2026);
+afirma('Reunião de OUT sem retrato de OUT: usa o do mês seguinte (NOV/26)', FL && FL.mes === 'NOV' && FL.ano === 2026);
 ok('fila = carteira − estoque', FL.fila, 27167, 0);
 ok('dias úteis = 27.167 ÷ 1.600', FL.diasUteis, 16.98, 0.01);
 ok('dias corridos ≈ úteis × 7/5', FL.diasCorridos, 23.77, 0.01);
@@ -217,8 +217,11 @@ afirma('23,8 dias > 1,5 × 14 → crítico', FL.cor === 'critico');
 afirma('dentro do prazo → ok', U.filaERP([{ mes:'NOV', ano:2026, carteiraERP:20000, estoqueERP:5000 }], 2026, 'NOV', 1600, 14).cor === 'ok');
 afirma('sem carteira digitada → null (volta ao vendido − faturado)', U.filaERP([{ mes:'NOV', ano:2026, estoqueERP:5000 }], 2026, 'NOV', 1600, 14) === null);
 afirma('estoque maior que a carteira → fila 0, nunca negativa', U.filaERP([{ mes:'NOV', ano:2026, carteiraERP:1000, estoqueERP:5000 }], 2026, 'NOV', 1600, 14).fila === 0);
-afirma('retrato até o corte vence o mais recente',
-  U.filaERP([{ mes:'SET', ano:2026, carteiraERP:30000 }, { mes:'NOV', ano:2026, carteiraERP:44000 }], 2026, 'OUT', 1600, 14).mes === 'SET');
+afirma('retrato do próprio corte vence o do mês seguinte',
+  U.filaERP([{ mes:'OUT', ano:2026, carteiraERP:30000 }, { mes:'NOV', ano:2026, carteiraERP:44000 }], 2026, 'OUT', 1600, 14).mes === 'OUT');
+afirma('período passado (2025, SET/26) não pega o retrato de NOV/26: volta ao vendido − faturado',
+  U.filaERP(ERP, 2025, 'DEZ', 1533, 30) === null && U.filaERP(ERP, 2026, 'SET', 1600, 30) === null);
+afirma('DEZ olha JAN do ano seguinte', U.filaERP([{ mes:'JAN', ano:2027, carteiraERP:40000 }], 2026, 'DEZ', 1600, 30).mes === 'JAN');
 afirma('sem estoque digitado: avisa', U.filaERP([{ mes:'NOV', ano:2026, carteiraERP:44000 }], 2026, 'NOV', 1600, 14).semEstoque === true);
 afirma('Reunião e Produção & Vendas usam o filaERP com o ritmo da pergunta 1',
   (HTML.match(/DashUtils\.filaERP\(todos, [^)]*FA\.ritmoAtual/g) || []).length === 2);
