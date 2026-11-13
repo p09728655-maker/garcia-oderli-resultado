@@ -21140,6 +21140,19 @@ window.MesEmCurso = (function(){
      "VOL": olhando só a descrição, ele contava duas vezes (RACK e PAINEL
      MARSELHA, entre outros: +2.054 peças em JAN/26, +2.815 em FEV/26). */
   function ehCx(r){ return RE_VOL.test(String(r[3]||'')) || /^501/.test(String(r[2]||'').replace(/\D/g,'')); }
+  /* Meses do ano em que o ReporteVolumes.gs lança volumes ESTIMADOS: as
+     caixas apontadas não chegam ao número de produtos (a régua do
+     rvVolumesDoMes). JAN a MAI/25: o ERP quase não apontava caixa. */
+  function mesesEstimados(ano){
+    var t={};
+    itens().forEach(function(r){
+      if(r[1]!==ano) return;
+      var o=t[r[0]]||(t[r[0]]={cx:0,prod:0});
+      if(ehCx(r)) o.cx+=r[4]; else o.prod+=r[4];
+    });
+    return ORDEM_M.filter(function(m){ var o=t[m]; return o&&!(o.cx>0&&o.cx>=o.prod); });
+  }
+  function rotMeses(ms){ return ms.length>1?ms.slice(0,-1).join(', ')+' e '+ms[ms.length-1]:(ms[0]||''); }
   var DUPLA={MESA:1,MESAS:1,CONJUNTO:1,CANTINHO:1,PAINEL:1,HOME:1,GUARDA:1,PORTA:1,MODULO:1};
   /* "KIT 2 MESA CABECEIRA …" é embalagem, não família: são duas mesas de
      cabeceira numa caixa só. Sem tirar o prefixo, KIT vira família própria e
@@ -21209,12 +21222,18 @@ window.MesEmCurso = (function(){
     meses.forEach(function(m,i){
       var x0=mL+i*passo+passo/2, d=porMes[m];
       barras+='<rect x="'+(x0-larg-2).toFixed(1)+'" y="'+Y(d.prod).toFixed(1)+'" width="'+larg+'" height="'+(mT+gH-Y(d.prod)).toFixed(1)+'" rx="2" fill="#F5A623"><title>'+m+': '+fi(d.prod)+' produtos</title></rect>';
-      if(d.vol>0) barras+='<rect x="'+(x0+2).toFixed(1)+'" y="'+Y(d.vol).toFixed(1)+'" width="'+larg+'" height="'+(mT+gH-Y(d.vol)).toFixed(1)+'" rx="2" fill="#00E5FF"><title>'+m+': '+fi(d.vol)+' volumes</title></rect>';
+      /* mês estimado (caixas apontadas abaixo dos produtos): barra vazada */
+      if(d.vol>0) barras+='<rect x="'+(x0+2).toFixed(1)+'" y="'+Y(d.vol).toFixed(1)+'" width="'+larg+'" height="'+(mT+gH-Y(d.vol)).toFixed(1)+'" rx="2" '
+        +(d.est?'fill="rgba(0,229,255,.15)" stroke="#00E5FF" stroke-dasharray="3 2"':'fill="#00E5FF"')
+        +'><title>'+m+': '+fi(d.vol)+' volumes'+(d.est?' (estimado: caixas apontadas abaixo dos produtos)':'')+'</title></rect>';
       rot+='<text x="'+x0.toFixed(1)+'" y="'+(H-9)+'" text-anchor="middle" font-size="11" fill="#5a86b0">'+m+'</text>';
     });
+    var temEst=meses.some(function(m){ return porMes[m].est&&porMes[m].vol>0; });
     return '<div style="display:flex;gap:16px;font-size:.68rem;color:var(--t2);margin-bottom:6px">'
       +'<span><span style="display:inline-block;width:10px;height:10px;background:#F5A623;border-radius:2px;margin-right:5px"></span>Produtos</span>'
-      +'<span><span style="display:inline-block;width:10px;height:10px;background:#00E5FF;border-radius:2px;margin-right:5px"></span>Volumes</span></div>'
+      +'<span><span style="display:inline-block;width:10px;height:10px;background:#00E5FF;border-radius:2px;margin-right:5px"></span>Volumes</span>'
+      +(temEst?'<span><span style="display:inline-block;width:10px;height:10px;border:1px dashed #00E5FF;background:rgba(0,229,255,.15);border-radius:2px;margin-right:5px;box-sizing:border-box"></span>Volumes estimados</span>':'')
+      +'</div>'
       +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">'+grade+eixo+barras+rot+'</svg>';
   }
 
@@ -21265,6 +21284,7 @@ window.MesEmCurso = (function(){
     var volH=0,kgH=0;
     regs.forEach(function(r){ volH+=(r.volumesProduzidos||r.volumes||r.qtdeVolumes||0); kgH+=(r.quilosProduzidos||r.quilos||r.kg||0); });
     var fator=volH>0&&totProdI>0?volH/totProdI:null;
+    var estPer=mesesEstimados(ano).filter(function(m){ return !_mes||m===_mes; });
 
     /* Pareto */
     var acum=0,n80=0;
@@ -21290,6 +21310,7 @@ window.MesEmCurso = (function(){
       var v=r.volumesProduzidos||r.volumes||r.qtdeVolumes||0;
       if(v>0&&porMes[r.mes]) porMes[r.mes].vol=v;
     });
+    mesesEstimados(ano).forEach(function(m){ if(porMes[m]) porMes[m].est=true; });
 
     var chips='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px">'
       +chip('ANO',_mes==='',"_pcMes('')")
@@ -21300,8 +21321,8 @@ window.MesEmCurso = (function(){
 
     var kpis='<div class="kGrid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">'
       +card('Produtos fabricados', fi(totProdI), rotPer, '#F5A623')
-      +card('Volumes', volH>0?fi(volH):'—', volH>0?'lançados na HISTORICO':'sem lançamento no período', '#00E5FF')
-      +card('Fator de embalagem', fator?fd(fator,2):'—', fator?'volumes ÷ produtos':'—', '#00E5FF')
+      +card('Volumes', volH>0?fi(volH):'—', volH>0?(estPer.length?'estimado em '+rotMeses(estPer):'caixas apontadas no ERP'):'sem lançamento no período', '#00E5FF')
+      +card('Fator de embalagem', fator?fd(fator,2):'—', fator?'volumes ÷ produtos'+(estPer.length?' · com meses estimados':''):'—', '#00E5FF')
       +card('Produtos distintos', fi(lista.length), n80?(n80+' fazem 80% da produção'):'—', '#FF9800')
       +(kgH>0?card('Quilos produzidos', fi(kgH), fd(kgH/totProdI,1)+' kg/produto', '#4CAF50'):'')
       +'</div>';
@@ -21417,6 +21438,13 @@ window.MesEmCurso = (function(){
     var perde=movs.filter(function(f){ return f.dp<0; })[0];
     var msg='Comparando os mesmos <b>'+comuns.length+'</b> '+(comuns.length>1?'meses':'mês')
       +' ('+comuns.join(', ')+') de '+anoAnt+' e '+ano+'. ';
+    var estA=mesesEstimados(anoAnt).filter(function(m){ return comuns.indexOf(m)>=0; });
+    var estB=mesesEstimados(ano).filter(function(m){ return comuns.indexOf(m)>=0; });
+    if(dFator!==null&&(estA.length||estB.length)){
+      msg+='<b>Volumes estimados</b> em '+(estA.length?rotMeses(estA)+'/'+anoAnt:'')
+        +(estA.length&&estB.length?' e ':'')+(estB.length?rotMeses(estB)+'/'+ano:'')
+        +' (caixas não apontadas): o fator não compara a mesma régua. ';
+    }
     if(dFator!==null){
       msg+='Cada produto saiu em <b style="color:'+(dFator>=0?'#FF9800':'#4CAF50')+'">'+fd(B.fator,2)
         +' volumes</b> contra '+fd(A.fator,2)+' — '+(dFator>=0?'mais':'menos')+' caixas por produto ('
@@ -21498,10 +21526,9 @@ window.MesEmCurso = (function(){
        soma. Sem dizer isso, a lista pareceria contradizer o card. */
     var infoVol='';
     if(_tipo==='V'&&!_busca.trim()){
-      var prodPer=doPer.reduce(function(s,r){ return ehCx(r)?s:s+r[4]; },0);
+      var estL=mesesEstimados(_ano).filter(function(m){ return !_mes||m===_mes; });
       infoVol=' — caixas apontadas no reporte, uma linha por código de volume'
-        +(total>0&&total<prodPer?'; abaixo dos '+fi(prodPer)+' produtos do período: o apontamento das caixas'
-          +' estava incompleto e o card Volumes é estimado':'');
+        +(estL.length?'; em '+rotMeses(estL)+' as caixas não foram todas apontadas: o card Volumes é estimado e fica acima desta lista':'');
     }
     el.innerHTML=
       '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px">'
@@ -21571,7 +21598,7 @@ window.MesEmCurso = (function(){
     /* mês a mês (só na visão de ano) */
     var tabMes='';
     if(!_mes){
-      var linhas='';
+      var linhas='', estImp=mesesEstimados(ano);
       ORDEM_M.forEach(function(m){
         var doMes=its.filter(function(r){ return r[0]===m&&!ehCx(r); });
         if(!doMes.length) return;
@@ -21581,7 +21608,7 @@ window.MesEmCurso = (function(){
         var kg=reg.quilosProduzidos||reg.quilos||reg.kg||0, dias=reg.diasTrabalhados||0;
         linhas+='<tr><td><b>'+m+'/'+String(ano).slice(2)+'</b></td>'
           +'<td class="n">'+fi(p)+'</td>'
-          +'<td class="n">'+(v>0?fi(v):'—')+'</td>'
+          +'<td class="n">'+(v>0?fi(v)+(estImp.indexOf(m)>=0?'*':''):'—')+'</td>'
           +'<td class="n">'+(v>0&&p>0?fd(v/p,2):'—')+'</td>'
           +'<td class="n">'+(v>0&&dias>0?fi(v/dias):'—')+'</td>'
           +'<td class="n">'+(kg>0?fi(kg):'—')+'</td></tr>';
@@ -21593,7 +21620,8 @@ window.MesEmCurso = (function(){
         +'<tr style="background:#edf2f7"><td><b>TOTAL</b></td><td class="n"><b>'+fi(totProdI)+'</b></td>'
         +'<td class="n"><b>'+(volH>0?fi(volH):'—')+'</b></td>'
         +'<td class="n"><b>'+(fator?fd(fator,2):'—')+'</b></td><td class="n">—</td>'
-        +'<td class="n"><b>'+(kgH>0?fi(kgH):'—')+'</b></td></tr></tbody></table>';
+        +'<td class="n"><b>'+(kgH>0?fi(kgH):'—')+'</b></td></tr></tbody></table>'
+        +(estImp.length?'<div style="font-size:9px;color:#5B6470;margin-top:4px">* estimado: caixas não apontadas no mês (produto × nº de caixas).</div>':'');
     }
 
     /* Comparativo contra o ano anterior — mesmos meses, mesma régua da tela */
@@ -24717,7 +24745,10 @@ window.CompAnos = (function () {
        carteira tinha caído 7.136 pç desde junho. A frase segue a recente.
        Ressalva: o saldo acumula vendido − faturado desde o início da série,
        então é a VARIAÇÃO da carteira, não o saldo absoluto do ERP. */
-    var b3=card('Produção de '+(anoTodo?ano:mes), fi(A.prod)+' pç',
+    /* b96.99: os volumes (caixas apontadas, HISTORICO) ao lado das peças. */
+    var volPer=(anoTodo?fechados:[rMes]).reduce(function(s,r){ return s+(r.volumesProduzidos||0); },0);
+    var b3=card('Produção de '+(anoTodo?ano:mes), '<span style="white-space:nowrap">'+fi(A.prod)+' pç</span>'
+                +(volPer>0?' <span style="font-size:.55em;color:#00E5FF;font-weight:700;white-space:nowrap">· '+fi(volPer)+' vol</span>':''),
                 fi(A.normal)+' normais + '+fi(A.deHE)+' em hora extra'
                 +(ader!==null?('<br>'+fd(ader,1)+'% do plano com hora extra'):'')
                 +(anoTodo?'':(' · ano '+fi(Y.prod)+' pç')),
@@ -26920,9 +26951,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.98';
+var APP_VERSAO = 'b96.99';
 var APP_DATA   = '13/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.99', data:'13/11/2026', itens:[
+    'Reuniao: o card Producao mostra os volumes ao lado das pecas (OUT/26: 30.478 pc · 34.792 vol).',
+    'Meses com volume ESTIMADO (JAN a MAI/25: caixas nao apontadas) agora aparecem marcados: card Volumes, barra vazada no grafico, comparacao com o ano anterior, nota da lista Volumes (mes a mes) e asterisco na impressao.',
+    'ReporteVolumes.gs: no mes estimado, caixa de produto sem linha no mes volta a contar; aviso novo quando as caixas ficam mais de 5% abaixo do esperado pelos produtos; textos da coluna PENDENCIAS mais curtos. Para valer: colar o .gs no editor do Apps Script e rodar calcularVolumesMes e lancarVolumesNaHistorico.'
+  ]},
   { v:'b96.98', data:'13/11/2026', itens:[
     'Volumes produzidos = as caixas apontadas no reporte do ERP (linha "VOL x/y" ou codigo 501), somadas como vieram: a fabrica produz por volume. Ate a b96.97 a conta era produto x numero de caixas, com o produto ligado a caixa pelo nome, e a caixa da cor irma entrava duas vezes (o produto "RACK FLIP 1.6 OFF WHITE/CINAMOMO" ficava com a caixa "RACK FLIP 1.6 OFF WHITE" e a caixa CINAMOMO era somada de novo).',
     'Atencao: o numero de volumes cai depois de relancar a HISTORICO (no editor: calcularVolumesMes e lancarVolumesNaHistorico). OUT/26: 38.628 -> 34.792; JAN-OUT/26: 379.287 -> 345.786; fator de embalagem 1,25 -> 1,14. JUN/25 a OUT/26 caem entre 2.060 e 6.365 por mes. Os produtos nao mudam.',

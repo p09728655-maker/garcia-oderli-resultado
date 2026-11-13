@@ -38,8 +38,9 @@
  *      funciona. O PESO (kg da linha, como vem no PDF) é opcional para
  *      volumes e fator, e obrigatório para o comparativo de anos medir mix
  *      em peso em vez de só em peças;
- *   3. calcularVolumesMes() — escreve o resumo por mês na própria aba e
- *      lista os produtos sem SKU de volume (pendências de cadastro);
+ *   3. calcularVolumesMes() — escreve o resumo por mês na própria aba
+ *      (VOLUMES = caixas apontadas, ou ESTIMADO) e, nas PENDENCIAS, o que
+ *      conferir: produto sem caixa no mês, caixa sem produto, estimativa;
  *   4. Confira e rode lancarVolumesNaHistorico() — grava volumesProduzidos
  *      (e produtosReportados, se a coluna existir) casando mês+ano.
  *
@@ -81,9 +82,10 @@ function criarAbaReporteVolumes() {
 
 /* ══ 2 · CADASTRO ══
    PRODUTO_CODIGO: A = código do SKU de volume, B = descrição "VOL 1/2 NOME".
-   Devolve nome do produto → quantos volumes ele tem. Usado só para o produto
-   que aparecer no mês SEM linhas de volume: aí a conta usa o cadastro em vez
-   de assumir caixa única. A aba não existir não é erro — vira aproximação. */
+   Devolve nome do produto → quantos volumes ele tem. Usado na ESTIMATIVA
+   (mês com caixas apontadas abaixo dos produtos), para o produto que não tem
+   linha de caixa no mês: aí a conta usa o cadastro em vez de assumir caixa
+   única. A aba não existir não é erro — vira aproximação. */
 function rvLerCadastro(ss) {
   var aba = ss.getSheetByName(RV_ABA_CADASTRO);
   var porProduto = {};
@@ -109,36 +111,17 @@ function calcularVolumesMes() {
   var agr = rvAgruparLinhas(linhas), meses = agr.meses, ordem = agr.ordem;
   if (!ordem.length) return rvErro('Nenhuma linha válida em ' + RV_ABA + ' (MES, ANO, CODIGO, DESCRICAO, QUANTIDADE).');
 
+  var nEst = 0;
   var saida = ordem.map(function (chave) {
     var g = meses[chave];
     var pendentes = rvVolumesDoMes(g, cadastro);
-    /* O contrário da pendência: caixa apontada cujo produto não aparece em
-       lugar nenhum. Some das peças E dos quilos, sem deixar rastro — e a
-       coluna de pendências é o único lugar onde alguém iria procurar. */
-    var orf = rvOrfaosVol(g);
-    var avisos = [];
-    var lista = pendentes.slice(0, 8).join('; ') + (pendentes.length > 8 ? '…' : '');
-    if (g.volOrigem === 'estimado') {
-      avisos.push('ESTIMADO: ' + Math.round(g.cx) + ' caixas apontadas para ' + Math.round(g.prod)
-        + ' produtos (apontamento das caixas incompleto) — volumes = produto × nº de caixas');
-      if (pendentes.length) {
-        avisos.push(pendentes.length + ' produto(s) sem SKU de volume (contados como 1 caixa): ' + lista);
-      }
-    } else if (pendentes.length) {
-      avisos.push(pendentes.length + ' produto(s) sem caixa apontada no mês (não somam volume; conferir nome ou SKU de volume): ' + lista);
-    }
-    if (orf.pecas > 0) {
-      avisos.push('FORA DA CONTA: ' + orf.nomes.length + ' produto(s) só como VOL ('
-        + orf.pecas + ' peças, ' + Math.round(orf.peso) + ' kg) — ' + orf.nomes.slice(0, 5).join('; ')
-        + (orf.nomes.length > 5 ? '…' : ''));
-    }
-    return [g.mes, g.ano, g.vol, g.prod, g.prod > 0 ? g.vol / g.prod : '', avisos.join(' | ')];
+    if (g.volOrigem === 'estimado') nEst++;
+    return [g.mes, g.ano, g.vol, g.prod, g.prod > 0 ? g.vol / g.prod : '', rvAvisosDoMes(g, pendentes, rvOrfaosVol(g))];
   });
 
   var alt = Math.max(aba.getLastRow() - 1, 1);
   aba.getRange(2, RV_COL_RESUMO, alt, 6).clearContent();
   aba.getRange(2, RV_COL_RESUMO, saida.length, 6).setValues(saida);
-  var nEst = saida.filter(function (l) { return /^ESTIMADO/.test(l[5]); }).length;
   rvAvisar('Resumo calculado para ' + saida.length + ' mês(es). VOLUMES = caixas apontadas no reporte. '
     + (nEst ? nEst + ' mês(es) ESTIMADO(S): as caixas apontadas não chegam ao número de produtos. ' : '')
     + 'Confira VOLUMES e PRODUTOS e rode lancarVolumesNaHistorico().');
@@ -207,7 +190,10 @@ function rvAgruparLinhas(linhas) {
    caixas estava incompleto (JAN a MAI/25: 44 a 153 linhas de caixa contra
    ~200 de produto). Só aí vale produto × nº de caixas: o grupo do mês mais
    específico que case com o produto (rvGrupoDoProduto), senão o cadastro,
-   senão 1 caixa. Nada é somado em dobro: a estimativa sai só dos produtos.
+   senão 1 caixa; mais as caixas de produto sem linha no mês. A caixa de um
+   produto que tem linha nunca entra de novo. g.volEst guarda essa conta
+   também nos meses apontados: é a régua do aviso de caixas abaixo do
+   esperado (rvAvisosDoMes).
 
    Devolve os nomes a conferir: com as caixas, os produtos que não têm caixa
    no mês (não somam nada — caixa em outro mês, nome diferente ou SKU de
@@ -224,6 +210,11 @@ function rvVolumesDoMes(g, cadastro) {
     if (nVols > 0) est += p.qtd * nVols;
     else { est += p.qtd; semCadastro[p.nome] = true; }
   });
+  /* Caixa de produto que não tem linha no mês (a mesma régua do aviso de
+     órfão, rvOrfaosVol): entra como apontada, senão some da estimativa. */
+  Object.keys(g.grupos).forEach(function (nv) {
+    if (!rvGrupoTemProduto(nv, g.produtos)) est += g.grupos[nv].q;
+  });
   g.volEst = est;
   if (g.cx > 0 && g.cx >= g.prod) {
     g.vol = g.cx;
@@ -233,6 +224,37 @@ function rvVolumesDoMes(g, cadastro) {
   g.vol = est;
   g.volOrigem = 'estimado';
   return Object.keys(semCadastro);
+}
+
+/* Algum produto do mês casa com o grupo de caixas? Mesma régua do
+   rvOrfaosVol: começo de nome ou abreviação. */
+function rvGrupoTemProduto(nv, produtos) {
+  return produtos.some(function (p) { return p.nome.indexOf(nv) === 0 || rvAbrevia(nv, p.nome); });
+}
+
+/* A coluna PENDENCIAS do resumo: curta, o que conferir. */
+var RV_ABAIXO_ESPERADO = 0.05;
+function rvAvisosDoMes(g, pend, orf) {
+  function lista(a, n) { return a.slice(0, n).join('; ') + (a.length > n ? '…' : ''); }
+  var av = [];
+  if (g.volOrigem === 'estimado') {
+    av.push('ESTIMADO: ' + Math.round(g.cx) + ' caixas para ' + Math.round(g.prod) + ' produtos');
+    if (pend.length) av.push(pend.length + ' sem cadastro de volume (1 caixa): ' + lista(pend, 8));
+  } else {
+    /* Caixas bem abaixo do que os produtos pedem: apontamento de caixa
+       faltando, que caixa a mais de produto de 2+ volumes pode esconder da
+       régua cx >= produtos. */
+    if (g.volEst > 0 && g.cx < g.volEst * (1 - RV_ABAIXO_ESPERADO)) {
+      av.push('CAIXAS ' + Math.round((1 - g.cx / g.volEst) * 100) + '% ABAIXO DO ESPERADO ('
+        + Math.round(g.volEst) + ')');
+    }
+    if (pend.length) av.push(pend.length + ' produto(s) sem caixa no mês: ' + lista(pend, 8));
+  }
+  if (orf && orf.pecas > 0) {
+    av.push(orf.nomes.length + ' produto(s) só em caixa (' + orf.pecas + ' pç e ' + Math.round(orf.peso)
+      + ' kg fora dos produtos): ' + lista(orf.nomes, 5));
+  }
+  return av.join(' | ');
 }
 
 /* O grupo de caixas (nome → n) que corresponde ao produto. Começo de nome
@@ -737,8 +759,8 @@ function rvProcessarParciais() {
       feitos.push(pdf.getName() + ' → ' + g.mes + '/' + g.ano + ' até ' + per.fim + ': ' + g.prod + ' produtos, '
         + g.vol + ' volumes' + (g.volOrigem === 'estimado' ? ' (ESTIMADO: caixas apontadas abaixo dos produtos)' : '')
         + ' em ' + linhas.length + ' linhas' + confere
-        + (orf.pecas > 0 ? '. ATENÇÃO: ' + orf.nomes.length + ' produto(s) só como VOL ficaram FORA da conta ('
-            + orf.pecas + ' peças, ' + Math.round(orf.peso) + ' kg) — refaça com Tipo: P' : ''));
+        + (orf.pecas > 0 ? '. ATENÇÃO: ' + orf.nomes.length + ' produto(s) só em caixa: as caixas contam nos volumes, '
+            + orf.pecas + ' peças e ' + Math.round(orf.peso) + ' kg ficam fora dos produtos' : ''));
     } catch (e) {
       falhas.push(pdf.getName() + ': ' + (e && e.message || e));
     }

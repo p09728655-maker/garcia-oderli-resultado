@@ -10,8 +10,8 @@
    distinguir, um corte parcial na pasta mensal substitui o mês inteiro,
    vira produtosReportados e o painel fecha setembro com metade das peças —
    sem erro nenhum na tela. A régua que separa os dois é a data final do
-   período; este teste a prende, junto com o agrupamento produto × volume
-   que o corte parcial reaproveita do resumo mensal.
+   período; este teste a prende, junto com a conta dos volumes (as caixas
+   apontadas, ou ESTIMADO) que o corte parcial reaproveita do resumo mensal.
 
    E o leitor de linhas: a conversão do Google entrega todas as linhas de
    uma página num parágrafo só, separadas por espaço. A régua antiga, linha
@@ -28,7 +28,7 @@ const path = require('path');
 
 function carregarRV() {
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'ReporteVolumes.gs'), 'utf8');
-  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvGrupoDoProduto, rvTotalGeralDoTexto, rvConferirTotal, rvGravarParcial, rvNum, RV_RE_VOL, rvTipoDoTexto, rvConferirTipo, rvOrfaosVol, RV_TIPO_OK, rvSepararComponentes, rvTextoComponentes };';
+  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvGrupoDoProduto, rvGrupoTemProduto, rvAvisosDoMes, rvTotalGeralDoTexto, rvConferirTotal, rvGravarParcial, rvNum, RV_RE_VOL, rvTipoDoTexto, rvConferirTipo, rvOrfaosVol, RV_TIPO_OK, rvSepararComponentes, rvTextoComponentes };';
   return new Function('Logger', src + '\n' + exp)({ log() {} });
 }
 const RV = carregarRV();
@@ -358,6 +358,41 @@ sec('Estimado — caixas apontadas abaixo dos produtos (JAN a MAI/25)');
     ['JUN', 2026, '1', 'RACK X BRANCO', 10], ['JUN', 2026, '501.000.001', 'VOL 1/1 RACK X BRANCO', 10]]);
   const g = a.meses['JUN/2026']; RV.rvVolumesDoMes(g, {});
   afirma('caixas = produtos → vale o apontado (caixas)', g.volOrigem === 'caixas' && g.vol === 10);
+}
+
+{
+  /* Caixa de produto sem linha no mês, num mês estimado: entra como
+     apontada (até a b96.97 entrava; a 1ª versão da b96.98 a perdia). */
+  const a = RV.rvAgruparLinhas([
+    ['MAI', 2025, '100.009.001', 'TOUCADOR MAGIC NEW BRANCO', 100],
+    ['MAI', 2025, '501.072.001', 'VOL 1/3 HOME RIPADO ANTARES 1.8 CINAMOMO', 40]]);
+  const g = a.meses['MAI/2025']; RV.rvVolumesDoMes(g, {});
+  afirma('40 caixas para 100 produtos → estimado', g.volOrigem === 'estimado');
+  ok('estimativa = 100 × 1 + as 40 caixas do HOME sem produto no mês', g.vol, 140, 0);
+}
+
+sec('rvAvisosDoMes — a coluna PENDENCIAS, curta');
+{
+  const orf0 = { nomes: [], pecas: 0, peso: 0 };
+  const est = RV.rvAvisosDoMes({ volOrigem: 'estimado', cx: 6235, prod: 31041 }, ['MESA CABECEIRA PRIME BRANCO'], orf0);
+  afirma('estimado começa por ESTIMADO, com caixas e produtos', /^ESTIMADO: 6235 caixas para 31041 produtos/.test(est));
+  afirma('estimado lista o que foi contado como 1 caixa', /1 sem cadastro de volume \(1 caixa\): MESA CABECEIRA PRIME BRANCO/.test(est));
+  const ap = RV.rvAvisosDoMes({ volOrigem: 'caixas', cx: 34792, prod: 30478, volEst: 34967 }, ['BANQUETA VERSATIL CINANOMO'],
+    { nomes: ['BANQUETA VERSATIL CINAMOMO'], pecas: 129, peso: 870.75 });
+  afirma('apontado: produto sem caixa no mês', /1 produto\(s\) sem caixa no mês: BANQUETA VERSATIL CINANOMO/.test(ap));
+  afirma('apontado: produto só em caixa, dizendo que as peças ficam fora dos produtos', /1 produto\(s\) só em caixa \(129 pç e 871 kg fora dos produtos\)/.test(ap));
+  afirma('caixas a 0,5% do esperado (OUT/26) → sem aviso de caixas abaixo', !/ABAIXO DO ESPERADO/.test(ap));
+  /* 100 TOUCADOR de 2 caixas com as 200 caixas + 100 RACK de caixa única sem
+     linha de caixa: cx = produtos, a régua cx >= produtos passa — o aviso pega. */
+  const a = RV.rvAgruparLinhas([
+    ['JUN', 2025, '100.009.001', 'TOUCADOR MAGIC NEW BRANCO', 100],
+    ['JUN', 2025, '501.009.001', 'VOL 1/2 TOUCADOR MAGIC NEW BRANCO', 100],
+    ['JUN', 2025, '501.009.002', 'VOL 2/2 TOUCADOR MAGIC NEW BRANCO', 100],
+    ['JUN', 2025, '105.001.001', 'RACK BRITO 137 CM BRANCO FOSCO', 100]]);
+  const g = a.meses['JUN/2025']; const p = RV.rvVolumesDoMes(g, {});
+  afirma('caixas = produtos → apontado (200)', g.volOrigem === 'caixas' && g.vol === 200);
+  afirma('e o aviso diz CAIXAS 33% ABAIXO DO ESPERADO (300)', /^CAIXAS 33% ABAIXO DO ESPERADO \(300\)/.test(RV.rvAvisosDoMes(g, p, RV.rvOrfaosVol(g))));
+  afirma('mês sem nada a conferir → vazio', RV.rvAvisosDoMes({ volOrigem: 'caixas', cx: 10, prod: 10, volEst: 10 }, [], orf0) === '');
 }
 
 sec('rvGrupoDoProduto — o grupo mais específico');
