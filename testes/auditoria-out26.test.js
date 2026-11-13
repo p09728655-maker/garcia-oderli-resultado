@@ -110,14 +110,22 @@ const FV = U.fechamentoAno(ANOV, 2026, 'OUT', { feriados: FER, diaFim: 18 });
 ok('venda contra o plano: 346.395 ÷ 305.937', FV.pctVenda, (346395 / 305937 - 1) * 100);
 afirma('sem venda lançada → null, nunca 0', F.pctVenda === null);
 const VV = U.vereditoAno(FV);
-afirma('com a venda acima do plano a decisão é PRAZO, não plano', /13,2% acima do plano/.test(VV.acao) && /prazos de entrega/.test(VV.acao) && !/repactuar o plano/.test(VV.acao));
+afirma('com a venda acima do plano a decisão é PRAZO, não plano (curta: a venda está no Por quê)', /prazos de entrega/.test(VV.acao) && !/repactuar o plano/.test(VV.acao) && VV.acao.length < 120);
 afirma('e a frase diz a venda', /Venda do ano: 13,2% acima do plano/.test(VV.frase.replace(/<[^>]+>/g, '')));
 afirma('sem a venda, a decisão de antes', /repactuar o plano com a área comercial/.test(V.acao));
 afirma('mês em que a venda não foi lançada não entra na conta da venda', (() => {
   const x = ANOV.map(r => r.mes === 'OUT' ? Object.assign({}, r, { qtdeVendida: 0 }) : r);
   const f = U.fechamentoAno(x, 2026, 'OUT', { feriados: FER });
   return Math.abs(f.pctVenda - ((346395 - 38213) / (305937 - 34810) - 1) * 100) < 0.01; })());
-afirma('Reunião: a 1ª linha do gráfico é a conta do título', /rot:'Para fechar o ano'[\s\S]{0,260}dem:FA\.ritmoAtual, exg:FA\.ritmoExigido, f:FA\.folgaFechar/.test(HTML));
+sec('b96.101: Fechamos o ano? — precisa × fazemos, por quê, decisão');
+afirma('as duas barras são a conta do título, na mesma régua',
+  /barraQ1\('Precisa','para fechar o ano',FA\.ritmoExigido/.test(HTML) && /barraQ1\('Fazemos',[\s\S]{0,120}FA\.ritmoAtual,corF\(FA\.folgaFechar\)\)/.test(HTML)
+  && /escQ1=Math\.max\(FA\.ritmoExigido\|\|0,FA\.ritmoAtual\|\|0\)/.test(HTML));
+afirma('as 4 barras com exigidos diferentes saíram', !/linhasRit/.test(HTML));
+afirma('Por quê: acumulado, sem hora extra e venda, uma frase cada',
+  /t:'Até '\+refAno\+': <b>'/.test(HTML) && /t:'Sem hora extra: <b>'/.test(HTML) && /t:'Venda: <b>'/.test(HTML));
+afirma('a base da conta fica recolhida', /<summary style="cursor:pointer">Como a conta sai<\/summary>/.test(HTML));
+afirma('Apresentar: a fala é curta, precisa × fazemos', /\. Precisa '\+fi\(FA\.ritmoExigido\)\+' pç\/dia, fazemos '\+fi\(FA\.ritmoAtual\)/.test(HTML));
 afirma('Reunião: vendido − faturado não se chama carteira e diz que não é a do ERP',
   /card\('Vendido − faturado'/.test(HTML) && /não é a carteira do ERP<br>/.test(HTML) && !/b3\+=card\('Carteira a faturar'/.test(HTML));
 

@@ -7284,7 +7284,7 @@ window.DashUtils = (function() {
         v.titulo = 'NÃO FECHA NO RITMO ATUAL'; v.cor = '#F44336';
         v.frase = acum + falta + ' (' + fN(Math.abs(f), 1) + '% abaixo do necessário).';
         v.acao = F.pctVenda !== null && F.pctVenda > 0
-          ? 'A venda está ' + fN(F.pctVenda, 1) + '% acima do plano: aumentar capacidade (turno, headcount ou hora extra estrutural) ou repactuar prazos de entrega com o comercial.'
+          ? 'Aumentar capacidade (turno, headcount ou hora extra estrutural) ou repactuar prazos de entrega com o comercial.'
           : 'Decidir entre aumentar capacidade (turno, headcount ou hora extra estrutural) ou repactuar o plano com a área comercial.';
       }
       v.frase += v.venda;
@@ -25020,10 +25020,10 @@ window.CompAnos = (function () {
     var c3 = corAc;
 
     _falas = {
-      abertura: (VA&&VA.pct!==null)
-        ? (VA.titulo+' · faltam '+fi(FA.saldo)+' pç em '+FA.diasRestantes+' dias úteis = '+fi(FA.ritmoExigido)
-           +' pç/dia, contra '+fi(FA.ritmoAtual)+' pç/dia '+(FA.ritmoRecente!==null?'dos últimos '+(FA.mesesRecente||[]).length+' meses':'do ano')+' com hora extra'
-           +(FA.pctVenda!==null?(' · venda '+fd(Math.abs(FA.pctVenda),1)+'% '+(FA.pctVenda>=0?'acima':'abaixo')+' do plano'):''))
+      /* b96.101: a fala do Apresentar na mesma forma da tela: curta. */
+      abertura: (VA&&VA.pct!==null&&FA.ritmoExigido>0)
+        ? (VA.titulo+'. Precisa '+fi(FA.ritmoExigido)+' pç/dia, fazemos '+fi(FA.ritmoAtual)
+           +'. Faltam '+fi(FA.saldo)+' pç em '+FA.diasRestantes+' dias úteis.')
         : ((VA&&FA.mesesAcum>0)?VA.titulo:r1),
       cAbertura: (VA&&FA.mesesAcum>0)?VA.cor:c1,
       r1:r1, c1:c1,
@@ -25062,72 +25062,81 @@ window.CompAnos = (function () {
        sem conta nova. Em SET/26 o card dizia 1.673 no mês e a manchete −9,6%
        no ano, e só a 4ª linha do card ligava os dois. Ano sem Plano Mestre
        apurado (2025): só a linha do período, como o card fazia. */
-    var linhasRit=[];
+    /* b96.101: "Fechamos o ano?" o mais fácil de entender (PPCP, 13/11/2026:
+       "frases sempre curtas e diretas"). Três partes:
+         1) PRECISA × FAZEMOS na mesma régua: o título sai dessa conta;
+         2) POR QUÊ em até 3 frases curtas (acumulado, hora extra, venda);
+         3) a DECISÃO.
+       As 4 barras com exigidos diferentes (1.752, 1.500, 1.500, 1.658)
+       saíram: quem lia tinha de comparar cada barra com a própria régua. O
+       ritmo do mês sem hora extra é a pergunta 2. A base da conta fica num
+       "Como a conta sai" recolhido. */
     var refAno=FA.mesRef+'/'+String(ano).slice(2);
     var corF=function(f){ return (f===null||f===undefined)?'#00E5FF':(f>=0?'#4CAF50':(f>-5?'#FF9800':'#F44336')); };
-    /* b96.97: duas leituras do ano, cada uma com o próprio exigido — com hora
-       extra mede o volume; só jornada normal mede a dependência de HE. */
-    /* b96.100: a 1ª linha é a conta do título (ritmo atual × exigido para
-       fechar). Antes o −14,8% do título não aparecia em barra nenhuma, e a 1ª
-       barra dizia −0,5% (contra o plano JÁ PASSADO). */
-    if(FA.ritmoExigido>0 && FA.ritmoAtual>0){
-      var mrA=FA.mesesRecente||[], rotA=FA.ritmoRecente!==null&&mrA.length?(mrA[0]+(mrA.length>1?' a '+mrA[mrA.length-1]:'')):'ano';
-      linhasRit.push({ rot:'Para fechar o ano', sub:'ritmo de '+rotA+' com hora extra · exigido até '+FA.fimAno.slice(8,10)+'/'+FA.fimAno.slice(5,7),
-        dem:FA.ritmoAtual, exg:FA.ritmoExigido, f:FA.folgaFechar, cor:corF(FA.folgaFechar) });
-    }
-    if(FA.mesesAcum>0 && FA.planoAcum>0 && FA.diasAcum>0){
-      linhasRit.push({ rot:'Ano até '+refAno, sub:'com hora extra · volume', dem:FA.ritmoComHE, exg:FA.planoAcum/FA.diasAcum, f:FA.pctVolume, cor:corF(FA.pctVolume) });
-      if(FA.ritmoSemHE!==null) linhasRit.push({ rot:'Ano até '+refAno, sub:'só jornada normal · dependência', dem:FA.ritmoSemHE, exg:FA.ritmoPlanoNormal, f:FA.pctJornada, cor:corF(FA.pctJornada) });
-    }
-    if(!anoTodo && ritDem!==null) linhasRit.push({ rot:'Ritmo de '+mes, sub:'sem hora extra', dem:ritDem, exg:ritExg, f:folga, cor:corRit });
-    var escRit=linhasRit.reduce(function(m,l){ return Math.max(m,l.dem||0,l.exg||0); },0)*1.08;
-    var pE=function(v){ return (escRit>0?Math.min(100,v/escRit*100):0).toFixed(1)+'%'; };
-    var barrasRit=linhasRit.map(function(l){
-      return '<div style="font-size:.8rem;color:var(--t1);line-height:1.25">'+l.rot+'<div style="font-size:.68rem;color:var(--t2)">'+(l.sub||'sem hora extra')+'</div></div>'
-        +'<div class="reu-rit-trilho" style="position:relative;height:22px;background:var(--input);border-radius:3px;margin-top:14px">'
-          +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+pE(l.dem)+';background:'+l.cor+';border-radius:3px"></div>'
-          +(l.exg>0?('<div class="reu-rit-m" style="position:absolute;left:'+pE(l.exg)+';top:-5px;bottom:-5px;border-left:2px dashed #F5F5F5"></div>'
-            +'<span class="reu-rit-ml" style="position:absolute;left:'+pE(l.exg)+';top:-17px;transform:translateX(-60%);font-size:.68rem;color:var(--t2);white-space:nowrap">exigido '+fi(l.exg)+'</span>'):'')
-        +'</div>'
-        +'<div style="text-align:right;white-space:nowrap"><span class="reu-rit-v" style="font-family:var(--mono);font-size:1.05rem;font-weight:800">'+fi(l.dem)+'</span>'
-          +(l.f!==null&&l.f!==undefined&&isFinite(l.f)?(' <span style="font-family:var(--mono);font-size:.85rem;font-weight:700;color:'+l.cor+'">'+pct(l.f)+'</span>'):'')
-          +'<div style="font-size:.66rem;color:var(--t2)">pç/dia'+(l.exg>0?'':' · sem plano')+'</div></div>';
-    }).join('');
     var temManchete = FA.mesesAcum>0 && FA.planoAno>0;
     var corQ1 = temManchete ? VA.cor : 'var(--t2)';
+    var temConta = temManchete && FA.ritmoExigido>0 && FA.ritmoAtual>0;
+    var mrA=FA.mesesRecente||[];
+    var rotA=FA.ritmoRecente!==null&&mrA.length?(mrA[0]+(mrA.length>1?' a '+mrA[mrA.length-1]:'')):'do ano';
+    var dmQ1=FA.fimAno.slice(8,10)+'/'+FA.fimAno.slice(5,7);
     var cabQ1 = temManchete
-      ? ('<div style="display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap">'
+      ? ('<div style="display:flex;align-items:baseline;gap:6px 16px;flex-wrap:wrap">'
           +'<span class="reu-manchete" style="font-size:1.45rem;font-weight:800;color:'+VA.cor+'">'+VA.titulo+'</span>'
-          +(VA.pct!==null?('<span style="font-family:var(--mono);font-size:1.05rem;font-weight:800;color:'+VA.cor+'">'+pct(VA.pct)+'</span>'
-            +'<span style="font-size:.72rem;color:var(--t2)">'+VA.pctRot+'</span>'):'')+'</div>')
+          +(FA.saldo>0&&FA.diasRestantes>0?('<span class="reu-frase" style="font-size:1rem;color:var(--t1)">Faltam <b>'+fi(FA.saldo)+' pç</b> em <b>'
+            +FA.diasRestantes+' dias úteis</b> (até '+dmQ1+').</span>'):'')+'</div>')
       : '';
-    var fecharTxt = temManchete ? VA.frase : '';
-    var alertaQ1 = (temManchete&&VA.alerta)
-      ? ('<div class="reu-frase" style="font-size:.82rem;color:var(--t1);line-height:1.45;padding:7px 11px;border-left:3px solid '+VA.alerta.cor+';background:var(--input);border-radius:4px">'+VA.alerta.texto+'</div>')
+    var escQ1=Math.max(FA.ritmoExigido||0,FA.ritmoAtual||0)*1.08;
+    var barraQ1=function(rot,sub,v,cor){
+      return '<div style="font-size:.95rem;font-weight:800;color:var(--t1);line-height:1.2">'+rot+'<div style="font-size:.7rem;font-weight:400;color:var(--t2)">'+sub+'</div></div>'
+        +'<div class="reu-rit-trilho" style="position:relative;height:26px;background:var(--input);border-radius:3px">'
+          +'<div style="position:absolute;left:0;top:0;bottom:0;width:'+(escQ1>0?Math.min(100,v/escQ1*100):0).toFixed(1)+'%;background:'+cor+';border-radius:3px"></div></div>'
+        +'<div style="text-align:right;white-space:nowrap"><span class="reu-rit-v" style="font-family:var(--mono);font-size:1.25rem;font-weight:800">'+fi(v)+'</span>'
+          +'<span style="font-size:.72rem;color:var(--t2)"> pç/dia</span></div>';
+    };
+    var difQ1 = temConta ? FA.ritmoAtual-FA.ritmoExigido : null;
+    var contaQ1 = temConta
+      ? ('<div style="display:grid;grid-template-columns:130px minmax(0,1fr) 150px;gap:8px 14px;align-items:center">'
+          +barraQ1('Precisa','para fechar o ano',FA.ritmoExigido,'#9AA5B1')
+          +barraQ1('Fazemos','ritmo '+(FA.ritmoRecente!==null?'de ':'')+rotA+', com hora extra',FA.ritmoAtual,corF(FA.folgaFechar))
+        +'</div>'
+        +'<div class="reu-frase" style="font-size:1.05rem;font-weight:800;color:'+corF(FA.folgaFechar)+'">'
+          +(difQ1<0?('Faltam '+fi(-difQ1)+' pç por dia'):('Sobram '+fi(difQ1)+' pç por dia'))+' ('+pct(FA.folgaFechar)+').</div>')
       : '';
-    /* Base de cada número, à vista: dias pelo calendário, plano restante e o
-       realizado contra o ano inteiro (10 de 12 meses), que não é aderência. */
+    /* Por quê: uma frase curta por fato, com a cor do próprio fato. */
+    var porque=[];
+    if(temManchete&&FA.planoAcum>0)
+      porque.push({ cor:corMeta(FA.aderAcum,100), t:'Até '+refAno+': <b>'+fd(FA.aderAcum,1)+'%</b> do plano ('+(FA.desvioAcum>=0?'+':'−')+fi(Math.abs(FA.desvioAcum))+' pç).' });
+    if(temManchete&&FA.pctJornada!==null&&FA.pctJornada<0)
+      porque.push({ cor:FA.pctJornada>-5?'#FF9800':'#F44336', t:'Sem hora extra: <b>'+fi(FA.ritmoSemHE)+' pç/dia</b>, '+fd(Math.abs(FA.pctJornada),1)+'% abaixo do plano.' });
+    if(temManchete&&FA.pctVenda!==null)
+      porque.push({ cor:FA.pctVenda>0?'#FF9800':'var(--t2)', t:'Venda: <b>'+fd(Math.abs(FA.pctVenda),1)+'% '+(FA.pctVenda>=0?'acima':'abaixo')+'</b> do plano.' });
+    var porqueQ1 = porque.length
+      ? ('<div><div style="font-size:.66rem;font-weight:800;letter-spacing:.1em;color:var(--t2);text-transform:uppercase;margin-bottom:4px">Por quê</div>'
+          +porque.map(function(x){ return '<div class="reu-frase" style="font-size:.9rem;color:var(--t1);line-height:1.5;padding-left:10px;border-left:3px solid '+x.cor+';margin-bottom:4px">'+x.t+'</div>'; }).join('')
+        +'</div>')
+      : '';
+    /* Aviso que muda a conta fica à vista; o resto da base, recolhido. */
+    var avisoQ1 = temManchete&&(FA.semFeriados||FA.semReal.length)
+      ? ('<div style="font-size:.78rem;color:#FF9800">'+(FA.semFeriados?'Sem a aba FERIADOS: feriado conta como dia útil. ':'')
+          +(FA.semReal.length?('Sem produção lançada: '+FA.semReal.join(', ')+'.'):'')+'</div>')
+      : '';
     var baseQ1 = temManchete
-      ? ('<div style="font-size:.7rem;color:var(--t2);line-height:1.45">Saldo = plano do ano '+fi(FA.planoAno)+' − realizado '+fi(FA.realAcum)
-          +' · plano restante (meses depois de '+FA.mesRef+') '+fi(FA.planoRestante)+' pç'
-          +' · dias úteis: segunda a sexta menos a aba FERIADOS, de 1º/'+String(ORDEM_M.indexOf(FA.mesRef)+2).padStart(2,'0')+' até '+FA.fimAno.slice(8,10)+'/12 (último dia de produção, aba METAS)'
-          +(FA.semFeriados?' · <b style="color:#FF9800">sem a aba FERIADOS: feriado conta como dia útil</b>':'')
-          +' · realizado = '+fd(FA.pctAno,1)+'% do plano do ano inteiro ('+FA.mesesAcum+' de 12 meses)'
-          +(FA.semReal.length?(' · <b style="color:#FF9800">sem produção lançada: '+FA.semReal.join(', ')+'</b>'):'')+'</div>')
+      ? ('<details class="reu-noprint" style="font-size:.72rem;color:var(--t2);line-height:1.5"><summary style="cursor:pointer">Como a conta sai</summary>'
+          +'Saldo = plano do ano '+fi(FA.planoAno)+' − realizado '+fi(FA.realAcum)+'.<br>'
+          +'Dias úteis: de 1º/'+String(ORDEM_M.indexOf(FA.mesRef)+2).padStart(2,'0')+' até '+dmQ1+', sem fim de semana e sem a aba FERIADOS.<br>'
+          +'Precisa = saldo ÷ dias úteis. Fazemos = produção ÷ dias trabalhados'+(FA.ritmoRecente!==null?(' de '+rotA+' (no ano, '+fi(FA.ritmoComHE)+')'):'')+'.<br>'
+          +'Plano dos meses depois de '+FA.mesRef+': '+fi(FA.planoRestante)+' pç.</details>')
       : '';
     var respQ1 = temManchete ? '' : 'sem plano ou produção lançada no ano';
     var q1 = bloco('1','Fechamos o ano?', respQ1, corQ1,
       '<div style="display:flex;flex-wrap:wrap;gap:12px 28px;align-items:stretch">'
-        +'<div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:10px">'
-          +cabQ1
-          +(barrasRit?('<div style="display:grid;grid-template-columns:150px minmax(0,1fr) 150px;gap:6px 14px;align-items:center">'+barrasRit+'</div>'):'')
-          +(fecharTxt?('<div class="reu-frase" style="font-size:.84rem;color:var(--t1);line-height:1.45">'+fecharTxt+'</div>'):'')
-          +alertaQ1+baseQ1
+        +'<div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px">'
+          +cabQ1+contaQ1+porqueQ1+avisoQ1+baseQ1
           +'<div class="reu-noprint"><button type="button" class="btn btn-g btn-sm" onclick="reuIr(\'mestre\')" title="Ritmo mês a mês, plano e lotes">Ver o Planejamento Mestre ›</button></div>'
         +'</div>'
         +(temManchete&&VA.acao?('<div class="reu-decisao" style="flex:1 1 280px;background:var(--input);border:1px solid var(--b2);border-radius:var(--r);padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:6px">'
           +'<div style="font-size:.66rem;font-weight:800;letter-spacing:.1em;color:var(--t2);text-transform:uppercase">Decisão</div>'
-          +'<div class="reu-frase" style="font-size:.92rem;font-weight:700;color:var(--t1);line-height:1.4">'+VA.acao+'</div></div>'):'')
+          +'<div class="reu-frase" style="font-size:.98rem;font-weight:700;color:var(--t1);line-height:1.4">'+VA.acao+'</div></div>'):'')
       +'</div>', corQ1);
 
     /* ── 2 · O plano coube sem hora extra? ── os cards e as duas leituras de
@@ -26999,9 +27008,14 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.100';
+var APP_VERSAO = 'b96.101';
 var APP_DATA   = '13/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.101', data:'13/11/2026', itens:[
+    'Reuniao, Fechamos o ano?: mais facil de ler. Precisa x fazemos em duas barras na mesma regua (1.752 x 1.600 pc/dia). Faltam 152 pc por dia.',
+    'Por que em tres frases curtas: acumulado do ano, sem hora extra, venda contra o plano. A conta fica em "Como a conta sai", recolhido.',
+    'Sairam as 4 barras com exigidos diferentes. O ritmo do mes sem hora extra continua na pergunta 2. Decisao e fala do Apresentar mais curtas.'
+  ]},
   { v:'b96.100', data:'13/11/2026', itens:[
     'Fechamos o ano? (Reuniao, Briefing e Planejamento Mestre): o ritmo atual passa a ser o dos ultimos 3 meses com hora extra, nao a media do ano. Atencao: OUT/26 vai de -14,8% (1.493 pc/dia, puxado por JAN a 1.320) para -8,7% (1.600 pc/dia de AGO a OUT) contra 1.752 exigidas; segue NAO FECHA. O ritmo do ano continua na frase, entre parenteses.',
     'Reuniao: a 1a barra do grafico e a conta do titulo (Para fechar o ano: ritmo atual contra o exigido). Antes o -14,8% do titulo nao aparecia em barra nenhuma e a 1a barra dizia -0,5%.',
