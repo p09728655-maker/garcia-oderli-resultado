@@ -24,7 +24,7 @@
  * METAS — uma linha por meta (chave | valor | unidade | vigencia | origem |
  *   observacao). doGet devolve em `metas`; o painel sobrescreve as constantes
  *   META_ABS, ABS_ATENCAO, META_DEP_HE, META_TICKET, DUTEIS, PROD_ERP_DESDE,
- *   DIA_FIM_ANO, PRAZO_ENTREGA e CUSTO_HORA com o que estiver aqui (valor 0 ou vazio é ignorado). O app NÃO escreve nesta aba: meta se muda na planilha,
+ *   DIA_FIM_ANO, PRAZO_ENTREGA, ANTECEDENCIA_CAP e CUSTO_HORA com o que estiver aqui (valor 0 ou vazio é ignorado). O app NÃO escreve nesta aba: meta se muda na planilha,
  *   com origem e vigência, não no navegador. Rode criarAbaMetas() uma vez.
  *
  * ACOES — plano de ação da Reunião do Mês (uma linha por ação/decisão).
@@ -86,6 +86,7 @@ var METAS_PADRAO = [
   ['PROD_ERP_DESDE', 2025, 'ano', '2025-01', 'PPCP',   'A partir deste ano, producaoReal = produtosReportados (total do relatório REPORTE do ERP, produtos acabados). Antes disso vale o digitado.'],
   ['DIA_FIM_ANO', 18,  'dia', '2026-11', 'PPCP',      'Último dia de produção do ano, em dezembro (depois é recesso). Base dos dias úteis restantes: segunda a sexta menos a aba FERIADOS até este dia'],
   ['PRAZO_ENTREGA', 30, 'dias', '2026-11', 'Comercial', 'Prazo de entrega prometido ao cliente, em dias corridos. O painel compara a fila de pedidos (carteiraERP − estoqueERP, ao ritmo atual) com ele'],
+  ['ANTECEDENCIA_CAP', 30, 'dias', '2026-11', 'PPCP', 'Dias que a fábrica leva para aumentar capacidade (contratar e treinar, ou abrir turno). O aviso de capacidade × venda chega com essa folga antes de a fila passar do prazo'],
   ['CUSTO_HORA',  0,   'R$/h','2026-10', 'RH',        'Custo da hora normal dos diretos, com encargos. O painel põe a hora extra em reais: extra50 × 1,5 + extra100 × 2, vezes este valor (sem o reflexo no DSR). 0 = ainda não cadastrado: o card diz que falta o custo-hora']
 ];
 
