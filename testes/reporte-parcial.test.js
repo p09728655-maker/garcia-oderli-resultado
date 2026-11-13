@@ -28,7 +28,7 @@ const path = require('path');
 
 function carregarRV() {
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'ReporteVolumes.gs'), 'utf8');
-  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvTotalGeralDoTexto, rvConferirTotal, rvGravarParcial, rvNum, RV_RE_VOL, rvTipoDoTexto, rvConferirTipo, rvOrfaosVol, RV_TIPO_OK, rvSepararComponentes, rvTextoComponentes };';
+  const exp = 'return { rvPeriodoDoTexto, rvUltimoDiaDoMes, rvLinhasDoTexto, rvAgruparLinhas, rvVolumesDoMes, rvGrupoDoProduto, rvTotalGeralDoTexto, rvConferirTotal, rvGravarParcial, rvNum, RV_RE_VOL, rvTipoDoTexto, rvConferirTipo, rvOrfaosVol, RV_TIPO_OK, rvSepararComponentes, rvTextoComponentes };';
   return new Function('Logger', src + '\n' + exp)({ log() {} });
 }
 const RV = carregarRV();
@@ -115,16 +115,20 @@ afirma('uma peça a menos (54.341 contra Geral 54.342) → recusa', (() => { try
 afirma('só arredondamento (54.342,4 contra 54.342) → passa', /confere/.test(RV.rvConferirTotal([['SET',2026,'x','y',54342.4,0]], 'Geral 54.342,000 1,000')));
 
 /* ══ Agrupamento — a régua compartilhada entre resumo mensal e corte parcial ══ */
-sec('rvAgruparLinhas + rvVolumesDoMes — produto × caixas');
+sec('rvAgruparLinhas + rvVolumesDoMes — volumes = caixas apontadas');
 const agr = RV.rvAgruparLinhas(L);
 afirma('um mês agrupado: SET/2026', agr.ordem.length === 1 && agr.ordem[0] === 'SET/2026');
 const g = agr.meses['SET/2026'];
 ok('produtos = 259 + 94 + 1 (linhas VOL não somam)', g.prod, 354, 0);
+ok('caixas apontadas = 259 + 250 (as linhas VOL, como vieram)', g.cx, 509, 0);
 ok('peso só dos produtos = 4.299,4 + 1.560,4 + 39,5', g.peso, 5899.3, 0.001);
 afirma('grupo VOL do TOUCADOR BRANCO com 2 caixas', g.grupos['TOUCADOR MAGIC NEW BRANCO'] && g.grupos['TOUCADOR MAGIC NEW BRANCO'].n === 2);
 const pend = RV.rvVolumesDoMes(g, { 'TOUCADOR MAGIC NEW OFF WHITE': 3 });
-ok('volumes = 259×2 (VOL do mês) + 94×3 (cadastro) + 1×1 (sem nada)', g.vol, 801, 0);
-afirma('pendência = só a SAPATEIRA (sem VOL e sem cadastro)', pend.length === 1 && pend[0] === 'SAPATEIRA SPAZIO BRANCO');
+ok('volumes = as caixas apontadas (509), não produto × caixas', g.vol, 509, 0);
+afirma('origem: caixas', g.volOrigem === 'caixas');
+ok('a estimativa fica guardada: 259×2 + 94×3 (cadastro) + 1×1', g.volEst, 801, 0);
+afirma('a conferir = os produtos sem caixa no mês (OFF WHITE e SAPATEIRA)',
+  pend.length === 2 && pend.indexOf('TOUCADOR MAGIC NEW OFF WHITE') >= 0 && pend.indexOf('SAPATEIRA SPAZIO BRANCO') >= 0);
 afirma('lista vazia → nenhum mês', RV.rvAgruparLinhas([]).ordem.length === 0);
 afirma('linha sem quantidade é ignorada', RV.rvAgruparLinhas([['SET', 2026, '1', 'X', 0, 0]]).ordem.length === 0);
 
@@ -188,7 +192,7 @@ afirma('sem linha Tipo passa, dizendo que não conferiu',
   /sem linha/.test(RV.rvConferirTipo('Relatório\nx')));
 afirma('Tipo P é RECUSADO, e o erro diz o que se perde', (() => {
   try { RV.rvConferirTipo('Tipo: P - PRODUTOS ACABADOS\nx'); return false; }
-  catch (e) { return /Tipo: Todos/.test(e.message) && /38\.499/.test(e.message) && /Nada foi gravado/.test(e.message); }
+  catch (e) { return /Tipo: Todos/.test(e.message) && /caixas apontadas/.test(e.message) && /estimados/.test(e.message) && /Nada foi gravado/.test(e.message); }
 })());
 
 /* ══ VOL órfão — o que o casamento de nomes deixa passar ══
@@ -277,6 +281,94 @@ sec('Caixa 501 sem "VOL" (produto de volume único) não conta como produto');
   RV.rvVolumesDoMes(g, {});
   ok('volumes: 275 + 29 + 130 × 2', g.vol, 564);
   afirma('nenhuma caixa órfã', RV.rvOrfaosVol(g).nomes.length === 0);
+}
+
+/* ══ A caixa da cor irmã — o defeito que inflou a HISTORICO ══
+   Até a b96.97 o produto ficava com o PRIMEIRO grupo cujo nome começasse o
+   dele: "RACK FLIP 1.6 OFF WHITE/CINAMOMO" casava com a caixa "RACK FLIP 1.6
+   OFF WHITE", e a caixa da própria cor sobrava e era somada de novo. OUT/26
+   real: 38.628 lançados contra 34.792 caixas apontadas. Linhas de OUT/26. */
+sec('Volumes = caixas apontadas — a caixa da cor irmã não conta duas vezes');
+{
+  const a = RV.rvAgruparLinhas([
+    ['OUT', 2026, '105.029.006', 'RACK FLIP 1.8 OFF WHITE', 20],
+    ['OUT', 2026, '105.029.079', 'RACK FLIP 1.8 OFF WHITE/CUMARU', 10],
+    ['OUT', 2026, '105.029.118', 'RACK FLIP 1.8 OFF WHITE/CINAMOMO', 320],
+    ['OUT', 2026, '501.083.119', 'VOL 1/1 RACK FLIP 1.8 OFF WHITE', 20],
+    ['OUT', 2026, '501.083.120', 'VOL 1/1 RACK FLIP 1.8 OFF WHITE/CUMARU', 10],
+    ['OUT', 2026, '501.083.121', 'VOL 1/1 RACK FLIP 1.8 OFF WHITE/CINAMOMO', 320]]);
+  const g = a.meses['OUT/2026']; RV.rvVolumesDoMes(g, {});
+  afirma('RACK FLIP 1.8: caixas apontadas', g.volOrigem === 'caixas');
+  ok('volumes = 20 + 10 + 320 caixas (a conta antiga dava 680)', g.vol, 350, 0);
+}
+{
+  /* RACK FLIP 1.6 de OUT/26: 205 caixas para 206 produtos — sozinho, cai na
+     estimativa; ela também não pode somar a caixa da cor irmã de novo. */
+  const a = RV.rvAgruparLinhas([
+    ['OUT', 2026, '105.032.006', 'RACK FLIP 1.6 OFF WHITE', 61],
+    ['OUT', 2026, '105.032.079', 'RACK FLIP 1.6 OFF WHITE/CUMARU', 6],
+    ['OUT', 2026, '105.032.118', 'RACK FLIP 1.6 OFF WHITE/CINAMOMO', 139],
+    ['OUT', 2026, '501.083.006', 'VOL 1/1 RACK FLIP 1.6 OFF WHITE', 61],
+    ['OUT', 2026, '501.083.079', 'VOL 1/1 RACK FLIP 1.6 OFF WHITE/CUMARU', 6],
+    ['OUT', 2026, '501.083.118', 'VOL 1/1 RACK FLIP 1.6 OFF WHITE/CINAMOMO', 138]]);
+  const g = a.meses['OUT/2026']; RV.rvVolumesDoMes(g, {});
+  afirma('RACK FLIP 1.6 sozinho: 205 caixas < 206 produtos → estimado', g.volOrigem === 'estimado');
+  ok('estimativa 61 + 6 + 139, cada cor com a caixa dela (a conta antiga dava 350)', g.vol, 206, 0);
+}
+{
+  /* "BANQUETA VERSATIL CINANOMO" (digitado errado no ERP) × caixa "…CINAMOMO":
+     o nome não casa. A conta antiga somava 129 do produto + 129 da caixa. */
+  const a = RV.rvAgruparLinhas([
+    ['OUT', 2026, '118.001.116', 'BANQUETA VERSATIL CINANOMO', 129],
+    ['OUT', 2026, '501.140.003', 'VOL 1/1 BANQUETA VERSATIL CINAMOMO', 129]]);
+  const g = a.meses['OUT/2026']; const p = RV.rvVolumesDoMes(g, {});
+  ok('BANQUETA CINANOMO: 129 volumes, não 258', g.vol, 129, 0);
+  afirma('e o produto fica na lista a conferir', p.length === 1 && p[0] === 'BANQUETA VERSATIL CINANOMO');
+}
+{
+  /* HOME RIPADO: 3 caixas por produto, as caixas apontadas não fecham com o
+     produto (são feitas em separado) — vale o que foi apontado. */
+  const a = RV.rvAgruparLinhas([
+    ['OUT', 2026, '106.045.117', 'HOME RIPADO SUPREMO 2.3 CINAMOMO/OFF WHI', 180],
+    ['OUT', 2026, '501.070.004', 'VOL 1/3 HOME RIPADO SUPREMO 2.3 CINAMOMO', 183],
+    ['OUT', 2026, '501.070.005', 'VOL 2/3 HOME RIPADO SUPREMO 2.3 CINAMOMO', 180],
+    ['OUT', 2026, '501.070.006', 'VOL 3/3 HOME RIPADO SUPREMO 2.3 CINAMOMO', 181]]);
+  const g = a.meses['OUT/2026']; RV.rvVolumesDoMes(g, {});
+  ok('HOME RIPADO: 183 + 180 + 181 caixas, não 180 × 3', g.vol, 544, 0);
+}
+
+sec('Estimado — caixas apontadas abaixo dos produtos (JAN a MAI/25)');
+{
+  const a = RV.rvAgruparLinhas([
+    ['JAN', 2025, '114.001.001', 'PENTEADEIRA DUDA BRANCO', 100],
+    /* caixa antiga com código 1xx: é caixa pela descrição (real em JAN/25) */
+    ['JAN', 2025, 114001007, 'VOL 01/02 PENTEADEIRA DUDA BRANCO', 75],
+    ['JAN', 2025, '100.009.001', 'TOUCADOR MAGIC NEW BRANCO', 50],
+    ['JAN', 2025, '103.010.001', 'MESA CABECEIRA PRIME BRANCO', 20]]);
+  const g = a.meses['JAN/2025'];
+  ok('caixa 114001007 "VOL 01/02" é caixa, não produto', g.prod, 170, 0);
+  ok('caixas apontadas = 75', g.cx, 75, 0);
+  const p = RV.rvVolumesDoMes(g, { 'TOUCADOR MAGIC NEW BRANCO': 2 });
+  afirma('75 caixas para 170 produtos → ESTIMADO', g.volOrigem === 'estimado');
+  ok('estimativa: 100 × 2 (grupo do mês) + 50 × 2 (cadastro) + 20 × 1, sem somar as 75', g.vol, 320, 0);
+  afirma('a conferir = o que não tem caixa nem cadastro', p.length === 1 && p[0] === 'MESA CABECEIRA PRIME BRANCO');
+}
+{
+  const a = RV.rvAgruparLinhas([
+    ['JUN', 2026, '1', 'RACK X BRANCO', 10], ['JUN', 2026, '501.000.001', 'VOL 1/1 RACK X BRANCO', 10]]);
+  const g = a.meses['JUN/2026']; RV.rvVolumesDoMes(g, {});
+  afirma('caixas = produtos → vale o apontado (caixas)', g.volOrigem === 'caixas' && g.vol === 10);
+}
+
+sec('rvGrupoDoProduto — o grupo mais específico');
+{
+  const G = { 'RACK FLIP 1.6 OFF WHITE': 1, 'RACK FLIP 1.6 OFF WHITE/CINAMOMO': 1 };
+  afirma('CINAMOMO fica com a caixa CINAMOMO', RV.rvGrupoDoProduto('RACK FLIP 1.6 OFF WHITE/CINAMOMO', G) === 'RACK FLIP 1.6 OFF WHITE/CINAMOMO');
+  afirma('OFF WHITE fica com a caixa OFF WHITE (abreviação não ganha do começo de nome)',
+    RV.rvGrupoDoProduto('RACK FLIP 1.6 OFF WHITE', G) === 'RACK FLIP 1.6 OFF WHITE');
+  afirma('abreviação vale quando nenhum nome começa o do produto',
+    RV.rvGrupoDoProduto('PENTEADEIRA CAMARIM 1PT 2GAV DIAMANTE BRANCO', { 'PENT CAMARIM 1PT 2GAV DIAMANTE B': 1 }) === 'PENT CAMARIM 1PT 2GAV DIAMANTE B');
+  afirma('nada casa → null', RV.rvGrupoDoProduto('MESA CABECEIRA SLEEP BRANCO', G) === null);
 }
 
 console.log(`\n${total - falhas}/${total} passaram` + (falhas ? ` — ${falhas} FALHA(S)\n` : '\n'));

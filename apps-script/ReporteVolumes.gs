@@ -8,8 +8,10 @@
  * Por isso o total geral do relatório não serve direto: é preciso separar as
  * duas famílias. Este script faz essa separação e devolve, por mês:
  *
- *   VOLUMES  = linhas VOL + produtos sem SKU de volume (1 caixa = 1 volume,
- *              ou × volumes do cadastro quando a PRODUTO_CODIGO conhecer);
+ *   VOLUMES  = as caixas apontadas: soma das linhas de caixa ("VOL x/y" na
+ *              descrição ou código 501), como vieram. A fábrica produz por
+ *              volume (PPCP, 13/11/2026). Mês em que as caixas apontadas não
+ *              chegam ao número de produtos é estimado (ver rvVolumesDoMes);
  *   PRODUTOS = linhas de produto acabado;
  *   FATOR    = volumes ÷ produtos — mesma fonte, mesma competência.
  *
@@ -115,9 +117,15 @@ function calcularVolumesMes() {
        coluna de pendências é o único lugar onde alguém iria procurar. */
     var orf = rvOrfaosVol(g);
     var avisos = [];
-    if (pendentes.length) {
-      avisos.push(pendentes.length + ' produto(s) sem SKU de volume (contados como 1 caixa): '
-        + pendentes.slice(0, 8).join('; ') + (pendentes.length > 8 ? '…' : ''));
+    var lista = pendentes.slice(0, 8).join('; ') + (pendentes.length > 8 ? '…' : '');
+    if (g.volOrigem === 'estimado') {
+      avisos.push('ESTIMADO: ' + Math.round(g.cx) + ' caixas apontadas para ' + Math.round(g.prod)
+        + ' produtos (apontamento das caixas incompleto) — volumes = produto × nº de caixas');
+      if (pendentes.length) {
+        avisos.push(pendentes.length + ' produto(s) sem SKU de volume (contados como 1 caixa): ' + lista);
+      }
+    } else if (pendentes.length) {
+      avisos.push(pendentes.length + ' produto(s) sem caixa apontada no mês (não somam volume; conferir nome ou SKU de volume): ' + lista);
     }
     if (orf.pecas > 0) {
       avisos.push('FORA DA CONTA: ' + orf.nomes.length + ' produto(s) só como VOL ('
@@ -130,8 +138,10 @@ function calcularVolumesMes() {
   var alt = Math.max(aba.getLastRow() - 1, 1);
   aba.getRange(2, RV_COL_RESUMO, alt, 6).clearContent();
   aba.getRange(2, RV_COL_RESUMO, saida.length, 6).setValues(saida);
-  rvAvisar('Resumo calculado para ' + saida.length + ' mês(es). Confira VOLUMES e PRODUTOS e rode lancarVolumesNaHistorico(). '
-    + 'Produto listado como pendência: cadastre os SKUs de volume dele na ' + RV_ABA_CADASTRO + ' para a conta ficar exata.');
+  var nEst = saida.filter(function (l) { return /^ESTIMADO/.test(l[5]); }).length;
+  rvAvisar('Resumo calculado para ' + saida.length + ' mês(es). VOLUMES = caixas apontadas no reporte. '
+    + (nEst ? nEst + ' mês(es) ESTIMADO(S): as caixas apontadas não chegam ao número de produtos. ' : '')
+    + 'Confira VOLUMES e PRODUTOS e rode lancarVolumesNaHistorico().');
 }
 
 /* Agrupa linhas [MES, ANO, CODIGO, DESCRICAO, QUANTIDADE, (PESO)] por mês,
@@ -147,7 +157,7 @@ function rvAgruparLinhas(linhas) {
     if (RV_MESES.indexOf(mes) < 0 || !ano || !desc || !qtd) return;
     var chave = mes + '/' + ano;
     if (!meses[chave]) {
-      meses[chave] = { mes: mes, ano: ano, vol: 0, prod: 0, peso: 0, grupos: {}, produtos: [] };
+      meses[chave] = { mes: mes, ano: ano, vol: 0, cx: 0, prod: 0, peso: 0, grupos: {}, produtos: [] };
       ordem.push(chave);
     }
     var g = meses[chave], m = desc.match(RV_RE_VOL);
@@ -167,6 +177,7 @@ function rvAgruparLinhas(linhas) {
       grp.n = Math.max(grp.n, parseInt(m[2], 10) || 1);
       grp.q += qtd;
       grp.p += rvNum(l[5]);
+      g.cx += qtd;
     } else {
       g.prod += qtd;
       g.peso += rvNum(l[5]);
@@ -176,38 +187,71 @@ function rvAgruparLinhas(linhas) {
   return { meses: meses, ordem: ordem };
 }
 
-/* Preenche g.vol de um mês agrupado e devolve os produtos sem SKU de volume.
-   VOLUMES = quantidade do produto × nº de caixas dele.
-   Somar as linhas VOL parecia mais direto, mas elas divergem do produto
-   quando a caixa é apontada em mês diferente (39 de 138 produtos em
-   JAN/26), e aí o fator chega a ficar abaixo de 1 — impossível, já que
-   nenhum produto sai em menos de uma caixa. Multiplicar é imune a essa
-   defasagem: cada unidade produzida gera as caixas que a embalagem dela
-   exige. O nº de caixas vem da estrutura VOL x/de do próprio mês; sem
-   linha VOL, vem do cadastro; sem cadastro, 1 caixa. */
+/* Preenche g.vol de um mês agrupado e diz de onde ele saiu (g.volOrigem).
+
+   VOLUMES = AS CAIXAS APONTADAS (g.cx): a soma das linhas de caixa do mês,
+   como vieram, sem ligar caixa a produto. A fábrica produz por volume
+   (PPCP, 13/11/2026): a caixa é a unidade produzida, e a caixa de um mês
+   pode fechar o produto no mês seguinte — por isso caixa e produto do mesmo
+   mês não precisam bater um a um.
+
+   Até a b96.97 a conta era produto × nº de caixas, com o produto ligado à
+   caixa pelo NOME: valia o primeiro grupo cujo nome começasse o do produto.
+   "RACK FLIP 1.6 OFF WHITE/CINAMOMO" ficava com a caixa "RACK FLIP 1.6 OFF
+   WHITE", a caixa da própria cor sobrava e era somada de novo como "caixa
+   sem produto". OUT/26 saía 38.628 contra 34.792 caixas apontadas (+11%);
+   de JUN/25 a OUT/26, todo mês entre +2.060 e +6.365.
+
+   ESTIMADO: caixas apontadas abaixo do número de produtos não fecham —
+   nenhum produto sai em menos de uma caixa —, então o apontamento das
+   caixas estava incompleto (JAN a MAI/25: 44 a 153 linhas de caixa contra
+   ~200 de produto). Só aí vale produto × nº de caixas: o grupo do mês mais
+   específico que case com o produto (rvGrupoDoProduto), senão o cadastro,
+   senão 1 caixa. Nada é somado em dobro: a estimativa sai só dos produtos.
+
+   Devolve os nomes a conferir: com as caixas, os produtos que não têm caixa
+   no mês (não somam nada — caixa em outro mês, nome diferente ou SKU de
+   volume faltando); estimado, os que não têm caixa nem cadastro (contados
+   como 1 caixa). */
 function rvVolumesDoMes(g, cadastro) {
-  var pend = {}, usados = {};
+  var semCaixa = {}, semCadastro = {}, est = 0;
   g.produtos.forEach(function (p) {
-    var achou = null;
-    Object.keys(g.grupos).some(function (nv) {
-      if (p.nome.indexOf(nv) === 0 || rvAbrevia(nv, p.nome)) { achou = nv; return true; }
-      return false;
-    });
-    if (achou) { g.vol += p.qtd * g.grupos[achou].n; usados[achou] = true; return; }
-    var nVols = 0;
-    Object.keys(cadastro).some(function (nc) {
-      if (p.nome.indexOf(nc) === 0 || rvAbrevia(nc, p.nome)) { nVols = cadastro[nc]; return true; }
-      return false;
-    });
-    if (nVols > 0) { g.vol += p.qtd * nVols; }
-    else           { g.vol += p.qtd; pend[p.nome] = true; }
+    var nv = rvGrupoDoProduto(p.nome, g.grupos);
+    if (nv) { est += p.qtd * g.grupos[nv].n; return; }
+    semCaixa[p.nome] = true;
+    var nc = rvGrupoDoProduto(p.nome, cadastro || {});
+    var nVols = nc ? cadastro[nc] : 0;
+    if (nVols > 0) est += p.qtd * nVols;
+    else { est += p.qtd; semCadastro[p.nome] = true; }
   });
-  /* Linhas VOL sem produto correspondente no mês: entram como reportadas,
-     senão a caixa apontada some da conta. */
-  Object.keys(g.grupos).forEach(function (nv) {
-    if (!usados[nv]) g.vol += g.grupos[nv].q;
+  g.volEst = est;
+  if (g.cx > 0 && g.cx >= g.prod) {
+    g.vol = g.cx;
+    g.volOrigem = 'caixas';
+    return Object.keys(semCaixa);
+  }
+  g.vol = est;
+  g.volOrigem = 'estimado';
+  return Object.keys(semCadastro);
+}
+
+/* O grupo de caixas (nome → n) que corresponde ao produto. Começo de nome
+   ganha da abreviação e, entre os que começam, o mais LONGO — o mais
+   específico: "RACK FLIP 1.6 OFF WHITE/CINAMOMO" fica com a caixa
+   "…OFF WHITE/CINAMOMO", não com a "…OFF WHITE". Abreviação ("PENT
+   CAMARIM" × "PENTEADEIRA CAMARIM") só quando nenhum nome começa o do
+   produto, e entre elas a de nº de palavras mais perto do produto. */
+function rvGrupoDoProduto(nome, grupos) {
+  var melhor = null, nPal = rvPalavras(nome).length, abr = null, dAbr = Infinity;
+  Object.keys(grupos).forEach(function (nv) {
+    if (nome.indexOf(nv) === 0) {
+      if (!melhor || nv.length > melhor.length) melhor = nv;
+    } else if (rvAbrevia(nv, nome)) {
+      var d = Math.abs(rvPalavras(nv).length - nPal);
+      if (d < dAbr || (d === dAbr && nv.length > abr.length)) { abr = nv; dAbr = d; }
+    }
   });
-  return Object.keys(pend);
+  return melhor || abr;
 }
 
 /* ══ 4 · LANÇAMENTO NA HISTORICO ══
@@ -445,13 +489,12 @@ function rvUltimoDiaDoMes(ano, mes) { return new Date(Date.UTC(ano, mes, 0)).get
 
    O certo é "Todos", e a conta com os PDFs reais mostra por quê:
 
-     AGO/26 (Todos) → 32.364 produtos, 806.235 kg, 40.281 volumes.
-                      Os volumes saem das próprias linhas VOL e batem
-                      exatamente com o que está lançado na HISTORICO.
+     AGO/26 (Todos) → 32.364 produtos, 806.235 kg e as linhas VOL: 36.875
+                      caixas apontadas, que são os VOLUMES (b96.98; até a
+                      b96.97 a conta por nome lançou 40.281 na HISTORICO).
      JUN/26 (P)     → 30.851 produtos e 776.854 kg certos, mas sem linha VOL
-                      o resumo cai para 1 caixa por produto e dá 30.851
-                      volumes contra 38.499 reais: erra 7.648 (−20%) e
-                      lista os 181 produtos como pendência de cadastro.
+                      não há caixa apontada: os volumes caem na estimativa
+                      pelo cadastro, no lugar das 35.088 caixas do "Todos".
 
    Ou seja: as peças e os quilos saem iguais nos dois, porque o leitor separa
    produto de VOL pela descrição; os VOLUMES só existem no "Todos".
@@ -480,7 +523,7 @@ function rvConferirTipo(texto) {
   if (tipo === RV_TIPO_OK) return ' (Tipo: Todos)';
   throw new Error('o PDF foi gerado com "Tipo: ' + tipo + '" — refaça o relatório com '
     + '"Tipo: Todos". As peças e os quilos saem certos nos dois, mas sem as linhas VOL os VOLUMES '
-    + 'passam a ser estimados pelo cadastro: em JUN/26 isso dá 30.851 volumes contra 38.499 reais. '
+    + 'deixam de ser as caixas apontadas e passam a ser estimados pelo cadastro. '
     + 'Nada foi gravado');
 }
 
@@ -692,7 +735,8 @@ function rvProcessarParciais() {
                             new Date().toISOString(), pdf.getName()]);
       rvMoverParaProcessados(pasta, pdf);
       feitos.push(pdf.getName() + ' → ' + g.mes + '/' + g.ano + ' até ' + per.fim + ': ' + g.prod + ' produtos, '
-        + g.vol + ' volumes em ' + linhas.length + ' linhas' + confere
+        + g.vol + ' volumes' + (g.volOrigem === 'estimado' ? ' (ESTIMADO: caixas apontadas abaixo dos produtos)' : '')
+        + ' em ' + linhas.length + ' linhas' + confere
         + (orf.pecas > 0 ? '. ATENÇÃO: ' + orf.nomes.length + ' produto(s) só como VOL ficaram FORA da conta ('
             + orf.pecas + ' peças, ' + Math.round(orf.peso) + ' kg) — refaça com Tipo: P' : ''));
     } catch (e) {
@@ -773,8 +817,9 @@ var RV_PM_TOTAL  = 'TOTAL GERAL';
 var RV_PM_LINHA  = 'TOTAL VOLUMES';
 /* Colunas da matriz: A = rótulo, B..M = jan..dez, N = TOTAL ANO, O = fator. */
 var RV_PM_COL_JAN = 2, RV_PM_COL_DEZ = 13, RV_PM_COL_TOTAL = 14, RV_PM_COL_FATOR = 15;
-/* Fator inicial: realizado JAN–JUL/26 (254.821 volumes ÷ 210.961 produtos). */
-var RV_PM_FATOR_INICIAL = 1.208;
+/* Fator inicial: caixas apontadas ÷ produtos, JAN–OUT/26 (345.786 ÷ 304.477).
+   Era 1,208, da conta por nome que contava caixa duas vezes (b96.97). */
+var RV_PM_FATOR_INICIAL = 1.136;
 
 function criarLinhaTotalVolumes() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -811,7 +856,7 @@ function criarLinhaTotalVolumes() {
   aba.getRange(nova, RV_PM_COL_TOTAL).setFormula('=SUM(B' + nova + ':M' + nova + ')');
 
   rvAvisar('Linha ' + RV_PM_LINHA + ' criada abaixo da ' + RV_PM_TOTAL + ' com fator '
-    + RV_PM_FATOR_INICIAL + ' (realizado JAN–JUL/26). Ajuste o fator na coluna O ou digite '
+    + RV_PM_FATOR_INICIAL + ' (caixas apontadas JAN–OUT/26). Ajuste o fator na coluna O ou digite '
     + 'os meses direto. Reimplante o Web App para o dashboard passar a ler o plano em volumes.');
 }
 

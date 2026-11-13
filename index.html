@@ -21135,7 +21135,6 @@ window.MesEmCurso = (function(){
 (function(){
   var ORDEM_M=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
   var RE_VOL=/^VOL\.?\s*\d+\s*\/\s*\d+\s+/i;
-  var RE_VOL_N=/^VOL\.?\s*(\d+)\s*\/\s*(\d+)\s+/i;   /* captura o "de" (nº de caixas) */
   /* Caixa = descrição "VOL x/y" OU código 501 (grupo VOLUME do ERP). Produto
      de caixa única vem com o código 501 e a MESMA descrição do produto, sem
      "VOL": olhando só a descrição, ele contava duas vezes (RACK e PAINEL
@@ -21154,22 +21153,6 @@ window.MesEmCurso = (function(){
     var p=String(desc).trim().toUpperCase().replace(RE_KIT,'').split(/\s+/);
     return DUPLA[p[0]]&&p[1]?p[0]+' '+p[1]:p[0];
   }
-  /* A linha VOL abrevia e trunca a descrição ("PENT CAMARIM" para
-     "PENTEADEIRA CAMARIM", "CONJ 2 MESAS" para "CONJUNTO 2 MESAS"). Sem
-     tratar isso, o produto não é reconhecido como já embalado e conta 1
-     caixa além das linhas VOL dele. Cada palavra do VOL tem de ser começo
-     da palavra correspondente do produto — palavra diferente reprova. */
-  var STOP_ABR={DO:1,DA:1,DE:1,DOS:1,DAS:1,E:1};
-  function palavras(s){
-    return String(s||'').toUpperCase().split(/[\s\/]+/).filter(function(t){ return t&&!STOP_ABR[t]; });
-  }
-  function abrevia(nomeVol,nomeProduto){
-    var a=palavras(nomeVol), b=palavras(nomeProduto), n=Math.min(a.length,b.length);
-    if(n<2) return false;
-    for(var i=0;i<n;i++){ if(b[i].indexOf(a[i])!==0&&a[i].indexOf(b[i])!==0) return false; }
-    return true;
-  }
-
   var _mes='', _tipo='P', _busca='', _ano=null;
   /* Sincronia em mão única com o filtro lateral: UM mês marcado na sidebar
      define o mês desta aba; os chips daqui continuam mandando depois disso.
@@ -21479,48 +21462,23 @@ window.MesEmCurso = (function(){
     var el=document.getElementById('pc-lista'); if(!el) return;
     var doPer=itens().filter(function(r){ return r[1]===_ano&&(!_mes||r[0]===_mes); });
     var agg={};
-    function add(cod,desc,q,unica,nCx){
-      if(!agg[cod]) agg[cod]={cod:cod,desc:desc,q:0,unica:!!unica,n:nCx||0};
+    function add(cod,desc,q){
+      if(!agg[cod]) agg[cod]={cod:cod,desc:desc,q:0};
       agg[cod].q+=q;
-      if(!unica) agg[cod].unica=false;
-      if(nCx) agg[cod].n=Math.max(agg[cod].n,nCx);
     }
     if(_tipo==='V'){
-      /* Volumes = quantidade do produto × nº de caixas dele (mesma regra do
-         lançamento). Mês a mês: o nº de caixas sai da estrutura VOL x/de do
-         próprio mês, e um produto pode ganhar SKU de volume no meio do ano. */
-      var porMesLista={};
-      doPer.forEach(function(r){ (porMesLista[r[0]]=porMesLista[r[0]]||[]).push(r); });
-      Object.keys(porMesLista).forEach(function(m){
-        var rs=porMesLista[m], grupos={};
-        rs.forEach(function(r){
-          var mm=r[3].match(RE_VOL_N);
-          if(!mm){ if(!ehCx(r)) return; mm=[0,'1','1']; }   /* caixa 501 sem "VOL": caixa única */
-          var nome=r[3].replace(RE_VOL,'').trim().toUpperCase();
-          var g=grupos[nome]||(grupos[nome]={n:1,q:0,cod:r[2],desc:r[3]});
-          g.n=Math.max(g.n,parseInt(mm[2],10)||1); g.q+=r[4];
-        });
-        var usados={};
-        rs.forEach(function(r){
-          if(ehCx(r)) return;
-          var nome=r[3].trim().toUpperCase(), achou=null;
-          Object.keys(grupos).some(function(nv){
-            if(nome.indexOf(nv)===0||abrevia(nv,nome)){ achou=nv; return true; }
-            return false;
-          });
-          if(achou){ add(r[2],r[3],r[4]*grupos[achou].n,false,grupos[achou].n); usados[achou]=true; }
-          else add(r[2],r[3],r[4],true,1);           /* caixa única, sem SKU de volume */
-        });
-        /* linha VOL sem produto no mês: entra como reportada */
-        Object.keys(grupos).forEach(function(nv){
-          if(!usados[nv]) add(grupos[nv].cod,grupos[nv].desc,grupos[nv].q,false,0);
-        });
-      });
+      /* Volumes = as caixas apontadas no reporte ("VOL x/y" ou código 501),
+         uma linha por código de volume, como vieram — a mesma conta do
+         ReporteVolumes.gs que lança na HISTORICO (b96.98). A fábrica produz
+         por volume (PPCP, 13/11/2026). Até a b96.97 era produto × nº de
+         caixas com o produto ligado à caixa pelo nome, e a caixa da cor irmã
+         entrava duas vezes (OUT/26: 38.628 contra 34.792 caixas). */
+      doPer.forEach(function(r){ if(ehCx(r)) add(r[2],r[3],r[4]); });
     } else {
       doPer.forEach(function(r){
         var ehVol=ehCx(r);
         if(_tipo==='P'&&ehVol) return;
-        add(r[2],r[3],r[4],false);
+        add(r[2],r[3],r[4]);
       });
     }
     var linhas=Object.keys(agg).map(function(k){ return agg[k]; });
@@ -21533,16 +21491,17 @@ window.MesEmCurso = (function(){
 
     var tipos=[['P','Produtos'],['V','Volumes'],['T','Tudo']];
     var chipsTipo=tipos.map(function(t){ return chip(t[1],_tipo===t[0],"_pcTipo('"+t[0]+"')"); }).join('');
-    /* No filtro Volumes, a lista mostra só quem tem SKU de volume próprio
-       ("VOL x/y"). Produto de caixa única sem esse SKU não aparece aqui, mas
-       conta 1 volume no total do período — sem dizer isso, a listagem parece
-       contradizer o card de volumes (e em 2025 a diferença é enorme, porque
-       o cadastro só ganhou os VOL 1/1 no meio do ano). */
+    /* No filtro Volumes a lista é das caixas apontadas, e o total é o mesmo
+       número que o ReporteVolumes.gs lança na HISTORICO (o card Volumes) —
+       menos no mês em que as caixas apontadas não chegam ao número de
+       produtos (JAN a MAI/25): ali o card é estimado e fica acima desta
+       soma. Sem dizer isso, a lista pareceria contradizer o card. */
     var infoVol='';
     if(_tipo==='V'&&!_busca.trim()){
-      var nMulti=linhas.filter(function(p){ return p.n>1; }).length;
-      infoVol=' — quantidade produzida × nº de caixas de cada produto'
-        +(nMulti?'; '+nMulti+' produtos saem em 2 ou mais caixas':'');
+      var prodPer=doPer.reduce(function(s,r){ return ehCx(r)?s:s+r[4]; },0);
+      infoVol=' — caixas apontadas no reporte, uma linha por código de volume'
+        +(total>0&&total<prodPer?'; abaixo dos '+fi(prodPer)+' produtos do período: o apontamento das caixas'
+          +' estava incompleto e o card Volumes é estimado':'');
     }
     el.innerHTML=
       '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px">'
@@ -21562,9 +21521,7 @@ window.MesEmCurso = (function(){
         +'<thead><tr><th>Código</th><th>Descrição</th><th style="text-align:right">Qtd</th><th style="text-align:right">%</th></tr></thead>'
         +'<tbody>'+(linhas.map(function(p){
             return '<tr><td style="font-family:var(--mono);white-space:nowrap">'+p.cod+'</td>'
-              +'<td>'+p.desc
-                +(_tipo==='V'&&p.n>1?'<span style="color:var(--t3);font-size:.66rem"> · '+p.n+' caixas/un</span>'
-                  :(p.unica?'<span style="color:var(--t3);font-size:.66rem"> · caixa única</span>':''))+'</td>'
+              +'<td>'+p.desc+'</td>'
               +'<td style="text-align:right;font-family:var(--mono);font-weight:700">'+fi(p.q)+'</td>'
               +'<td style="text-align:right;color:var(--t3);font-size:.72rem">'+fd(total>0?(p.q/total)*100:0,1)+'%</td></tr>';
           }).join('')||'<tr><td colspan="4" style="color:var(--t3)">Nada encontrado com esse filtro.</td></tr>')+'</tbody>'
@@ -26963,9 +26920,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.97';
-var APP_DATA   = '10/11/2026';
+var APP_VERSAO = 'b96.98';
+var APP_DATA   = '13/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.98', data:'13/11/2026', itens:[
+    'Volumes produzidos = as caixas apontadas no reporte do ERP (linha "VOL x/y" ou codigo 501), somadas como vieram: a fabrica produz por volume. Ate a b96.97 a conta era produto x numero de caixas, com o produto ligado a caixa pelo nome, e a caixa da cor irma entrava duas vezes (o produto "RACK FLIP 1.6 OFF WHITE/CINAMOMO" ficava com a caixa "RACK FLIP 1.6 OFF WHITE" e a caixa CINAMOMO era somada de novo).',
+    'Atencao: o numero de volumes cai depois de relancar a HISTORICO (no editor: calcularVolumesMes e lancarVolumesNaHistorico). OUT/26: 38.628 -> 34.792; JAN-OUT/26: 379.287 -> 345.786; fator de embalagem 1,25 -> 1,14. JUN/25 a OUT/26 caem entre 2.060 e 6.365 por mes. Os produtos nao mudam.',
+    'JAN a MAI/25 ficam ESTIMADOS (produto x numero de caixas, cada produto com o grupo de caixas de nome mais especifico): o ERP so tinha de 44 a 153 linhas de caixa por mes contra ~200 de produto. A coluna PENDENCIAS da REPORTE_VOLUMES diz ESTIMADO, e nos outros meses lista os produtos sem caixa apontada no mes.',
+    'Producao por Produto: o filtro Volumes da listagem passa a mostrar as caixas, uma linha por codigo de volume (VOL 1/3, 2/3, 3/3 de cada produto), e o total bate com o card Volumes. Mes com caixas abaixo dos produtos diz que o card e estimado.'
+  ]},
   { v:'b96.97', data:'10/11/2026', itens:[
     'Auditoria do Briefing Mensal e da Reuniao do Mes: cada indicador numa funcao do DashUtils usada pelos dois relatorios. O Briefing passa a ler os dados normalizados (load), como a Reuniao; lia o dash_v3 cru e refazia todas as contas.',
     'Fechamos o ano? (DashUtils.fechamentoAno/vereditoAno, tambem no Planejamento Mestre): saldo = plano do ano - realizado (OUT/26: 57.819; o "falta produzir 56.359" era o plano de NOV+DEZ, que vira "plano restante"); aderencia ao plano acumulado 99,5% (-1.460) no lugar do 84,0% contra o ano inteiro; dias uteis restantes pelo calendario (segunda a sexta menos a aba FERIADOS) ate o ultimo dia de producao, DIA_FIM_ANO = 18/12 na aba METAS: 33 dias (eram 44 no Briefing e 34 na Reuniao, duas tabelas fixas); ritmo exigido = saldo / dias = 1.752 pc/dia.',
