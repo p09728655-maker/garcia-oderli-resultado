@@ -6800,10 +6800,33 @@ window.DashUtils = (function() {
   function calendarioEntrega(hojeIso, nUteis, prazoCorridos, feriados, diaFim) {
     var t0 = _utc(hojeIso); if (t0 === null) return null;
     var fer = _ferSet(feriados), alvo = Math.ceil(nUteis - 1e-9), t = t0, k = 0, guarda = 0;
-    while (k < alvo && guarda++ < 800) { t += 86400000; if (_diaProduz(t, fer, diaFim)) k++; }
+    while (k < alvo && guarda++ < 4000) { t += 86400000; if (_diaProduz(t, fer, diaFim)) k++; }
+    if (k < alvo) return null;
     var uteisPrazo = 0;
     for (var i = 1; i <= (prazoCorridos || 0); i++) if (_diaProduz(t0 + i * 86400000, fer, diaFim)) uteisPrazo++;
     return { data: new Date(t).toISOString().slice(0, 10), corridos: Math.round((t - t0) / 86400000), uteisPrazo: uteisPrazo };
+  }
+
+  /* Projeção da fila dia de produção a dia de produção (b96.105). O prazo de
+     N dias corridos ENCOLHE em dias úteis quando a janela pega o recesso (de
+     13/11 são 19; de 25/11, 17; de 01/12, 13): contra um prazo fixo de hoje,
+     a data em que a fila estoura saía errada. Devolve o 1º dia de produção k
+     (0 = o próprio início) em que fila0 + k × g passa do prazo daquele dia. */
+  function _projetaFila(ini, fila0, g, prazo, feriados, diaFim, maxK) {
+    var t = _utc(ini); if (t === null) return null;
+    var fer = _ferSet(feriados);
+    function pz(tt) { var u = 0; for (var i = 1; i <= prazo; i++) if (_diaProduz(tt + i * 86400000, fer, diaFim)) u++; return u; }
+    var p0 = pz(t);
+    if (fila0 > p0) return { k: 0, data: new Date(t).toISOString().slice(0, 10), prazo: p0 };
+    var k = 0, guarda = 0;
+    while (k < maxK && guarda++ < 4000) {
+      t += 86400000;
+      if (!_diaProduz(t, fer, diaFim)) continue;
+      k++;
+      var p = pz(t);
+      if (fila0 + k * g > p) return { k: k, data: new Date(t).toISOString().slice(0, 10), prazo: p };
+    }
+    return null;
   }
 
   function filaERP(todos, anoCorte, mesCorte, ritmo, prazo, cal) {
@@ -6820,7 +6843,8 @@ window.DashUtils = (function() {
               semEstoque: !(r.estoqueERP > 0),
               fila: Math.max(0, r.carteiraERP - est), ritmo: ritmo > 0 ? ritmo : null,
               prazo: prazo > 0 ? prazo : null,
-              diasUteis: null, diasCorridos: null, dataEntrega: null, uteisPrazo: null, excesso: null, cor: null };
+              diasUteis: null, diasCorridos: null, dataEntrega: null, uteisPrazo: null, excesso: null, cor: null,
+              inicio: null, cal: null };
     if (o.ritmo) {
       o.diasUteis = o.fila / o.ritmo;
       o.diasCorridos = o.diasUteis * 7 / 5;
@@ -6835,7 +6859,7 @@ window.DashUtils = (function() {
         var ini = mesHoje ? hj : new Date(Date.UTC(r.ano, iM + 1, 0)).toISOString().slice(0, 10);
         C = calendarioEntrega(ini, o.diasUteis, o.prazo || 0, cal.feriados, cal.diaFim);
       }
-      if (C) { o.diasCorridos = C.corridos; o.dataEntrega = C.data; }
+      if (C) { o.diasCorridos = C.corridos; o.dataEntrega = C.data; o.inicio = ini; o.cal = cal; }
       /* Produção sempre em dias ÚTEIS (PPCP, 13/11/2026). O prazo prometido
          é em dias corridos: vira dias úteis de produção pelo calendário. */
       if (o.prazo) {
@@ -6898,7 +6922,8 @@ window.DashUtils = (function() {
               perV6: X.perV6, perV3: X.perV3, perP: X.perP, semNorm: X.semNorm, mesCorte: mesCorte,
               limiteHE: lim, prazo: prazo, antecedencia: ant,
               heNec: null, heAcima: false, cresc: X.venda3 - X.prod3, crescMes: null,
-              fila: null, filaDias: null, prazoUteis: null, antUteis: null, diasAte: null, jaPassou: false, confirmar: false, nivel: 'ok' };
+              fila: null, filaDias: null, prazoUteis: null, antUteis: null, diasAte: null, dataEstoura: null, prazoNaData: null,
+              causa: null, recesso: null, jaPassou: false, confirmar: false, nivel: 'ok' };
     /* Na base do limite (HE ÷ horas normais). O painel monta prodSemExtras =
        produção × (1 − extras ÷ normais), então a HE de uma produção D é
        1 − semHE ÷ D (revisão b96.104: D ÷ semHE − 1 dava 8,5% contra 7,9%). */
@@ -6911,11 +6936,30 @@ window.DashUtils = (function() {
          antecedência convertidos pelo mesmo calendário. */
       o.filaDias = F.diasUteis !== null && F.diasUteis !== undefined ? F.diasUteis : F.fila / X.prod3;
       o.prazoUteis = F.uteisPrazo > 0 ? F.uteisPrazo : prazo * 5 / 7;
-      o.antUteis = ant * o.prazoUteis / prazo;
-      if (o.filaDias >= o.prazoUteis) { o.jaPassou = true; o.diasAte = 0; }
-      else if (o.cresc > 0) o.diasAte = (o.prazoUteis - o.filaDias) / (o.cresc / X.prod3);
+      var g = o.cresc / X.prod3, CL = F.cal;
+      if (CL && F.inicio) {
+        /* Com calendário: antecedência em dias úteis pelo mesmo calendário e
+           projeção dia a dia (o prazo encolhe no recesso). */
+        var CA = calendarioEntrega(F.inicio, 0, ant, CL.feriados, CL.diaFim);
+        o.antUteis = CA ? CA.uteisPrazo : ant * o.prazoUteis / prazo;
+        var maxK = Math.max(60, Math.ceil(3 * o.antUteis));
+        var P1 = _projetaFila(F.inicio, o.filaDias, g, prazo, CL.feriados, CL.diaFim, maxK);
+        var P0 = g > 0 ? _projetaFila(F.inicio, o.filaDias, 0, prazo, CL.feriados, CL.diaFim, maxK) : P1;
+        if (P1) {
+          o.diasAte = P1.k; o.dataEstoura = P1.data; o.prazoNaData = P1.prazo;
+          if (P1.k === 0) o.jaPassou = true;
+          /* A fila estouraria mesmo sem crescer: é o recesso, não a venda. */
+          if (P0 && P0.k <= P1.k) o.causa = 'recesso';
+        }
+        if (P0 && P0.k > 0) o.recesso = { k: P0.k, data: P0.data };
+      } else {
+        o.antUteis = ant * o.prazoUteis / prazo;
+        if (o.filaDias > o.prazoUteis) { o.jaPassou = true; o.diasAte = 0; }
+        else if (o.cresc > 0) o.diasAte = (o.prazoUteis - o.filaDias) / g;
+      }
     }
     if (o.jaPassou) o.nivel = 'aumentar';
+    else if (o.diasAte !== null && o.diasAte <= o.antUteis && o.causa === 'recesso') o.nivel = 'preparar';
     else if (o.diasAte !== null && o.diasAte <= o.antUteis) {
       var mA = iC === 0 ? 'DEZ' : _ORDEM_M[iC - 1], aA = iC === 0 ? anoCorte - 1 : anoCorte;
       var P = medir(aA, mA);
@@ -6941,13 +6985,19 @@ window.DashUtils = (function() {
     if (A.filaDias !== null) {
       L.push(A.perV3 + ': venda ' + n(A.venda3) + ' × produção ' + n(A.prod3) + ' → fila '
         + (A.cresc > 0 ? 'sobe ' + n(A.crescMes, 1) + ' dias úteis por mês.' : 'estável ou caindo.'));
-      L.push('Fila ' + n(A.filaDias) + ' dias úteis; prazo ' + n(A.prazoUteis) + ': '
-        + (A.jaPassou ? 'já passou.' : (A.diasAte !== null ? 'estoura em ~' + n(A.diasAte) + ' dias úteis.' : 'dentro.')));
+      function dm(iso) { return iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : ''; }
+      L.push('Fila ' + n(A.filaDias) + ' dias úteis; prazo ' + n(A.prazoUteis) + ' hoje: '
+        + (A.jaPassou ? 'já passou.' : (A.diasAte !== null
+            ? 'estoura em ~' + n(A.diasAte) + ' dias úteis' + (A.dataEstoura ? ' (' + dm(A.dataEstoura) + ', prazo ' + n(A.prazoNaData) + ').' : '.')
+            : 'dentro.')));
+      if (A.recesso && A.recesso.k <= 2 * A.antUteis)
+        L.push('Recesso: pedido a partir de ' + dm(A.recesso.data) + ' só fica pronto em janeiro.');
     } else L.push('Sem carteira do ERP: fila não avaliada.');
     var acao = A.nivel === 'aumentar' ? 'Aumentar capacidade agora: turno, quadro ou hora extra acima do limite.'
       : A.nivel === 'preparar'
         ? ((A.diasAte !== null && A.diasAte > A.antUteis)
-            ? 'Decidir o aumento em até ' + n(Math.max(1, A.diasAte - A.antUteis)) + ' dias úteis (leva ' + n(A.antecedencia) + ' dias para aumentar).'
+            ? 'Decidir o aumento em até ' + n(Math.max(1, A.diasAte - A.antUteis)) + ' dias úteis (leva ' + n(A.antecedencia) + ' dias corridos = ' + n(A.antUteis) + ' úteis).'
+            : A.causa === 'recesso' ? 'Recesso: ajustar o prazo prometido ou adiantar com hora extra até o fim da produção.'
             : (A.confirmar ? 'Estoura antes do tempo de aumentar (' + n(A.antUteis) + ' dias úteis). Fila só cresceu em ' + A.mesCorte + ': confirmar atualizando a carteira do ERP.'
                            : 'Para atender a venda, a hora extra passa do limite: planejar o aumento.'))
         : A.nivel === 'sembase' ? 'Sem base para avisar: lançar as horas do ponto ou a carteira do ERP.'
@@ -27321,9 +27371,13 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.104';
+var APP_VERSAO = 'b96.105';
 var APP_DATA   = '13/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.105', data:'13/11/2026', itens:[
+    'Aviso de capacidade: a fila e projetada dia de producao a dia de producao, com o prazo de 30 dias corridos encolhendo no recesso (de 13/11 sao 19 dias uteis; de 25/11, 17; de 01/12, 13). OUT/26: estoura em ~7 dias uteis (25/11), nao em 17.',
+    'Linha nova do recesso: a partir de que dia um pedido novo so fica pronto em janeiro. Se a fila estoura mesmo sem crescer, a acao e ajustar o prazo prometido ou adiantar com hora extra. Antecedencia em dias uteis pelo calendario.'
+  ]},
   { v:'b96.104', data:'13/11/2026', itens:[
     'Aviso de capacidade x venda na Reuniao, no Briefing e na Visao Geral: OK, PREPARAR ou AUMENTAR AGORA.',
     'Venda media de 6 meses contra o ritmo sem hora extra (limite de HE), a fila crescendo (venda menos producao de 3 meses) e quando ela passa do prazo, contra a antecedencia para aumentar capacidade (ANTECEDENCIA_CAP, 30 dias, aba METAS).',
