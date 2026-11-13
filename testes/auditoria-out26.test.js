@@ -96,6 +96,31 @@ afirma('folga ≥ 0 → FECHA, com a decisão sobre a hora extra se a jornada no
   (() => { const v = U.vereditoAno(Object.assign({}, F, { folgaFechar: 2 })); return v.titulo === 'FECHA O ANO NO RITMO ATUAL' && /hora extra/.test(v.acao); })());
 afirma('sem plano: sem base, sem título inventado', U.vereditoAno(U.fechamentoAno([], 2026, 'OUT', {})).titulo === 'SEM BASE PARA RESPONDER');
 
+sec('b96.100: ritmo atual = últimos 3 meses; venda contra o plano');
+afirma('meses do ritmo atual: AGO, SET e OUT', F.mesesRecente.join() === 'AGO,SET,OUT');
+ok('ritmo atual = (32.364 + 37.948 + 30.478) ÷ 63 dias', F.ritmoRecente, 100790 / 63);
+ok('folga para fechar pelo ritmo atual (era −14,8% pela média do ano)', F.folgaFechar, (100790 / 63) / (57819 / 33) * 100 - 100);
+ok('a do ano continua em folgaAno', F.folgaAno, (F.realAcum / F.diasAcum) / (57819 / 33) * 100 - 100);
+afirma('o título diz de que meses é o ritmo, com hora extra', V.pctRot === 'ritmo de AGO a OUT com hora extra vs exigido para fechar');
+afirma('a frase traz o ritmo atual e o do ano entre parênteses', /o ritmo de AGO a OUT com hora extra é 1\.600 pç\/dia \(no ano, /.test(texto));
+/* Venda real de 2026 (HISTORICO, qtdeVendida): 346.395 pç, 13,2% acima do plano 305.937 */
+const VENDA26 = [36734, 14063, 52435, 40059, 26770, 41709, 21956, 35758, 38698, 38213, 0, 0];
+const ANOV = ANO.map((r, i) => Object.assign({}, r, { qtdeVendida: VENDA26[i] }));
+const FV = U.fechamentoAno(ANOV, 2026, 'OUT', { feriados: FER, diaFim: 18 });
+ok('venda contra o plano: 346.395 ÷ 305.937', FV.pctVenda, (346395 / 305937 - 1) * 100);
+afirma('sem venda lançada → null, nunca 0', F.pctVenda === null);
+const VV = U.vereditoAno(FV);
+afirma('com a venda acima do plano a decisão é PRAZO, não plano', /13,2% acima do plano/.test(VV.acao) && /prazos de entrega/.test(VV.acao) && !/repactuar o plano/.test(VV.acao));
+afirma('e a frase diz a venda', /Venda do ano: 13,2% acima do plano/.test(VV.frase.replace(/<[^>]+>/g, '')));
+afirma('sem a venda, a decisão de antes', /repactuar o plano com a área comercial/.test(V.acao));
+afirma('mês em que a venda não foi lançada não entra na conta da venda', (() => {
+  const x = ANOV.map(r => r.mes === 'OUT' ? Object.assign({}, r, { qtdeVendida: 0 }) : r);
+  const f = U.fechamentoAno(x, 2026, 'OUT', { feriados: FER });
+  return Math.abs(f.pctVenda - ((346395 - 38213) / (305937 - 34810) - 1) * 100) < 0.01; })());
+afirma('Reunião: a 1ª linha do gráfico é a conta do título', /rot:'Para fechar o ano'[\s\S]{0,260}dem:FA\.ritmoAtual, exg:FA\.ritmoExigido, f:FA\.folgaFechar/.test(HTML));
+afirma('Reunião: vendido − faturado não se chama carteira e diz que não é a do ERP',
+  /card\('Vendido − faturado'/.test(HTML) && /não é a carteira do ERP<br>/.test(HTML) && !/b3\+=card\('Carteira a faturar'/.test(HTML));
+
 sec('OUT/26 — bases de horas, absenteísmo, hora extra e capacidade');
 /* Referência: normais 14.758 h, extras 848,1 h, faltas + atrasos 1.277,4 h
    (afastamento 334 + falta s/ justificativa 418 + atraso 49 + atestado 476),

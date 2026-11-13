@@ -1841,7 +1841,7 @@ td[title]:hover{background:rgba(255,255,255,.04)!important}
          card da Reunião (DashUtils.carteira), que desce para esta aba. É a
          VARIAÇÃO acumulada vendido − faturado desde o início da série, não o
          saldo absoluto do ERP. -->
-    <div class="kCard kc pv-k" id="card5-cart" style="display:none"><div class="kLbl">Carteira a faturar</div><div class="kVal" id="kv5-cart">—</div><div class="kSub" id="ks5-cart">vendido − faturado acumulado, em dias úteis normais</div></div>
+    <div class="kCard kc pv-k" id="card5-cart" style="display:none"><div class="kLbl">Vendido − faturado</div><div class="kVal" id="kv5-cart">—</div><div class="kSub" id="ks5-cart">acumulado desde o início da série, em dias úteis normais · não é a carteira do ERP</div></div>
   </div>
   <!-- b96.95: plano × produção numa barra só. A barra é a produção do mês,
        cheia na jornada normal e hachurada na hora extra; o traço é o plano.
@@ -7175,11 +7175,14 @@ window.DashUtils = (function() {
        • ritmo exigido para fechar = saldo ÷ dias úteis restantes.
      Mês até a referência com plano e sem produção fica fora do acumulado e
      vai para semReal, para a tela avisar em vez de contar como zero. */
+  var RITMO_RECENTE_MESES = 3;
   function fechamentoAno(todos, ano, mesRef, opt) {
     opt = opt || {};
     var iRef = _ORDEM_M.indexOf(mesRef);
     var o = { ano:ano, mesRef:mesRef, planoAno:0, planoAcum:0, realAcum:0, realComPlano:0, diasAcum:0, mesesAcum:0,
-              normalAcum:0, planoNormal:0, diasNormal:0, planoRestante:0, semPlano:[], semReal:[] };
+              normalAcum:0, planoNormal:0, diasNormal:0, planoRestante:0, semPlano:[], semReal:[],
+              vendaComPlano:0, planoVenda:0 };
+    var feitos = [];
     (todos || []).forEach(function (r) {
       if (!r || r.ano !== ano) return;
       var i = _ORDEM_M.indexOf(r.mes), pl = r.previsaoProducao > 0 ? r.previsaoProducao : 0;
@@ -7188,9 +7191,24 @@ window.DashUtils = (function() {
       if (i > iRef) { if (pl > 0) o.planoRestante += pl; else o.semPlano.push(r.mes); return; }
       if (!(P > 0)) { if (pl > 0) o.semReal.push(r.mes); return; }
       o.mesesAcum++; o.realAcum += P; o.diasAcum += getDias(r);
+      feitos.push({ i:i, mes:r.mes, P:P, d:getDias(r) });
       if (pl > 0) { o.planoAcum += pl; o.realComPlano += P; }
       if (pl > 0 && r.prodSemExtras > 0) { o.normalAcum += r.prodSemExtras; o.planoNormal += pl; o.diasNormal += getDias(r); }
+      if (pl > 0 && r.qtdeVendida > 0) { o.vendaComPlano += r.qtdeVendida; o.planoVenda += pl; }
     });
+    /* b96.100: ritmo ATUAL = os últimos RITMO_RECENTE_MESES meses com
+       produção, com hora extra. A média do ano puxava o "ritmo atual" para o
+       começo do ano (JAN/26 a 1.320 pç/dia): em OUT/26 o título dizia −14,8%
+       com os 3 últimos meses a 1.600 pç/dia (−8,7%). O ritmo do ano continua
+       em ritmoComHE e na 2ª linha do gráfico da Reunião. */
+    feitos.sort(function (a, b) { return a.i - b.i; });
+    var rec = feitos.slice(-RITMO_RECENTE_MESES), pRec = 0, dRec = 0;
+    rec.forEach(function (x) { pRec += x.P; dRec += x.d; });
+    o.mesesRecente = rec.map(function (x) { return x.mes; });
+    o.ritmoRecente = rec.length ? _div(pRec, dRec) : null;
+    /* Venda contra o plano, nos meses que têm os dois: a demanda está acima
+       ou abaixo do que o plano compromete? (OUT/26: +13,2%). */
+    o.pctVenda = (o.planoVenda > 0 && o.vendaComPlano > 0) ? (o.vendaComPlano / o.planoVenda - 1) * 100 : null;
     o.aderAcum   = _pct(o.realComPlano, o.planoAcum);
     o.desvioAcum = o.planoAcum > 0 ? o.realComPlano - o.planoAcum : null;
     o.pctVolume  = o.aderAcum === null ? null : o.aderAcum - 100;
@@ -7204,7 +7222,9 @@ window.DashUtils = (function() {
     o.diasRestantes = iRef < 0 || iRef >= 11 ? 0 : diasUteis(_isoD(ano, iRef + 2, 1), o.fimAno, opt.feriados);
     o.semFeriados = !(Array.isArray(opt.feriados) && opt.feriados.length);
     o.ritmoExigido = (o.saldo > 0 && o.diasRestantes > 0) ? o.saldo / o.diasRestantes : null;
-    o.folgaFechar  = (o.ritmoExigido && o.ritmoComHE) ? (o.ritmoComHE / o.ritmoExigido - 1) * 100 : null;
+    o.ritmoAtual   = o.ritmoRecente !== null ? o.ritmoRecente : o.ritmoComHE;
+    o.folgaFechar  = (o.ritmoExigido && o.ritmoAtual) ? (o.ritmoAtual / o.ritmoExigido - 1) * 100 : null;
+    o.folgaAno     = (o.ritmoExigido && o.ritmoComHE) ? (o.ritmoComHE / o.ritmoExigido - 1) * 100 : null;
     return o;
   }
 
@@ -7217,7 +7237,7 @@ window.DashUtils = (function() {
      Faixas da folga para fechar: ≥ 0 fecha · > −5% no limite · senão não
      fecha. */
   function vereditoAno(F) {
-    var v = { titulo:'SEM BASE PARA RESPONDER', cor:'#888888', pct:null, pctRot:'', frase:'', acao:'', alerta:null };
+    var v = { titulo:'SEM BASE PARA RESPONDER', cor:'#888888', pct:null, pctRot:'', frase:'', acao:'', alerta:null, venda:'' };
     if (!F || !(F.planoAno > 0) || !(F.mesesAcum > 0)) {
       v.frase = 'Falta o plano do ano ou um mês fechado com produção para responder.';
       v.acao = 'Lançar o Plano Mestre e a produção do mês.';
@@ -7238,9 +7258,18 @@ window.DashUtils = (function() {
       v.acao = 'Repactuar o saldo com a área comercial.';
     } else {
       var f = F.folgaFechar;
-      v.pct = f; v.pctRot = 'ritmo do ano com hora extra vs exigido para fechar';
+      /* b96.100: o "ritmo atual" é o dos últimos meses (fechamentoAno); o do
+         ano vai entre parênteses. A venda contra o plano entra na frase e na
+         decisão: com a demanda acima do plano, repactuar é PRAZO, não plano. */
+      var mr = F.mesesRecente || [];
+      var rotAtual = F.ritmoRecente !== null && mr.length
+        ? ('ritmo de ' + mr[0] + (mr.length > 1 ? ' a ' + mr[mr.length - 1] : '')) : 'ritmo do ano';
+      v.pct = f; v.pctRot = rotAtual + ' com hora extra vs exigido para fechar';
       var falta = ' Para fechar o ano faltam <b>' + fI(F.saldo) + ' pç em ' + F.diasRestantes + ' dias úteis</b> (até ' + dm + ') = <b>'
-        + fI(F.ritmoExigido) + ' pç/dia</b>; o ritmo do ano com hora extra é ' + fI(F.ritmoComHE) + ' pç/dia';
+        + fI(F.ritmoExigido) + ' pç/dia</b>; o ' + rotAtual + ' com hora extra é ' + fI(F.ritmoAtual) + ' pç/dia'
+        + (F.ritmoRecente !== null ? ' (no ano, ' + fI(F.ritmoComHE) + ')' : '');
+      v.venda = F.pctVenda === null ? '' : (' Venda do ano: <b>' + fN(Math.abs(F.pctVenda), 1) + '% '
+        + (F.pctVenda >= 0 ? 'acima' : 'abaixo') + '</b> do plano.');
       if (f >= 0) {
         v.titulo = 'FECHA O ANO NO RITMO ATUAL'; v.cor = '#4CAF50';
         v.frase = acum + falta + ' (' + fN(f, 1) + '% de folga).';
@@ -7254,8 +7283,11 @@ window.DashUtils = (function() {
       } else {
         v.titulo = 'NÃO FECHA NO RITMO ATUAL'; v.cor = '#F44336';
         v.frase = acum + falta + ' (' + fN(Math.abs(f), 1) + '% abaixo do necessário).';
-        v.acao = 'Decidir entre aumentar capacidade (turno, headcount ou hora extra estrutural) ou repactuar o plano com a área comercial.';
+        v.acao = F.pctVenda !== null && F.pctVenda > 0
+          ? 'A venda está ' + fN(F.pctVenda, 1) + '% acima do plano: aumentar capacidade (turno, headcount ou hora extra estrutural) ou repactuar prazos de entrega com o comercial.'
+          : 'Decidir entre aumentar capacidade (turno, headcount ou hora extra estrutural) ou repactuar o plano com a área comercial.';
       }
+      v.frase += v.venda;
     }
     if (F.pctJornada !== null && F.pctJornada < 0) {
       v.alerta = { cor: F.pctJornada > -5 ? '#FF9800' : '#F44336', pct: F.pctJornada,
@@ -9410,7 +9442,9 @@ function renderKPIsExtras(d){
     if(dias!==null) sU('kv5-cart', (dias<0?'-':'')+fi(Math.abs(dias)), 'dias úteis'); else s('kv5-cart', saldoTxt);
     var v=document.getElementById('kv5-cart'); if(v) v.style.color=cor;
     var k=document.getElementById('ks5-cart');
-    if(k) k.textContent='até '+ult.mes+'/'+String(ult.ano).slice(2)+' · '+saldoTxt+(dias!==null?(' · '+fi(prodDiaN)+' pç/dia útil normal'):'')+' · '+tend;
+    var ini=h.length?(h[0].mes+'/'+String(h[0].ano).slice(2)):'';
+    if(k) k.textContent=(ini?'de '+ini+' ':'')+'até '+ult.mes+'/'+String(ult.ano).slice(2)+' · '+saldoTxt+(dias!==null?(' · '+fi(prodDiaN)+' pç/dia útil normal'):'')
+      +' · não é a carteira do ERP · '+tend;
   })();
 
   // Previsto (Plano Mestre) e aderência ao plano — era "Meta Acumulada" (Σ meta
@@ -24914,9 +24948,14 @@ window.CompAnos = (function () {
       if(tCurta!==null) tend+=' · '+nCurta+' meses '+(tCurta>=0?'+':'')+fi(tCurta)+' pç/mês · '
                               +(tCurta>0?'fila crescendo':'fila caindo');
       var saldoTxt=(CT.saldo>=0?'':'-')+fi(Math.abs(CT.saldo))+' pç';
-      b3+=card('Carteira a faturar',
+      /* b96.100: é vendido − faturado acumulado desde o 1º mês da série,
+         partindo de zero — não é a carteira do ERP (falta o saldo de antes
+         e os cancelamentos). A tendência vale; o nível, só como referência. */
+      var iniCart=CT.hist&&CT.hist.length?(CT.hist[0].mes+'/'+String(CT.hist[0].ano).slice(2)):'';
+      b3+=card('Vendido − faturado'+(iniCart?' desde '+iniCart:''),
                diasCart!==null ? ((diasCart<0?'-':'')+fi(Math.abs(diasCart))+' dias úteis') : saldoTxt,
-               (diasCart!==null ? (saldoTxt+' · '+fi(prodDiaN)+' pç/dia útil normal<br>') : '')+tend,
+               (diasCart!==null ? (saldoTxt+' · '+fi(prodDiaN)+' pç/dia útil normal<br>') : '')
+               +'não é a carteira do ERP<br>'+tend,
                corCart, true, 'producao');
     }
 
@@ -24973,7 +25012,7 @@ window.CompAnos = (function () {
     var r1 = r1Curta + (r1Detalhe?(' · '+r1Detalhe):'');   /* a narração (Apresentar) continua completa */
     var c1 = aderSE===null?'var(--t2)':corMeta(aderSE,100);
     var r2 = fi(A.prod)+' pç entregues'+(ader!==null?(', '+fd(ader,1)+'% do plano com hora extra'):'')
-           +(diasCart!==null?(' · carteira de '+fi(diasCart)+' dias úteis'):'');
+           +(diasCart!==null?(' · vendido − faturado'+(iniCart?' desde '+iniCart:'')+': '+fi(diasCart)+' dias úteis'):'');
     var c2 = diasCart===null?'var(--t2)':(diasCart<=0.5*DUTEIS_?'#4CAF50':(diasCart<=1.5*DUTEIS_?'#FF9800':'#F44336'));
     var r3 = R.abertas+' em aberto · '+R.criticas+' crítica'+(R.criticas===1?'':'s')
            +(R.vencidas>0?(' · '+R.vencidas+' com prazo vencido'):'')
@@ -24983,7 +25022,8 @@ window.CompAnos = (function () {
     _falas = {
       abertura: (VA&&VA.pct!==null)
         ? (VA.titulo+' · faltam '+fi(FA.saldo)+' pç em '+FA.diasRestantes+' dias úteis = '+fi(FA.ritmoExigido)
-           +' pç/dia, contra '+fi(FA.ritmoComHE)+' pç/dia do ano com hora extra')
+           +' pç/dia, contra '+fi(FA.ritmoAtual)+' pç/dia '+(FA.ritmoRecente!==null?'dos últimos '+(FA.mesesRecente||[]).length+' meses':'do ano')+' com hora extra'
+           +(FA.pctVenda!==null?(' · venda '+fd(Math.abs(FA.pctVenda),1)+'% '+(FA.pctVenda>=0?'acima':'abaixo')+' do plano'):''))
         : ((VA&&FA.mesesAcum>0)?VA.titulo:r1),
       cAbertura: (VA&&FA.mesesAcum>0)?VA.cor:c1,
       r1:r1, c1:c1,
@@ -25027,6 +25067,14 @@ window.CompAnos = (function () {
     var corF=function(f){ return (f===null||f===undefined)?'#00E5FF':(f>=0?'#4CAF50':(f>-5?'#FF9800':'#F44336')); };
     /* b96.97: duas leituras do ano, cada uma com o próprio exigido — com hora
        extra mede o volume; só jornada normal mede a dependência de HE. */
+    /* b96.100: a 1ª linha é a conta do título (ritmo atual × exigido para
+       fechar). Antes o −14,8% do título não aparecia em barra nenhuma, e a 1ª
+       barra dizia −0,5% (contra o plano JÁ PASSADO). */
+    if(FA.ritmoExigido>0 && FA.ritmoAtual>0){
+      var mrA=FA.mesesRecente||[], rotA=FA.ritmoRecente!==null&&mrA.length?(mrA[0]+(mrA.length>1?' a '+mrA[mrA.length-1]:'')):'ano';
+      linhasRit.push({ rot:'Para fechar o ano', sub:'ritmo de '+rotA+' com hora extra · exigido até '+FA.fimAno.slice(8,10)+'/'+FA.fimAno.slice(5,7),
+        dem:FA.ritmoAtual, exg:FA.ritmoExigido, f:FA.folgaFechar, cor:corF(FA.folgaFechar) });
+    }
     if(FA.mesesAcum>0 && FA.planoAcum>0 && FA.diasAcum>0){
       linhasRit.push({ rot:'Ano até '+refAno, sub:'com hora extra · volume', dem:FA.ritmoComHE, exg:FA.planoAcum/FA.diasAcum, f:FA.pctVolume, cor:corF(FA.pctVolume) });
       if(FA.ritmoSemHE!==null) linhasRit.push({ rot:'Ano até '+refAno, sub:'só jornada normal · dependência', dem:FA.ritmoSemHE, exg:FA.ritmoPlanoNormal, f:FA.pctJornada, cor:corF(FA.pctJornada) });
@@ -26951,9 +26999,15 @@ window.CompAnos = (function () {
    AO PUBLICAR: acrescente uma entrada no topo de HISTORICO e suba a versão em
    sw.js (CACHE_NAME) para o service worker detectar a troca.
 ══════════════════════════════════════════════════════════════════════════ */
-var APP_VERSAO = 'b96.99';
+var APP_VERSAO = 'b96.100';
 var APP_DATA   = '13/11/2026';
 var APP_HISTORICO = [
+  { v:'b96.100', data:'13/11/2026', itens:[
+    'Fechamos o ano? (Reuniao, Briefing e Planejamento Mestre): o ritmo atual passa a ser o dos ultimos 3 meses com hora extra, nao a media do ano. Atencao: OUT/26 vai de -14,8% (1.493 pc/dia, puxado por JAN a 1.320) para -8,7% (1.600 pc/dia de AGO a OUT) contra 1.752 exigidas; segue NAO FECHA. O ritmo do ano continua na frase, entre parenteses.',
+    'Reuniao: a 1a barra do grafico e a conta do titulo (Para fechar o ano: ritmo atual contra o exigido). Antes o -14,8% do titulo nao aparecia em barra nenhuma e a 1a barra dizia -0,5%.',
+    'A venda contra o plano entra na frase e na decisao: em 2026 a venda esta 13,2% acima do plano, e a decisao passa a ser aumentar capacidade ou repactuar PRAZOS de entrega (era "repactuar o plano").',
+    'Carteira a faturar vira "Vendido - faturado desde JAN/25" (Reuniao e Producao & Vendas), com o aviso de que nao e a carteira do ERP: e a soma desde o inicio da serie, partindo de zero. A tendencia (fila crescendo) continua valendo.'
+  ]},
   { v:'b96.99', data:'13/11/2026', itens:[
     'Reuniao: o card Producao mostra os volumes ao lado das pecas (OUT/26: 30.478 pc · 34.792 vol).',
     'Meses com volume ESTIMADO (JAN a MAI/25: caixas nao apontadas) agora aparecem marcados: card Volumes, barra vazada no grafico, comparacao com o ano anterior, nota da lista Volumes (mes a mes) e asterisco na impressao.',
